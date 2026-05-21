@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { StatsCard } from '../components/StatsCard';
 import { Search, Plus, Download, Eye, Star, Calendar, Filter, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { apiRequest } from '../lib/api';
-import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import { getPaperAuthors, getPaperJournal, getPdfUrl, PublicPaper } from '../lib/papers';
 
 export function UserDashboard() {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export function UserDashboard() {
         method: 'POST',
         auth: true,
       });
-      window.open(`http://localhost:5000${data.downloadUrl}`, '_blank');
+      window.open(getPdfUrl(data.downloadUrl), '_blank');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to download PDF');
     }

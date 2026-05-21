@@ -6,6 +6,7 @@ import { UploadPdfModal } from '../components/UploadPdfModal';
 import { EditablePaper, EditPaperModal } from '../components/EditPaperModal';
 import { Search, Upload, Download, Eye, Filter, Check, X, Edit, Trash2 } from 'lucide-react';
 import { apiRequest } from '../lib/api';
+import { getPdfUrl } from '../lib/papers';
 
 type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
 
@@ -375,7 +376,7 @@ export function PaperManagementPage() {
 
                           {paper.status === 'downloaded' && paper.pdfPath && (
                             <a
-                              href={`http://localhost:5000${paper.pdfPath}`}
+                              href={getPdfUrl(paper.pdfPath)}
                               target="_blank"
                               rel="noreferrer"
                               className="p-2 hover:bg-muted rounded-lg transition-colors"

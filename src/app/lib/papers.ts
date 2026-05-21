@@ -25,5 +25,6 @@ export function getPaperJournal(paper: PublicPaper) {
 }
 
 export function getPdfUrl(pdfPath?: string) {
-  return pdfPath ? `http://localhost:5000${pdfPath}` : '';
+  return pdfPath ? `${API_ORIGIN}${pdfPath}` : '';
 }
+import { API_ORIGIN } from './api';

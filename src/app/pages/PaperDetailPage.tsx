@@ -5,7 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
 import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
-import { PublicPaper } from '../lib/papers';
+import { getPdfUrl, PublicPaper } from '../lib/papers';
 
 type DetailPaper = PublicPaper & {
   requestedBy?: {
@@ -112,7 +112,7 @@ export function PaperDetailPage() {
         method: 'POST',
         auth: true,
       });
-      window.open(`http://localhost:5000${data.downloadUrl}`, '_blank');
+      window.open(getPdfUrl(data.downloadUrl), '_blank');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to download PDF');
     }

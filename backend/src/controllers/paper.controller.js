@@ -26,7 +26,27 @@ export async function createPaper(req, res) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  const duplicate = await Paper.findOne({ $or: [{ doi }, { paperLink }] });
+  const normalizedYear = Number(publishedYear);
+  if (!Number.isInteger(normalizedYear) || normalizedYear < 1900 || normalizedYear > 2100) {
+    return res.status(400).json({ message: 'Invalid published year' });
+  }
+
+  const normalizedTitle = String(title).trim();
+  const normalizedDoi = String(doi).trim();
+  const normalizedPaperLink = String(paperLink).trim();
+  const normalizedAbstract = String(abstract).trim();
+
+  try {
+    new URL(normalizedPaperLink);
+  } catch {
+    return res.status(400).json({ message: 'Invalid paper link' });
+  }
+
+  if (!normalizedTitle || !normalizedDoi || !normalizedAbstract) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  const duplicate = await Paper.findOne({ $or: [{ doi: normalizedDoi }, { paperLink: normalizedPaperLink }] });
   if (duplicate) {
     return res.status(409).json({
       message: 'A paper with this DOI or link already exists',
@@ -35,14 +55,14 @@ export async function createPaper(req, res) {
   }
 
   const paper = await Paper.create({
-    title,
-    doi,
-    paperLink,
-    abstract,
+    title: normalizedTitle,
+    doi: normalizedDoi,
+    paperLink: normalizedPaperLink,
+    abstract: normalizedAbstract,
     authors: normalizeStringList(authors),
-    journal,
+    journal: journal ? String(journal).trim() : undefined,
     keywords: normalizeKeywords(keywords),
-    publishedYear,
+    publishedYear: normalizedYear,
     requestedBy: req.user._id,
   });
 

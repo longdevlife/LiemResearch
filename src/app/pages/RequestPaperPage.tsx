@@ -143,7 +143,7 @@ export function RequestPaperPage() {
                   value={formData.link}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                  placeholder="https://example.com/paper"
+                  placeholder="Paste the paper source URL"
                   required
                 />
               </div>

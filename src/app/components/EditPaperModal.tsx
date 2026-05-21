@@ -83,7 +83,7 @@ export function EditPaperModal({ isOpen, onClose, onSave, paper }: EditPaperModa
               value={editedPaper.paperLink}
               onChange={(e) => setEditedPaper({ ...editedPaper, paperLink: e.target.value })}
               className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-              placeholder="https://example.com/paper"
+              placeholder="Paste the paper source URL"
             />
           </div>
 
