@@ -38,8 +38,8 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
 
   return (
     <div className="w-64 h-screen bg-white border-r border-border flex flex-col">
-      <div className="px-6 py-7 border-b border-border flex items-center justify-center">
-        <img src={logo} alt="LiemResearch" className="h-24 w-auto max-w-full object-contain" />
+      <div className="px-4 py-7 border-b border-border flex items-center justify-center">
+        <img src={logo} alt="LiemResearch" className="h-32 w-auto max-w-full object-contain" />
       </div>
 
       <nav className="flex-1 p-4">
