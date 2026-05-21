@@ -1,166 +1,212 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { EditPaperModal } from '../components/EditPaperModal';
-import { Search, Upload, Download, Eye, Filter, Check, X, Edit } from 'lucide-react';
+import { EditablePaper, EditPaperModal } from '../components/EditPaperModal';
+import { Search, Upload, Download, Eye, Filter, Check, X, Edit, Trash2 } from 'lucide-react';
+import { apiRequest } from '../lib/api';
 
-interface Paper {
-  id: string;
-  title: string;
-  doi: string;
-  requestedBy: string;
-  university: string;
-  studentId: string;
-  status: 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
-  requestDate: string;
+type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
+
+interface AdminPaper extends EditablePaper {
+  requestedBy?: {
+    fullName?: string;
+    email?: string;
+    university?: string;
+    studentId?: string;
+  };
+  pdfPath?: string;
+  createdAt: string;
 }
 
-const mockPapers: Paper[] = [
-  {
-    id: '1',
-    title: 'Machine Learning Applications in Healthcare',
-    doi: '10.1234/ml.healthcare.2024',
-    requestedBy: 'John Doe',
-    university: 'MIT',
-    studentId: 'STU001',
-    status: 'downloaded',
-    requestDate: '2024-05-15',
-  },
-  {
-    id: '2',
-    title: 'Deep Neural Networks for Image Classification',
-    doi: '10.1234/dnn.classification.2024',
-    requestedBy: 'Jane Smith',
-    university: 'Stanford',
-    studentId: 'STU002',
-    status: 'pending',
-    requestDate: '2024-05-18',
-  },
-  {
-    id: '3',
-    title: 'Natural Language Processing in Modern Applications',
-    doi: '10.1234/nlp.modern.2024',
-    requestedBy: 'Bob Johnson',
-    university: 'Harvard',
-    studentId: 'STU003',
-    status: 'approved',
-    requestDate: '2024-05-10',
-  },
-  {
-    id: '4',
-    title: 'Computer Vision Techniques for Autonomous Vehicles',
-    doi: '10.1234/cv.autonomous.2024',
-    requestedBy: 'Alice Brown',
-    university: 'Berkeley',
-    studentId: 'STU004',
-    status: 'pending',
-    requestDate: '2024-05-19',
-  },
-  {
-    id: '5',
-    title: 'Quantum Computing Applications in Cryptography',
-    doi: '10.1234/quantum.crypto.2024',
-    requestedBy: 'Charlie Wilson',
-    university: 'Caltech',
-    studentId: 'STU005',
-    status: 'rejected',
-    requestDate: '2024-05-17',
-  },
-];
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString();
+}
+
+function toCsvValue(value: string | number | undefined) {
+  const text = String(value || '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
 
 export function PaperManagementPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
-  const [papers, setPapers] = useState<Paper[]>(mockPapers);
+  const [papers, setPapers] = useState<AdminPaper[]>([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const [selectedPaper, setSelectedPaper] = useState<AdminPaper | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  async function loadPapers() {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const data = await apiRequest<{ papers: AdminPaper[] }>('/papers', { auth: true });
+      setPapers(data.papers);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load papers');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPapers();
+  }, []);
 
   const filteredPapers = papers.filter((paper) => {
-    const matchesSearch = paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      paper.doi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      paper.requestedBy.toLowerCase().includes(searchTerm.toLowerCase());
+    const normalizedSearch = searchTerm.toLowerCase();
+    const requesterName = paper.requestedBy?.fullName || '';
+    const matchesSearch =
+      paper.title.toLowerCase().includes(normalizedSearch) ||
+      paper.doi.toLowerCase().includes(normalizedSearch) ||
+      requesterName.toLowerCase().includes(normalizedSearch);
 
     const matchesStatus = filterStatus === 'all' || paper.status === filterStatus;
-
-    const matchesYear = filterYear === 'all' || paper.requestDate.startsWith(filterYear);
+    const matchesYear = filterYear === 'all' || paper.createdAt.startsWith(filterYear);
 
     return matchesSearch && matchesStatus && matchesYear;
   });
 
-  const years = Array.from(new Set(papers.map(p => p.requestDate.substring(0, 4)))).sort((a, b) => b.localeCompare(a));
+  const years = Array.from(new Set(papers.map((paper) => paper.createdAt.substring(0, 4)))).sort((a, b) =>
+    b.localeCompare(a)
+  );
 
-  const handleApprove = (paperId: string) => {
-    setPapers(papers.map(paper =>
-      paper.id === paperId ? { ...paper, status: 'approved' as const } : paper
-    ));
+  const updatePaperStatus = async (paperId: string, status: PaperStatus) => {
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await apiRequest<{ paper: AdminPaper }>(`/papers/${paperId}/status`, {
+        method: 'PATCH',
+        auth: true,
+        body: JSON.stringify({ status }),
+      });
+
+      setPapers(papers.map((paper) => (paper._id === paperId ? data.paper : paper)));
+      setMessage('Paper status updated successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update status');
+    }
   };
 
-  const handleReject = (paperId: string) => {
-    setPapers(papers.map(paper =>
-      paper.id === paperId ? { ...paper, status: 'rejected' as const } : paper
-    ));
-  };
-
-  const handleOpenUploadModal = (paper: Paper) => {
+  const handleOpenUploadModal = (paper: AdminPaper) => {
     setSelectedPaper(paper);
     setUploadModalOpen(true);
   };
 
-  const handleOpenEditModal = (paper: Paper) => {
+  const handleOpenEditModal = (paper: AdminPaper) => {
     setSelectedPaper(paper);
     setEditModalOpen(true);
   };
 
-  const handleUploadPdf = (file: File) => {
-    if (selectedPaper) {
-      setPapers(papers.map(paper =>
-        paper.id === selectedPaper.id ? { ...paper, status: 'downloaded' as const } : paper
-      ));
-      alert(`PDF "${file.name}" uploaded successfully for "${selectedPaper.title}"`);
+  const handleUploadPdf = async (file: File) => {
+    if (!selectedPaper) return;
+
+    setError('');
+    setMessage('');
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      const data = await apiRequest<{ paper: AdminPaper }>(`/papers/${selectedPaper._id}/upload-pdf`, {
+        method: 'POST',
+        auth: true,
+        body: formData,
+      });
+
+      setPapers(papers.map((paper) => (paper._id === selectedPaper._id ? data.paper : paper)));
+      setMessage('PDF uploaded successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to upload PDF');
     }
   };
 
-  const handleSaveEdit = (editedPaper: Paper) => {
-    setPapers(papers.map(paper =>
-      paper.id === editedPaper.id ? editedPaper : paper
-    ));
-    alert('Paper information updated successfully!');
+  const handleSaveEdit = async (editedPaper: EditablePaper) => {
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await apiRequest<{ paper: AdminPaper }>(`/papers/${editedPaper._id}`, {
+        method: 'PATCH',
+        auth: true,
+        body: JSON.stringify({
+          title: editedPaper.title,
+          doi: editedPaper.doi,
+          paperLink: editedPaper.paperLink,
+          abstract: editedPaper.abstract,
+          keywords: editedPaper.keywords,
+          publishedYear: editedPaper.publishedYear,
+          status: editedPaper.status,
+        }),
+      });
+
+      setPapers(papers.map((paper) => (paper._id === editedPaper._id ? data.paper : paper)));
+      setMessage('Paper information updated successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update paper');
+    }
+  };
+
+  const handleDelete = async (paper: AdminPaper) => {
+    const confirmed = window.confirm(`Delete "${paper.title}"?`);
+    if (!confirmed) return;
+
+    setError('');
+    setMessage('');
+
+    try {
+      await apiRequest(`/papers/${paper._id}`, {
+        method: 'DELETE',
+        auth: true,
+      });
+
+      setPapers(papers.filter((item) => item._id !== paper._id));
+      setMessage('Paper deleted successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete paper');
+    }
+  };
+
+  const exportPapers = (items: AdminPaper[], filename: string) => {
+    const csvContent = [
+      ['Title', 'DOI', 'Requested By', 'University', 'Student ID', 'Date', 'Status'],
+      ...items.map((paper) => [
+        paper.title,
+        paper.doi,
+        paper.requestedBy?.fullName,
+        paper.requestedBy?.university,
+        paper.requestedBy?.studentId,
+        formatDate(paper.createdAt),
+        paper.status,
+      ]),
+    ]
+      .map((row) => row.map(toCsvValue).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleExportAll = () => {
-    const csvContent = [
-      ['Title', 'DOI', 'Requested By', 'University', 'Student ID', 'Date', 'Status'],
-      ...papers.map(p => [p.title, p.doi, p.requestedBy, p.university, p.studentId, p.requestDate, p.status])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `all_papers_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    alert(`Exported ${papers.length} papers to Excel`);
+    exportPapers(papers, `all_papers_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const handleExportNotDownloaded = () => {
-    const notDownloaded = papers.filter(p => p.status !== 'downloaded');
-    const csvContent = [
-      ['Title', 'DOI', 'Requested By', 'University', 'Student ID', 'Date', 'Status'],
-      ...notDownloaded.map(p => [p.title, p.doi, p.requestedBy, p.university, p.studentId, p.requestDate, p.status])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `not_downloaded_papers_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    alert(`Exported ${notDownloaded.length} papers (not downloaded) to Excel`);
+    const notDownloaded = papers.filter((paper) => paper.status !== 'downloaded');
+    exportPapers(notDownloaded, `not_downloaded_papers_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   return (
@@ -191,6 +237,18 @@ export function PaperManagementPage() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-6">
+              {message}
+            </div>
+          )}
 
           <div className="bg-white rounded-lg border border-border shadow-sm p-6 mb-6">
             <div className="flex gap-4">
@@ -227,7 +285,7 @@ export function PaperManagementPage() {
                   className="pl-10 pr-8 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background appearance-none"
                 >
                   <option value="all">All Years</option>
-                  {years.map(year => (
+                  {years.map((year) => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -250,7 +308,7 @@ export function PaperManagementPage() {
                 </thead>
                 <tbody>
                   {filteredPapers.map((paper) => (
-                    <tr key={paper.id} className="border-b border-border hover:bg-accent transition-colors">
+                    <tr key={paper._id} className="border-b border-border hover:bg-accent transition-colors">
                       <td className="px-6 py-4">
                         <div>
                           <p className="text-foreground">{paper.title}</p>
@@ -259,19 +317,19 @@ export function PaperManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div>
-                          <p className="text-foreground">{paper.requestedBy}</p>
-                          <p className="text-muted-foreground">ID: {paper.studentId}</p>
+                          <p className="text-foreground">{paper.requestedBy?.fullName || 'Unknown'}</p>
+                          <p className="text-muted-foreground">ID: {paper.requestedBy?.studentId || 'N/A'}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">{paper.university}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{paper.requestDate}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{paper.requestedBy?.university || 'N/A'}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{formatDate(paper.createdAt)}</td>
                       <td className="px-6 py-4">
                         <StatusBadge status={paper.status} />
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => navigate(`/paper/${paper.id}`)}
+                            onClick={() => navigate(`/paper/${paper._id}`)}
                             className="p-2 hover:bg-muted rounded-lg transition-colors"
                             title="View details"
                           >
@@ -289,14 +347,14 @@ export function PaperManagementPage() {
                           {paper.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleApprove(paper.id)}
+                                onClick={() => updatePaperStatus(paper._id, 'approved')}
                                 className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                                 title="Approve request"
                               >
                                 <Check size={18} className="text-green-600" />
                               </button>
                               <button
-                                onClick={() => handleReject(paper.id)}
+                                onClick={() => updatePaperStatus(paper._id, 'rejected')}
                                 className="p-2 hover:bg-red-100 rounded-lg transition-colors"
                                 title="Reject request"
                               >
@@ -306,25 +364,34 @@ export function PaperManagementPage() {
                           )}
 
                           {paper.status === 'approved' && (
-                            <>
-                              <button
-                                onClick={() => handleOpenUploadModal(paper)}
-                                className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                                title="Upload PDF"
-                              >
-                                <Upload size={18} className="text-green-600" />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleOpenUploadModal(paper)}
+                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Upload PDF"
+                            >
+                              <Upload size={18} className="text-green-600" />
+                            </button>
                           )}
 
-                          {paper.status === 'downloaded' && (
-                            <button
+                          {paper.status === 'downloaded' && paper.pdfPath && (
+                            <a
+                              href={`http://localhost:5000${paper.pdfPath}`}
+                              target="_blank"
+                              rel="noreferrer"
                               className="p-2 hover:bg-muted rounded-lg transition-colors"
                               title="Download PDF"
                             >
                               <Download size={18} className="text-blue-600" />
-                            </button>
+                            </a>
                           )}
+
+                          <button
+                            onClick={() => handleDelete(paper)}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Delete paper"
+                          >
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -333,7 +400,13 @@ export function PaperManagementPage() {
               </table>
             </div>
 
-            {filteredPapers.length === 0 && (
+            {isLoading && (
+              <div className="p-12 text-center">
+                <p className="text-muted-foreground">Loading papers...</p>
+              </div>
+            )}
+
+            {!isLoading && filteredPapers.length === 0 && (
               <div className="p-12 text-center">
                 <p className="text-muted-foreground">No papers found matching your criteria.</p>
               </div>
