@@ -37,6 +37,10 @@ export async function login(req, res) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
+  if (user.status === 'banned') {
+    return res.status(403).json({ message: 'Your account has been banned' });
+  }
+
   res.json({ user: user.toSafeObject(), token: signToken(user) });
 }
 

@@ -1,0 +1,137 @@
+import mongoose from 'mongoose';
+import { Paper } from '../models/Paper.js';
+import { User } from '../models/User.js';
+
+function isInvalidUserId(id) {
+  return !mongoose.Types.ObjectId.isValid(id);
+}
+
+function buildUserFilter({ search, role, status }) {
+  const filter = {};
+
+  if (role) filter.role = role;
+  if (status) filter.status = status;
+  if (search) {
+    filter.$or = [
+      { fullName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { university: { $regex: search, $options: 'i' } },
+      { studentId: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  return filter;
+}
+
+export async function getUsers(req, res) {
+  const { search, role, status } = req.query;
+  const filter = buildUserFilter({ search, role, status });
+
+  const users = await User.find(filter)
+    .select('-passwordHash')
+    .sort({ createdAt: -1 });
+
+  res.json({ users });
+}
+
+export async function getUserById(req, res) {
+  if (isInvalidUserId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  const user = await User.findById(req.params.id).select('-passwordHash');
+
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  res.json({ user });
+}
+
+export async function updateUser(req, res) {
+  if (isInvalidUserId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  const allowedFields = ['fullName', 'university', 'studentId', 'role', 'status'];
+  const updates = {};
+
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ message: 'No valid fields provided' });
+  }
+
+  if (updates.fullName !== undefined && !updates.fullName) {
+    return res.status(400).json({ message: 'Full name is required' });
+  }
+
+  if (updates.university !== undefined && !updates.university) {
+    return res.status(400).json({ message: 'University is required' });
+  }
+
+  if (updates.studentId !== undefined && !updates.studentId) {
+    return res.status(400).json({ message: 'Student ID is required' });
+  }
+
+  if (updates.role !== undefined && !['user', 'admin'].includes(updates.role)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+
+  if (updates.status !== undefined && !['active', 'banned'].includes(updates.status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+    runValidators: true,
+  }).select('-passwordHash');
+
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  res.json({ user });
+}
+
+export async function updateUserStatus(req, res) {
+  const { status } = req.body;
+
+  if (isInvalidUserId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  if (!['active', 'banned'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.params.id,
+    { status },
+    { new: true, runValidators: true }
+  ).select('-passwordHash');
+
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  res.json({ user });
+}
+
+export async function deleteUser(req, res) {
+  if (isInvalidUserId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  if (req.params.id === req.user._id.toString()) {
+    return res.status(400).json({ message: 'You cannot delete your own admin account here' });
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  await Paper.deleteMany({ requestedBy: user._id });
+  await Paper.updateMany({ uploadedBy: user._id }, { $unset: { uploadedBy: '', uploadedAt: '' } });
+  await User.findByIdAndDelete(user._id);
+
+  res.json({ message: 'User deleted successfully', userId: user._id });
+}

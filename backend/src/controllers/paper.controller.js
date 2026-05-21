@@ -1,4 +1,11 @@
+import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
+
+const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded'];
+
+function isInvalidPaperId(id) {
+  return !mongoose.Types.ObjectId.isValid(id);
+}
 
 function normalizeKeywords(keywords) {
   if (Array.isArray(keywords)) return keywords.map((item) => String(item).trim()).filter(Boolean);
@@ -61,6 +68,10 @@ export async function getAllPapers(req, res) {
 }
 
 export async function getPaperById(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
   const paper = await Paper.findById(req.params.id)
     .populate('requestedBy', 'fullName email university studentId')
     .populate('uploadedBy', 'fullName email');
@@ -76,7 +87,10 @@ export async function getPaperById(req, res) {
 
 export async function updatePaperStatus(req, res) {
   const { status } = req.body;
-  const allowedStatuses = ['not_downloaded', 'downloaded', 'duplicate', 'need_info', 'failed'];
+
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
 
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -88,7 +102,90 @@ export async function updatePaperStatus(req, res) {
   res.json({ paper });
 }
 
+export async function updatePaper(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const allowedFields = ['title', 'doi', 'paperLink', 'abstract', 'keywords', 'publishedYear', 'status'];
+  const updates = {};
+
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ message: 'No valid fields provided' });
+  }
+
+  if (updates.keywords !== undefined) {
+    updates.keywords = normalizeKeywords(updates.keywords);
+  }
+
+  if (updates.publishedYear !== undefined) {
+    const publishedYear = Number(updates.publishedYear);
+
+    if (!Number.isInteger(publishedYear) || publishedYear < 1900 || publishedYear > 2100) {
+      return res.status(400).json({ message: 'Invalid published year' });
+    }
+
+    updates.publishedYear = publishedYear;
+  }
+
+  if (updates.status !== undefined && !allowedStatuses.includes(updates.status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  if (updates.doi || updates.paperLink) {
+    const duplicateFilters = [];
+
+    if (updates.doi) duplicateFilters.push({ doi: updates.doi });
+    if (updates.paperLink) duplicateFilters.push({ paperLink: updates.paperLink });
+
+    const duplicate = await Paper.findOne({
+      _id: { $ne: req.params.id },
+      $or: duplicateFilters,
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        message: 'A paper with this DOI or link already exists',
+        duplicatePaperId: duplicate._id,
+      });
+    }
+  }
+
+  const paper = await Paper.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+    runValidators: true,
+  })
+    .populate('requestedBy', 'fullName email university studentId')
+    .populate('uploadedBy', 'fullName email');
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  res.json({ paper });
+}
+
+export async function deletePaper(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const paper = await Paper.findByIdAndDelete(req.params.id);
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  res.json({ message: 'Paper deleted successfully', paperId: paper._id });
+}
+
 export async function uploadPaperPdf(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
   if (!req.file) {
     return res.status(400).json({ message: 'PDF file is required' });
   }

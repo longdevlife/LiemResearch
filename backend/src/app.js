@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
 import authRoutes from './routes/auth.routes.js';
 import paperRoutes from './routes/paper.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +24,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/papers', paperRoutes);
+app.use('/api/users', userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });

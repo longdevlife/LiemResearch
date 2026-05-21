@@ -10,8 +10,8 @@ const paperSchema = new mongoose.Schema(
     publishedYear: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['not_downloaded', 'downloaded', 'duplicate', 'need_info', 'failed'],
-      default: 'not_downloaded',
+      enum: ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded'],
+      default: 'pending',
     },
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     pdfPath: { type: String },

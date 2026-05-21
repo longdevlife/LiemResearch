@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import {
   createPaper,
+  deletePaper,
   getAllPapers,
   getMyPapers,
   getPaperById,
+  updatePaper,
   updatePaperStatus,
   uploadPaperPdf,
 } from '../controllers/paper.controller.js';
@@ -82,7 +84,7 @@ router.get('/my-requests', requireAuth, getMyPapers);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [not_downloaded, downloaded, duplicate, need_info, failed]
+ *           enum: [pending, approved, rejected, downloaded, not-downloaded]
  *       - in: query
  *         name: search
  *         schema:
@@ -115,6 +117,57 @@ router.get('/:id', requireAuth, getPaperById);
 
 /**
  * @swagger
+ * /api/papers/{id}:
+ *   patch:
+ *     summary: Admin updates paper request details
+ *     tags: [Admin Papers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Updated Paper Title
+ *               doi:
+ *                 type: string
+ *                 example: 10.1234/liem.2026.updated
+ *               paperLink:
+ *                 type: string
+ *                 example: https://example.com/paper/updated
+ *               abstract:
+ *                 type: string
+ *                 example: Updated abstract for this paper.
+ *               keywords:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: [research, updated]
+ *               publishedYear:
+ *                 type: number
+ *                 example: 2026
+ *               status:
+ *                 type: string
+ *                 enum: [pending, approved, rejected, downloaded, not-downloaded]
+ *                 example: pending
+ *     responses:
+ *       200:
+ *         description: Paper updated
+ */
+router.patch('/:id', requireAuth, requireRole('admin'), updatePaper);
+
+/**
+ * @swagger
  * /api/papers/{id}/status:
  *   patch:
  *     summary: Admin updates paper status
@@ -136,8 +189,8 @@ router.get('/:id', requireAuth, getPaperById);
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [not_downloaded, downloaded, duplicate, need_info, failed]
- *                 example: need_info
+ *                 enum: [pending, approved, rejected, downloaded, not-downloaded]
+ *                 example: approved
  *     responses:
  *       200:
  *         description: Status updated
@@ -173,5 +226,25 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), updatePaperStatus
  *         description: PDF uploaded
  */
 router.post('/:id/upload-pdf', requireAuth, requireRole('admin'), uploadPdf.single('pdf'), uploadPaperPdf);
+
+/**
+ * @swagger
+ * /api/papers/{id}:
+ *   delete:
+ *     summary: Admin deletes a paper request
+ *     tags: [Admin Papers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paper deleted
+ */
+router.delete('/:id', requireAuth, requireRole('admin'), deletePaper);
 
 export default router;
