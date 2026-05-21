@@ -41,14 +41,17 @@ export function EditPaperModal({ isOpen, onClose, onSave, paper }: EditPaperModa
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-white p-6">
           <div>
             <h2 className="text-foreground">Edit Paper Information</h2>
             <p className="text-muted-foreground mt-1">Update paper details and request status</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            title="Close editor"
+            aria-label="Close editor"
           >
             <X size={20} />
           </button>

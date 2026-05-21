@@ -12,7 +12,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   };
 
   const labels = {
-    pending: 'Pending Review',
+    pending: 'Pending',
     approved: 'Approved',
     rejected: 'Rejected',
     downloaded: 'Downloaded',
@@ -20,7 +20,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   };
 
   return (
-    <span className={`px-3 py-1 rounded-full border ${styles[status]}`}>
+    <span className={`inline-flex min-w-max items-center justify-center whitespace-nowrap rounded-md border px-3 py-1 text-sm font-medium leading-none ${styles[status]}`}>
       {labels[status]}
     </span>
   );
