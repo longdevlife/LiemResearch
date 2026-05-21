@@ -46,9 +46,12 @@ export function PaperDetailPage() {
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
   const [existingRatingId, setExistingRatingId] = useState<string | null>(null);
+  const [isEditingReview, setIsEditingReview] = useState(false);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [isRemovingRating, setIsRemovingRating] = useState(false);
+  const [reviewError, setReviewError] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -75,6 +78,8 @@ export function PaperDetailPage() {
       setUserRating(existingUserRating?.rating || 0);
       setUserComment(existingUserRating?.comment || '');
       setExistingRatingId(existingUserRating?._id || null);
+      setIsEditingReview(false);
+      setReviewError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load paper detail');
     } finally {
@@ -128,6 +133,7 @@ export function PaperDetailPage() {
 
     setError('');
     setMessage('');
+    setReviewError('');
     setUserRating(rating);
   };
 
@@ -136,14 +142,15 @@ export function PaperDetailPage() {
 
     setError('');
     setMessage('');
+    setReviewError('');
 
     if (userComment.trim() && userRating === 0) {
-      setError('Please choose a star rating before submitting a comment.');
+      setReviewError('Please choose a star rating before submitting a comment.');
       return;
     }
 
     if (userRating === 0) {
-      setError('Please choose a star rating to submit your review.');
+      setReviewError('Please choose a star rating to submit your review.');
       return;
     }
 
@@ -165,6 +172,51 @@ export function PaperDetailPage() {
       setError(err instanceof Error ? err.message : 'Unable to submit rating');
     } finally {
       setIsSubmittingRating(false);
+    }
+  };
+
+  const handleStartUpdateReview = (rating: Rating) => {
+    setUserRating(rating.rating);
+    setUserComment(rating.comment || '');
+    setExistingRatingId(rating._id);
+    setIsEditingReview(true);
+    setReviewError('');
+    setError('');
+    setMessage('');
+  };
+
+  const handleCancelReviewEdit = () => {
+    const savedRating = ratings.find(r => r.user?._id === currentUser?._id);
+    setUserRating(savedRating?.rating || 0);
+    setUserComment(savedRating?.comment || '');
+    setIsEditingReview(false);
+    setReviewError('');
+    setError('');
+    setMessage('');
+  };
+
+  const handleRemoveReview = async (ratingId: string) => {
+    setError('');
+    setMessage('');
+    setReviewError('');
+    setIsRemovingRating(true);
+
+    try {
+      await apiRequest(`/ratings/${ratingId}`, {
+        method: 'DELETE',
+        auth: true,
+      });
+
+      setMessage('Review removed successfully.');
+      setUserRating(0);
+      setUserComment('');
+      setExistingRatingId(null);
+      setIsEditingReview(false);
+      await loadPaper();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to remove review');
+    } finally {
+      setIsRemovingRating(false);
     }
   };
 
@@ -331,78 +383,84 @@ export function PaperDetailPage() {
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8">
                   <h3 className="text-foreground mb-4">Review this paper</h3>
 
-                  <div className="mb-6">
-                    <p className="text-sm text-muted-foreground mb-3">Choose a star rating:</p>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => handleRating(star)}
-                          onMouseEnter={() => setHoveredRating(star)}
-                          onMouseLeave={() => setHoveredRating(0)}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            size={40}
-                            className={
-                              star <= (hoveredRating || userRating)
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300 hover:text-yellow-200'
-                            }
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    {userRating > 0 && (
-                      <p className="text-sm text-foreground mt-2">
-                        Selected rating: {userRating} stars
-                      </p>
-                    )}
-                  </div>
-
-                  {!isAdmin && (
-                    <div className="space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <label className="block">
-                        <p className="text-sm font-medium text-foreground mb-2">Comment:</p>
-                        <textarea
-                          value={userComment}
-                          onChange={(e) => setUserComment(e.target.value)}
-                          placeholder="Share your thoughts about this paper..."
-                          rows={4}
-                          maxLength={500}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-foreground bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">{userComment.length}/500</p>
-                      </label>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSubmitRating}
-                          disabled={isSubmittingRating}
-                          className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSubmittingRating ? 'Submitting...' : existingRatingId ? 'Update review' : 'Submit review'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            const savedRating = ratings.find(r => r.user?._id === currentUser?._id);
-                            setUserRating(savedRating?.rating || 0);
-                            setUserComment(savedRating?.comment || '');
-                            setError('');
-                            setMessage('');
-                          }}
-                          className="px-6 py-2 border border-gray-300 rounded-lg text-foreground hover:bg-gray-100 transition-colors"
-                        >
-                          Cancel
-                        </button>
+                  {!existingRatingId || isEditingReview ? (
+                    <>
+                      <div className="mb-6">
+                        <p className="text-sm text-muted-foreground mb-3">Choose a star rating:</p>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => handleRating(star)}
+                              onMouseEnter={() => setHoveredRating(star)}
+                              onMouseLeave={() => setHoveredRating(0)}
+                              className="transition-transform hover:scale-110"
+                              aria-label={`Choose ${star} star rating`}
+                            >
+                              <Star
+                                size={40}
+                                className={
+                                  star <= (hoveredRating || userRating)
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300 hover:text-yellow-200'
+                                }
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        {userRating > 0 && (
+                          <p className="text-sm text-foreground mt-2">
+                            Selected rating: {userRating} stars
+                          </p>
+                        )}
                       </div>
-                    </div>
-                  )}
 
-                  {existingRatingId && (
+                      <div className="space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        {reviewError && (
+                          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {reviewError}
+                          </div>
+                        )}
+
+                        <label className="block">
+                          <p className="text-sm font-medium text-foreground mb-2">Comment:</p>
+                          <textarea
+                            value={userComment}
+                            onChange={(e) => {
+                              setUserComment(e.target.value);
+                              setReviewError('');
+                            }}
+                            placeholder="Share your thoughts about this paper..."
+                            rows={4}
+                            maxLength={500}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-foreground bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">{userComment.length}/500</p>
+                        </label>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSubmitRating}
+                            disabled={isSubmittingRating}
+                            className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmittingRating ? 'Submitting...' : isEditingReview ? 'Save review' : 'Submit review'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelReviewEdit}
+                            className="px-6 py-2 border border-gray-300 rounded-lg text-foreground hover:bg-gray-100 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
                     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800">You can update your submitted star rating and comment.</p>
-                      <p className="text-sm text-blue-800">You have already reviewed this paper.</p>
+                      <p className="text-sm text-blue-800">Your review is listed below. Use Update or Remove to manage it.</p>
                     </div>
                   )}
                 </div>
@@ -412,14 +470,56 @@ export function PaperDetailPage() {
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8 mt-6">
                   <h3 className="text-foreground mb-4">Ratings</h3>
                   <div className="space-y-3">
-                    {ratings.map((rating) => (
-                      <div key={rating._id} className="border border-border rounded-lg p-4">
-                        <p className="text-foreground">{rating.user?.fullName || 'User'} rated {rating.rating} / 5</p>
-                        {rating.comment && (
-                          <p className="text-muted-foreground mt-1">{rating.comment}</p>
-                        )}
-                      </div>
-                    ))}
+                    {ratings.map((rating) => {
+                      const isOwnRating = rating.user?._id === currentUser?._id;
+
+                      return (
+                        <div
+                          key={rating._id}
+                          className={`rounded-lg border p-4 ${
+                            isOwnRating
+                              ? 'border-blue-300 bg-blue-50 shadow-sm'
+                              : 'border-border bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-foreground">
+                                {rating.user?.fullName || 'User'} rated {rating.rating} / 5
+                                {isOwnRating && (
+                                  <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                    Your review
+                                  </span>
+                                )}
+                              </p>
+                              {rating.comment && (
+                                <p className="text-muted-foreground mt-1">{rating.comment}</p>
+                              )}
+                            </div>
+
+                            {isOwnRating && (
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartUpdateReview(rating)}
+                                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-blue-700 transition-colors hover:bg-blue-100"
+                                >
+                                  Update
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveReview(rating._id)}
+                                  disabled={isRemovingRating}
+                                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isRemovingRating ? 'Removing...' : 'Remove'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
