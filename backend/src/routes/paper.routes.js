@@ -43,6 +43,14 @@ const router = Router();
  *               abstract:
  *                 type: string
  *                 example: This paper studies scientific paper retrieval.
+ *               authors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: [Nguyen Van A, Tran Thi B]
+ *               journal:
+ *                 type: string
+ *                 example: Journal of Research Systems
  *               keywords:
  *                 type: array
  *                 items:
@@ -148,6 +156,14 @@ router.get('/:id', requireAuth, getPaperById);
  *               abstract:
  *                 type: string
  *                 example: Updated abstract for this paper.
+ *               authors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: [Nguyen Van A, Tran Thi B]
+ *               journal:
+ *                 type: string
+ *                 example: Updated Research Journal
  *               keywords:
  *                 type: array
  *                 items:

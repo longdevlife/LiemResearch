@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
 import authRoutes from './routes/auth.routes.js';
 import paperRoutes from './routes/paper.routes.js';
+import publicPaperRoutes from './routes/publicPaper.routes.js';
 import rankingRoutes from './routes/ranking.routes.js';
 import ratingRoutes from './routes/rating.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -26,6 +27,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/papers', paperRoutes);
+app.use('/api/public-papers', publicPaperRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/rankings', rankingRoutes);
 app.use('/api/users', userRoutes);

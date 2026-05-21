@@ -13,8 +13,14 @@ function normalizeKeywords(keywords) {
   return [];
 }
 
+function normalizeStringList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+  return [];
+}
+
 export async function createPaper(req, res) {
-  const { title, doi, paperLink, abstract, keywords, publishedYear } = req.body;
+  const { title, doi, paperLink, abstract, authors, journal, keywords, publishedYear } = req.body;
 
   if (!title || !doi || !paperLink || !abstract || !publishedYear) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -33,6 +39,8 @@ export async function createPaper(req, res) {
     doi,
     paperLink,
     abstract,
+    authors: normalizeStringList(authors),
+    journal,
     keywords: normalizeKeywords(keywords),
     publishedYear,
     requestedBy: req.user._id,
@@ -107,7 +115,17 @@ export async function updatePaper(req, res) {
     return res.status(400).json({ message: 'Invalid paper id' });
   }
 
-  const allowedFields = ['title', 'doi', 'paperLink', 'abstract', 'keywords', 'publishedYear', 'status'];
+  const allowedFields = [
+    'title',
+    'doi',
+    'paperLink',
+    'abstract',
+    'authors',
+    'journal',
+    'keywords',
+    'publishedYear',
+    'status',
+  ];
   const updates = {};
 
   for (const field of allowedFields) {
@@ -122,6 +140,10 @@ export async function updatePaper(req, res) {
 
   if (updates.keywords !== undefined) {
     updates.keywords = normalizeKeywords(updates.keywords);
+  }
+
+  if (updates.authors !== undefined) {
+    updates.authors = normalizeStringList(updates.authors);
   }
 
   if (updates.publishedYear !== undefined) {
