@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, Send } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 
@@ -44,8 +44,10 @@ export function PaperDetailPage() {
   const [paper, setPaper] = useState<DetailPaper | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -123,19 +125,34 @@ export function PaperDetailPage() {
 
     setError('');
     setMessage('');
+    setUserRating(rating);
+  };
+
+  const handleSubmitRating = async () => {
+    if (!paper || userRating === 0) return;
+
+    setError('');
+    setMessage('');
+    setIsSubmittingRating(true);
 
     try {
       await apiRequest(`/ratings/papers/${paper._id}`, {
         method: 'POST',
         auth: true,
-        body: JSON.stringify({ rating }),
+        body: JSON.stringify({ 
+          rating: userRating,
+          comment: userComment.trim()
+        }),
       });
 
-      setUserRating(rating);
-      setMessage('Rating submitted successfully.');
+      setMessage('Rating and comment submitted successfully.');
+      setUserComment('');
       await loadPaper();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit rating');
+      setUserRating(0);
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -300,9 +317,12 @@ export function PaperDetailPage() {
 
               {paper.pdfPath && !isAdmin && (
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8">
-                  <h3 className="text-foreground mb-4">Rate This Paper</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
+                  <h3 className="text-foreground mb-4">Đánh giá bài báo</h3>
+                  
+                  {/* Star Rating */}
+                  <div className="mb-6">
+                    <p className="text-sm text-muted-foreground mb-3">Chọn số sao:</p>
+                    <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
@@ -310,10 +330,10 @@ export function PaperDetailPage() {
                           onMouseEnter={() => setHoveredRating(star)}
                           onMouseLeave={() => setHoveredRating(0)}
                           className="transition-transform hover:scale-110"
-                          disabled={userRating > 0}
+                          disabled={ratings.some(r => r.user?._id === currentUser?._id)}
                         >
                           <Star
-                            size={32}
+                            size={40}
                             className={
                               star <= (hoveredRating || userRating)
                                 ? 'fill-yellow-400 text-yellow-400'
@@ -324,14 +344,55 @@ export function PaperDetailPage() {
                       ))}
                     </div>
                     {userRating > 0 && (
-                      <span className="text-foreground ml-2">
-                        You rated: {userRating} star{userRating !== 1 ? 's' : ''}
-                      </span>
+                      <p className="text-sm text-foreground mt-2">
+                        Bạn đã chọn: {userRating} sao
+                      </p>
                     )}
                   </div>
-                  <p className="text-muted-foreground mt-3">
-                    {userRating > 0 ? 'You have already rated this paper.' : 'Click on the stars to rate this paper.'}
-                  </p>
+
+                  {/* Comment Section */}
+                  {userRating > 0 && !ratings.some(r => r.user?._id === currentUser?._id) && (
+                    <div className="space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <label className="block">
+                        <p className="text-sm font-medium text-foreground mb-2">Thêm bình luận (tùy chọn):</p>
+                        <textarea
+                          value={userComment}
+                          onChange={(e) => setUserComment(e.target.value)}
+                          placeholder="Chia sẻ ý kiến của bạn về bài báo này..."
+                          rows={4}
+                          maxLength={500}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-foreground bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">{userComment.length}/500</p>
+                      </label>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSubmitRating}
+                          disabled={isSubmittingRating}
+                          className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Send size={16} />
+                          {isSubmittingRating ? 'Đang gửi...' : 'Gửi đánh giá'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserRating(0);
+                            setUserComment('');
+                          }}
+                          className="px-6 py-2 border border-gray-300 rounded-lg text-foreground hover:bg-gray-100 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {ratings.some(r => r.user?._id === currentUser?._id) && (
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800">✓ Bạn đã đánh giá bài báo này rồi.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
