@@ -17,6 +17,8 @@ const __dirname = path.dirname(__filename);
 const uploadsPath = path.resolve(__dirname, '../uploads');
 const allowedOrigins = [
   process.env.CLIENT_URL,
+  `http://localhost:${process.env.PORT || 5000}`,
+  `http://127.0.0.1:${process.env.PORT || 5000}`,
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5174',
