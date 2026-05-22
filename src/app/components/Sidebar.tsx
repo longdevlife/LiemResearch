@@ -1,6 +1,6 @@
 import { Home, FileText, Settings, LogOut, BarChart3, Users, Search, Trophy, User as UserIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
-import logo from '../../imports/ChatGPT_Image_10_47_26_20_thg_5__2026-removebg-preview.png';
+import logo from '../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png';
 import { clearAuth } from '../lib/api';
 
 interface SidebarProps {
@@ -38,8 +38,10 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
 
   return (
     <div className="w-64 h-screen bg-white border-r border-border flex flex-col">
-      <div className="px-6 py-7 border-b border-border flex items-center justify-center">
-        <img src={logo} alt="LiemResearch" className="h-24 w-auto max-w-full object-contain" />
+      <div className="h-44 flex items-center justify-center px-0 py-0">
+        <div className="h-44 overflow-hidden flex items-center justify-center px-0 py-0 bg-white">
+          <img src={logo} alt="LiemResearch" className="w-full h-full object-contain scale-[1.35]" />
+        </div>
       </div>
 
       <nav className="flex-1 p-4">
