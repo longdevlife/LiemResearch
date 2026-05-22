@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
 import { EditablePaper, EditPaperModal } from '../components/EditPaperModal';
@@ -235,6 +236,7 @@ export function PaperManagementPage() {
       <Sidebar role="admin" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="admin" />
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>

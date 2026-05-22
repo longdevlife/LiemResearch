@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { User, Building2, CreditCard, Mail, Lock } from 'lucide-react';
-import logo from '../../imports/ChatGPT_Image_10_47_26_20_thg_5__2026-removebg-preview.png';
 import { apiRequest, AuthUser } from '../lib/api';
 
 export function RegisterPage() {
+  const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: '',

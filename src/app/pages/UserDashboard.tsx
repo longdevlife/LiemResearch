@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { StatsCard } from '../components/StatsCard';
 import { Search, Plus, Download, Eye, Star, Calendar, Filter, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { apiRequest, getToken } from '../lib/api';
@@ -83,6 +84,7 @@ export function UserDashboard() {
       <Sidebar role="user" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="user" />
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>

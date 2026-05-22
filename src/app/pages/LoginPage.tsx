@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock } from 'lucide-react';
-import logo from '../../imports/ChatGPT_Image_10_47_26_20_thg_5__2026-removebg-preview.png';
 import { apiRequest, AuthUser, saveAuth } from '../lib/api';
 
 export function LoginPage() {
+  const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +37,7 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
-            <img src={logo} alt="LiemResearch" className="h-24 w-auto" />
+            <img src={logo} alt="LiemResearch" className="h-44 md:h-52 w-auto" />
           </div>
           <h1 className="text-foreground mb-2">LiemResearch</h1>
           <p className="text-muted-foreground">Login to your account</p>

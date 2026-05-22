@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
+import { AppHeader } from '../components/AppHeader';
 import { apiRequest } from '../lib/api';
 
 export function RequestPaperPage() {
@@ -88,6 +89,7 @@ export function RequestPaperPage() {
       <Sidebar role="user" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="user" />
         <div className="max-w-3xl mx-auto">
           <button
             onClick={() => navigate('/dashboard')}

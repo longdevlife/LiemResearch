@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { User, Mail, Building2, CreditCard, Trophy, FileText, Star, Edit, Upload } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 
@@ -120,6 +121,7 @@ export function UserProfilePage() {
       <Sidebar role="user" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="user" />
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-foreground mb-2">My Profile</h1>

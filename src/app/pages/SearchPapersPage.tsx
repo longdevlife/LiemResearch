@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { Search, Download, Eye, Calendar, Filter, Star } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
@@ -81,6 +82,7 @@ export function SearchPapersPage() {
       <Sidebar role="user" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="user" />
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-foreground mb-2">Search Papers</h1>

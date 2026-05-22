@@ -1,0 +1,45 @@
+import { apiRequest } from './api';
+
+type NotificationActor = {
+  _id: string;
+  fullName: string;
+  role: 'user' | 'admin';
+};
+
+type NotificationPaper = {
+  _id: string;
+  title: string;
+  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
+};
+
+export type AppNotification = {
+  _id: string;
+  actor: NotificationActor;
+  paper: NotificationPaper;
+  type: 'paper_submitted' | 'paper_approved';
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export async function getMyNotifications(limit = 8) {
+  return apiRequest<{ notifications: AppNotification[]; unreadCount: number }>(
+    `/notifications?limit=${limit}`,
+    { auth: true }
+  );
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+  return apiRequest<{ notification: AppNotification }>(`/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+    auth: true,
+  });
+}
+
+export async function markAllNotificationsAsRead() {
+  return apiRequest<{ updatedCount: number }>('/notifications/read-all', {
+    method: 'POST',
+    auth: true,
+  });
+}

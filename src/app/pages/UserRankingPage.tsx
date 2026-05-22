@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { Trophy, Medal, Award, FileText, Star, Upload } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
 
@@ -62,6 +63,7 @@ export function UserRankingPage() {
       <Sidebar role="user" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="user" />
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-foreground mb-2">User Rankings</h1>

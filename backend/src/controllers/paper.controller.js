@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { syncUserPoints } from '../utils/points.js';
+import { notifyAdminsPaperSubmitted, notifyUsersPaperApproved } from '../utils/notification.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,18 @@ function normalizePaperStatus(status) {
 
 function getApprovalStatus(paper) {
   return paper.pdfPath ? 'downloaded' : 'not-downloaded';
+}
+
+function isApprovedStatus(status) {
+  return status === 'downloaded' || status === 'not-downloaded';
+}
+
+function normalizePaperUpdateStatus(status, paper) {
+  return status === 'approved' ? getApprovalStatus(paper) : normalizePaperStatus(status);
+}
+
+function shouldNotifyApproval(previousStatus, nextStatus) {
+  return !isApprovedStatus(previousStatus) && isApprovedStatus(nextStatus);
 }
 
 function isInvalidPaperId(id) {
@@ -109,6 +122,17 @@ export async function createPaper(req, res) {
 
   await syncUserPoints(req.user._id);
 
+  try {
+    await notifyAdminsPaperSubmitted({
+      paperId: paper._id,
+      paperTitle: paper.title,
+      requesterName: req.user.fullName,
+      actorId: req.user._id,
+    });
+  } catch (error) {
+    console.error('Failed to create admin notification for new paper:', error);
+  }
+
   res.status(201).json({ paper });
 }
 
@@ -167,11 +191,13 @@ export async function updatePaperStatus(req, res) {
     return res.status(400).json({ message: 'Invalid status' });
   }
 
-  const currentPaper = await Paper.findById(req.params.id);
+  const currentPaper = await Paper.findById(req.params.id).populate('requestedBy', 'fullName');
 
   if (!currentPaper) return res.status(404).json({ message: 'Paper not found' });
 
-  const nextStatus = status === 'approved' ? getApprovalStatus(currentPaper) : normalizePaperStatus(status);
+  const previousStatus = currentPaper.status;
+  const nextStatus = normalizePaperUpdateStatus(status, currentPaper);
+  const notifyApproval = shouldNotifyApproval(previousStatus, nextStatus);
 
   const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus }, { new: true });
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
@@ -181,6 +207,20 @@ export async function updatePaperStatus(req, res) {
     await syncUserPoints(paper.uploadedBy);
   }
 
+  if (notifyApproval) {
+    try {
+      await notifyUsersPaperApproved({
+        paperId: paper._id,
+        paperTitle: paper.title,
+        requesterName: currentPaper.requestedBy?.fullName || 'A user',
+        actorId: req.user._id,
+        excludeUserId: currentPaper.requestedBy?._id,
+      });
+    } catch (error) {
+      console.error('Failed to create user notification for approved paper:', error);
+    }
+  }
+
   res.json({ paper });
 }
 
@@ -188,6 +228,9 @@ export async function updatePaper(req, res) {
   if (isInvalidPaperId(req.params.id)) {
     return res.status(400).json({ message: 'Invalid paper id' });
   }
+
+  const existingPaper = await Paper.findById(req.params.id).populate('requestedBy', 'fullName');
+  if (!existingPaper) return res.status(404).json({ message: 'Paper not found' });
 
   const allowedFields = [
     'title',
@@ -235,11 +278,7 @@ export async function updatePaper(req, res) {
   }
 
   if (updates.status !== undefined) {
-    const currentPaper = await Paper.findById(req.params.id);
-
-    if (!currentPaper) return res.status(404).json({ message: 'Paper not found' });
-
-    updates.status = updates.status === 'approved' ? getApprovalStatus(currentPaper) : normalizePaperStatus(updates.status);
+    updates.status = normalizePaperUpdateStatus(updates.status, existingPaper);
   }
 
   if (updates.doi || updates.paperLink) {
@@ -273,6 +312,23 @@ export async function updatePaper(req, res) {
   await syncUserPoints(paper.requestedBy);
   if (paper.uploadedBy) {
     await syncUserPoints(paper.uploadedBy);
+  }
+
+  const nextStatus = updates.status ?? existingPaper.status;
+  const becameApproved = shouldNotifyApproval(existingPaper.status, nextStatus);
+
+  if (becameApproved) {
+    try {
+      await notifyUsersPaperApproved({
+        paperId: paper._id,
+        paperTitle: paper.title,
+        requesterName: existingPaper.requestedBy?.fullName || 'A user',
+        actorId: req.user._id,
+        excludeUserId: existingPaper.requestedBy?._id,
+      });
+    } catch (error) {
+      console.error('Failed to create user notification for approved paper:', error);
+    }
   }
 
   res.json({ paper });
