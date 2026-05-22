@@ -1,11 +1,22 @@
+import fs from 'fs/promises';
+import path from 'path';
 import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { syncUserPoints } from '../utils/points.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, '../../uploads');
 
 const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded'];
 
 function normalizePaperStatus(status) {
   return status === 'approved' ? 'not-downloaded' : status;
+}
+
+function getApprovalStatus(paper) {
+  return paper.pdfPath ? 'downloaded' : 'not-downloaded';
 }
 
 function isInvalidPaperId(id) {
@@ -24,27 +35,58 @@ function normalizeStringList(value) {
   return [];
 }
 
+function getResetStatus(status) {
+  return status === 'pending' ? 'pending' : 'not-downloaded';
+}
+
+function resolvePaperPdfPath(pdfPath) {
+  if (!pdfPath) return '';
+
+  return path.resolve(uploadsDir, path.basename(pdfPath));
+}
+
+async function removeUploadedFile(file) {
+  if (!file?.path) return;
+
+  try {
+    await fs.unlink(file.path);
+  } catch {
+    // Ignore cleanup failures.
+  }
+}
+
 export async function createPaper(req, res) {
   const { title, doi, paperLink, abstract, authors, journal, keywords, publishedYear } = req.body;
   const normalizedKeywords = normalizeKeywords(keywords);
+  const uploadedPdfPath = req.file ? `/uploads/${req.file.filename}` : '';
 
   if (!title || !doi || !paperLink || !abstract || !publishedYear) {
+    await removeUploadedFile(req.file);
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
   if (normalizedKeywords.length === 0) {
+    await removeUploadedFile(req.file);
     return res.status(400).json({ message: 'At least one keyword is required' });
+  }
+
+  const publishedYearNumber = Number(publishedYear);
+
+  if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > 2100) {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: 'Invalid published year' });
   }
 
   const duplicate = await Paper.findOne({ $or: [{ doi }, { paperLink }] });
   if (duplicate) {
+    await removeUploadedFile(req.file);
     return res.status(409).json({
       message: 'A paper with this DOI or link already exists',
       duplicatePaperId: duplicate._id,
     });
   }
 
-  const paper = await Paper.create({
+  const paperData = {
     title,
     doi,
     paperLink,
@@ -52,9 +94,18 @@ export async function createPaper(req, res) {
     authors: normalizeStringList(authors),
     journal,
     keywords: normalizedKeywords,
-    publishedYear,
+    publishedYear: publishedYearNumber,
     requestedBy: req.user._id,
-  });
+  };
+
+  if (uploadedPdfPath) {
+    paperData.pdfPath = uploadedPdfPath;
+    paperData.uploadedBy = req.user._id;
+    paperData.uploadedAt = new Date();
+    paperData.status = 'pending';
+  }
+
+  const paper = await Paper.create(paperData);
 
   await syncUserPoints(req.user._id);
 
@@ -81,7 +132,7 @@ export async function getAllPapers(req, res) {
 
   const papers = await Paper.find(filter)
     .populate('requestedBy', 'fullName email university studentId')
-    .populate('uploadedBy', 'fullName email')
+    .populate('uploadedBy', 'fullName university email')
     .sort({ createdAt: -1 });
 
   res.json({ papers });
@@ -94,7 +145,7 @@ export async function getPaperById(req, res) {
 
   const paper = await Paper.findById(req.params.id)
     .populate('requestedBy', 'fullName email university studentId')
-    .populate('uploadedBy', 'fullName email');
+    .populate('uploadedBy', 'fullName university email');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
@@ -116,7 +167,13 @@ export async function updatePaperStatus(req, res) {
     return res.status(400).json({ message: 'Invalid status' });
   }
 
-  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: normalizePaperStatus(status) }, { new: true });
+  const currentPaper = await Paper.findById(req.params.id);
+
+  if (!currentPaper) return res.status(404).json({ message: 'Paper not found' });
+
+  const nextStatus = status === 'approved' ? getApprovalStatus(currentPaper) : normalizePaperStatus(status);
+
+  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus }, { new: true });
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
   res.json({ paper });
@@ -173,7 +230,11 @@ export async function updatePaper(req, res) {
   }
 
   if (updates.status !== undefined) {
-    updates.status = normalizePaperStatus(updates.status);
+    const currentPaper = await Paper.findById(req.params.id);
+
+    if (!currentPaper) return res.status(404).json({ message: 'Paper not found' });
+
+    updates.status = updates.status === 'approved' ? getApprovalStatus(currentPaper) : normalizePaperStatus(updates.status);
   }
 
   if (updates.doi || updates.paperLink) {
@@ -200,7 +261,7 @@ export async function updatePaper(req, res) {
     runValidators: true,
   })
     .populate('requestedBy', 'fullName email university studentId')
-    .populate('uploadedBy', 'fullName email');
+    .populate('uploadedBy', 'fullName university email');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
@@ -217,6 +278,11 @@ export async function deletePaper(req, res) {
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
   await syncUserPoints(paper.requestedBy);
+  if (paper.uploadedBy) {
+    await syncUserPoints(paper.uploadedBy);
+  }
+
+  await removeUploadedFile(paper.pdfPath ? { path: resolvePaperPdfPath(paper.pdfPath) } : null);
 
   res.json({ message: 'Paper deleted successfully', paperId: paper._id });
 }
@@ -230,18 +296,68 @@ export async function uploadPaperPdf(req, res) {
     return res.status(400).json({ message: 'PDF file is required' });
   }
 
+  const existingPaper = await Paper.findById(req.params.id);
+
+  if (!existingPaper) {
+    await removeUploadedFile(req.file);
+    return res.status(404).json({ message: 'Paper not found' });
+  }
+
+  if (existingPaper.pdfPath) {
+    await removeUploadedFile(req.file);
+    return res.status(409).json({ message: 'This paper already has a PDF uploaded' });
+  }
+
   const paper = await Paper.findByIdAndUpdate(
     req.params.id,
     {
       pdfPath: `/uploads/${req.file.filename}`,
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
-      status: 'downloaded',
+      status: 'pending',
     },
     { new: true }
   );
 
-  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+  if (!paper) {
+    await removeUploadedFile(req.file);
+    return res.status(404).json({ message: 'Paper not found' });
+  }
 
   res.json({ paper });
+}
+
+export async function deletePaperPdf(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const paper = await Paper.findById(req.params.id);
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  if (!paper.pdfPath) {
+    return res.status(400).json({ message: 'Paper does not have a PDF to delete' });
+  }
+
+  await removeUploadedFile({ path: resolvePaperPdfPath(paper.pdfPath) });
+
+  const updatedPaper = await Paper.findByIdAndUpdate(
+    req.params.id,
+    {
+      $unset: { pdfPath: '', uploadedBy: '', uploadedAt: '' },
+      status: getResetStatus(paper.status),
+    },
+    { new: true }
+  )
+    .populate('requestedBy', 'fullName email university studentId')
+    .populate('uploadedBy', 'fullName university email');
+
+  if (!updatedPaper) return res.status(404).json({ message: 'Paper not found' });
+
+  if (paper.uploadedBy) {
+    await syncUserPoints(paper.uploadedBy);
+  }
+
+  res.json({ paper: updatedPaper });
 }

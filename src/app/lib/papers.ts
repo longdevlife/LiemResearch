@@ -10,6 +10,13 @@ export type PublicPaper = {
   publishedYear: number;
   status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
   pdfPath?: string;
+  uploadedBy?: {
+    _id: string;
+    fullName?: string;
+    university?: string;
+    email?: string;
+  };
+  uploadedAt?: string;
   averageRating: number;
   totalRatings: number;
   downloadCount: number;

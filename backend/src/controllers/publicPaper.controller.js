@@ -68,6 +68,7 @@ export async function searchPublicPapers(req, res) {
   const [papers, total] = await Promise.all([
     Paper.find(filter)
       .populate('requestedBy', 'fullName university')
+      .populate('uploadedBy', 'fullName university')
       .sort(buildSort(req.query.sortBy))
       .skip(skip)
       .limit(limit),
@@ -93,7 +94,9 @@ export async function getPublicPaperById(req, res) {
   const paper = await Paper.findOne({
     _id: req.params.id,
     status: { $in: visibleStatuses },
-  }).populate('requestedBy', 'fullName university');
+  })
+    .populate('requestedBy', 'fullName university')
+    .populate('uploadedBy', 'fullName university');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 

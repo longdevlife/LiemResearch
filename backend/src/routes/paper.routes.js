@@ -7,6 +7,7 @@ import {
   getPaperById,
   updatePaper,
   updatePaperStatus,
+  deletePaperPdf,
   uploadPaperPdf,
 } from '../controllers/paper.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
@@ -59,11 +60,39 @@ const router = Router();
  *               publishedYear:
  *                 type: number
  *                 example: 2026
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [title, doi, paperLink, abstract, publishedYear]
+ *             properties:
+ *               title:
+ *                 type: string
+ *               doi:
+ *                 type: string
+ *               paperLink:
+ *                 type: string
+ *               abstract:
+ *                 type: string
+ *               authors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               journal:
+ *                 type: string
+ *               keywords:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               publishedYear:
+ *                 type: number
+ *               pdf:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Paper request created
  */
-router.post('/', requireAuth, createPaper);
+router.post('/', requireAuth, uploadPdf.single('pdf'), createPaper);
 
 /**
  * @swagger
@@ -217,8 +246,8 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), updatePaperStatus
  * @swagger
  * /api/papers/{id}/upload-pdf:
  *   post:
- *     summary: Admin uploads a PDF and marks the paper as downloaded
- *     tags: [Admin Papers]
+ *     summary: Upload a PDF for a paper if it does not already have one
+ *     tags: [Papers]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -240,8 +269,30 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), updatePaperStatus
  *     responses:
  *       200:
  *         description: PDF uploaded
+ *       409:
+ *         description: Paper already has a PDF
  */
-router.post('/:id/upload-pdf', requireAuth, requireRole('admin'), uploadPdf.single('pdf'), uploadPaperPdf);
+router.post('/:id/upload-pdf', requireAuth, uploadPdf.single('pdf'), uploadPaperPdf);
+
+/**
+ * @swagger
+ * /api/papers/{id}/pdf:
+ *   delete:
+ *     summary: Delete an uploaded PDF from a paper
+ *     tags: [Admin Papers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: PDF deleted
+ */
+router.delete('/:id/pdf', requireAuth, requireRole('admin'), deletePaperPdf);
 
 /**
  * @swagger

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
@@ -6,6 +6,7 @@ import { apiRequest } from '../lib/api';
 
 export function RequestPaperPage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     doi: '',
@@ -14,6 +15,7 @@ export function RequestPaperPage() {
     keywords: '',
     year: '',
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +30,16 @@ export function RequestPaperPage() {
     setMessage('');
   };
 
+  const handleChooseFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFile(e.target.files?.[0] || null);
+    setError('');
+    setMessage('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -35,20 +47,26 @@ export function RequestPaperPage() {
     setIsSubmitting(true);
 
     try {
+      const formDataPayload = new FormData();
+      formDataPayload.append('title', formData.title);
+      formDataPayload.append('doi', formData.doi);
+      formDataPayload.append('paperLink', formData.link);
+      formDataPayload.append('abstract', formData.abstract);
+      formDataPayload.append('keywords', formData.keywords);
+      formDataPayload.append('publishedYear', formData.year);
+
+      if (selectedFile) {
+        formDataPayload.append('pdf', selectedFile);
+      }
+
       await apiRequest('/papers', {
         method: 'POST',
         auth: true,
-        body: JSON.stringify({
-          title: formData.title,
-          doi: formData.doi,
-          paperLink: formData.link,
-          abstract: formData.abstract,
-          keywords: formData.keywords,
-          publishedYear: Number(formData.year),
-        }),
+        body: formDataPayload,
       });
 
       setMessage('Paper request submitted successfully.');
+      setSelectedFile(null);
       setTimeout(() => navigate('/my-requests'), 600);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit paper request');
@@ -179,6 +197,33 @@ export function RequestPaperPage() {
                   required
                 />
                 <p className="text-muted-foreground mt-2">Separate keywords with commas</p>
+              </div>
+
+              <div>
+                <label className="block text-foreground mb-2">PDF File</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                  className="sr-only"
+                />
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-input-background px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={handleChooseFile}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-blue-600"
+                  >
+                    Choose file
+                  </button>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedFile ? selectedFile.name : 'No file chosen'}
+                  </span>
+                </div>
+                <p className="text-muted-foreground mt-2">
+                  Optional. Upload a PDF now if you already have one. Only PDF files up to 50MB are accepted.
+                </p>
+                {selectedFile && <p className="text-foreground mt-2">Selected file: {selectedFile.name}</p>}
               </div>
 
               <div className="flex gap-4 pt-4">

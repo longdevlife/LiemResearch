@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 
@@ -17,6 +17,7 @@ type DetailPaper = PublicPaper & {
   uploadedBy?: {
     fullName?: string;
     email?: string;
+    university?: string;
   };
 };
 
@@ -111,6 +112,25 @@ export function PaperDetailPage() {
       setMessage('PDF uploaded successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to upload PDF');
+    }
+  };
+
+  const handleDeletePdf = async () => {
+    if (!paper) return;
+
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await apiRequest<{ paper: DetailPaper }>(`/papers/${paper._id}/pdf`, {
+        method: 'DELETE',
+        auth: true,
+      });
+
+      setPaper(data.paper);
+      setMessage('PDF deleted successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete PDF');
     }
   };
 
@@ -344,6 +364,13 @@ export function PaperDetailPage() {
                     <div className="border border-border rounded-lg p-8 bg-muted flex items-center justify-center">
                       <p className="text-muted-foreground">PDF is available for download</p>
                     </div>
+                    <div className="rounded-lg border border-border bg-white p-4">
+                      <p className="text-sm text-muted-foreground">PDF UPLOADED BY :</p>
+                      <p className="text-foreground">
+                        {paper.uploadedBy?.fullName || 'N/A'}
+                        {paper.uploadedBy?.university ? ` - ${paper.uploadedBy.university}` : ''}
+                      </p>
+                    </div>
                     <div className="flex gap-4">
                       <button
                         onClick={handleDownload}
@@ -352,21 +379,26 @@ export function PaperDetailPage() {
                         <Download size={20} />
                         Download PDF
                       </button>
-                      {isAdmin && (
+                      {isAdmin ? (
                         <button
-                          onClick={() => setUploadModalOpen(true)}
-                          className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                          onClick={handleDeletePdf}
+                          disabled={!paper.pdfPath}
+                          className={`flex-1 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                            paper.pdfPath
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-muted text-muted-foreground cursor-not-allowed'
+                          }`}
                         >
-                          <Upload size={20} />
-                          Upload New PDF
+                          <X size={20} />
+                          Delete PDF
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ) : (
                   <div className="border border-border rounded-lg p-12 bg-muted text-center">
                     <p className="text-muted-foreground mb-4">No PDF available yet</p>
-                    {isAdmin && (
+                    {currentUser && !isAdmin && (
                       <button
                         onClick={() => setUploadModalOpen(true)}
                         className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 mx-auto"
@@ -375,6 +407,17 @@ export function PaperDetailPage() {
                         Upload PDF
                       </button>
                     )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        disabled
+                        className="bg-muted text-muted-foreground px-6 py-3 rounded-lg cursor-not-allowed flex items-center gap-2 mx-auto"
+                      >
+                        <X size={20} />
+                        Delete PDF
+                      </button>
+                    )}
+                    {!currentUser && <p className="text-sm text-muted-foreground">Sign in to upload the first PDF.</p>}
                   </div>
                 )}
               </div>
