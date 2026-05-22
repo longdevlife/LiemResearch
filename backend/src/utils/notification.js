@@ -1,9 +1,12 @@
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
-import { emitNotificationToRole } from '../config/socket.js';
+import { emitNotificationToRole, emitNotificationToUser } from '../config/socket.js';
 
 async function createNotificationsForUserFilter(filter, payload, emitRole) {
-  const recipients = await User.find({ ...filter, status: 'active' }).select('_id');
+  const recipients = await User.find({
+    ...filter,
+    $or: [{ status: 'active' }, { status: { $exists: false } }],
+  }).select('_id');
 
   if (recipients.length === 0) {
     return 0;
@@ -16,12 +19,20 @@ async function createNotificationsForUserFilter(filter, payload, emitRole) {
 
   await Notification.insertMany(docs);
 
+  const eventPayload = {
+    type: payload.type,
+    title: payload.title,
+    paper: payload.paper,
+    count: docs.length,
+    createdAt: new Date().toISOString(),
+  };
+
+  for (const doc of docs) {
+    emitNotificationToUser(doc.recipient, eventPayload);
+  }
+
   if (emitRole) {
-    emitNotificationToRole(emitRole, {
-      role: emitRole,
-      count: docs.length,
-      createdAt: new Date().toISOString(),
-    });
+    emitNotificationToRole(emitRole, { ...eventPayload, role: emitRole });
   }
 
   return docs.length;

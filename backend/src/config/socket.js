@@ -67,3 +67,9 @@ export function emitNotificationToRole(role, payload) {
 
   io.to(`role:${role}`).emit('notification:new', payload);
 }
+
+export function emitNotificationToUser(userId, payload) {
+  if (!io || !userId) return;
+
+  io.to(`user:${userId.toString()}`).emit('notification:new', payload);
+}
