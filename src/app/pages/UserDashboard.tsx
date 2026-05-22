@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { StatsCard } from '../components/StatsCard';
 import { Search, Plus, Download, Eye, Star, Calendar, Filter, FileText, CheckCircle, XCircle } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import { apiRequest, getToken } from '../lib/api';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
 
 export function UserDashboard() {
@@ -60,7 +60,19 @@ export function UserDashboard() {
         method: 'POST',
         auth: true,
       });
-      window.open(`http://localhost:5000${data.downloadUrl}`, '_blank');
+
+      const fileUrl = `http://localhost:5000${data.downloadUrl}`;
+      const token = getToken();
+      const resp = await fetch(fileUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${paper.doi || paper.title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to download PDF');
     }

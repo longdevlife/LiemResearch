@@ -17,6 +17,10 @@ interface AdminPaper extends EditablePaper {
     studentId?: string;
   };
   pdfPath?: string;
+  uploadedBy?: {
+    fullName?: string;
+    university?: string;
+  };
   createdAt: string;
 }
 
@@ -126,6 +130,23 @@ export function PaperManagementPage() {
       setMessage('PDF uploaded successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to upload PDF');
+    }
+  };
+
+  const handleDeletePdf = async (paper: AdminPaper) => {
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await apiRequest<{ paper: AdminPaper }>(`/papers/${paper._id}/pdf`, {
+        method: 'DELETE',
+        auth: true,
+      });
+
+      setPapers(papers.map((item) => (item._id === paper._id ? data.paper : item)));
+      setMessage('PDF deleted successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete PDF');
     }
   };
 
@@ -346,7 +367,7 @@ export function PaperManagementPage() {
                           {paper.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => updatePaperStatus(paper._id, 'not-downloaded')}
+                                onClick={() => updatePaperStatus(paper._id, 'approved')}
                                 className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                                 title="Approve request"
                               >
@@ -362,17 +383,9 @@ export function PaperManagementPage() {
                             </>
                           )}
 
-                          {(paper.status === 'not-downloaded' || paper.status === 'approved') && (
-                            <button
-                              onClick={() => handleOpenUploadModal(paper)}
-                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Upload PDF"
-                            >
-                              <Upload size={18} className="text-green-600" />
-                            </button>
-                          )}
+                          {/* Delete PDF button removed from row actions per UX request */}
 
-                          {paper.status === 'downloaded' && paper.pdfPath && (
+                          {paper.pdfPath && (
                             <a
                               href={`http://localhost:5000${paper.pdfPath}`}
                               target="_blank"

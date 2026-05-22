@@ -41,8 +41,8 @@ export function RegisterPage() {
         body: JSON.stringify(formData),
       });
 
-      saveAuth(data.token, data.user);
-      navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
+      // After successful registration, redirect user to login page
+      navigate('/login', { state: { registered: true, email: formData.email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Register failed');
     } finally {

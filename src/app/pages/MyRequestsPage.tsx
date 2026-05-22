@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBadge } from '../components/StatusBadge';
-import { Search, Plus, Eye, Calendar, BookOpen } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import { Search, Plus, Eye, Calendar, BookOpen, Download } from 'lucide-react';
+import { apiRequest, getToken } from '../lib/api';
 
 type PaperStatus = 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
 
@@ -17,6 +17,7 @@ interface PaperRequest {
   publishedYear: number;
   status: PaperStatus;
   createdAt: string;
+  pdfPath?: string;
 }
 
 const filters: Array<{
@@ -200,6 +201,38 @@ export function MyRequestsPage() {
                         <Eye size={18} />
                         View Details
                       </button>
+                      {request.pdfPath ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const data = await apiRequest<{ downloadUrl: string }>(`/public-papers/${request._id}/download`, {
+                                method: 'POST',
+                                auth: true,
+                              });
+
+                              const fileUrl = `http://localhost:5000${data.downloadUrl}`;
+                              const token = getToken();
+                              const resp = await fetch(fileUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+                              const blob = await resp.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${request.doi || request.title}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                              console.error(err);
+                              setError(err instanceof Error ? err.message : 'Unable to download PDF');
+                            }
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <Download size={18} />
+                          Download
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

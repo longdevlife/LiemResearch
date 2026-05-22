@@ -38,6 +38,19 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(uploadsPath));
+app.get('/uploads/:filename', (req, res, next) => {
+  const { filename } = req.params;
+
+  if (!filename) {
+    return next();
+  }
+
+  return res.sendFile(path.join(uploadsPath, filename), (error) => {
+    if (error) {
+      next(error);
+    }
+  });
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({ message: 'LiemResearch API is running' });
