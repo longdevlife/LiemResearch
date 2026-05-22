@@ -10,6 +10,7 @@ import publicPaperRoutes from './routes/publicPaper.routes.js';
 import rankingRoutes from './routes/ranking.routes.js';
 import ratingRoutes from './routes/rating.routes.js';
 import userRoutes from './routes/user.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -49,6 +50,7 @@ app.use('/api/public-papers', publicPaperRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/rankings', rankingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });

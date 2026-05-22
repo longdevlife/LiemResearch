@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock } from 'lucide-react';
-import logo from '../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png';
 import { apiRequest, AuthUser, saveAuth } from '../lib/api';
 
 export function LoginPage() {
+  const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

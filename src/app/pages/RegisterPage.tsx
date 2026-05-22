@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { User, Building2, CreditCard, Mail, Lock } from 'lucide-react';
-import logo from '../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png';
 import { apiRequest, AuthUser, saveAuth } from '../lib/api';
 
 export function RegisterPage() {
+  const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: '',
