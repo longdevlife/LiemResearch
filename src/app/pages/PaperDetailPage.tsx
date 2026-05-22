@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
 import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X } from 'lucide-react';
@@ -257,6 +258,7 @@ export function PaperDetailPage() {
       <Sidebar role={isAdmin ? 'admin' : 'user'} />
 
       <div className="flex-1 p-8">
+        <AppHeader role={isAdmin ? 'admin' : 'user'} />
         <div className="max-w-5xl mx-auto">
           <button
             onClick={() => navigate(isAdmin ? '/admin/papers' : '/dashboard')}

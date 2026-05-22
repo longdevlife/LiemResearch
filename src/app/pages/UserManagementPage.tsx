@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
+import { AppHeader } from '../components/AppHeader';
 import { Search, Eye, Ban, CheckCircle, Filter, Shield, Trash2, X } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser } from '../lib/api';
 
@@ -127,6 +128,7 @@ export function UserManagementPage() {
       <Sidebar role="admin" />
 
       <div className="flex-1 p-8">
+        <AppHeader role="admin" />
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-foreground mb-2">User Management</h1>
