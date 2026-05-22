@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
+import { syncUserPoints } from '../utils/points.js';
 
 const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded'];
 
@@ -50,6 +51,8 @@ export async function createPaper(req, res) {
     publishedYear,
     requestedBy: req.user._id,
   });
+
+  await syncUserPoints(req.user._id);
 
   res.status(201).json({ paper });
 }
@@ -204,6 +207,8 @@ export async function deletePaper(req, res) {
   const paper = await Paper.findByIdAndDelete(req.params.id);
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  await syncUserPoints(paper.requestedBy);
 
   res.json({ message: 'Paper deleted successfully', paperId: paper._id });
 }

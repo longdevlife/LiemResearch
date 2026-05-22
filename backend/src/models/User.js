@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     status: { type: String, enum: ['active', 'banned'], default: 'active' },
+    points: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );

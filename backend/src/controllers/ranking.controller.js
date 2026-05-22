@@ -1,18 +1,12 @@
-import { Paper } from '../models/Paper.js';
-import { Rating } from '../models/Rating.js';
 import { User } from '../models/User.js';
+import { syncUserPoints } from '../utils/points.js';
 
 async function buildUserStats(user) {
-  const [requestCount, ratingCount] = await Promise.all([
-    Paper.countDocuments({ requestedBy: user._id }),
-    Rating.countDocuments({ user: user._id }),
-  ]);
+  const stats = await syncUserPoints(user._id);
 
   return {
-    user: user.toSafeObject(),
-    requestedPapers: requestCount,
-    ratingsGiven: ratingCount,
-    points: requestCount * 10 + ratingCount * 5,
+    user: { ...user.toSafeObject(), points: stats.points },
+    ...stats,
   };
 }
 

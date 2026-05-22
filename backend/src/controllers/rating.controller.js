@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
 import { Rating } from '../models/Rating.js';
+import { syncUserPoints } from '../utils/points.js';
 
 function isInvalidId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -62,6 +63,7 @@ export async function createRating(req, res) {
   });
 
   await refreshPaperRatingStats(paperId);
+  await syncUserPoints(req.user._id);
 
   const populatedRating = await Rating.findById(createdRating._id).populate('user', 'fullName university');
 
@@ -149,8 +151,10 @@ export async function deleteRating(req, res) {
   }
 
   const paperId = rating.paper;
+  const userId = rating.user;
   await Rating.findByIdAndDelete(rating._id);
   await refreshPaperRatingStats(paperId);
+  await syncUserPoints(userId);
 
   res.json({ message: 'Rating deleted successfully', ratingId: rating._id });
 }
