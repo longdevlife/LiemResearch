@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Trophy, Medal, Award, FileText, Star } from 'lucide-react';
+import { Trophy, Medal, Award, FileText, Star, Upload } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
 
 interface UserRank {
   rank: number;
   user: AuthUser;
-  requestedPapers: number;
+  uploadedPapers: number;
+  uploadedPdfs: number;
   ratingsGiven: number;
+  rejectedPapers: number;
+  rejectedPdfs: number;
   points: number;
 }
 
@@ -62,7 +65,7 @@ export function UserRankingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-foreground mb-2">User Rankings</h1>
-            <p className="text-muted-foreground">Top contributors ranked by requests and ratings</p>
+            <p className="text-muted-foreground">Top contributors ranked by papers, PDFs, and ratings</p>
           </div>
 
           {error && (
@@ -94,12 +97,19 @@ export function UserRankingPage() {
                       <span className="text-2xl">{item.points}</span>
                       <span className="ml-1">points</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-left">
+                    <div className="grid grid-cols-3 gap-3 text-left">
                       <div>
-                        <p className="text-muted-foreground">Requests</p>
+                        <p className="text-muted-foreground">Papers</p>
                         <p className="text-foreground flex items-center gap-1">
                           <FileText size={16} className="text-green-600" />
-                          {item.requestedPapers}
+                          {item.uploadedPapers}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">PDFs</p>
+                        <p className="text-foreground flex items-center gap-1">
+                          <Upload size={16} className="text-blue-600" />
+                          {item.uploadedPdfs}
                         </p>
                       </div>
                       <div>
@@ -122,7 +132,8 @@ export function UserRankingPage() {
                         <th className="px-6 py-4 text-left text-foreground">Rank</th>
                         <th className="px-6 py-4 text-left text-foreground">Name</th>
                         <th className="px-6 py-4 text-left text-foreground">University</th>
-                        <th className="px-6 py-4 text-left text-foreground">Requests</th>
+                        <th className="px-6 py-4 text-left text-foreground">Papers</th>
+                        <th className="px-6 py-4 text-left text-foreground">PDFs</th>
                         <th className="px-6 py-4 text-left text-foreground">Ratings</th>
                         <th className="px-6 py-4 text-left text-foreground">Points</th>
                       </tr>
@@ -150,7 +161,13 @@ export function UserRankingPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1 text-green-600">
                               <FileText size={16} />
-                              <span>{item.requestedPapers}</span>
+                              <span>{item.uploadedPapers}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1">
+                              <Upload size={16} className="text-blue-600" />
+                              <span className="text-foreground">{item.uploadedPdfs}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -177,24 +194,31 @@ export function UserRankingPage() {
             <div className="bg-white rounded-lg border border-border shadow-sm p-12 text-center">
               <Trophy size={48} className="mx-auto text-muted-foreground mb-4" />
               <h3 className="text-foreground mb-2">No rankings yet</h3>
-              <p className="text-muted-foreground">Rankings will appear after users create requests or rate papers.</p>
+              <p className="text-muted-foreground">Rankings will appear after valid uploads or ratings.</p>
             </div>
           )}
 
           <div className="mt-8 bg-white rounded-lg border border-border shadow-sm p-6">
             <h3 className="text-foreground mb-4">How Points Are Calculated</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText size={20} className="text-green-600" />
-                  <h4 className="text-foreground">Paper Request</h4>
+                  <h4 className="text-foreground">Valid Paper Upload</h4>
                 </div>
-                <p className="text-muted-foreground">+10 points per paper request</p>
+                <p className="text-muted-foreground">+50 points per approved paper, -10 if rejected</p>
               </div>
               <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <div className="flex items-center gap-2 mb-2">
+                  <Upload size={20} className="text-blue-600" />
+                  <h4 className="text-foreground">Valid PDF Upload</h4>
+                </div>
+                <p className="text-muted-foreground">+50 points per accepted PDF, -10 if rejected</p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
                   <Star size={20} className="text-yellow-600" />
-                  <h4 className="text-foreground">Rating</h4>
+                  <h4 className="text-foreground">Paper Rating</h4>
                 </div>
                 <p className="text-muted-foreground">+5 points per rating given</p>
               </div>

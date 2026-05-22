@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { recordInvalidPdfUpload } from '../utils/points.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,3 +26,20 @@ export const uploadPdf = multer({
     cb(null, true);
   },
 });
+
+export function uploadSinglePdf(req, res, next) {
+  uploadPdf.single('pdf')(req, res, async (err) => {
+    if (!err) {
+      next();
+      return;
+    }
+
+    if (req.user?._id && err.message === 'Only PDF files are allowed') {
+      await recordInvalidPdfUpload(req.user._id);
+      res.status(400).json({ message: 'Please upload a valid PDF file' });
+      return;
+    }
+
+    next(err);
+  });
+}

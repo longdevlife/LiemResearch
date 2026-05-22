@@ -176,6 +176,11 @@ export async function updatePaperStatus(req, res) {
   const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus }, { new: true });
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await syncUserPoints(paper.requestedBy);
+  if (paper.uploadedBy) {
+    await syncUserPoints(paper.uploadedBy);
+  }
+
   res.json({ paper });
 }
 
@@ -265,6 +270,11 @@ export async function updatePaper(req, res) {
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await syncUserPoints(paper.requestedBy);
+  if (paper.uploadedBy) {
+    await syncUserPoints(paper.uploadedBy);
+  }
+
   res.json({ paper });
 }
 
@@ -323,6 +333,8 @@ export async function uploadPaperPdf(req, res) {
     await removeUploadedFile(req.file);
     return res.status(404).json({ message: 'Paper not found' });
   }
+
+  await syncUserPoints(paper.uploadedBy);
 
   res.json({ paper });
 }

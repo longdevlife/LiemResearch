@@ -12,7 +12,7 @@ import {
 } from '../controllers/paper.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
-import { uploadPdf } from '../middlewares/upload.middleware.js';
+import { uploadSinglePdf } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -92,7 +92,7 @@ const router = Router();
  *       201:
  *         description: Paper request created
  */
-router.post('/', requireAuth, uploadPdf.single('pdf'), createPaper);
+router.post('/', requireAuth, uploadSinglePdf, createPaper);
 
 /**
  * @swagger
@@ -272,7 +272,7 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), updatePaperStatus
  *       409:
  *         description: Paper already has a PDF
  */
-router.post('/:id/upload-pdf', requireAuth, uploadPdf.single('pdf'), uploadPaperPdf);
+router.post('/:id/upload-pdf', requireAuth, uploadSinglePdf, uploadPaperPdf);
 
 /**
  * @swagger

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { User, Mail, Building2, CreditCard, Trophy, FileText, Star, Edit } from 'lucide-react';
+import { User, Mail, Building2, CreditCard, Trophy, FileText, Star, Edit, Upload } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 
 type ProfileForm = {
@@ -13,7 +13,8 @@ type ProfileForm = {
 
 type RankingStats = {
   rank: number;
-  requestedPapers: number;
+  uploadedPapers: number;
+  uploadedPdfs: number;
   ratingsGiven: number;
   points: number;
 };
@@ -143,18 +144,26 @@ export function UserProfilePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg border border-border shadow-sm p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-muted-foreground">Requests</span>
+                <span className="text-muted-foreground">Valid Papers</span>
                 <FileText size={20} className="text-green-600" />
               </div>
-              <h3 className="text-foreground">{rankingStats?.requestedPapers ?? 0}</h3>
+              <h3 className="text-foreground">{rankingStats?.uploadedPapers ?? 0}</h3>
             </div>
 
             <div className="bg-white rounded-lg border border-border shadow-sm p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-muted-foreground">Ratings Given</span>
+                <span className="text-muted-foreground">Valid PDFs</span>
+                <Upload size={20} className="text-blue-600" />
+              </div>
+              <h3 className="text-foreground">{rankingStats?.uploadedPdfs ?? 0}</h3>
+            </div>
+
+            <div className="bg-white rounded-lg border border-border shadow-sm p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-muted-foreground">Ratings</span>
                 <Star size={20} className="text-yellow-500" />
               </div>
               <h3 className="text-foreground">{rankingStats?.ratingsGiven ?? 0}</h3>
