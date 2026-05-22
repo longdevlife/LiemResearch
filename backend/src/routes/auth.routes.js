@@ -16,7 +16,7 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [fullName, university, studentId, email, password]
+ *             required: [fullName, university, studentId, email, password, confirmPassword]
  *             properties:
  *               fullName:
  *                 type: string
@@ -31,6 +31,9 @@ const router = Router();
  *                 type: string
  *                 example: user@liemresearch.com
  *               password:
+ *                 type: string
+ *                 example: User123456
+ *               confirmPassword:
  *                 type: string
  *                 example: User123456
  *     responses:

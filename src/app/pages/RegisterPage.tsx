@@ -12,6 +12,7 @@ export function RegisterPage() {
     studentId: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +27,12 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -131,6 +138,22 @@ export function RegisterPage() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                   placeholder="Create a strong password"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-foreground mb-2">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                  placeholder="Re-enter your password"
                   required
                 />
               </div>

@@ -8,10 +8,14 @@ function isPresent(value) {
 }
 
 export async function register(req, res) {
-  const { fullName, university, studentId, email, password } = req.body;
+  const { fullName, university, studentId, email, password, confirmPassword } = req.body;
 
-  if (!fullName || !university || !studentId || !email || !password) {
+  if (!fullName || !university || !studentId || !email || !password || !confirmPassword) {
     return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: 'Passwords do not match' });
   }
 
   const existingUser = await User.findOne({ email });
