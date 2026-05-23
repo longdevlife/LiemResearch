@@ -52,6 +52,57 @@ function normalizeStringList(value) {
   return [];
 }
 
+function hasEnoughWords(value, minWords) {
+  return String(value)
+    .trim()
+    .split(/\s+/)
+    .filter((word) => /[a-z0-9]/i.test(word))
+    .length >= minWords;
+}
+
+function isHttpUrl(value) {
+  try {
+    const url = new URL(String(value).trim());
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publishedYear }) {
+  const trimmedTitle = String(title).trim();
+  const trimmedDoi = String(doi).trim();
+  const trimmedAbstract = String(abstract).trim();
+  const publishedYearNumber = Number(publishedYear);
+  const maxYear = new Date().getFullYear() + 1;
+
+  if (trimmedTitle.length < 8 || !hasEnoughWords(trimmedTitle, 3)) {
+    return 'Please enter a clearer paper title';
+  }
+
+  if (!/^10\.\d{4,9}\/\S+$/i.test(trimmedDoi)) {
+    return 'Please enter a valid DOI';
+  }
+
+  if (!isHttpUrl(paperLink)) {
+    return 'Please enter a valid paper link';
+  }
+
+  if (trimmedAbstract.length < 40 || !hasEnoughWords(trimmedAbstract, 8)) {
+    return 'Please enter a short but meaningful abstract';
+  }
+
+  if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
+    return 'Please enter at least one meaningful keyword';
+  }
+
+  if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > maxYear) {
+    return `Publication year must be between 1900 and ${maxYear}`;
+  }
+
+  return '';
+}
+
 function getResetStatus(status) {
   return status === 'pending' ? 'pending' : 'not-downloaded';
 }
@@ -87,6 +138,20 @@ export async function createPaper(req, res) {
     return res.status(400).json({ message: 'At least one keyword is required' });
   }
 
+  const validationError = validatePaperRequest({
+    title,
+    doi,
+    paperLink,
+    abstract,
+    keywords: normalizedKeywords,
+    publishedYear,
+  });
+
+  if (validationError) {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: validationError });
+  }
+
   const publishedYearNumber = Number(publishedYear);
 
   if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > 2100) {
@@ -104,12 +169,12 @@ export async function createPaper(req, res) {
   }
 
   const paperData = {
-    title,
-    doi,
-    paperLink,
-    abstract,
+    title: String(title).trim(),
+    doi: String(doi).trim(),
+    paperLink: String(paperLink).trim(),
+    abstract: String(abstract).trim(),
     authors: normalizeStringList(authors),
-    journal,
+    journal: journal ? String(journal).trim() : '',
     keywords: normalizedKeywords,
     publishedYear: publishedYearNumber,
     requestedBy: req.user._id,

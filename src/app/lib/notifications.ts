@@ -22,7 +22,8 @@ export type AppNotification = {
     | 'paper_rated'
     | 'paper_rating_updated'
     | 'paper_rating_deleted'
-    | 'paper_approved';
+    | 'paper_approved'
+    | 'paper_commented';
   title: string;
   message: string;
   isRead: boolean;

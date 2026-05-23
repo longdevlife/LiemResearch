@@ -38,6 +38,50 @@ async function createNotificationsForUserFilter(filter, payload, emitRole) {
   return docs.length;
 }
 
+async function createNotificationsForUsers(userIds, payload) {
+  const uniqueIds = [
+    ...new Map(
+      userIds
+        .filter(Boolean)
+        .map((userId) => [userId.toString(), userId])
+    ).values(),
+  ];
+
+  if (uniqueIds.length === 0) {
+    return 0;
+  }
+
+  const recipients = await User.find({
+    _id: { $in: uniqueIds },
+    $or: [{ status: 'active' }, { status: { $exists: false } }],
+  }).select('_id');
+
+  if (recipients.length === 0) {
+    return 0;
+  }
+
+  const docs = recipients.map((recipient) => ({
+    recipient: recipient._id,
+    ...payload,
+  }));
+
+  await Notification.insertMany(docs);
+
+  const eventPayload = {
+    type: payload.type,
+    title: payload.title,
+    paper: payload.paper,
+    count: docs.length,
+    createdAt: new Date().toISOString(),
+  };
+
+  for (const doc of docs) {
+    emitNotificationToUser(doc.recipient, eventPayload);
+  }
+
+  return docs.length;
+}
+
 export async function notifyAdminsPaperSubmitted({ paperId, paperTitle, requesterName, actorId }) {
   return createNotificationsForUserFilter(
     { role: 'admin' },
@@ -116,4 +160,23 @@ export async function notifyUsersPaperApproved({ paperId, paperTitle, requesterN
     title: 'New paper available',
     message: `${requesterName} has a newly approved paper: ${paperTitle}`,
   }, 'user');
+}
+
+export async function notifyPaperContributorsCommented({
+  paperId,
+  paperTitle,
+  commenterName,
+  actorId,
+  recipientIds,
+}) {
+  const actorKey = actorId?.toString();
+  const recipients = recipientIds.filter((recipientId) => recipientId?.toString() !== actorKey);
+
+  return createNotificationsForUsers(recipients, {
+    actor: actorId,
+    paper: paperId,
+    type: 'paper_commented',
+    title: 'New comment on your paper',
+    message: `${commenterName} commented on: ${paperTitle}`,
+  });
 }

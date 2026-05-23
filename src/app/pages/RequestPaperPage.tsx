@@ -45,6 +45,13 @@ export function RequestPaperPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    const validationError = validatePaperRequest(formData);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -250,4 +257,62 @@ export function RequestPaperPage() {
       </div>
     </div>
   );
+}
+
+function hasEnoughWords(value: string, minWords: number) {
+  return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length >= minWords;
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function validatePaperRequest(data: {
+  title: string;
+  doi: string;
+  link: string;
+  abstract: string;
+  keywords: string;
+  year: string;
+}) {
+  const title = data.title.trim();
+  const doi = data.doi.trim();
+  const abstract = data.abstract.trim();
+  const keywords = data.keywords
+    .split(',')
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
+  const year = Number(data.year);
+  const maxYear = new Date().getFullYear() + 1;
+
+  if (title.length < 8 || !hasEnoughWords(title, 3)) {
+    return 'Please enter a clearer paper title.';
+  }
+
+  if (!/^10\.\d{4,9}\/\S+$/i.test(doi)) {
+    return 'Please enter a valid DOI, for example 10.1234/example.2024.';
+  }
+
+  if (!isHttpUrl(data.link)) {
+    return 'Please enter a valid paper link starting with http or https.';
+  }
+
+  if (abstract.length < 40 || !hasEnoughWords(abstract, 8)) {
+    return 'Please enter a short but meaningful abstract.';
+  }
+
+  if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
+    return 'Please enter at least one meaningful keyword.';
+  }
+
+  if (!Number.isInteger(year) || year < 1900 || year > maxYear) {
+    return `Publication year must be between 1900 and ${maxYear}.`;
+  }
+
+  return '';
 }

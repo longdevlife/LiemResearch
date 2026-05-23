@@ -86,7 +86,7 @@ export function NotificationBell() {
         aria-label="Notifications"
       >
         <Bell size={18} />
-        {unreadCount > 0 && (
+        {unreadCount > 0 && !isOpen && (
           <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center">
             {unreadCount}
           </span>

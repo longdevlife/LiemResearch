@@ -6,6 +6,7 @@ import {
   notifyAdminsPaperRated,
   notifyAdminsPaperRatingDeleted,
   notifyAdminsPaperRatingUpdated,
+  notifyPaperContributorsCommented,
 } from '../utils/notification.js';
 
 function isInvalidId(id) {
@@ -35,6 +36,24 @@ async function refreshPaperRatingStats(paperId) {
     averageRating: Number(nextStats.averageRating.toFixed?.(1) || 0),
     totalRatings: nextStats.totalRatings,
   });
+}
+
+async function notifyPaperCommentRecipients({ paper, commenter, comment }) {
+  if (!comment.trim() || commenter.role !== 'user') {
+    return;
+  }
+
+  try {
+    await notifyPaperContributorsCommented({
+      paperId: paper._id,
+      paperTitle: paper.title,
+      commenterName: commenter.fullName,
+      actorId: commenter._id,
+      recipientIds: [paper.requestedBy, paper.uploadedBy],
+    });
+  } catch (error) {
+    console.error('Failed to create user notification for paper comment:', error);
+  }
 }
 
 export async function createRating(req, res) {
@@ -69,6 +88,11 @@ export async function createRating(req, res) {
 
   await refreshPaperRatingStats(paperId);
   await syncUserPoints(req.user._id);
+  await notifyPaperCommentRecipients({
+    paper,
+    commenter: req.user,
+    comment: String(comment),
+  });
 
   if (req.user.role === 'user') {
     try {
@@ -143,8 +167,11 @@ export async function updateRating(req, res) {
     existingRating.rating = normalizedRating;
   }
 
+  const previousComment = existingRating.comment || '';
+  const nextComment = comment !== undefined ? String(comment).trim() : previousComment;
+
   if (comment !== undefined) {
-    existingRating.comment = String(comment).trim();
+    existingRating.comment = nextComment;
   }
 
   await existingRating.save();
@@ -152,13 +179,21 @@ export async function updateRating(req, res) {
 
   if (req.user.role === 'user') {
     try {
-      const paper = await Paper.findById(existingRating.paper).select('title');
+      const paper = await Paper.findById(existingRating.paper).select('title requestedBy uploadedBy');
       await notifyAdminsPaperRatingUpdated({
         paperId: existingRating.paper,
         paperTitle: paper?.title || 'Unknown paper',
         raterName: req.user.fullName,
         actorId: req.user._id,
       });
+
+      if (paper && comment !== undefined && nextComment && nextComment !== previousComment) {
+        await notifyPaperCommentRecipients({
+          paper,
+          commenter: req.user,
+          comment: nextComment,
+        });
+      }
     } catch (error) {
       console.error('Failed to create admin notification for rating update:', error);
     }
