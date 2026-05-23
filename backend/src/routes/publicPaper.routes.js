@@ -9,8 +9,6 @@ import { requireAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-router.use(requireAuth);
-
 /**
  * @swagger
  * /api/public-papers:
@@ -109,6 +107,6 @@ router.post('/:id/view', recordPaperView);
  *       200:
  *         description: Download URL returned
  */
-router.post('/:id/download', downloadPublicPaper);
+router.post('/:id/download', requireAuth, downloadPublicPaper);
 
 export default router;

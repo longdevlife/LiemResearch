@@ -1,6 +1,7 @@
 import type React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
+import { HomePage } from './pages/HomePage';
 import { RegisterPage } from './pages/RegisterPage';
 import { UserDashboard } from './pages/UserDashboard';
 import { MyRequestsPage } from './pages/MyRequestsPage';
@@ -38,7 +39,7 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
