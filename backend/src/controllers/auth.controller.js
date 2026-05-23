@@ -186,10 +186,18 @@ export async function updateMe(req, res) {
 }
 
 export async function changePassword(req, res) {
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, confirmPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ message: 'currentPassword and newPassword are required' });
+  }
+
+  if (String(newPassword).length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  }
+
+  if (isPresent(confirmPassword) && newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'New passwords do not match' });
   }
 
   const user = await User.findById(req.user._id);
@@ -200,6 +208,10 @@ export async function changePassword(req, res) {
   const ok = await user.comparePassword(currentPassword);
   if (!ok) {
     return res.status(401).json({ message: 'Invalid current password' });
+  }
+
+  if (await user.comparePassword(newPassword)) {
+    return res.status(400).json({ message: 'New password must be different from current password' });
   }
 
   user.passwordHash = await bcrypt.hash(String(newPassword), 10);

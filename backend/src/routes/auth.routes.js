@@ -126,12 +126,15 @@ router.patch('/me', requireAuth, updateMe);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [currentPassword, newPassword]
+ *             required: [currentPassword, newPassword, confirmPassword]
  *             properties:
  *               currentPassword:
  *                 type: string
  *                 example: User123456
  *               newPassword:
+ *                 type: string
+ *                 example: User123456New
+ *               confirmPassword:
  *                 type: string
  *                 example: User123456New
  *     responses:
