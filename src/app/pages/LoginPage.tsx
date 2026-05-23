@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock } from 'lucide-react';
+import { Lock, Mail, Search } from 'lucide-react';
 import { apiRequest, AuthUser, saveAuth } from '../lib/api';
 
 export function LoginPage() {
@@ -47,74 +47,114 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
-            <img src={logo} alt="LiemResearch" className="h-44 md:h-52 w-auto" />
-          </div>
-          <h1 className="text-foreground mb-2">LiemResearch</h1>
-          <p className="text-muted-foreground">Login to your account</p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-white">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 text-left"
+          >
+            <img src={logo} alt="LiemResearch" className="h-10 w-auto" />
+            <span className="text-lg font-medium text-foreground">LiemResearch</span>
+          </button>
 
-        <div className="bg-white rounded-lg shadow-sm border border-border p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-foreground mb-2">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                  placeholder="student@university.edu"
-                  required
-                />
-              </div>
-            </div>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="relative hidden flex-1 text-left md:block"
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <span className="block w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 text-muted-foreground">
+              Search papers...
+            </span>
+          </button>
 
-            <div>
-              <label className="block text-foreground mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
-            </div>
-
+          <div className="ml-auto flex items-center gap-2">
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors"
+              type="button"
+              className="rounded-lg bg-accent px-4 py-2 text-accent-foreground"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              Log in
             </button>
-
-            {error && (
-              <p className="text-red-600 text-center">{error}</p>
-            )}
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              Don't have an account?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="text-primary hover:underline"
-              >
-                Register here
-              </button>
-            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="rounded-lg border border-primary px-4 py-2 text-primary transition-colors hover:bg-accent"
+            >
+              Create account
+            </button>
           </div>
         </div>
-      </div>
+      </header>
+
+      <main className="mx-auto flex max-w-7xl justify-center px-6 py-12">
+        <div className="w-full max-w-xl">
+          <div className="mb-8 text-center">
+            <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
+            <h1 className="text-foreground mb-2">Log in to LiemResearch</h1>
+            <p className="text-muted-foreground">Read papers, request research, and track your contributions.</p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-white p-8 shadow-sm">
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label className="block text-foreground mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    placeholder="student@university.edu"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-foreground mb-2">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoading ? 'Logging in...' : 'Login'}
+              </button>
+
+              {error && (
+                <p className="text-red-600 text-center">{error}</p>
+              )}
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-muted-foreground">
+                Don't have an account?{' '}
+                <button
+                  onClick={() => navigate('/register')}
+                  className="text-primary hover:underline"
+                >
+                  Register here
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

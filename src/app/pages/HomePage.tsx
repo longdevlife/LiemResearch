@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BookOpen, Download, Search, Star, TrendingUp } from 'lucide-react';
+import { BookOpen, Search, Star, TrendingUp } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
-import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import { PublicPaper } from '../lib/papers';
+import { PaperCard } from '../components/PaperCard';
 
 type SortOption = 'newest' | 'rating' | 'downloads';
 
@@ -11,10 +12,6 @@ const sortTabs: Array<{ label: string; value: SortOption }> = [
   { label: 'Top Rated', value: 'rating' },
   { label: 'Most Downloaded', value: 'downloads' },
 ];
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
-}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -218,54 +215,15 @@ export function HomePage() {
 
           <div className="space-y-4">
             {papers.map((paper) => (
-              <article key={paper._id} className="rounded-lg border border-border bg-white p-5 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-                  <span>{getPaperAuthors(paper)}</span>
-                  <span>{formatDate(paper.createdAt)}</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenPaper(paper._id)}
-                  className="mb-2 block text-left text-xl font-medium leading-snug text-foreground transition-colors hover:text-primary"
-                >
-                  {paper.title}
-                </button>
-
-                <p className="mb-3 line-clamp-3 text-muted-foreground">{paper.abstract}</p>
-
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {paper.keywords.slice(0, 5).map((keyword) => (
-                    <button
-                      key={keyword}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTag(keyword);
-                        setSearchTerm('');
-                      }}
-                      className="rounded-md bg-accent px-2 py-1 text-sm text-accent-foreground transition-colors hover:bg-blue-200"
-                    >
-                      #{keyword}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <span>{getPaperJournal(paper)}</span>
-                    <span>{paper.publishedYear}</span>
-                    <span>{paper.averageRating.toFixed(1)} rating</span>
-                    <span>{paper.downloadCount} downloads</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenPaper(paper._id)}
-                    className="rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-accent"
-                  >
-                    Read more
-                  </button>
-                </div>
-              </article>
+              <PaperCard
+                key={paper._id}
+                paper={paper}
+                onOpen={(selectedPaper) => handleOpenPaper(selectedPaper._id)}
+                onTagClick={(keyword) => {
+                  setSelectedTag(keyword);
+                  setSearchTerm('');
+                }}
+              />
             ))}
           </div>
 

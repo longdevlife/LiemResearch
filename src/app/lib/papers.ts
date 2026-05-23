@@ -16,6 +16,12 @@ export type PublicPaper = {
     university?: string;
     email?: string;
   };
+  requestedBy?: {
+    _id: string;
+    fullName?: string;
+    university?: string;
+    email?: string;
+  };
   uploadedAt?: string;
   averageRating: number;
   totalRatings: number;
@@ -24,7 +30,11 @@ export type PublicPaper = {
 };
 
 export function getPaperAuthors(paper: PublicPaper) {
-  return paper.authors && paper.authors.length > 0 ? paper.authors.join(', ') : 'Unknown authors';
+  if (paper.authors && paper.authors.length > 0) {
+    return paper.authors.join(', ');
+  }
+
+  return paper.requestedBy?.fullName ? `Requested by ${paper.requestedBy.fullName}` : 'Requested by unknown user';
 }
 
 export function getPaperJournal(paper: PublicPaper) {

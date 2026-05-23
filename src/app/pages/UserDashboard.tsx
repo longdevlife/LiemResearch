@@ -2,16 +2,26 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
-import { StatsCard } from '../components/StatsCard';
-import { Search, Plus, Download, Eye, Star, Calendar, Filter, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Plus, Download, Filter } from 'lucide-react';
 import { apiRequest, getToken } from '../lib/api';
-import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import { PublicPaper } from '../lib/papers';
+import { PaperCard } from '../components/PaperCard';
+
+type FeedTab = 'newest' | 'rating' | 'downloads' | 'hasPdf';
+
+const feedTabs: Array<{ label: string; value: FeedTab }> = [
+  { label: 'Latest', value: 'newest' },
+  { label: 'Top Rated', value: 'rating' },
+  { label: 'Most Downloaded', value: 'downloads' },
+  { label: 'Has PDF', value: 'hasPdf' },
+];
 
 export function UserDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<FeedTab>('newest');
   const [papers, setPapers] = useState<PublicPaper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -32,7 +42,12 @@ export function UserDashboard() {
       const params = new URLSearchParams();
       if (searchTerm) params.set('search', searchTerm);
       if (yearFilter !== 'all') params.set('year', yearFilter);
-      params.set('sortBy', 'newest');
+      if (activeTab === 'hasPdf') {
+        params.set('hasPdf', 'true');
+        params.set('sortBy', 'newest');
+      } else {
+        params.set('sortBy', activeTab);
+      }
       params.set('limit', '100');
 
       const data = await apiRequest<{ papers: PublicPaper[] }>(`/public-papers?${params.toString()}`, {
@@ -52,17 +67,11 @@ export function UserDashboard() {
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [searchTerm, yearFilter]);
+  }, [searchTerm, yearFilter, activeTab]);
 
   const years = Array.from(new Set(papers.map((paper) => String(paper.publishedYear)))).sort((a, b) =>
     b.localeCompare(a)
   );
-
-  const stats = {
-    total: papers.length,
-    downloaded: papers.filter((paper) => Boolean(paper.pdfPath)).length,
-    notDownloaded: papers.filter((paper) => !paper.pdfPath).length,
-  };
 
   const handleDownload = async (paper: PublicPaper) => {
     try {
@@ -95,10 +104,10 @@ export function UserDashboard() {
       <div className="flex-1 p-8">
         <AppHeader role="user" />
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="mb-6 flex items-center justify-between gap-4">
             <div>
               <h1 className="text-foreground mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome to LiemResearch</p>
+              <p className="text-muted-foreground">Browse research papers and request what you need.</p>
             </div>
             <button
               onClick={() => navigate('/request-paper')}
@@ -121,29 +130,8 @@ export function UserDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <StatsCard
-              title="Total Papers"
-              value={stats.total}
-              icon={FileText}
-              color="bg-blue-500"
-            />
-            <StatsCard
-              title="Downloaded Papers"
-              value={stats.downloaded}
-              icon={CheckCircle}
-              color="bg-green-500"
-            />
-            <StatsCard
-              title="Not Downloaded"
-              value={stats.notDownloaded}
-              icon={XCircle}
-              color="bg-amber-500"
-            />
-          </div>
-
-          <div className="bg-white rounded-lg border border-border shadow-sm p-6 mb-6">
-            <div className="flex gap-4">
+          <div className="mb-6 rounded-lg border border-border bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                 <input
@@ -154,7 +142,7 @@ export function UserDashboard() {
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                 />
               </div>
-              <div className="relative">
+              <div className="relative lg:w-48">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                 <select
                   value={yearFilter}
@@ -168,85 +156,40 @@ export function UserDashboard() {
                 </select>
               </div>
             </div>
-          </div>
 
-          <div className="mb-4 text-muted-foreground">
-            {isLoading ? 'Loading papers...' : `Found ${papers.length} paper${papers.length !== 1 ? 's' : ''}`}
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <div className="flex flex-wrap gap-2">
+                {feedTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setActiveTab(tab.value)}
+                    className={`rounded-lg px-4 py-2 text-sm transition-colors ${
+                      activeTab === tab.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                {isLoading ? 'Loading papers...' : `Showing ${papers.length} paper${papers.length !== 1 ? 's' : ''}`}
+              </p>
+            </div>
           </div>
 
           <div className="space-y-4">
             {papers.map((paper) => (
-              <div
+              <PaperCard
                 key={paper._id}
-                className="bg-white rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-foreground mb-2">{paper.title}</h3>
-                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                      <span>{getPaperAuthors(paper)}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={16} />
-                        {paper.publishedYear}
-                      </span>
-                      <span>{getPaperJournal(paper)}</span>
-                      <span className="flex items-center gap-1">
-                        <Download size={16} />
-                        {paper.downloadCount} downloads
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 mb-3">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={16}
-                          className={star <= Math.round(paper.averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                        />
-                      ))}
-                      <span className="text-muted-foreground ml-1">
-                        {paper.averageRating > 0
-                          ? `${paper.averageRating.toFixed(1)} (${paper.totalRatings})`
-                          : 'No ratings'}
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground mb-3 line-clamp-2">{paper.abstract}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {paper.keywords.slice(0, 3).map((keyword) => (
-                        <span
-                          key={keyword}
-                          className="px-2 py-1 bg-accent text-accent-foreground rounded border border-border"
-                        >
-                          {keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 ml-4">
-                    <button
-                      onClick={() => navigate(`/paper/${paper._id}`)}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 whitespace-nowrap"
-                    >
-                      <Eye size={18} />
-                      View
-                    </button>
-                    {paper.pdfPath ? (
-                      <button
-                        onClick={() => handleDownload(paper)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"
-                      >
-                        <Download size={18} />
-                        Download
-                      </button>
-                    ) : (
-                      <span className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-center whitespace-nowrap">
-                        No PDF
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+                paper={paper}
+                variant="dashboard"
+                onOpen={(selectedPaper) => navigate(`/paper/${selectedPaper._id}`)}
+                onDownload={handleDownload}
+              />
             ))}
           </div>
 
