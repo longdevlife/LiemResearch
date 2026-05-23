@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatsCard } from '../components/StatsCard';
@@ -9,11 +9,20 @@ import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
 
 export function UserDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [papers, setPapers] = useState<PublicPaper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (location.state?.loginSuccess) {
+      setMessage('Logged in successfully.');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   async function loadPapers() {
     setIsLoading(true);
@@ -103,6 +112,12 @@ export function UserDashboard() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
               {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-6">
+              {message}
             </div>
           )}
 

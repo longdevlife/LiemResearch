@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatsCard } from '../components/StatsCard';
+import { StatusBadge } from '../components/StatusBadge';
 import { FileText, Download, Clock, Users } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
@@ -15,10 +17,20 @@ function formatDate(value: string) {
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [papers, setPapers] = useState<DashboardPaper[]>([]);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (location.state?.loginSuccess) {
+      setMessage('Logged in successfully.');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,7 +67,10 @@ export function AdminDashboard() {
   const downloadedPapers = papers.filter((paper) => paper.status === 'downloaded').length;
   const pendingPapers = papers.filter((paper) => paper.status === 'pending').length;
   const notDownloadedPapers = papers.filter((paper) => paper.status === 'not-downloaded' || paper.status === 'approved').length;
-  const recentRequests = papers.slice(0, 4);
+  const recentPendingRequests = papers
+    .filter((paper) => paper.status === 'pending')
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, 5);
 
   const getPercent = (count: number) => {
     if (totalRequests === 0) return 0;
@@ -83,6 +98,12 @@ export function AdminDashboard() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
               {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-6">
+              {message}
             </div>
           )}
 
@@ -121,20 +142,40 @@ export function AdminDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-border shadow-sm p-6">
-              <h3 className="text-foreground mb-4">Recent Requests</h3>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-foreground">Recent Pending Requests</h3>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/papers')}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View all
+                </button>
+              </div>
               <div className="space-y-4">
-                {recentRequests.map((request) => (
-                  <div key={request._id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                    <div>
-                      <p className="text-foreground">{request.title}</p>
-                      <p className="text-muted-foreground">{request.requestedBy?.fullName || 'Unknown user'}</p>
+                {recentPendingRequests.map((request) => (
+                  <button
+                    key={request._id}
+                    type="button"
+                    onClick={() => navigate(`/paper/${request._id}`)}
+                    className="flex w-full items-center justify-between gap-4 border-b border-border py-3 text-left transition-colors last:border-0 hover:bg-accent/60"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-foreground">{request.title}</p>
+                      <p className="truncate text-muted-foreground">{request.requestedBy?.fullName || 'Unknown user'}</p>
                     </div>
-                    <span className="text-muted-foreground">{formatDate(request.createdAt)}</span>
-                  </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <StatusBadge status={request.status} />
+                      <span className="text-muted-foreground">{formatDate(request.createdAt)}</span>
+                    </div>
+                  </button>
                 ))}
 
-                {!isLoading && recentRequests.length === 0 && (
-                  <p className="text-muted-foreground">No requests yet.</p>
+                {!isLoading && recentPendingRequests.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
+                    <p className="text-foreground">No pending requests.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">New requests that need review will appear here.</p>
+                  </div>
                 )}
               </div>
             </div>

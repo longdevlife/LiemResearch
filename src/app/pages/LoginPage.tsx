@@ -35,7 +35,10 @@ export function LoginPage() {
 
       saveAuth(data.token, data.user);
 
-      navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(data.user.role === 'admin' ? '/admin' : '/dashboard', {
+        state: { loginSuccess: true },
+        replace: true,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
