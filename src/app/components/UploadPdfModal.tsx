@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { X, Upload, File, Check } from 'lucide-react';
 
+const MAX_PDF_SIZE = 50 * 1024 * 1024;
+
 interface UploadPdfModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,26 +17,36 @@ export function UploadPdfModal({ isOpen, onClose, onUpload, paperTitle }: Upload
 
   if (!isOpen) return null;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setSelectedFile(file);
-      setError('');
-    } else {
+  const setPdfFile = (file?: File) => {
+    if (!file) {
       setError('Please select a PDF file');
+      return;
     }
+
+    if (file.type !== 'application/pdf') {
+      setSelectedFile(null);
+      setError('Please select a PDF file');
+      return;
+    }
+
+    if (file.size > MAX_PDF_SIZE) {
+      setSelectedFile(null);
+      setError('PDF file must be 50MB or smaller');
+      return;
+    }
+
+    setSelectedFile(file);
+    setError('');
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPdfFile(e.target.files?.[0]);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setSelectedFile(file);
-      setError('');
-    } else {
-      setError('Please select a PDF file');
-    }
+    setPdfFile(e.dataTransfer.files?.[0]);
   };
 
   const handleDragOver = (e: React.DragEvent) => {

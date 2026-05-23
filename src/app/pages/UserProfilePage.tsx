@@ -83,6 +83,25 @@ export function UserProfilePage() {
   const handleSave = async () => {
     setError('');
     setMessage('');
+
+    const fullNameError = validateFullName(editForm.fullName);
+    if (fullNameError) {
+      setError(fullNameError);
+      return;
+    }
+
+    const universityError = validateUniversity(editForm.university);
+    if (universityError) {
+      setError(universityError);
+      return;
+    }
+
+    const studentIdError = validateStudentId(editForm.studentId);
+    if (studentIdError) {
+      setError(studentIdError);
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -295,4 +314,54 @@ export function UserProfilePage() {
       </div>
     </div>
   );
+}
+
+function validateUniversity(value: string) {
+  const university = value.trim().replace(/\s+/g, ' ');
+  const words = university.split(' ').filter(Boolean);
+  const hasLetters = /[a-z]/i.test(university);
+  const hasUniversityWord = /\b(university|college|institute|academy|school|đại học|dai hoc|trường|truong|fpt|hutech|rmit)\b/i.test(university);
+
+  if (university.length < 5 || !hasLetters) {
+    return 'Please enter a valid university name.';
+  }
+
+  if (!/^[a-z0-9\s.'&\-À-ỹ]+$/i.test(university)) {
+    return 'University name contains invalid characters.';
+  }
+
+  if (words.length < 2 && !hasUniversityWord) {
+    return 'Please enter the full university name.';
+  }
+
+  return '';
+}
+
+function validateFullName(value: string) {
+  const fullName = value.trim().replace(/\s+/g, ' ');
+  const words = fullName.split(' ').filter(Boolean);
+
+  if (fullName.length < 4 || words.length < 2 || !/[a-zÀ-ỹ]/i.test(fullName)) {
+    return 'Please enter your full name.';
+  }
+
+  if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
+    return 'Full name contains invalid characters.';
+  }
+
+  return '';
+}
+
+function validateStudentId(value: string) {
+  const studentId = value.trim();
+
+  if (studentId.length < 4 || studentId.length > 30) {
+    return 'Student ID must be between 4 and 30 characters.';
+  }
+
+  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
+    return 'Student ID contains invalid characters.';
+  }
+
+  return '';
 }

@@ -22,11 +22,40 @@ export function RegisterPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const fullNameError = validateFullName(formData.fullName);
+    if (fullNameError) {
+      setError(fullNameError);
+      return;
+    }
+
+    const universityError = validateUniversity(formData.university);
+    if (universityError) {
+      setError(universityError);
+      return;
+    }
+
+    const studentIdError = validateStudentId(formData.studentId);
+    if (studentIdError) {
+      setError(studentIdError);
+      return;
+    }
+
+    if (!isValidEmail(formData.email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -187,4 +216,58 @@ export function RegisterPage() {
       </div>
     </div>
   );
+}
+
+function validateUniversity(value: string) {
+  const university = value.trim().replace(/\s+/g, ' ');
+  const words = university.split(' ').filter(Boolean);
+  const hasLetters = /[a-z]/i.test(university);
+  const hasUniversityWord = /\b(university|college|institute|academy|school|đại học|dai hoc|trường|truong|fpt|hutech|rmit)\b/i.test(university);
+
+  if (university.length < 5 || !hasLetters) {
+    return 'Please enter a valid university name.';
+  }
+
+  if (!/^[a-z0-9\s.'&\-À-ỹ]+$/i.test(university)) {
+    return 'University name contains invalid characters.';
+  }
+
+  if (words.length < 2 && !hasUniversityWord) {
+    return 'Please enter the full university name.';
+  }
+
+  return '';
+}
+
+function validateFullName(value: string) {
+  const fullName = value.trim().replace(/\s+/g, ' ');
+  const words = fullName.split(' ').filter(Boolean);
+
+  if (fullName.length < 4 || words.length < 2 || !/[a-zÀ-ỹ]/i.test(fullName)) {
+    return 'Please enter your full name.';
+  }
+
+  if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
+    return 'Full name contains invalid characters.';
+  }
+
+  return '';
+}
+
+function validateStudentId(value: string) {
+  const studentId = value.trim();
+
+  if (studentId.length < 4 || studentId.length > 30) {
+    return 'Student ID must be between 4 and 30 characters.';
+  }
+
+  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
+    return 'Student ID contains invalid characters.';
+  }
+
+  return '';
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

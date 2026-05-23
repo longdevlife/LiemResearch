@@ -59,6 +59,7 @@ async function notifyPaperCommentRecipients({ paper, commenter, comment }) {
 export async function createRating(req, res) {
   const { rating, comment = '' } = req.body;
   const { paperId } = req.params;
+  const normalizedComment = String(comment).trim();
 
   if (isInvalidId(paperId)) {
     return res.status(400).json({ message: 'Invalid paper id' });
@@ -74,6 +75,10 @@ export async function createRating(req, res) {
     return res.status(404).json({ message: 'Paper not found' });
   }
 
+  if (normalizedComment.length > 500) {
+    return res.status(400).json({ message: 'Comment must be 500 characters or fewer' });
+  }
+
   const existingRating = await Rating.findOne({ paper: paperId, user: req.user._id });
   if (existingRating) {
     return res.status(409).json({ message: 'You have already rated this paper', ratingId: existingRating._id });
@@ -83,7 +88,7 @@ export async function createRating(req, res) {
     paper: paperId,
     user: req.user._id,
     rating: normalizedRating,
-    comment: String(comment).trim(),
+    comment: normalizedComment,
   });
 
   await refreshPaperRatingStats(paperId);
@@ -91,7 +96,7 @@ export async function createRating(req, res) {
   await notifyPaperCommentRecipients({
     paper,
     commenter: req.user,
-    comment: String(comment),
+    comment: normalizedComment,
   });
 
   if (req.user.role === 'user') {
@@ -169,6 +174,10 @@ export async function updateRating(req, res) {
 
   const previousComment = existingRating.comment || '';
   const nextComment = comment !== undefined ? String(comment).trim() : previousComment;
+
+  if (nextComment.length > 500) {
+    return res.status(400).json({ message: 'Comment must be 500 characters or fewer' });
+  }
 
   if (comment !== undefined) {
     existingRating.comment = nextComment;

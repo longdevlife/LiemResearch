@@ -7,6 +7,60 @@ function isPresent(value) {
   return value !== undefined && value !== null;
 }
 
+function validateUniversity(value) {
+  const university = String(value).trim().replace(/\s+/g, ' ');
+  const words = university.split(' ').filter(Boolean);
+  const hasLetters = /[a-z]/i.test(university);
+  const hasUniversityWord = /\b(university|college|institute|academy|school|đại học|dai hoc|trường|truong|fpt|hutech|rmit)\b/i.test(university);
+
+  if (university.length < 5 || !hasLetters) {
+    return 'Please enter a valid university name';
+  }
+
+  if (!/^[a-z0-9\s.'&\-À-ỹ]+$/i.test(university)) {
+    return 'University name contains invalid characters';
+  }
+
+  if (words.length < 2 && !hasUniversityWord) {
+    return 'Please enter the full university name';
+  }
+
+  return '';
+}
+
+function validateFullName(value) {
+  const fullName = String(value).trim().replace(/\s+/g, ' ');
+  const words = fullName.split(' ').filter(Boolean);
+
+  if (fullName.length < 4 || words.length < 2 || !/[a-zÀ-ỹ]/i.test(fullName)) {
+    return 'Please enter your full name';
+  }
+
+  if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
+    return 'Full name contains invalid characters';
+  }
+
+  return '';
+}
+
+function validateStudentId(value) {
+  const studentId = String(value).trim();
+
+  if (studentId.length < 4 || studentId.length > 30) {
+    return 'Student ID must be between 4 and 30 characters';
+  }
+
+  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
+    return 'Student ID contains invalid characters';
+  }
+
+  return '';
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
 export async function register(req, res) {
   const { fullName, university, studentId, email, password, confirmPassword } = req.body;
 
@@ -14,17 +68,46 @@ export async function register(req, res) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
+  const fullNameError = validateFullName(fullName);
+  if (fullNameError) {
+    return res.status(400).json({ message: fullNameError });
+  }
+
+  const universityError = validateUniversity(university);
+  if (universityError) {
+    return res.status(400).json({ message: universityError });
+  }
+
+  const studentIdError = validateStudentId(studentId);
+  if (studentIdError) {
+    return res.status(400).json({ message: studentIdError });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  if (String(password).length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+
   if (password !== confirmPassword) {
     return res.status(400).json({ message: 'Passwords do not match' });
   }
 
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: String(email).trim().toLowerCase() });
   if (existingUser) {
     return res.status(409).json({ message: 'Email already exists' });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ fullName, university, studentId, email, passwordHash });
+  const user = await User.create({
+    fullName: String(fullName).trim().replace(/\s+/g, ' '),
+    university: String(university).trim().replace(/\s+/g, ' '),
+    studentId: String(studentId).trim(),
+    email: String(email).trim(),
+    passwordHash,
+  });
 
   res.status(201).json({ user: user.toSafeObject(), token: signToken(user) });
 }
@@ -67,12 +150,35 @@ export async function updateMe(req, res) {
     return res.status(400).json({ message: 'Full name is required' });
   }
 
+  if (updates.fullName !== undefined) {
+    const fullNameError = validateFullName(updates.fullName);
+    if (fullNameError) {
+      return res.status(400).json({ message: fullNameError });
+    }
+    updates.fullName = updates.fullName.replace(/\s+/g, ' ');
+  }
+
   if (updates.university !== undefined && !updates.university) {
     return res.status(400).json({ message: 'University is required' });
   }
 
+  if (updates.university !== undefined) {
+    const universityError = validateUniversity(updates.university);
+    if (universityError) {
+      return res.status(400).json({ message: universityError });
+    }
+    updates.university = updates.university.replace(/\s+/g, ' ');
+  }
+
   if (updates.studentId !== undefined && !updates.studentId) {
     return res.status(400).json({ message: 'Student ID is required' });
+  }
+
+  if (updates.studentId !== undefined) {
+    const studentIdError = validateStudentId(updates.studentId);
+    if (studentIdError) {
+      return res.status(400).json({ message: studentIdError });
+    }
   }
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true });

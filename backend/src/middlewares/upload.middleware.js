@@ -40,6 +40,11 @@ export function uploadSinglePdf(req, res, next) {
       return;
     }
 
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({ message: 'PDF file must be 50MB or smaller' });
+      return;
+    }
+
     next(err);
   });
 }
