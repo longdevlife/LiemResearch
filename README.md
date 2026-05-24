@@ -8,4 +8,4 @@ This is a code bundle for Research Paper Management System. The original project
 
 Run `npm i` to install the dependencies.
 
-Run `npm run dev` to start the development  server.
+Run `npm run dev` to start the development server.
