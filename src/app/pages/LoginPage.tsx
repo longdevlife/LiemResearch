@@ -1,19 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Lock, Mail, Search } from 'lucide-react';
-import { apiRequest, AuthUser, saveAuth } from '../lib/api';
+import { Lock, Mail, Search, Eye, EyeOff } from 'lucide-react';
+import { apiRequest, AuthUser, saveAuth, getStoredUser, getToken } from '../lib/api';
 
 export function LoginPage() {
   const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  // Kiểm tra nếu đã đăng nhập, tự động chuyển hướng
+  useEffect(() => {
+    const token = getToken();
+    const user = getStoredUser();
+
+    if (token && user) {
+      navigate(user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!email.trim()) {
+      setError('Email is required.');
+      return;
+    }
 
     if (!isValidEmail(email)) {
       setError('Please enter a valid email address.');
@@ -46,6 +63,15 @@ export function LoginPage() {
     }
   };
 
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (value.trim() && !isValidEmail(value)) {
+      setEmailError('Invalid email format');
+    } else {
+      setEmailError('');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface-auth bg-fixed">
       <header className="border-b border-border bg-white">
@@ -75,7 +101,7 @@ export function LoginPage() {
               type="button"
               className="rounded-lg bg-accent px-4 py-2 text-accent-foreground"
             >
-              Log in
+              Login
             </button>
             <button
               type="button"
@@ -92,7 +118,7 @@ export function LoginPage() {
         <div className="w-full max-w-xl">
           <div className="mb-8 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
-            <h1 className="text-foreground mb-2">Log in to LiemResearch</h1>
+            <h1 className="text-foreground mb-2 text-2xl md:text-3xl font-semibold whitespace-nowrap">Login to LiemResearch</h1>
             <p className="text-muted-foreground">Read papers, request research, and track your contributions.</p>
           </div>
 
@@ -105,12 +131,17 @@ export function LoginPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 bg-input-background transition-colors ${
+                      emailError
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-border focus:ring-primary'
+                    }`}
                     placeholder="student@university.edu"
                     required
                   />
                 </div>
+                {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
               </div>
 
               <div>
@@ -118,13 +149,20 @@ export function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    className="w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                     placeholder="Enter your password"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
 

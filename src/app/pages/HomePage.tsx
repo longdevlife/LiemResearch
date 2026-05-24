@@ -127,7 +127,7 @@ export function HomePage() {
                 onClick={() => navigate('/login')}
                 className="rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
-                Log in
+                Login
               </button>
               <button
                 type="button"
@@ -279,7 +279,7 @@ export function HomePage() {
                 onClick={() => navigate('/login')}
                 className="rounded-lg border border-border px-4 py-2 text-foreground transition-colors hover:bg-accent"
               >
-                Log in
+                Login
               </button>
             </div>
           </div>

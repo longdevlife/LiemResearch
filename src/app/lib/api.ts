@@ -16,30 +16,64 @@ type RequestOptions = RequestInit & {
   auth?: boolean;
 };
 
+// Storage sync listeners
+let storageListeners: Set<() => void> = new Set();
+
 export function getToken() {
-  return sessionStorage.getItem('token');
+  return localStorage.getItem('token');
 }
 
 export function getStoredUser(): AuthUser | null {
-  const rawUser = sessionStorage.getItem('user');
+  const rawUser = localStorage.getItem('user');
   if (!rawUser) return null;
 
   try {
     return JSON.parse(rawUser) as AuthUser;
   } catch {
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('user');
     return null;
   }
 }
 
 export function saveAuth(token: string, user: AuthUser) {
-  sessionStorage.setItem('token', token);
-  sessionStorage.setItem('user', JSON.stringify(user));
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(user));
 }
 
 export function clearAuth() {
-  sessionStorage.removeItem('token');
-  sessionStorage.removeItem('user');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
+
+/**
+ * Đồng bộ auth giữa các tab trình duyệt
+ * Khi một tab thay đổi auth (login/logout), các tab khác sẽ tự động cập nhật
+ * @param onAuthChange Callback khi auth thay đổi ở tab khác (type: 'login' | 'logout')
+ * @returns Hàm cleanup để dừng lắng nghe
+ */
+export function setupStorageSync(onAuthChange?: (type: 'login' | 'logout') => void) {
+  const handleStorageChange = (event: StorageEvent) => {
+    // Lắng nghe sự kiện thay đổi localStorage từ các tab khác
+    if (event.key === 'token' || event.key === 'user') {
+      if (event.newValue === null) {
+        // Token hoặc user bị xóa (logout ở tab khác)
+        onAuthChange?.('logout');
+      } else {
+        // Token hoặc user được cập nhật (login ở tab khác)
+        onAuthChange?.('login');
+      }
+    }
+  };
+
+  // Thêm listener
+  window.addEventListener('storage', handleStorageChange);
+  storageListeners.add(handleStorageChange);
+
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('storage', handleStorageChange);
+    storageListeners.delete(handleStorageChange);
+  };
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
-import { Search, Plus, Download, Filter } from 'lucide-react';
-import { apiRequest, getToken } from '../lib/api';
-import { PublicPaper } from '../lib/papers';
+import { SubNavbar } from '../components/SubNavbar';
+import { StatsCard } from '../components/StatsCard';
+import { StatusBadge } from '../components/StatusBadge';
 import { PaperCard } from '../components/PaperCard';
+import { FileText, Download, Clock, Users } from 'lucide-react';
+import { apiRequest, AuthUser, getToken } from '../lib/api';
+import { PublicPaper } from '../lib/papers';
+import { Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
 
 type FeedTab = 'newest' | 'rating' | 'downloads' | 'hasPdf';
 
@@ -101,9 +105,16 @@ export function UserDashboard() {
     <div className="flex min-h-screen bg-surface-workspace bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1">
         <AppHeader role="user" />
-        <div className="max-w-7xl mx-auto">
+        <SubNavbar 
+          items={feedTabs}
+          activeValue={activeTab}
+          onSelect={(value) => setActiveTab(value as FeedTab)}
+          title="Filter by"
+        />
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
               <h1 className="text-foreground mb-2">Dashboard</h1>
@@ -157,24 +168,7 @@ export function UserDashboard() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <div className="flex flex-wrap gap-2">
-                {feedTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setActiveTab(tab.value)}
-                    className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-                      activeTab === tab.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 {isLoading ? 'Loading papers...' : `Showing ${papers.length} paper${papers.length !== 1 ? 's' : ''}`}
               </p>
@@ -202,6 +196,7 @@ export function UserDashboard() {
               </p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

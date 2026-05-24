@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BookOpen, Building2, CheckCircle2, CreditCard, Lock, Mail, Search, ShieldCheck, User } from 'lucide-react';
-import { apiRequest, AuthUser } from '../lib/api';
+import { apiRequest, AuthUser, getStoredUser, getToken } from '../lib/api';
 
 export function RegisterPage() {
   const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
@@ -16,6 +16,16 @@ export function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Kiểm tra nếu đã đăng nhập, tự động chuyển hướng
+  useEffect(() => {
+    const token = getToken();
+    const user = getStoredUser();
+
+    if (token && user) {
+      navigate(user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
