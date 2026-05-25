@@ -1,322 +1,383 @@
-# Phase A — Chia Việc Theo Feature
+# Phase A — Chia Việc Theo Use Case
 
-**4 người, 4 feature, mỗi người ship 1 thứ.**
-
-Mỗi feature là **1 thứ demoable** — show được cho thầy, viết được trên CV. Không có "Track A/B/C" technical jargon. Tên đơn giản.
+> **Triết lý:** Mỗi dev sở hữu 1 **user journey** xuyên suốt project. Khi thầy hỏi "ai làm gì", có câu trả lời 1 câu rõ ràng. CV viết được luôn.
 
 ---
 
-## 🗂️ Quick Overview
+## 🎭 4 User Journeys — 4 Domain Owners
 
-| Người | Feature | Cái gì sẽ tồn tại sau khi xong |
-|---|---|---|
-| **Lead (bạn)** | 📊 **Paper Sync System** | DB có 100+ paper thật từ OpenAlex, sync chạy được, dedup hoạt động |
-| **Dev 1** | 📱 **Mobile Login/Register** | Mở Expo Go trên điện thoại đăng ký + đăng nhập được, token persist |
-| **Dev 2** | 🎨 **UI Component Library** | Có PaperCard, EmptyState, 404, dark mode — dùng được khắp app |
-| **Dev 3** | 🔧 **Team Workflow Tools** | CI tự chạy khi PR, lint auto-format khi commit, docker build được |
+Mỗi người **chủ sở hữu 1 use case** từ Phase A đến Phase E. Không phải "1 phase 1 task" mà là "1 lĩnh vực xuyên suốt".
 
-**Ghi chú:** Web Login/Register **đã xong** (commit `9e1002c`) — không cần chia cho ai nữa.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 👑 LEAD (bạn) — "AI Brain & Admin"                              │
+│ User journey: System ingests data and AI analyzes papers        │
+│                                                                 │
+│ "Em xây dựng pipeline data + AI để các dev khác có data dùng"   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔍 DEV 1 — "Discovery"                                          │
+│ User journey: User searches → sees results → reads paper        │
+│                                                                 │
+│ "Em xây search, browse paper, xem trend"                        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ⭐ DEV 2 — "Personalization"                                    │
+│ User journey: User saves, follows, gets notified                │
+│                                                                 │
+│ "Em xây bookmark, follow topic, profile, notification"          │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 📑 DEV 3 — "Research & Insights"                                │
+│ User journey: Researcher builds project → generates report      │
+│                                                                 │
+│ "Em xây project, AI report viewer, research gap, dashboard"     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Tại sao split này tốt:**
+- Mỗi người 1 user story rõ ràng, demo 1 phút cho thầy
+- Full-stack ownership: dev quản BE + Web + Mobile cho domain của mình
+- Maps trực tiếp với câu hỏi gốc trong project brief
+- CV: "Owned 'paper discovery' user journey end-to-end across web + mobile"
+- Phase B-E sau cũng tiếp tục với cùng phân chia này — không phải reassign liên tục
 
 ---
 
-## 📊 Lead (bạn) — Paper Sync System
+## 🗺️ Big Picture — Mỗi Người Làm Gì Qua 5 Phases
 
-### Mục tiêu rõ ràng
-Cuối Phase A, demo cho thầy:
-> *"Đây — em bấm nút Sync, sau 2 phút có 100 bài báo về LLM-in-education từ OpenAlex. Click vào xem thấy title, author, year, journal."*
+| | Phase A (now) | Phase B | Phase C | Phase D | Phase E |
+|---|---|---|---|---|---|
+| **Lead** | Sync OpenAlex + 10 models + admin sync endpoint | Embeddings worker + add Semantic Scholar | LLM service + RAG pipeline | MCP tools + research gap engine | Admin web UI polish |
+| **Dev 1 — Discovery** | UI shell (PaperCard mock, SearchBar) | Semantic search results page | Paper detail page | Trends dashboard | Mobile search/detail screens |
+| **Dev 2 — Personal** | Mobile auth + Profile page | (idle / Dev 1 helper) | Bookmark API + page | Follow + notifications | Mobile personal screens |
+| **Dev 3 — Research** | UI components + DevOps tools | Markdown viewer + saved searches | Report list + viewer page | Projects + Gap Viewer | Mobile read-only screens |
 
-### Output bạn ship
-1. 10 Mongoose models trong DB (journals, authors, keywords, ...)
-2. Worker chạy nền (`pnpm worker:sync`)
-3. Admin endpoint `POST /api/v1/admin/sync` trigger được
-4. Cron job tự chạy 2h sáng mỗi ngày
-5. ~100 paper thật trong MongoDB Atlas
+Trên trục **dọc**, mỗi cột Phase tăng dần độ phức tạp.
+Trên trục **ngang**, mỗi dev có **1 dải feature liên tục** — biết phía trước cần làm gì.
 
-### Spec chi tiết
-[`docs/superpowers/specs/2026-05-25-phase-a-design.md`](superpowers/specs/2026-05-25-phase-a-design.md)
+---
 
-### Files bạn động vào
+## 📋 Phase A — Tasks Cụ Thể Cho Mỗi Owner
+
+### 👑 LEAD (bạn) — Paper Sync + Admin Foundation
+
+#### Mục tiêu Phase A
+Tạo data foundation để 3 dev khác có data thật để build UI:
+> *"Bấm Sync → sau 2 phút có 100 paper về LLM-in-education thật trong DB, admin xem được sync history"*
+
+#### Output ship được
+1. **10 Mongoose models** (journals, authors, keywords, research_topics, paper_source_records, paper_quality_checks, api_providers, api_sync_configs, api_sync_runs, audit_logs)
+2. **OpenAlex client** với rate-limit + retry + cursor pagination
+3. **Sync worker** standalone (`pnpm worker:sync`)
+4. **Admin endpoint** `POST /api/v1/admin/sync`
+5. **Admin UI page** trong web — list sync runs, button trigger sync
+6. **Cron job** chạy 2h sáng mỗi ngày
+7. ~100+ paper thật trong MongoDB
+
+#### Files động vào
 ```
 apps/backend/src/modules/api-sync/*          (toàn bộ module mới)
 apps/backend/src/modules/papers/models/*     (6 models mới)
 apps/backend/src/modules/audit/*             (module mới)
-apps/backend/src/workers/sync.worker.ts      (entry point worker)
-apps/backend/scripts/seed-providers.ts       (seed api_providers)
+apps/backend/src/workers/sync.worker.ts      (entry point)
+apps/backend/scripts/seed-providers.ts       (seed)
+
+apps/web/src/pages/admin/                    (mới)
+├── sync.tsx                                 (trigger + history page)
+└── runs/[id].tsx                            (run detail)
+
+apps/web/src/features/admin/                 (mới module)
+├── api/admin.api.ts
+└── hooks/use-admin.ts
 ```
 
-### Done khi
-- [ ] `curl POST /api/v1/admin/sync` → return runId
-- [ ] Worker logs ~200 paper upsert
-- [ ] MongoDB count `research_papers` ≥ 100
-- [ ] Re-run sync → `totalDuplicates` tăng
-- [ ] `pnpm typecheck` pass
+#### Spec chi tiết
+[`docs/superpowers/specs/2026-05-25-phase-a-design.md`](superpowers/specs/2026-05-25-phase-a-design.md)
 
-**Effort:** 6–10 giờ.
+#### Done khi
+- [ ] `curl POST /admin/sync` → return runId
+- [ ] Worker logs 100+ paper upsert
+- [ ] MongoDB `research_papers.count` ≥ 100
+- [ ] Re-run sync → totalDuplicates tăng (dedup OK)
+- [ ] Admin UI hiển thị danh sách runs với status
+
+**Effort:** 8–12 giờ.
 
 ---
 
-## 📱 Dev 1 — Mobile Login/Register
+### 🔍 DEV 1 — Discovery UI Shell
 
-### Mục tiêu rõ ràng
-Cuối Phase A, demo:
-> *"Em mở app trên điện thoại, đăng ký account mới, đóng app, mở lại — vẫn đăng nhập."*
+#### Mục tiêu Phase A
+Chuẩn bị UI components cho user journey "discover papers" — chạy được với **mock data** (không cần đợi Lead xong sync).
 
-### Output bạn ship
-1. Màn hình Login + Register trên Expo
-2. Token lưu vào secure storage (Keychain iOS / Keystore Android)
-3. Protected route — chưa login bị đẩy về Login
-4. Logout button hoạt động
+> *"Em xây UI để hiển thị paper. Khi Lead sync xong, em chỉ swap mock → real data."*
 
-### Code mẫu để copy
-**Web đã có sẵn pattern hoàn chỉnh ở:**
-- `apps/web/src/features/auth/components/login-form.tsx` ← copy logic, đổi UI sang RN
-- `apps/web/src/features/auth/components/register-form.tsx`
-- `apps/web/src/components/protected-route.tsx`
+#### Output ship được
+1. **PaperCard component** (web) — hiển thị title, authors, year, citationCount, journal
+2. **SearchBar component** với debounce + clear button
+3. **PaperList component** — list of PaperCard với pagination
+4. **Search page mockup** (web) — chưa connect API thật, dùng mock paper data
+5. **Mobile Search screen** mockup
+6. **Mobile Paper Detail screen** mockup
 
-### Reuse những gì đã có (KHÔNG viết lại)
-- `apps/mobile/src/features/auth/index.ts` — đã export `useLogin`, `useRegister`, `useLogout`, `useCurrentUser`
-- `apps/mobile/src/services/api-client.ts` — axios + JWT refresh đã sẵn
-- `apps/mobile/src/stores/auth-store.ts` — đã wire với `expo-secure-store`
-
-### Files bạn tạo
+#### Files động vào
 ```
-apps/mobile/src/features/auth/components/login-form.tsx     NEW
-apps/mobile/src/features/auth/components/register-form.tsx  NEW
-apps/mobile/src/features/auth/schemas/auth.schemas.ts       COPY từ web
-apps/mobile/app/(auth)/_layout.tsx                          NEW
-apps/mobile/app/(auth)/login.tsx                            NEW
-apps/mobile/app/(auth)/register.tsx                         NEW
-apps/mobile/src/components/protected-route.tsx              NEW
-apps/mobile/app/_layout.tsx                                 EDIT
+apps/web/src/features/papers/components/
+├── paper-card.tsx                          NEW
+├── paper-list.tsx                          NEW
+└── empty-state.tsx                         NEW
+
+apps/web/src/features/search/components/
+├── search-bar.tsx                          NEW
+└── search-filters.tsx                      NEW (year range, open access)
+
+apps/web/src/pages/search.tsx               NEW (route /search)
+apps/web/src/pages/papers/[id].tsx          NEW (route /papers/:id)
+
+apps/web/src/routes/app-routes.tsx          EDIT — add /search /papers/:id
+
+apps/mobile/src/features/papers/components/
+└── paper-card.tsx                          NEW
+
+apps/mobile/app/(tabs)/search.tsx           NEW
+apps/mobile/app/paper/[id].tsx              NEW
+
+apps/web/src/fixtures/mock-papers.ts        NEW — fake paper data for dev
 ```
 
-### Tech cần dùng
-- React Native components: `View`, `Text`, `TextInput`, `Pressable`
-- NativeWind classNames (Tailwind cho RN) — đã setup
-- `react-hook-form` + `@hookform/resolvers` — cần install
-- `expo-router` cho navigation
-- Validation: copy nguyên `loginSchema`, `registerSchema` Zod từ web
+#### Reuse có sẵn (KHÔNG viết lại)
+- `apps/web/src/features/papers/api/papers.api.ts` — đã có `papersApi.list()` và `papersApi.detail()`
+- `apps/web/src/features/papers/hooks/use-papers.ts` — đã có `usePapers()` và `usePaper()`
+- Type `Paper` từ `@trend/shared-types`
+- shadcn `Card`, `Input`, `Button` đã install
 
-### Done khi
-- [ ] `pnpm dev:mobile` mở Expo Go, scan QR vào app
-- [ ] Đăng ký tạo account mới — backend nhận
-- [ ] Đóng app, mở lại — vẫn login
-- [ ] Logout → quay lại màn Login
-- [ ] Test trên iOS simulator HOẶC Android emulator HOẶC điện thoại thật
+#### Done khi
+- [ ] Vào `/search` → SearchBar + mock paper results
+- [ ] Vào `/papers/abc123` → Paper detail page với mock data
+- [ ] Mobile: Search screen render được trên Expo Go
+- [ ] PaperCard component test standalone: render đẹp với 1 paper bất kỳ
+- [ ] EmptyState khi search không có kết quả
 
-**Effort:** 4–6 giờ.
+**Effort:** 6–8 giờ.
 
 ---
 
-## 🎨 Dev 2 — UI Component Library
+### ⭐ DEV 2 — Mobile Auth + Profile
 
-### Mục tiêu rõ ràng
-Cuối Phase A, demo:
-> *"Bất kỳ trang nào empty thì hiện 'EmptyState đẹp', đang load hiện skeleton, lỗi hiện ErrorBoundary, đổi dark mode được, 404 page có nút Back."*
+#### Mục tiêu Phase A
+Hoàn thiện auth cross-platform (web đã xong, mobile chưa) + tạo profile page cho user.
 
-→ Đây là **design foundation**. Phase B-C sau sẽ dùng lại các component này nhiều lần.
+> *"Em xây để user đăng nhập trên cả web và mobile, vào profile xem/sửa info"*
 
-### Output bạn ship
-1. 6 components mới reusable
-2. 2 pages: 404, ErrorBoundary
-3. Dark mode toggle hoạt động và persist
-4. MainLayout có theme toggle
+#### Output ship được
+1. **Mobile Login screen** — copy web's login-form.tsx pattern qua RN
+2. **Mobile Register screen**
+3. **Mobile Profile screen** — hiển thị info user, nút logout
+4. **Web Profile page** `/profile` — view + edit fullName, see role
+5. **Mobile protected route** equivalent cho Expo Router
+6. **Profile picture upload** (Phase A bonus, nếu kịp)
 
-### Files bạn tạo
+#### Files động vào
 ```
-apps/web/src/components/empty-state.tsx          NEW — title + desc + CTA optional
-apps/web/src/components/loading-spinner.tsx      NEW — inline spinner
-apps/web/src/components/skeleton.tsx             NEW — hoặc shadcn add skeleton
-apps/web/src/components/paper-card.tsx           NEW — hiển thị 1 paper (dùng Paper từ shared-types)
-apps/web/src/components/theme-toggle.tsx         NEW — light/dark switch
-apps/web/src/components/page-error.tsx           NEW — ErrorBoundary wrapper
+apps/mobile/src/features/auth/components/
+├── login-form.tsx                          NEW (copy web pattern)
+└── register-form.tsx                       NEW
 
-apps/web/src/pages/not-found.tsx                 NEW — 404 page
-apps/web/src/pages/error.tsx                     NEW — generic crash page
+apps/mobile/src/features/auth/schemas/auth.schemas.ts  COPY from web
 
-apps/web/src/main.tsx                            EDIT — wrap với ThemeProvider
-apps/web/src/layouts/MainLayout.tsx              EDIT — thêm ThemeToggle vào header
-apps/web/src/routes/app-routes.tsx               EDIT — add Route path="*" → 404
-```
+apps/mobile/app/(auth)/
+├── _layout.tsx                             NEW (Stack)
+├── login.tsx                               NEW
+└── register.tsx                            NEW
 
-### Tech cần dùng
-- shadcn `Card`, `Button` đã có
-- `next-themes` cho dark mode (đã trong package.json)
-- `lucide-react` cho icons (đã có)
-- Type `Paper` từ `@trend/shared-types` (cho PaperCard prop)
-- Test với **mock data** — không cần đợi Track Sync xong
+apps/mobile/src/components/protected-route.tsx  NEW
 
-### PaperCard sample
-```tsx
-import type { Paper } from "@trend/shared-types";
+apps/mobile/app/(tabs)/profile.tsx          NEW
 
-<PaperCard
-  paper={mockPaper}
-  onClick={(p) => console.log(p.id)}
-  showCitations
-/>
+apps/web/src/pages/profile.tsx              NEW (route /profile, protected)
+apps/web/src/features/users/                NEW module
+├── api/users.api.ts
+└── hooks/use-update-profile.ts
+
+apps/backend/src/modules/users/             EXTEND existing
+└── user.controller.ts                      NEW — PATCH /me to update profile
 ```
 
-### Done khi
-- [ ] Vào URL bất kỳ không tồn tại → 404 page với nút "Back home"
-- [ ] Click theme toggle → trang flip dark/light, reload vẫn giữ
-- [ ] Render `<PaperCard paper={mockPaper}/>` standalone đẹp
-- [ ] Throw error trong component → ErrorBoundary catch, không white screen
-- [ ] `<EmptyState/>`, `<LoadingSpinner/>`, `<Skeleton/>` dùng được independent
+#### Reuse có sẵn
+- `apps/mobile/src/features/auth/index.ts` — đã export `useLogin`, `useRegister`, `useLogout`
+- `apps/mobile/src/stores/auth-store.ts` — đã wire `expo-secure-store`
+- `apps/web/src/features/auth/components/login-form.tsx` — copy logic, đổi UI sang RN
 
-**Effort:** 4–6 giờ.
+#### Done khi
+- [ ] Expo Go: đăng ký account mới → toast → vào Home
+- [ ] Đóng app, mở lại → vẫn đăng nhập
+- [ ] Tab Profile → email + Logout button
+- [ ] Web `/profile` → form sửa fullName, save → API PATCH thành công
+- [ ] Logout cả web + mobile xong → redirect /login
+
+**Effort:** 5–7 giờ.
 
 ---
 
-## 🔧 Dev 3 — Team Workflow Tools
+### 📑 DEV 3 — UI Foundation + Team Tooling
 
-### Mục tiêu rõ ràng
-Cuối Phase A, demo:
-> *"Em commit code → tự động format. Em push PR → GitHub Actions tự chạy lint + typecheck. Code xấu không vào main được."*
+#### Mục tiêu Phase A
+Xây dựng nền tảng dùng chung cho **tất cả** Phase B-E + tighten team workflow.
 
-→ Đây là **process foundation**. Bảo vệ chất lượng code cho cả team.
+> *"Em làm các component reusable + setup CI/lint để team không dập tay nhau"*
 
-### Output bạn ship
-1. ESLint config — bắt lỗi code khi commit
-2. Prettier — tự format khi save
-3. Husky pre-commit hook — chặn commit code xấu
-4. Commitlint — chặn commit message lung tung
-5. GitHub Actions CI — chạy khi PR
-6. Backend Dockerfile — deploy được sau này
-7. CONTRIBUTING.md — onboarding cho dev mới
+#### Output ship được
+1. **6 reusable components** (web): EmptyState, LoadingSpinner, Skeleton, NotFoundPage, ErrorBoundary, ThemeToggle
+2. **Dark mode** hoạt động + persist
+3. **404 page** với link back
+4. **ESLint + Prettier** config
+5. **Husky pre-commit** + commitlint
+6. **GitHub Actions CI** workflow
+7. **Backend Dockerfile**
+8. **CONTRIBUTING.md** cho onboard dev mới
 
-### Files bạn tạo
+#### Files động vào
 ```
-.eslintrc.cjs                         NEW — root
-apps/{backend,web,mobile}/.eslintrc.cjs  NEW — kế thừa root
-.prettierrc.json                      NEW
-.prettierignore                       NEW
+apps/web/src/components/
+├── empty-state.tsx                         NEW
+├── loading-spinner.tsx                     NEW
+├── skeleton.tsx                            NEW (or shadcn add skeleton)
+├── theme-toggle.tsx                        NEW (next-themes)
+└── page-error.tsx                          NEW
 
-.husky/pre-commit                     NEW — runs lint-staged
-.husky/commit-msg                     NEW — runs commitlint
-.lintstagedrc.json                    NEW
-commitlint.config.cjs                 NEW
+apps/web/src/pages/
+├── not-found.tsx                           NEW (404)
+└── error.tsx                               NEW
 
-.github/workflows/ci.yml              NEW — lint + typecheck + build matrix
-.github/pull_request_template.md      NEW
+apps/web/src/main.tsx                       EDIT — ThemeProvider
+apps/web/src/layouts/MainLayout.tsx         EDIT — add ThemeToggle in header
 
-.vscode/settings.json                 NEW
-.vscode/extensions.json               NEW
+.eslintrc.cjs                               NEW (root)
+apps/{backend,web,mobile}/.eslintrc.cjs     NEW
+.prettierrc.json                            NEW
+.prettierignore                             NEW
+.lintstagedrc.json                          NEW
+commitlint.config.cjs                       NEW
 
-apps/backend/Dockerfile               NEW — multi-stage node:22-alpine
-apps/backend/.dockerignore            NEW
+.husky/pre-commit                           NEW
+.husky/commit-msg                           NEW
 
-CONTRIBUTING.md                       NEW — branch naming, PR rules
+.github/workflows/ci.yml                    NEW
+.github/pull_request_template.md            NEW
+
+.vscode/settings.json                       NEW
+.vscode/extensions.json                     NEW
+
+apps/backend/Dockerfile                     NEW
+apps/backend/.dockerignore                  NEW
+
+CONTRIBUTING.md                             NEW
 ```
 
-### Lệnh setup
+#### Lệnh setup tooling
 ```bash
-# Tại repo root
 pnpm add -D -w eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser \
   eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-import \
   eslint-plugin-jsx-a11y prettier eslint-config-prettier husky lint-staged \
   @commitlint/cli @commitlint/config-conventional
 pnpm exec husky init
+# add "prepare": "husky" to root package.json
 ```
 
-Add vào root `package.json`: `"prepare": "husky"`.
+#### Done khi
+- [ ] `pnpm lint` chạy không lỗi
+- [ ] Commit code xấu → bị chặn
+- [ ] Commit message `wip` → bị commitlint chặn
+- [ ] Mở PR → GitHub Actions tự chạy lint + typecheck
+- [ ] `docker build -t trend-backend apps/backend` thành công
+- [ ] Vào URL không tồn tại → 404 page
+- [ ] Click theme toggle → dark/light, reload vẫn giữ
 
-### Done khi
-- [ ] `pnpm lint` chạy từ root, không lỗi cho code hiện tại
-- [ ] Commit file với `var x = 1` → bị chặn (rule no-var)
-- [ ] Commit message `"wip"` → bị commitlint chặn (cần `feat:` hoặc `fix:`)
-- [ ] Mở PR trên GitHub → CI tự chạy lint + typecheck, status check hiện
-- [ ] `docker build -t trend-backend apps/backend` ra image < 200 MB
-- [ ] Dev mới đọc CONTRIBUTING.md tự setup được
+⚠️ **KHÔNG động vào** `apps/backend/src/modules/api-sync/*` và `apps/backend/src/modules/papers/models/*` — đó là territory của Lead.
 
-### ⚠️ KHÔNG được động vào
-- `apps/backend/src/modules/api-sync/*` (Lead's territory)
-- `apps/backend/src/modules/papers/models/*` (Lead's territory)
-
-Nếu muốn config affect chỉ những file đã có, không phải đoán file Lead sẽ tạo.
-
-**Effort:** 3–4 giờ.
+**Effort:** 5–7 giờ.
 
 ---
 
-## 🧭 Coordination Rules (Cho 4 Người)
+## 🧭 Coordination Rules
 
-### 1. Branch naming
+### Branch naming
 ```
 feat/<your-name>/<short-description>
 ví dụ:
-  feat/long/mobile-login
-  feat/thanh/paper-card
+  feat/long/openalex-sync
+  feat/thanh/mobile-login
+  feat/anh/paper-card
   feat/nam/ci-workflow
 ```
 
-### 2. Commit message format (sau khi Dev 3 setup commitlint)
+### Commit format (sau khi Dev 3 setup commitlint)
 ```
-feat: short description           ← thêm tính năng
-fix: short description            ← sửa bug
-docs: short description           ← chỉ docs
-refactor: short description       ← đổi code không đổi behavior
-chore: short description          ← config, build, devops
+feat: short summary
+fix: short summary
+docs: short summary
+refactor: short summary
+chore: short summary
 ```
 
-### 3. PR flow
-- Push lên branch riêng → mở PR vào `dev` (không vào `main`)
-- Reviewer = ít nhất 1 người trong team
-- CI phải xanh mới merge
-- Lead merge `dev` → `main` cuối Phase A
+### PR flow
+- Branch riêng → PR vào `dev`
+- 1 người approve mới merge
+- CI phải xanh
+- Lead merge `dev` → `main` cuối phase
 
-### 4. Daily standup
-- 9h sáng mỗi ngày Discord voice (15 phút)
-- Mỗi người 30 giây: hôm qua làm X, hôm nay làm Y, vướng Z
-- Block ở chỗ nào → cả nhóm pair giúp
+### Daily standup
+- 9h sáng Discord voice, 15 phút
+- Yesterday / today / blockers — mỗi người 30s
 
-### 5. Pull `dev` mỗi sáng
+### Pull `dev` mỗi sáng
 ```bash
 git checkout dev && git pull
 git checkout feat/your-branch && git rebase dev
 ```
 
-### 6. KHÔNG share secret qua git
-- `.env` đã trong `.gitignore`
-- Secrets share qua Discord pin (xem template trong CLAUDE.md)
-- Mỗi người tự lấy Gemini key riêng
+### Khi stuck — format gửi Discord
+```
+🆘 Stuck
+Domain: [Discovery / Personal / Research / AI Brain]
+File: <path>
+Đã thử: <những gì làm>
+Error: <paste>
+```
 
 ---
 
 ## ✅ Phase A "Done" Definition
 
-Cả team xong khi:
-- [ ] Lead: Sync system hoạt động, 100+ papers trong DB
-- [ ] Dev 1: Mobile auth chạy trên Expo Go
-- [ ] Dev 2: UI components + 404 + theme toggle merged
-- [ ] Dev 3: CI xanh trên mọi PR, pre-commit hook chặn code xấu
+Cả 4 người xong khi:
+- [ ] Lead: 100+ papers trong DB, sync hoạt động, admin UI list runs OK
+- [ ] Dev 1: PaperCard + Search page (mock data) render OK
+- [ ] Dev 2: Mobile auth chạy Expo Go + Web profile page hoạt động
+- [ ] Dev 3: CI green trên PR + dark mode + 404 + pre-commit hook active
 - [ ] CLAUDE.md §10 (Roadmap) update Phase A → DONE
 - [ ] Lead merge `dev` → `main`
 
 ---
 
-## 🎯 Sau Phase A — Ai Xong Sớm Làm Gì?
+## 🎯 Sau Phase A — Mỗi Owner Tiếp Phase B
 
-**Phase B prep** (đọc + prototype, low-risk):
-- Đọc [Atlas Vector Search docs](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/)
-- Stub `apps/backend/src/modules/embeddings/embedding.worker.ts`
-- Prototype semantic search controller với fake 768-dim vector
-- Đọc Gemini prompt engineering guide
+**Vì split đã thiết kế xuyên 5 phases**, không cần reassign:
 
-→ Không lãng phí thời gian, sẵn sàng Phase B.
+- **Lead** → Phase B: embeddings worker + semantic search backend + add Semantic Scholar
+- **Dev 1** → Phase B: connect real search API + semantic search UI
+- **Dev 2** → Phase B: (rảnh, help Dev 1) hoặc Phase B prep cho personal features
+- **Dev 3** → Phase B: markdown viewer component cho future report rendering
+
+Mỗi người có "roadmap cá nhân" — biết tuần sau làm gì.
 
 ---
 
-## 📞 Khi Stuck
+## 📚 Tham Khảo
 
-Format ngắn gọn gửi vào Discord:
-
-```
-🆘 Stuck
-Feature: [Sync System / Mobile Auth / ...]
-File: [path]
-Đã thử: [những gì đã làm]
-Error: [paste error]
-```
-
-Ai trên đầu thấy có thể giúp ngay. Lead luôn ưu tiên trả lời.
+- [Phase A backend design spec](superpowers/specs/2026-05-25-phase-a-design.md)
+- [CLAUDE.md](../CLAUDE.md) — project context tổng quát
+- [Web README](../apps/web/README.md), [Backend README](../apps/backend/README.md), [Mobile README](../apps/mobile/README.md)
