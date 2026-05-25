@@ -1,5 +1,6 @@
 import type React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -12,7 +13,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { PaperManagementPage } from './pages/PaperManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PaperDetailPage } from './pages/PaperDetailPage';
-import { getStoredUser, getToken } from './lib/api';
+import { getStoredUser, getToken, setupStorageSync } from './lib/api';
 
 function ProtectedRoute({
   children,
@@ -38,7 +39,28 @@ function ProtectedRoute({
 export default function App() {
   return (
     <Router>
-      <Routes>
+      <AppContent />
+    </Router>
+  );
+}
+
+function AppContent() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Đồng bộ auth giữa các tab
+    const cleanup = setupStorageSync((type) => {
+      if (type === 'logout') {
+        // Nếu tab khác logout, redirect về login
+        navigate('/login', { replace: true });
+      }
+    });
+
+    return cleanup;
+  }, [navigate]);
+
+  return (
+    <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -52,6 +74,5 @@ export default function App() {
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
         <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
       </Routes>
-    </Router>
-  );
+    );
 }

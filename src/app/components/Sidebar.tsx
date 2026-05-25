@@ -54,12 +54,12 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
               <li key={item.path}>
                 <button
                   onClick={() => handleNavigate(item)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
                     item.isLogout
                       ? 'text-red-600 hover:bg-red-50'
                       : isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-foreground hover:bg-accent'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                   }`}
                 >
                   <Icon size={20} />
