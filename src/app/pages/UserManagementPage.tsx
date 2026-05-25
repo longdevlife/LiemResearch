@@ -5,13 +5,14 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/ToastProvider';
 import { Search, Eye, Ban, CheckCircle, Filter, Shield, Trash2, X } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 
 type ManagedUser = AuthUser & {
   createdAt?: string;
 };
 
 function formatDate(value?: string) {
-  return value ? new Date(value).toLocaleDateString() : 'N/A';
+  return formatDisplayDate(value);
 }
 
 function getUserStatus(user: ManagedUser) {

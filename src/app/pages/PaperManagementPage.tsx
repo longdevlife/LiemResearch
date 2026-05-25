@@ -8,6 +8,7 @@ import { EditablePaper, EditPaperModal } from '../components/EditPaperModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Search, Upload, Download, Eye, Filter, Check, X, Edit, Trash2 } from 'lucide-react';
 import { apiRequest, resolveFileUrl } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 
 type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
 
@@ -24,10 +25,6 @@ interface AdminPaper extends EditablePaper {
     university?: string;
   };
   createdAt: string;
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
 }
 
 function toCsvValue(value: string | number | undefined) {
@@ -226,7 +223,7 @@ export function PaperManagementPage() {
         paper.requestedBy?.fullName,
         paper.requestedBy?.university,
         paper.requestedBy?.studentId,
-        formatDate(paper.createdAt),
+        formatDisplayDate(paper.createdAt),
         paper.status,
       ]),
     ]
@@ -364,7 +361,7 @@ export function PaperManagementPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">{paper.requestedBy?.university || 'N/A'}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{formatDate(paper.createdAt)}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{formatDisplayDate(paper.createdAt)}</td>
                       <td className="px-6 py-4">
                         <StatusBadge status={paper.status} />
                       </td>

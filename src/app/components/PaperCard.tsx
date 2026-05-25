@@ -1,4 +1,5 @@
 import { Calendar, Download, Eye, FileText, MessageCircle, Star } from 'lucide-react';
+import { formatDisplayDate } from '../lib/date';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
 
 type PaperCardProps = {
@@ -8,10 +9,6 @@ type PaperCardProps = {
   onTagClick?: (tag: string) => void;
   variant?: 'public' | 'dashboard';
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
-}
 
 function truncateText(value: string, maxLength: number) {
   const text = value.replace(/\s+/g, ' ').trim();
@@ -74,7 +71,7 @@ export function PaperCard({
           {paper.publishedYear}
         </span>
         <span>{getPaperJournal(paper)}</span>
-        <span>Added {formatDate(paper.createdAt)}</span>
+        <span>Added {formatDisplayDate(paper.createdAt)}</span>
       </div>
 
       <p className={`${variant === 'dashboard' ? 'line-clamp-2' : 'line-clamp-3'} mb-4 text-muted-foreground`}>

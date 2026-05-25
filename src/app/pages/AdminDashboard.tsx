@@ -7,15 +7,12 @@ import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
 import { FileText, Download, Clock, Users } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
 
 type DashboardPaper = PublicPaper & {
   requestedBy?: Pick<AuthUser, 'fullName' | 'email'>;
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
-}
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -171,7 +168,7 @@ export function AdminDashboard() {
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <StatusBadge status={request.status} />
-                      <span className="text-muted-foreground">{formatDate(request.createdAt)}</span>
+                      <span className="text-muted-foreground">{formatDisplayDate(request.createdAt)}</span>
                     </div>
                   </button>
                 ))}
