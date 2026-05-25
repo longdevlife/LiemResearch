@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BookOpen, Building2, CheckCircle2, CreditCard, Lock, Mail, ShieldCheck, User } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser, getToken } from '../lib/api';
+import { validateStudentId } from '../lib/validation';
 
 export function RegisterPage() {
   const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
@@ -313,20 +314,6 @@ function validateFullName(value: string) {
 
   if (!/^[\p{L}\s.'-]+$/u.test(fullName)) {
     return 'Full name contains invalid characters.';
-  }
-
-  return '';
-}
-
-function validateStudentId(value: string) {
-  const studentId = value.trim();
-
-  if (studentId.length < 4 || studentId.length > 30) {
-    return 'Student ID must be between 4 and 30 characters.';
-  }
-
-  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
-    return 'Student ID contains invalid characters.';
   }
 
   return '';

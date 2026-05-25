@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
+import { validateStudentId } from '../utils/validation.js';
 
 function isInvalidUserId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -74,6 +75,13 @@ export async function updateUser(req, res) {
 
   if (updates.studentId !== undefined && !updates.studentId) {
     return res.status(400).json({ message: 'Student ID is required' });
+  }
+
+  if (updates.studentId !== undefined) {
+    const studentIdError = validateStudentId(updates.studentId);
+    if (studentIdError) {
+      return res.status(400).json({ message: studentIdError });
+    }
   }
 
   if (updates.role !== undefined && !['user', 'admin'].includes(updates.role)) {

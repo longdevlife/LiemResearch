@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
+import { validateStudentId } from '../lib/validation';
 
 type ProfileForm = {
   fullName: string;
@@ -800,16 +801,3 @@ function validateFullName(value: string) {
   return '';
 }
 
-function validateStudentId(value: string) {
-  const studentId = value.trim();
-
-  if (studentId.length < 4 || studentId.length > 30) {
-    return 'Student ID must be between 4 and 30 characters.';
-  }
-
-  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
-    return 'Student ID contains invalid characters.';
-  }
-
-  return '';
-}

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
 import { Paper } from '../models/Paper.js';
 import { signToken } from '../utils/token.js';
+import { validateStudentId } from '../utils/validation.js';
 
 function isPresent(value) {
   return value !== undefined && value !== null;
@@ -38,20 +39,6 @@ function validateFullName(value) {
 
   if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
     return 'Full name contains invalid characters';
-  }
-
-  return '';
-}
-
-function validateStudentId(value) {
-  const studentId = String(value).trim();
-
-  if (studentId.length < 4 || studentId.length > 30) {
-    return 'Student ID must be between 4 and 30 characters';
-  }
-
-  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
-    return 'Student ID contains invalid characters';
   }
 
   return '';
