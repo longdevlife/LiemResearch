@@ -79,4 +79,9 @@ paperSchema.index({ topics: 1, publicationYear: -1 });
 paperSchema.index({ publicationYear: -1, citationCount: -1 });
 
 export type PaperDoc = InferSchemaType<typeof paperSchema> & { _id: mongoose.Types.ObjectId };
-export const PaperModel = mongoose.model("Paper", paperSchema);
+
+// IMPORTANT: explicit collection name "research_papers" so that Atlas Vector
+// Search index `paper_vector_index` (created against research_papers) actually
+// matches what Mongoose writes. Without this, Mongoose pluralizes "Paper" to
+// "papers" and the vector index would never see new documents.
+export const PaperModel = mongoose.model("Paper", paperSchema, "research_papers");
