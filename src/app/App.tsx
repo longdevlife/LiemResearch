@@ -1,5 +1,5 @@
 import type React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { RegisterPage } from './pages/RegisterPage';
