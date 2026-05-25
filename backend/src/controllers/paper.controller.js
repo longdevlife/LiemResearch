@@ -61,6 +61,13 @@ function hasEnoughWords(value, minWords) {
     .length >= minWords;
 }
 
+function countWords(value) {
+  return String(value)
+    .trim()
+    .split(/\s+/)
+    .filter((word) => /[a-z0-9]/i.test(word)).length;
+}
+
 function isHttpUrl(value) {
   try {
     const url = new URL(String(value).trim());
@@ -76,9 +83,15 @@ function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publi
   const trimmedAbstract = String(abstract).trim();
   const publishedYearNumber = Number(publishedYear);
   const maxYear = new Date().getFullYear() + 1;
+  const titleWordCount = countWords(trimmedTitle);
+  const abstractWordCount = countWords(trimmedAbstract);
 
   if (trimmedTitle.length < 8 || !hasEnoughWords(trimmedTitle, 3)) {
     return 'Please enter a clearer paper title';
+  }
+
+  if (titleWordCount > 200) {
+    return 'Paper title must be 200 words or fewer';
   }
 
   if (!/^10\.\d{4,9}\/\S+$/i.test(trimmedDoi)) {
@@ -89,8 +102,16 @@ function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publi
     return 'Please enter a valid paper link';
   }
 
+  if (String(paperLink).trim().split(/\s+/).length !== 1) {
+    return 'Please enter only one paper link for this request';
+  }
+
   if (trimmedAbstract.length < 40 || !hasEnoughWords(trimmedAbstract, 8)) {
     return 'Please enter a short but meaningful abstract';
+  }
+
+  if (abstractWordCount > 1000) {
+    return 'Abstract must be 1000 words or fewer';
   }
 
   if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
@@ -137,6 +158,17 @@ async function deleteStoredPdf(pdfPath) {
 
 async function storeUploadedPdf(file) {
   if (!file) return '';
+
+  if (!process.env.AWS_S3_BUCKET || !process.env.AWS_REGION) {
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    const safeName = path.basename(String(file.originalname || 'paper.pdf'));
+    const localFileName = `${Date.now()}-${safeName}`;
+    const localPath = path.resolve(uploadsDir, localFileName);
+
+    await fs.writeFile(localPath, file.buffer);
+    return `/uploads/${localFileName}`;
+  }
 
   return uploadPdfToS3(file);
 }

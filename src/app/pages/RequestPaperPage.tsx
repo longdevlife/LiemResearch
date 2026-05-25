@@ -263,6 +263,13 @@ function hasEnoughWords(value: string, minWords: number) {
   return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length >= minWords;
 }
 
+function countWords(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter((word) => /[a-z0-9]/i.test(word)).length;
+}
+
 function isHttpUrl(value: string) {
   try {
     const url = new URL(value.trim());
@@ -289,9 +296,15 @@ function validatePaperRequest(data: {
     .filter(Boolean);
   const year = Number(data.year);
   const maxYear = new Date().getFullYear() + 1;
+  const titleWordCount = countWords(title);
+  const abstractWordCount = countWords(abstract);
 
   if (title.length < 8 || !hasEnoughWords(title, 3)) {
     return 'Please enter a clearer paper title.';
+  }
+
+  if (titleWordCount > 200) {
+    return 'Paper title must be 200 words or fewer.';
   }
 
   if (!/^10\.\d{4,9}\/\S+$/i.test(doi)) {
@@ -302,8 +315,16 @@ function validatePaperRequest(data: {
     return 'Please enter a valid paper link starting with http or https.';
   }
 
+  if (data.link.trim().split(/\s+/).length !== 1) {
+    return 'Please enter only one paper link for this request.';
+  }
+
   if (abstract.length < 40 || !hasEnoughWords(abstract, 8)) {
     return 'Please enter a short but meaningful abstract.';
+  }
+
+  if (abstractWordCount > 1000) {
+    return 'Abstract must be 1000 words or fewer.';
   }
 
   if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
