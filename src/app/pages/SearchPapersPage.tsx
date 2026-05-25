@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { Search, Download, Eye, Calendar, Filter, Star } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import { apiRequest, resolveFileUrl } from '../lib/api';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
 
 export function SearchPapersPage() {
@@ -54,7 +54,7 @@ export function SearchPapersPage() {
         method: 'POST',
         auth: true,
       });
-      window.open(`http://localhost:5000${data.downloadUrl}`, '_blank');
+      window.open(resolveFileUrl(data.downloadUrl), '_blank');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to download PDF');
     }

@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { Search, Plus, Eye, Calendar, BookOpen, Download } from 'lucide-react';
-import { apiRequest, getToken } from '../lib/api';
+import { apiRequest, resolveFileUrl } from '../lib/api';
 
 type PaperStatus = 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
 
@@ -212,9 +212,8 @@ export function MyRequestsPage() {
                                 auth: true,
                               });
 
-                              const fileUrl = `http://localhost:5000${data.downloadUrl}`;
-                              const token = getToken();
-                              const resp = await fetch(fileUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+                              const fileUrl = resolveFileUrl(data.downloadUrl);
+                              const resp = await fetch(fileUrl);
                               const blob = await resp.blob();
                               const url = window.URL.createObjectURL(blob);
                               const a = document.createElement('a');

@@ -42,5 +42,9 @@ export function getPaperJournal(paper: PublicPaper) {
 }
 
 export function getPdfUrl(pdfPath?: string) {
-  return pdfPath ? `http://localhost:5000${pdfPath}` : '';
+  if (!pdfPath) return '';
+  if (/^https?:\/\//i.test(pdfPath)) return pdfPath;
+
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  return `${new URL(apiBaseUrl).origin}${pdfPath}`;
 }

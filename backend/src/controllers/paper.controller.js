@@ -3,6 +3,7 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
+import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
 import { syncUserPoints } from '../utils/points.js';
 import {
   notifyAdminsPaperPdfUploaded,
@@ -123,10 +124,26 @@ async function removeUploadedFile(file) {
   }
 }
 
+async function deleteStoredPdf(pdfPath) {
+  if (!pdfPath) return;
+
+  if (isS3Path(pdfPath)) {
+    await deletePdfFromS3(pdfPath);
+    return;
+  }
+
+  await removeUploadedFile({ path: resolvePaperPdfPath(pdfPath) });
+}
+
+async function storeUploadedPdf(file) {
+  if (!file) return '';
+
+  return uploadPdfToS3(file);
+}
+
 export async function createPaper(req, res) {
   const { title, doi, paperLink, abstract, authors, journal, keywords, publishedYear } = req.body;
   const normalizedKeywords = normalizeKeywords(keywords);
-  const uploadedPdfPath = req.file ? `/uploads/${req.file.filename}` : '';
 
   if (!title || !doi || !paperLink || !abstract || !publishedYear) {
     await removeUploadedFile(req.file);
@@ -168,6 +185,8 @@ export async function createPaper(req, res) {
     });
   }
 
+  const uploadedPdfPath = await storeUploadedPdf(req.file);
+
   const paperData = {
     title: String(title).trim(),
     doi: String(doi).trim(),
@@ -187,7 +206,14 @@ export async function createPaper(req, res) {
     paperData.status = 'pending';
   }
 
-  const paper = await Paper.create(paperData);
+  let paper;
+
+  try {
+    paper = await Paper.create(paperData);
+  } catch (error) {
+    await deleteStoredPdf(uploadedPdfPath);
+    throw error;
+  }
 
   await syncUserPoints(req.user._id);
 
@@ -247,6 +273,25 @@ export async function getPaperById(req, res) {
   }
 
   res.json({ paper });
+}
+
+export async function getPaperPdfDownloadUrl(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const paper = await Paper.findById(req.params.id);
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+  if (!paper.pdfPath) return res.status(404).json({ message: 'PDF is not available for this paper' });
+
+  if (req.user.role !== 'admin' && paper.requestedBy.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'You do not have permission to download this PDF' });
+  }
+
+  const downloadUrl = await getPdfDownloadUrl(paper.pdfPath, `${paper.doi || paper.title}.pdf`);
+
+  res.json({ downloadUrl });
 }
 
 export async function updatePaperStatus(req, res) {
@@ -417,7 +462,7 @@ export async function deletePaper(req, res) {
     await syncUserPoints(paper.uploadedBy);
   }
 
-  await removeUploadedFile(paper.pdfPath ? { path: resolvePaperPdfPath(paper.pdfPath) } : null);
+  await deleteStoredPdf(paper.pdfPath);
 
   res.json({ message: 'Paper deleted successfully', paperId: paper._id });
 }
@@ -443,10 +488,12 @@ export async function uploadPaperPdf(req, res) {
     return res.status(409).json({ message: 'This paper already has a PDF uploaded' });
   }
 
+  const uploadedPdfPath = await storeUploadedPdf(req.file);
+
   const paper = await Paper.findByIdAndUpdate(
     req.params.id,
     {
-      pdfPath: `/uploads/${req.file.filename}`,
+      pdfPath: uploadedPdfPath,
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
       status: 'pending',
@@ -455,6 +502,7 @@ export async function uploadPaperPdf(req, res) {
   );
 
   if (!paper) {
+    await deleteStoredPdf(uploadedPdfPath);
     await removeUploadedFile(req.file);
     return res.status(404).json({ message: 'Paper not found' });
   }
@@ -490,7 +538,7 @@ export async function deletePaperPdf(req, res) {
     return res.status(400).json({ message: 'Paper does not have a PDF to delete' });
   }
 
-  await removeUploadedFile({ path: resolvePaperPdfPath(paper.pdfPath) });
+  await deleteStoredPdf(paper.pdfPath);
 
   const updatedPaper = await Paper.findByIdAndUpdate(
     req.params.id,

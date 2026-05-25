@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
+import { getPdfDownloadUrl } from '../utils/s3.js';
 
 const visibleStatuses = ['approved', 'downloaded', 'not-downloaded'];
 
@@ -136,8 +137,11 @@ export async function downloadPublicPaper(req, res) {
 
   if (!paper) return res.status(404).json({ message: 'PDF is not available for this paper' });
 
+  const filename = `${paper.doi || paper.title}.pdf`;
+  const downloadUrl = await getPdfDownloadUrl(paper.pdfPath, filename);
+
   res.json({
-    downloadUrl: paper.pdfPath,
+    downloadUrl,
     downloadCount: paper.downloadCount,
   });
 }

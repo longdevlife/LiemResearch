@@ -7,7 +7,7 @@ import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { PaperCard } from '../components/PaperCard';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
-import { apiRequest, getToken } from '../lib/api';
+import { apiRequest, resolveFileUrl } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 import { Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
 
@@ -84,9 +84,8 @@ export function UserDashboard() {
         auth: true,
       });
 
-      const fileUrl = `http://localhost:5000${data.downloadUrl}`;
-      const token = getToken();
-      const resp = await fetch(fileUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      const fileUrl = resolveFileUrl(data.downloadUrl);
+      const resp = await fetch(fileUrl);
       const blob = await resp.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

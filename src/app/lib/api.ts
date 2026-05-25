@@ -50,6 +50,13 @@ export function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
+export function resolveFileUrl(value: string) {
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const apiUrl = new URL(API_BASE_URL);
+  return `${apiUrl.origin}${value}`;
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
 

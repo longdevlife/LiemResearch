@@ -5,7 +5,7 @@ import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
 import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X } from 'lucide-react';
-import { apiRequest, getStoredUser, getToken } from '../lib/api';
+import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 
 type DetailPaper = PublicPaper & {
@@ -144,9 +144,8 @@ export function PaperDetailPage() {
         auth: true,
       });
 
-      const fileUrl = `http://localhost:5000${data.downloadUrl}`;
-      const token = getToken();
-      const resp = await fetch(fileUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      const fileUrl = resolveFileUrl(data.downloadUrl);
+      const resp = await fetch(fileUrl);
       const blob = await resp.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

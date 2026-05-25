@@ -7,7 +7,7 @@ import { UploadPdfModal } from '../components/UploadPdfModal';
 import { EditablePaper, EditPaperModal } from '../components/EditPaperModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Search, Upload, Download, Eye, Filter, Check, X, Edit, Trash2 } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import { apiRequest, resolveFileUrl } from '../lib/api';
 
 type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
 
@@ -112,6 +112,20 @@ export function PaperManagementPage() {
   const handleOpenEditModal = (paper: AdminPaper) => {
     setSelectedPaper(paper);
     setEditModalOpen(true);
+  };
+
+  const handleOpenPdf = async (paper: AdminPaper) => {
+    setError('');
+
+    try {
+      const data = await apiRequest<{ downloadUrl: string }>(`/papers/${paper._id}/pdf-url`, {
+        auth: true,
+      });
+
+      window.open(resolveFileUrl(data.downloadUrl), '_blank');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to open PDF');
+    }
   };
 
   const handleUploadPdf = async (file: File) => {
@@ -394,15 +408,14 @@ export function PaperManagementPage() {
                           {/* Delete PDF button removed from row actions per UX request */}
 
                           {paper.pdfPath && (
-                            <a
-                              href={`http://localhost:5000${paper.pdfPath}`}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPdf(paper)}
                               className="p-2 hover:bg-muted rounded-lg transition-colors"
                               title="Download PDF"
                             >
                               <Download size={18} className="text-blue-600" />
-                            </a>
+                            </button>
                           )}
 
                           <button

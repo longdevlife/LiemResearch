@@ -5,6 +5,7 @@ import {
   getAllPapers,
   getMyPapers,
   getPaperById,
+  getPaperPdfDownloadUrl,
   updatePaper,
   updatePaperStatus,
   deletePaperPdf,
@@ -151,6 +152,8 @@ router.get('/', requireAuth, requireRole('admin'), getAllPapers);
  *         description: Paper detail
  */
 router.get('/:id', requireAuth, getPaperById);
+
+router.get('/:id/pdf-url', requireAuth, getPaperPdfDownloadUrl);
 
 /**
  * @swagger
