@@ -1,7 +1,3 @@
-/**
- * Reusable Loading Spinner Component
- * Sử dụng Tailwind CSS animate-pulse để tạo hiệu ứng loading mượt mà
- */
 interface LoadingSpinnerProps {
   fullPage?: boolean;
   label?: string;
@@ -10,10 +6,9 @@ interface LoadingSpinnerProps {
 export function LoadingSpinner({ fullPage = false, label = 'Loading...' }: LoadingSpinnerProps) {
   const spinnerContent = (
     <div className="flex flex-col items-center justify-center gap-4">
-      {/* Spinner animation */}
-      <div className="relative w-12 h-12">
-        <div className="absolute inset-0 rounded-full border-4 border-border"></div>
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary border-r-primary animate-spin"></div>
+      <div className="relative h-12 w-12">
+        <div className="absolute inset-0 rounded-full border-4 border-border" />
+        <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-r-primary border-t-primary" />
       </div>
       {label && <p className="text-sm font-medium text-muted-foreground">{label}</p>}
     </div>
@@ -21,7 +16,7 @@ export function LoadingSpinner({ fullPage = false, label = 'Loading...' }: Loadi
 
   if (fullPage) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-surface-workspace">
+      <div className="flex min-h-screen items-center justify-center bg-surface-workspace">
         {spinnerContent}
       </div>
     );
@@ -34,11 +29,6 @@ export function LoadingSpinner({ fullPage = false, label = 'Loading...' }: Loadi
   );
 }
 
-/**
- * Loading Skeleton Component
- * Mô phỏng layout của content khi đang load
- * Tránh layout shift khi chuyển từ loading sang dữ liệu thật
- */
 interface LoadingSkeletonProps {
   rows?: number;
   variant?: 'card' | 'table' | 'profile' | 'stats';
@@ -48,39 +38,59 @@ export function LoadingSkeleton({ rows = 3, variant = 'card' }: LoadingSkeletonP
   if (variant === 'profile') {
     return (
       <div className="space-y-6">
-        {/* Avatar skeleton */}
-        <div className="flex items-center gap-4">
-          <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse"></div>
-          <div className="flex-1 space-y-3">
-            <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+        <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+          <div className="h-28 animate-pulse bg-gray-200" />
+          <div className="px-8 pb-8">
+            <div className="-mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="h-28 w-28 animate-pulse rounded-lg border-4 border-white bg-gray-300" />
+                <div className="space-y-3 pb-2">
+                  <div className="h-5 w-36 animate-pulse rounded bg-gray-200" />
+                  <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
+                  <div className="h-4 w-80 max-w-full animate-pulse rounded bg-gray-200" />
+                </div>
+              </div>
+              <div className="h-12 w-32 animate-pulse rounded-lg bg-gray-200" />
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-lg border border-border p-4">
+                  <div className="mb-3 h-4 w-20 animate-pulse rounded bg-gray-200" />
+                  <div className="h-8 w-12 animate-pulse rounded bg-gray-200" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Form fields skeleton */}
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i}>
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2"></div>
-              <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
-            </div>
-          ))}
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm">
+          <div className="mb-6 flex gap-4 border-b border-border pb-4">
+            <div className="h-5 w-20 animate-pulse rounded bg-gray-200" />
+            <div className="h-5 w-20 animate-pulse rounded bg-gray-200" />
+            <div className="h-5 w-20 animate-pulse rounded bg-gray-200" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border p-4">
+                <div className="mb-3 h-4 w-32 animate-pulse rounded bg-gray-200" />
+                <div className="h-5 w-full animate-pulse rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
         </div>
-
-        {/* Button skeleton */}
-        <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
       </div>
     );
   }
 
   if (variant === 'stats') {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-white p-5 shadow-sm animate-pulse">
-            <div className="h-4 w-20 bg-gray-200 rounded mb-4"></div>
-            <div className="h-8 w-24 bg-gray-200 rounded mb-2"></div>
-            <div className="h-3 w-32 bg-gray-200 rounded"></div>
+          <div key={i} className="animate-pulse rounded-lg border border-border bg-white p-5 shadow-sm">
+            <div className="mb-4 h-4 w-20 rounded bg-gray-200" />
+            <div className="mb-2 h-8 w-24 rounded bg-gray-200" />
+            <div className="h-3 w-32 rounded bg-gray-200" />
           </div>
         ))}
       </div>
@@ -91,19 +101,18 @@ export function LoadingSkeleton({ rows = 3, variant = 'card' }: LoadingSkeletonP
     return (
       <div className="space-y-3">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+          <div key={i} className="h-16 animate-pulse rounded bg-gray-200" />
         ))}
       </div>
     );
   }
 
-  // Default card variant
   return (
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="rounded-lg border border-border bg-white p-5 shadow-sm space-y-3">
-          <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-4 w-1/2 bg-gray-200 rounded animate-pulse"></div>
+        <div key={i} className="space-y-3 rounded-lg border border-border bg-white p-5 shadow-sm">
+          <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
         </div>
       ))}
     </div>

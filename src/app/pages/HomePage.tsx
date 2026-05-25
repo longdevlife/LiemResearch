@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BookOpen, Search, Star, TrendingUp } from 'lucide-react';
+import { BookOpen, Search, Star, TrendingUp, X } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 import { PaperCard } from '../components/PaperCard';
@@ -12,6 +12,24 @@ const sortTabs: Array<{ label: string; value: SortOption }> = [
   { label: 'Top Rated', value: 'rating' },
   { label: 'Most Downloaded', value: 'downloads' },
 ];
+
+const sortCopy = {
+  newest: {
+    title: 'Latest papers',
+    description: 'Recently approved research papers from the library.',
+    icon: BookOpen,
+  },
+  rating: {
+    title: 'Top rated papers',
+    description: 'Research ranked highest by community ratings.',
+    icon: Star,
+  },
+  downloads: {
+    title: 'Popular papers',
+    description: 'Most downloaded papers across the collection.',
+    icon: TrendingUp,
+  },
+};
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -85,6 +103,9 @@ export function HomePage() {
     navigate('/login');
   };
 
+  const activeSort = sortCopy[sortBy];
+  const ActiveSortIcon = activeSort.icon;
+
   return (
     <div className="min-h-screen bg-surface-feed bg-fixed">
       <header className="sticky top-0 z-40 border-b border-border bg-white">
@@ -144,26 +165,26 @@ export function HomePage() {
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_280px]">
         <aside className="hidden lg:block">
           <nav className="space-y-1">
-            <button className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-2 text-left text-accent-foreground">
-              <BookOpen size={18} />
-              Papers
-            </button>
-            <button
-              type="button"
-              onClick={() => setSortBy('rating')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-muted-foreground transition-colors hover:bg-white hover:text-foreground"
-            >
-              <Star size={18} />
-              Top Rated
-            </button>
-            <button
-              type="button"
-              onClick={() => setSortBy('downloads')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-muted-foreground transition-colors hover:bg-white hover:text-foreground"
-            >
-              <TrendingUp size={18} />
-              Popular
-            </button>
+            {sortTabs.map((item) => {
+              const Icon = sortCopy[item.value].icon;
+              const isActive = sortBy === item.value;
+
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setSortBy(item.value)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-white hover:text-foreground'
+                  }`}
+                >
+                  <Icon size={18} />
+                  {item.value === 'downloads' ? 'Popular' : item.label}
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
@@ -182,6 +203,43 @@ export function HomePage() {
                 className="w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
+          </div>
+
+          <div className="mb-4 rounded-lg border border-border bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary">
+                  <ActiveSortIcon size={20} />
+                </div>
+                <div>
+                  <h2 className="text-foreground">{activeSort.title}</h2>
+                  <p className="text-sm text-muted-foreground">{activeSort.description}</p>
+                </div>
+              </div>
+
+              {(selectedTag || searchTerm) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTag('');
+                    setSearchTerm('');
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <X size={16} />
+                  Clear filter
+                </button>
+              )}
+            </div>
+
+            {(selectedTag || searchTerm) && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                <span className="text-sm text-muted-foreground">Showing results for</span>
+                <span className="rounded-md bg-primary px-2 py-1 text-sm text-primary-foreground">
+                  {selectedTag ? `#${selectedTag}` : searchTerm}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="mb-4 flex items-center gap-2 border-b border-border">

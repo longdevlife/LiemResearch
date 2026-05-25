@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const TOKEN_KEY = 'token';
+const USER_KEY = 'user';
 
 export type AuthUser = {
   _id: string;
@@ -19,58 +21,33 @@ type RequestOptions = RequestInit & {
 };
 
 export function getToken() {
-  return localStorage.getItem('token');
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function getStoredUser(): AuthUser | null {
-  const rawUser = localStorage.getItem('user');
+  const rawUser = sessionStorage.getItem(USER_KEY);
   if (!rawUser) return null;
 
   try {
     return JSON.parse(rawUser) as AuthUser;
   } catch {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem(USER_KEY);
     return null;
   }
 }
 
 export function saveAuth(token: string, user: AuthUser) {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
+  sessionStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function clearAuth() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-}
-
-/**
- * Đồng bộ auth giữa các tab trình duyệt
- * Khi một tab thay đổi auth (login/logout), các tab khác sẽ tự động cập nhật
- * @param onAuthChange Callback khi auth thay đổi ở tab khác (type: 'login' | 'logout')
- * @returns Hàm cleanup để dừng lắng nghe
- */
-export function setupStorageSync(onAuthChange?: (type: 'login' | 'logout') => void) {
-  const handleStorageChange = (event: StorageEvent) => {
-    // Lắng nghe sự kiện thay đổi localStorage từ các tab khác
-    if (event.key === 'token' || event.key === 'user') {
-      if (event.newValue === null) {
-        // Token hoặc user bị xóa (logout ở tab khác)
-        onAuthChange?.('logout');
-      } else {
-        // Token hoặc user được cập nhật (login ở tab khác)
-        onAuthChange?.('login');
-      }
-    }
-  };
-
-  // Thêm listener
-  window.addEventListener('storage', handleStorageChange);
-
-  // Return cleanup function
-  return () => {
-    window.removeEventListener('storage', handleStorageChange);
-  };
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadingSkeleton } from '../components/LoadingSpinner';
 import { FileText, Download, Clock, Users } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
@@ -109,7 +109,13 @@ export function AdminDashboard() {
           )}
 
           {isLoading ? (
-            <LoadingSpinner label="Loading dashboard..." />
+            <div className="space-y-6">
+              <LoadingSkeleton variant="stats" />
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <LoadingSkeleton rows={5} />
+                <LoadingSkeleton rows={3} />
+              </div>
+            </div>
           ) : (
             <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

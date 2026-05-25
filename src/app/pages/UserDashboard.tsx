@@ -6,9 +6,8 @@ import { SubNavbar } from '../components/SubNavbar';
 import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { PaperCard } from '../components/PaperCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { FileText, Download, Clock, Users } from 'lucide-react';
-import { apiRequest, AuthUser, getToken } from '../lib/api';
+import { LoadingSkeleton } from '../components/LoadingSpinner';
+import { apiRequest, getToken } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 import { Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
 
@@ -177,7 +176,7 @@ export function UserDashboard() {
           </div>
 
           {isLoading ? (
-            <LoadingSpinner label="Loading papers..." />
+            <LoadingSkeleton rows={5} />
           ) : papers.length === 0 ? (
             <div className="bg-white rounded-lg border border-border shadow-sm p-12 text-center">
               <Search size={48} className="mx-auto text-muted-foreground mb-4" />

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/ToastProvider';
 import { Search, Eye, Ban, CheckCircle, Filter, Shield, Trash2, X } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser } from '../lib/api';
 
@@ -13,58 +14,66 @@ function formatDate(value?: string) {
   return value ? new Date(value).toLocaleDateString() : 'N/A';
 }
 
+function getUserStatus(user: ManagedUser) {
+  return user.status || 'active';
+}
+
+function matchesSearch(user: ManagedUser, searchTerm: string) {
+  const query = searchTerm.trim().toLowerCase();
+  if (!query) return true;
+
+  return [user.fullName, user.email, user.university, user.studentId]
+    .some((value) => value?.toLowerCase().includes(query));
+}
+
 export function UserManagementPage() {
+  const { showToast } = useToast();
   const currentUser = getStoredUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [allUsers, setAllUsers] = useState<ManagedUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
   async function loadUsers() {
     setIsLoading(true);
-    setError('');
 
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.set('search', searchTerm);
-      if (filterStatus !== 'all') params.set('status', filterStatus);
-      if (filterRole !== 'all') params.set('role', filterRole);
-
-      const query = params.toString() ? `?${params.toString()}` : '';
-      const data = await apiRequest<{ users: ManagedUser[] }>(`/users${query}`, { auth: true });
-      setUsers(data.users);
+      const data = await apiRequest<{ users: ManagedUser[] }>('/users', { auth: true });
+      setAllUsers(data.users);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load users');
+      showToast(err instanceof Error ? err.message : 'Unable to load users', 'error');
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      loadUsers();
-    }, 250);
+    loadUsers();
+  }, []);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [searchTerm, filterStatus, filterRole]);
+  const users = useMemo(
+    () => allUsers.filter((user) => {
+      const matchesStatus = filterStatus === 'all' || getUserStatus(user) === filterStatus;
+      const matchesRole = filterRole === 'all' || user.role === filterRole;
+
+      return matchesSearch(user, searchTerm) && matchesStatus && matchesRole;
+    }),
+    [allUsers, searchTerm, filterStatus, filterRole]
+  );
 
   const stats = {
-    total: users.length,
-    active: users.filter((user) => user.status === 'active').length,
-    banned: users.filter((user) => user.status === 'banned').length,
+    total: allUsers.length,
+    active: allUsers.filter((user) => getUserStatus(user) === 'active').length,
+    banned: allUsers.filter((user) => getUserStatus(user) === 'banned').length,
   };
 
   const updateUserStatus = async (userId: string, status: 'active' | 'banned') => {
-    setError('');
-    setMessage('');
-
     try {
       const data = await apiRequest<{ user: ManagedUser }>(`/users/${userId}/status`, {
         method: 'PATCH',
@@ -72,18 +81,15 @@ export function UserManagementPage() {
         body: JSON.stringify({ status }),
       });
 
-      setUsers(users.map((user) => (user._id === userId ? data.user : user)));
+      setAllUsers((items) => items.map((user) => (user._id === userId ? data.user : user)));
       setSelectedUser((user) => (user?._id === userId ? data.user : user));
-      setMessage(`User ${status === 'banned' ? 'banned' : 'unbanned'} successfully.`);
+      showToast(`User ${status === 'banned' ? 'banned' : 'unbanned'} successfully.`, 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update user status');
+      showToast(err instanceof Error ? err.message : 'Unable to update user status', 'error');
     }
   };
 
   const updateUserRole = async (userId: string, role: 'user' | 'admin') => {
-    setError('');
-    setMessage('');
-
     try {
       const data = await apiRequest<{ user: ManagedUser }>(`/users/${userId}`, {
         method: 'PATCH',
@@ -91,19 +97,17 @@ export function UserManagementPage() {
         body: JSON.stringify({ role }),
       });
 
-      setUsers(users.map((user) => (user._id === userId ? data.user : user)));
+      setAllUsers((items) => items.map((user) => (user._id === userId ? data.user : user)));
       setSelectedUser((user) => (user?._id === userId ? data.user : user));
-      setMessage('User role updated successfully.');
+      showToast('User role updated successfully.', 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update user role');
+      showToast(err instanceof Error ? err.message : 'Unable to update user role', 'error');
     }
   };
 
   const deleteUser = async () => {
     if (!userToDelete) return;
 
-    setError('');
-    setMessage('');
     setIsDeletingUser(true);
 
     try {
@@ -112,21 +116,32 @@ export function UserManagementPage() {
         auth: true,
       });
 
-      setUsers(users.filter((item) => item._id !== userToDelete._id));
+      setAllUsers((items) => items.filter((item) => item._id !== userToDelete._id));
       setSelectedUser(null);
       setUserToDelete(null);
       setShowDetailModal(false);
-      setMessage('User deleted successfully.');
+      showToast('User deleted successfully.', 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to delete user');
+      showToast(err instanceof Error ? err.message : 'Unable to delete user', 'error');
     } finally {
       setIsDeletingUser(false);
     }
   };
 
-  const handleViewDetails = (user: ManagedUser) => {
+  const handleViewDetails = async (user: ManagedUser) => {
     setSelectedUser(user);
     setShowDetailModal(true);
+    setIsLoadingUserDetails(true);
+
+    try {
+      const data = await apiRequest<{ user: ManagedUser }>(`/users/${user._id}`, { auth: true });
+      setSelectedUser(data.user);
+      setAllUsers((items) => items.map((item) => (item._id === user._id ? data.user : item)));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Unable to load user profile', 'error');
+    } finally {
+      setIsLoadingUserDetails(false);
+    }
   };
 
   return (
@@ -140,18 +155,6 @@ export function UserManagementPage() {
             <h1 className="text-foreground mb-2">User Management</h1>
             <p className="text-muted-foreground">Manage users and their access to the system</p>
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-6">
-              {message}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-lg border border-border shadow-sm p-6">
@@ -192,7 +195,7 @@ export function UserManagementPage() {
           </div>
 
           <div className="bg-white rounded-lg border border-border shadow-sm p-6 mb-6">
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                 <input
@@ -268,11 +271,11 @@ export function UserManagementPage() {
                       <td className="px-6 py-4 text-muted-foreground">{formatDate(user.createdAt)}</td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full border ${
-                          user.status === 'active'
+                          getUserStatus(user) === 'active'
                             ? 'bg-green-100 text-green-800 border-green-200'
                             : 'bg-red-100 text-red-800 border-red-200'
                         }`}>
-                          {user.status === 'active' ? 'Active' : 'Banned'}
+                          {getUserStatus(user) === 'active' ? 'Active' : 'Banned'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -285,7 +288,7 @@ export function UserManagementPage() {
                             <Eye size={18} className="text-blue-600" />
                           </button>
 
-                          {user.status === 'active' ? (
+                          {getUserStatus(user) === 'active' ? (
                             <button
                               onClick={() => updateUserStatus(user._id, 'banned')}
                               disabled={user._id === currentUser?._id}
@@ -336,20 +339,52 @@ export function UserManagementPage() {
       </div>
 
       {showDetailModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-foreground">User Details</h2>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border p-6">
+              <div>
+                <p className="text-sm text-muted-foreground">User profile</p>
+                <h2 className="text-foreground">{selectedUser.fullName || 'User Details'}</h2>
+              </div>
               <button
                 onClick={() => setShowDetailModal(false)}
                 className="p-2 hover:bg-accent rounded-lg transition-colors"
+                aria-label="Close user details"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-6">
+            <div className="max-h-[calc(90vh-156px)] overflow-y-auto p-6">
+              <div className="mb-6 flex items-center gap-4 rounded-lg border border-border bg-muted/60 p-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-foreground text-xl font-semibold text-white">
+                  {(selectedUser.fullName || 'U')
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part) => part[0]?.toUpperCase())
+                    .join('') || 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-medium text-foreground">{selectedUser.fullName}</p>
+                  <p className="truncate text-muted-foreground">{selectedUser.email}</p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-3 py-1 text-sm ${
+                  getUserStatus(selectedUser) === 'active'
+                    ? 'border-green-200 bg-green-100 text-green-800'
+                    : 'border-red-200 bg-red-100 text-red-800'
+                }`}>
+                  {getUserStatus(selectedUser) === 'active' ? 'Active' : 'Banned'}
+                </span>
+              </div>
+
+              {isLoadingUserDetails && (
+                <div className="mb-4 rounded-lg border border-border bg-white p-4 text-muted-foreground">
+                  Loading latest profile...
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <p className="text-muted-foreground mb-1">Full Name</p>
                   <p className="text-foreground">{selectedUser.fullName}</p>
@@ -380,11 +415,11 @@ export function UserManagementPage() {
                 <div>
                   <p className="text-muted-foreground mb-1">Status</p>
                   <span className={`px-3 py-1 rounded-full border ${
-                    selectedUser.status === 'active'
+                    getUserStatus(selectedUser) === 'active'
                       ? 'bg-green-100 text-green-800 border-green-200'
                       : 'bg-red-100 text-red-800 border-red-200'
                   }`}>
-                    {selectedUser.status === 'active' ? 'Active' : 'Banned'}
+                    {getUserStatus(selectedUser) === 'active' ? 'Active' : 'Banned'}
                   </span>
                 </div>
               </div>
@@ -397,7 +432,7 @@ export function UserManagementPage() {
               >
                 Close
               </button>
-              {selectedUser.status === 'active' ? (
+              {getUserStatus(selectedUser) === 'active' ? (
                 <button
                   onClick={() => updateUserStatus(selectedUser._id, 'banned')}
                   disabled={selectedUser._id === currentUser?._id}

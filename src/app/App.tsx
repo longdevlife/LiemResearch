@@ -1,6 +1,5 @@
 import type React from 'react';
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -13,7 +12,8 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { PaperManagementPage } from './pages/PaperManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PaperDetailPage } from './pages/PaperDetailPage';
-import { getStoredUser, getToken, setupStorageSync } from './lib/api';
+import { getStoredUser, getToken } from './lib/api';
+import { ToastProvider } from './components/ToastProvider';
 
 function ProtectedRoute({
   children,
@@ -39,40 +39,22 @@ function ProtectedRoute({
 export default function App() {
   return (
     <Router>
-      <AppContent />
+      <ToastProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
+          <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
+          <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute role="user"><UserProfilePage /></ProtectedRoute>} />
+          <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
+          <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
+        </Routes>
+      </ToastProvider>
     </Router>
   );
-}
-
-function AppContent() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Đồng bộ auth giữa các tab
-    const cleanup = setupStorageSync((type) => {
-      if (type === 'logout') {
-        // Nếu tab khác logout, redirect về login
-        navigate('/login', { replace: true });
-      }
-    });
-
-    return cleanup;
-  }, [navigate]);
-
-  return (
-    <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
-        <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
-        <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute role="user"><UserProfilePage /></ProtectedRoute>} />
-        <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
-        <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
-      </Routes>
-    );
 }
