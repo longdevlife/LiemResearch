@@ -161,8 +161,8 @@ export function RequestPaperPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                     placeholder="2024"
-                    min="1900"
-                    max="2099"
+                    min={1900}
+                    max={new Date().getFullYear() + 1}
                     required
                   />
                 </div>

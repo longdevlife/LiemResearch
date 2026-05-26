@@ -96,8 +96,8 @@ export function EditPaperModal({ isOpen, onClose, onSave, paper }: EditPaperModa
               <input
                 type="number"
                 value={editedPaper.publishedYear}
-                min="1900"
-                max="2100"
+                min={1900}
+                max={new Date().getFullYear() + 1}
                 onChange={(e) => setEditedPaper({ ...editedPaper, publishedYear: Number(e.target.value) })}
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
               />
