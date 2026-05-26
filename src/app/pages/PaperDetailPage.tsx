@@ -17,6 +17,7 @@ type DetailPaper = PublicPaper & {
     studentId?: string;
   };
   uploadedBy?: {
+    _id?: string;
     fullName?: string;
     email?: string;
     university?: string;
@@ -336,8 +337,11 @@ export function PaperDetailPage() {
             <>
               {(() => {
                 const isRequester = paper.requestedBy?._id === currentUser?._id;
+                const uploadedByRequester = paper.uploadedBy?._id === paper.requestedBy?._id;
                 const isPdfAvailable = Boolean(paper.pdfPath) && paper.status === 'downloaded';
-                const isWaitingRequesterAccept = paper.status === 'pending-requester-acceptance';
+                const isWaitingRequesterAccept =
+                  paper.status === 'pending-requester-acceptance' ||
+                  (paper.status === 'pending' && Boolean(paper.pdfPath) && !uploadedByRequester);
                 const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && paper.pdfPath);
                 const canDownloadPdf = Boolean(paper.pdfPath && (isPdfAvailable || canAcceptPdf || isAdmin));
                 const canUploadPdf = Boolean(

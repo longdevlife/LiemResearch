@@ -30,6 +30,14 @@ function isApprovedStatus(status) {
   return status === 'downloaded' || status === 'not-downloaded' || status === 'pending-requester-acceptance';
 }
 
+function isPdfWaitingRequesterAcceptance(paper) {
+  if (!paper?.pdfPath || !paper.uploadedBy) return false;
+
+  if (paper.status === 'pending-requester-acceptance') return true;
+
+  return paper.status === 'pending' && paper.uploadedBy.toString() !== paper.requestedBy.toString();
+}
+
 function normalizePaperUpdateStatus(status, paper) {
   return status === 'approved' ? getApprovalStatus(paper) : normalizePaperStatus(status);
 }
@@ -495,8 +503,9 @@ export async function uploadPaperPdf(req, res) {
   const uploaderId = req.user._id.toString();
   const isRequesterUpload = requesterId === uploaderId;
   const isAdminUpload = req.user.role === 'admin';
+  const isApprovedWithoutPdf = existingPaper.status === 'not-downloaded' || existingPaper.status === 'approved';
 
-  if (!isAdminUpload && !isRequesterUpload && existingPaper.status !== 'not-downloaded') {
+  if (!isAdminUpload && !isRequesterUpload && !isApprovedWithoutPdf) {
     await removeUploadedFile(req.file);
     return res.status(403).json({ message: 'You can only upload a PDF after the request is approved without a PDF' });
   }
@@ -507,12 +516,11 @@ export async function uploadPaperPdf(req, res) {
   }
 
   const uploadedPdfPath = await storeUploadedPdf(req.file);
-  const nextStatus =
-    isAdminUpload || isRequesterUpload || existingPaper.status === 'pending'
-      ? existingPaper.status === 'not-downloaded'
-        ? 'downloaded'
-        : existingPaper.status
-      : 'pending-requester-acceptance';
+  let nextStatus = 'pending-requester-acceptance';
+
+  if (isAdminUpload || isRequesterUpload) {
+    nextStatus = isApprovedWithoutPdf ? 'downloaded' : existingPaper.status;
+  }
 
   const paper = await Paper.findByIdAndUpdate(
     req.params.id,
@@ -578,7 +586,7 @@ export async function acceptPaperPdf(req, res) {
     return res.status(403).json({ message: 'Only the requester can accept this PDF' });
   }
 
-  if (paper.status !== 'pending-requester-acceptance' || !paper.pdfPath) {
+  if (!isPdfWaitingRequesterAcceptance(paper)) {
     return res.status(400).json({ message: 'This paper does not have a PDF waiting for requester acceptance' });
   }
 
@@ -611,7 +619,7 @@ export async function rejectPaperPdf(req, res) {
     return res.status(403).json({ message: 'Only the requester can reject this PDF' });
   }
 
-  if (paper.status !== 'pending-requester-acceptance' || !paper.pdfPath) {
+  if (!isPdfWaitingRequesterAcceptance(paper)) {
     return res.status(400).json({ message: 'This paper does not have a PDF waiting for requester acceptance' });
   }
 
