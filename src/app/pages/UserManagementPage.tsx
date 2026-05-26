@@ -5,13 +5,14 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/ToastProvider';
 import { Search, Eye, Ban, CheckCircle, Filter, Shield, Trash2, X } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 
 type ManagedUser = AuthUser & {
   createdAt?: string;
 };
 
 function formatDate(value?: string) {
-  return value ? new Date(value).toLocaleDateString() : 'N/A';
+  return formatDisplayDate(value);
 }
 
 function getUserStatus(user: ManagedUser) {
@@ -39,6 +40,25 @@ export function UserManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  useEffect(() => {
+    if (!showDetailModal) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [showDetailModal]);
 
   async function loadUsers() {
     setIsLoading(true);
@@ -203,6 +223,7 @@ export function UserManagementPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search by name, email, university, or student ID..."
+                  maxLength={128}
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                 />
               </div>
@@ -355,7 +376,7 @@ export function UserManagementPage() {
               </button>
             </div>
 
-            <div className="max-h-[calc(90vh-156px)] overflow-y-auto p-6">
+            <div className="max-h-[calc(90vh-156px)] overflow-y-auto overscroll-contain p-6">
               <div className="mb-6 flex items-center gap-4 rounded-lg border border-border bg-muted/60 p-4">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-foreground text-xl font-semibold text-white">
                   {(selectedUser.fullName || 'U')

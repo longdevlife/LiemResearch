@@ -21,26 +21,27 @@ type RequestOptions = RequestInit & {
 };
 
 export function getToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function getStoredUser(): AuthUser | null {
-  const rawUser = sessionStorage.getItem(USER_KEY);
+  const rawUser = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
   if (!rawUser) return null;
 
   try {
     return JSON.parse(rawUser) as AuthUser;
   } catch {
     sessionStorage.removeItem(USER_KEY);
+    localStorage.removeItem(USER_KEY);
     return null;
   }
 }
 
 export function saveAuth(token: string, user: AuthUser) {
-  sessionStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 }
 
 export function clearAuth() {

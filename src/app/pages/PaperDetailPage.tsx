@@ -6,6 +6,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
 import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X } from 'lucide-react';
 import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
 
 type DetailPaper = PublicPaper & {
@@ -32,10 +33,6 @@ type Rating = {
     university?: string;
   };
 };
-
-function formatDate(value?: string) {
-  return value ? new Date(value).toLocaleDateString() : 'N/A';
-}
 
 export function PaperDetailPage() {
   const navigate = useNavigate();
@@ -340,7 +337,7 @@ export function PaperDetailPage() {
                       <Calendar size={16} className="text-muted-foreground" />
                       <div>
                         <p className="text-muted-foreground">Request Date</p>
-                        <p className="text-foreground">{formatDate(paper.createdAt)}</p>
+                        <p className="text-foreground">{formatDisplayDate(paper.createdAt)}</p>
                       </div>
                     </div>
                     <div>

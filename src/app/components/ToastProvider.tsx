@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed right-5 top-5 z-[90] flex w-[min(420px,calc(100vw-2.5rem))] flex-col gap-3">
+      <div className="fixed bottom-5 right-5 z-[90] flex w-[min(420px,calc(100vw-2.5rem))] flex-col gap-3">
         {toasts.map((toast) => {
           const style = toastStyles[toast.type];
           const Icon = style.icon;

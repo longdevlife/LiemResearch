@@ -5,6 +5,7 @@ import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { Search, Plus, Eye, Calendar, BookOpen, Download } from 'lucide-react';
 import { apiRequest, resolveFileUrl } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
 
 type PaperStatus = 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
 
@@ -33,10 +34,6 @@ const filters: Array<{
   { value: 'not-downloaded', label: 'No PDF yet', iconBgClass: 'bg-gray-100', iconClass: 'text-gray-600' },
   { value: 'rejected', label: 'Rejected', iconBgClass: 'bg-red-100', iconClass: 'text-red-600' },
 ];
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
-}
 
 export function MyRequestsPage() {
   const navigate = useNavigate();
@@ -150,6 +147,7 @@ export function MyRequestsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by title, DOI, or keywords..."
+                maxLength={128}
                 className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
               />
             </div>
@@ -172,7 +170,7 @@ export function MyRequestsPage() {
                       <div className="flex items-center gap-4 text-muted-foreground mb-3">
                         <span className="flex items-center gap-2">
                           <Calendar size={16} />
-                          {formatDate(request.createdAt)}
+                          {formatDisplayDate(request.createdAt)}
                         </span>
                         <span>Year: {request.publishedYear}</span>
                       </div>

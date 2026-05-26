@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Lock, Mail, Search, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { apiRequest, AuthUser, saveAuth, getStoredUser, getToken } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
 
@@ -57,7 +57,7 @@ export function LoginPage() {
         replace: true,
       });
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Log in failed', 'error');
+      showToast(err instanceof Error ? err.message : 'Login failed', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -85,23 +85,14 @@ export function LoginPage() {
             <span className="text-lg font-medium text-foreground">LiemResearch</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="relative hidden flex-1 text-left md:block"
-          >
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            <span className="block w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 text-muted-foreground">
-              Search papers...
-            </span>
-          </button>
+          
 
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               className="rounded-lg bg-accent px-4 py-2 text-accent-foreground"
             >
-              Log in
+              Login
             </button>
             <button
               type="button"
@@ -118,7 +109,7 @@ export function LoginPage() {
         <div className="w-full max-w-xl">
           <div className="mb-8 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
-            <h1 className="text-foreground mb-2 text-2xl md:text-3xl font-semibold whitespace-nowrap">Log in to LiemResearch</h1>
+            <h1 className="text-foreground mb-2 text-2xl md:text-3xl font-semibold whitespace-nowrap">Login to LiemResearch</h1>
             <p className="text-muted-foreground">Read papers, request research, and track your contributions.</p>
           </div>
 
@@ -172,7 +163,7 @@ export function LoginPage() {
                 disabled={isLoading}
                 className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isLoading ? 'Logging in...' : 'Log in'}
+                {isLoading ? 'Logging in...' : 'Login'}
               </button>
             </form>
 

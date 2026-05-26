@@ -202,10 +202,11 @@ export async function createPaper(req, res) {
   }
 
   const publishedYearNumber = Number(publishedYear);
+  const maxYear = new Date().getFullYear() + 1;
 
-  if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > 2100) {
+  if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > maxYear) {
     await removeUploadedFile(req.file);
-    return res.status(400).json({ message: 'Invalid published year' });
+    return res.status(400).json({ message: `Publication year must be between 1900 and ${maxYear}` });
   }
 
   const duplicate = await Paper.findOne({ $or: [{ doi }, { paperLink }] });
@@ -411,9 +412,10 @@ export async function updatePaper(req, res) {
 
   if (updates.publishedYear !== undefined) {
     const publishedYear = Number(updates.publishedYear);
+    const maxYear = new Date().getFullYear() + 1;
 
-    if (!Number.isInteger(publishedYear) || publishedYear < 1900 || publishedYear > 2100) {
-      return res.status(400).json({ message: 'Invalid published year' });
+    if (!Number.isInteger(publishedYear) || publishedYear < 1900 || publishedYear > maxYear) {
+      return res.status(400).json({ message: `Publication year must be between 1900 and ${maxYear}` });
     }
 
     updates.publishedYear = publishedYear;

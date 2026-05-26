@@ -19,6 +19,8 @@ import {
   User,
 } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
+import { formatDisplayDate } from '../lib/date';
+import { validateStudentId } from '../lib/validation';
 
 type ProfileForm = {
   fullName: string;
@@ -68,7 +70,7 @@ function mapUserToProfile(user: AuthUser): ProfileForm {
     email: user.email,
     university: user.university,
     studentId: user.studentId,
-    memberSince: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '',
+    memberSince: user.createdAt ? formatDisplayDate(user.createdAt) : '',
   };
 }
 
@@ -83,7 +85,7 @@ function getInitials(name: string) {
 
 function formatDate(value?: string) {
   if (!value) return '';
-  return new Date(value).toLocaleDateString();
+  return formatDisplayDate(value);
 }
 
 function getStatusLabel(status: PaperRequest['status']) {
@@ -799,16 +801,3 @@ function validateFullName(value: string) {
   return '';
 }
 
-function validateStudentId(value: string) {
-  const studentId = value.trim();
-
-  if (studentId.length < 4 || studentId.length > 30) {
-    return 'Student ID must be between 4 and 30 characters.';
-  }
-
-  if (!/^[a-z0-9._-]+$/i.test(studentId)) {
-    return 'Student ID contains invalid characters.';
-  }
-
-  return '';
-}
