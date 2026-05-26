@@ -318,9 +318,9 @@ export function PaperDetailPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground mb-1">Paper Link</p>
-                      <a href={paper.paperLink} className="text-primary hover:underline flex items-center gap-2">
+                      <a href={paper.paperLink} className="text-primary hover:underline flex items-start gap-2 min-w-0">
                         <LinkIcon size={16} />
-                        {paper.paperLink}
+                        <span className="min-w-0 break-all">{paper.paperLink}</span>
                       </a>
                     </div>
                   </div>
@@ -342,7 +342,7 @@ export function PaperDetailPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground mb-1">University</p>
-                      <p className="text-foreground">{paper.requestedBy?.university || 'N/A'}</p>
+                      <p className="min-w-0 break-words text-foreground">{paper.requestedBy?.university || 'N/A'}</p>
                     </div>
                   </div>
                 </div>

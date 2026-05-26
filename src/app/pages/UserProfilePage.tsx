@@ -320,9 +320,10 @@ export function UserProfilePage() {
     <div className="flex min-h-screen bg-surface-achievement bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1">
         <AppHeader role="user" />
-        <div className="mx-auto max-w-6xl">
+        <div className="p-8">
+          <div className="mx-auto max-w-6xl">
           {isLoading && (
             <div className="mb-6">
               <LoadingSkeleton variant="profile" />
@@ -580,6 +581,7 @@ export function UserProfilePage() {
           </div>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

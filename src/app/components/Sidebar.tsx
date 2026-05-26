@@ -41,7 +41,7 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
     <div className="w-64 h-screen bg-white border-r border-border flex flex-col flex-shrink-0 min-w-[16rem] max-w-[16rem]">
       <Link
         to={logoPath}
-        reloadDocument
+        onClick={() => window.scrollTo(0, 0)}
         className="h-44 flex items-center justify-center px-0 py-0 cursor-pointer transition-opacity hover:opacity-80"
       >
         <div className="h-44 overflow-hidden flex items-center justify-center px-0 py-0 bg-white">

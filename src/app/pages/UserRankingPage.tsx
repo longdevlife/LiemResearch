@@ -103,9 +103,10 @@ export function UserRankingPage() {
     <div className="flex min-h-screen bg-surface-achievement bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1">
         <AppHeader role="user" />
-        <div className="mx-auto max-w-6xl">
+        <div className="p-8">
+          <div className="mx-auto max-w-6xl">
           <section className="mb-8 overflow-hidden rounded-lg border border-border bg-white shadow-sm">
             <div className="bg-blue-600 px-8 py-8 text-white">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -199,6 +200,7 @@ export function UserRankingPage() {
               <p className="text-muted-foreground">Rankings will appear after valid uploads or ratings.</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

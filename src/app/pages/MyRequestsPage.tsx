@@ -93,9 +93,10 @@ export function MyRequestsPage() {
     <div className="flex min-h-screen bg-surface-workspace bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1">
         <AppHeader role="user" />
-        <div className="max-w-7xl mx-auto">
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-foreground mb-2">My Requests</h1>
@@ -259,6 +260,7 @@ export function MyRequestsPage() {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
