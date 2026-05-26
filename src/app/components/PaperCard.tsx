@@ -1,6 +1,7 @@
 import { Calendar, Download, Eye, FileText, MessageCircle, Star } from 'lucide-react';
 import { formatDisplayDate } from '../lib/date';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import ExpandableText from './ExpandableText';
 
 type PaperCardProps = {
   paper: PublicPaper;
@@ -10,16 +11,6 @@ type PaperCardProps = {
   variant?: 'public' | 'dashboard';
 };
 
-function truncateText(value: string, maxLength: number) {
-  const text = value.replace(/\s+/g, ' ').trim();
-
-  if (text.length <= maxLength) return text;
-
-  const truncated = text.slice(0, maxLength).trimEnd();
-  const lastSpace = truncated.lastIndexOf(' ');
-
-  return `${lastSpace > 180 ? truncated.slice(0, lastSpace) : truncated}...`;
-}
 
 function PdfStatus({ hasPdf }: { hasPdf: boolean }) {
   return (
@@ -46,7 +37,7 @@ export function PaperCard({
   const hasPdf = Boolean(paper.pdfPath);
   const ratingText = paper.averageRating > 0 ? paper.averageRating.toFixed(1) : 'No rating';
   const commentCount = paper.totalRatings || 0;
-  const abstractPreview = truncateText(paper.abstract, variant === 'dashboard' ? 220 : 320);
+  // show a few lines and allow expanding
 
   return (
     <article className="rounded-lg border border-border bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
@@ -74,9 +65,9 @@ export function PaperCard({
         <span>Added {formatDisplayDate(paper.createdAt)}</span>
       </div>
 
-      <p className={`${variant === 'dashboard' ? 'line-clamp-2' : 'line-clamp-3'} mb-4 text-muted-foreground`}>
-        {abstractPreview}
-      </p>
+      <div className="mb-4">
+        <ExpandableText text={paper.abstract} lines={variant === 'dashboard' ? 2 : 4} />
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         {paper.keywords.slice(0, variant === 'dashboard' ? 4 : 5).map((keyword) => (

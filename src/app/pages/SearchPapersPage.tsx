@@ -5,6 +5,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Search, Download, Eye, Calendar, Filter, Star } from 'lucide-react';
 import { apiRequest, resolveFileUrl } from '../lib/api';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import ExpandableText from '../components/ExpandableText';
 
 export function SearchPapersPage() {
   const navigate = useNavigate();
@@ -153,7 +154,9 @@ export function SearchPapersPage() {
                     <div className="mb-3">
                       {renderStars(paper.averageRating, paper.totalRatings)}
                     </div>
-                    <p className="text-muted-foreground mb-3 line-clamp-2">{paper.abstract}</p>
+                    <div className="mb-3">
+                      <ExpandableText text={paper.abstract} lines={4} />
+                    </div>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {paper.keywords.map((keyword) => (
                         <span

@@ -263,6 +263,10 @@ function hasEnoughWords(value: string, minWords: number) {
   return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length >= minWords;
 }
 
+function countWords(value: string) {
+  return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length;
+}
+
 function isHttpUrl(value: string) {
   try {
     const url = new URL(value.trim());
@@ -302,8 +306,9 @@ function validatePaperRequest(data: {
     return 'Please enter a valid paper link starting with http or https.';
   }
 
-  if (abstract.length < 40 || !hasEnoughWords(abstract, 8)) {
-    return 'Please enter a short but meaningful abstract.';
+  const wordCount = countWords(abstract);
+  if (wordCount < 100 || wordCount > 300) {
+    return 'Word Count Limit: The abstract must contain between 100 and 300 words. Please revise your text to proceed.';
   }
 
   if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
