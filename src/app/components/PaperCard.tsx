@@ -1,4 +1,4 @@
-import { Calendar, Download, Eye, FileText, MessageCircle, Star } from 'lucide-react';
+import { Calendar, Download, Eye, FileText, Star } from 'lucide-react';
 import { formatDisplayDate } from '../lib/date';
 import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
 import ExpandableText from './ExpandableText';
@@ -36,7 +36,6 @@ export function PaperCard({
 }: PaperCardProps) {
   const isPdfAvailable = Boolean(paper.pdfPath) && paper.status === 'downloaded';
   const ratingText = paper.averageRating > 0 ? paper.averageRating.toFixed(1) : 'No rating';
-  const commentCount = paper.totalRatings || 0;
   // show a few lines and allow expanding
 
   return (
@@ -93,10 +92,6 @@ export function PaperCard({
           <span className="flex items-center gap-1">
             <Download size={15} />
             {paper.downloadCount} downloads
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageCircle size={15} />
-            {commentCount} comments
           </span>
         </div>
 

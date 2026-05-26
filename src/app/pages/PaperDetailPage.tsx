@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X, Check } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X, Check, Heart, MessageCircle } from 'lucide-react';
 import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
@@ -27,13 +27,60 @@ type DetailPaper = PublicPaper & {
 type Rating = {
   _id: string;
   rating: number;
-  comment?: string;
   user?: {
     _id: string;
     fullName?: string;
     university?: string;
   };
 };
+
+type PaperComment = {
+  _id: string;
+  parentComment?: string | null;
+  comment: string;
+  createdAt: string;
+  updatedAt?: string;
+  likeCount: number;
+  isLikedByCurrentUser: boolean;
+  isLegacyRatingComment?: boolean;
+  replies?: PaperComment[];
+  user?: {
+    _id: string;
+    fullName?: string;
+    university?: string;
+  };
+};
+
+function withCommentDefaults(comment: PaperComment): PaperComment {
+  return {
+    ...comment,
+    replies: comment.replies || [],
+  };
+}
+
+function replaceCommentInTree(comments: PaperComment[], updatedComment: PaperComment) {
+  return comments.map((comment) => {
+    if (comment._id === updatedComment._id) {
+      return { ...comment, ...updatedComment, replies: comment.replies || updatedComment.replies || [] };
+    }
+
+    return {
+      ...comment,
+      replies: (comment.replies || []).map((reply) =>
+        reply._id === updatedComment._id ? { ...reply, ...updatedComment, replies: [] } : reply
+      ),
+    };
+  });
+}
+
+function removeCommentFromTree(comments: PaperComment[], commentId: string) {
+  return comments
+    .filter((comment) => comment._id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: (comment.replies || []).filter((reply) => reply._id !== commentId),
+    }));
+}
 
 export function PaperDetailPage() {
   const navigate = useNavigate();
@@ -43,17 +90,24 @@ export function PaperDetailPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [paper, setPaper] = useState<DetailPaper | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
+  const [comments, setComments] = useState<PaperComment[]>([]);
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
   const [existingRatingId, setExistingRatingId] = useState<string | null>(null);
   const [isEditingReview, setIsEditingReview] = useState(false);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [submittingReplyId, setSubmittingReplyId] = useState<string | null>(null);
   const [isRemovingRating, setIsRemovingRating] = useState(false);
+  const [removingCommentId, setRemovingCommentId] = useState<string | null>(null);
   const [isAcceptingPdf, setIsAcceptingPdf] = useState(false);
   const [isRejectingPdf, setIsRejectingPdf] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [commentError, setCommentError] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -72,16 +126,23 @@ export function PaperDetailPage() {
         paperData = await apiRequest<{ paper: DetailPaper }>(`/public-papers/${id}`, { auth: true });
       }
 
-      const ratingsData = await apiRequest<{ ratings: Rating[] }>(`/ratings/papers/${id}`, { auth: true });
+      const [ratingsData, commentsData] = await Promise.all([
+        apiRequest<{ ratings: Rating[] }>(`/ratings/papers/${id}`, { auth: true }),
+        apiRequest<{ comments: PaperComment[] }>(`/ratings/papers/${id}/comments`, { auth: true }),
+      ]);
       const existingUserRating = ratingsData.ratings.find((rating) => rating.user?._id === currentUser?._id);
 
       setPaper(paperData.paper);
       setRatings(ratingsData.ratings);
+      setComments(commentsData.comments);
       setUserRating(existingUserRating?.rating || 0);
-      setUserComment(existingUserRating?.comment || '');
+      setUserComment('');
+      setReplyTargetId(null);
+      setReplyText('');
       setExistingRatingId(existingUserRating?._id || null);
       setIsEditingReview(false);
       setReviewError('');
+      setCommentError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load paper detail');
     } finally {
@@ -214,6 +275,7 @@ export function PaperDetailPage() {
     setError('');
     setMessage('');
     setReviewError('');
+    setCommentError('');
     setUserRating(rating);
   };
 
@@ -224,13 +286,8 @@ export function PaperDetailPage() {
     setMessage('');
     setReviewError('');
 
-    if (userComment.trim() && userRating === 0) {
-      setReviewError('Please choose a star rating before submitting a comment.');
-      return;
-    }
-
     if (userRating === 0) {
-      setReviewError('Please choose a star rating to submit your review.');
+      setReviewError('Please choose a star rating.');
       return;
     }
 
@@ -240,13 +297,10 @@ export function PaperDetailPage() {
       await apiRequest(existingRatingId ? `/ratings/${existingRatingId}` : `/ratings/papers/${paper._id}`, {
         method: existingRatingId ? 'PATCH' : 'POST',
         auth: true,
-        body: JSON.stringify({ 
-          rating: userRating,
-          comment: userComment.trim()
-        }),
+        body: JSON.stringify({ rating: userRating }),
       });
 
-      setMessage(existingRatingId ? 'Review updated successfully.' : 'Review submitted successfully.');
+      setMessage(existingRatingId ? 'Rating updated successfully.' : 'Rating submitted successfully.');
       await loadPaper();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit rating');
@@ -257,10 +311,10 @@ export function PaperDetailPage() {
 
   const handleStartUpdateReview = (rating: Rating) => {
     setUserRating(rating.rating);
-    setUserComment(rating.comment || '');
     setExistingRatingId(rating._id);
     setIsEditingReview(true);
     setReviewError('');
+    setCommentError('');
     setError('');
     setMessage('');
   };
@@ -268,9 +322,9 @@ export function PaperDetailPage() {
   const handleCancelReviewEdit = () => {
     const savedRating = ratings.find(r => r.user?._id === currentUser?._id);
     setUserRating(savedRating?.rating || 0);
-    setUserComment(savedRating?.comment || '');
     setIsEditingReview(false);
     setReviewError('');
+    setCommentError('');
     setError('');
     setMessage('');
   };
@@ -279,6 +333,7 @@ export function PaperDetailPage() {
     setError('');
     setMessage('');
     setReviewError('');
+    setCommentError('');
     setIsRemovingRating(true);
 
     try {
@@ -287,9 +342,8 @@ export function PaperDetailPage() {
         auth: true,
       });
 
-      setMessage('Review removed successfully.');
+      setMessage('Rating removed successfully.');
       setUserRating(0);
-      setUserComment('');
       setExistingRatingId(null);
       setIsEditingReview(false);
       await loadPaper();
@@ -299,6 +353,102 @@ export function PaperDetailPage() {
       setIsRemovingRating(false);
     }
   };
+
+  const handleSubmitComment = async (parentCommentId?: string) => {
+    if (!paper) return;
+
+    const nextComment = parentCommentId ? replyText.trim() : userComment.trim();
+    setError('');
+    setMessage('');
+    setReviewError('');
+    setCommentError('');
+
+    if (!nextComment) {
+      setCommentError('Please write a comment before submitting.');
+      return;
+    }
+
+    if (parentCommentId) {
+      setSubmittingReplyId(parentCommentId);
+    } else {
+      setIsSubmittingComment(true);
+    }
+
+    try {
+      const data = await apiRequest<{ comment: PaperComment }>(`/ratings/papers/${paper._id}/comments`, {
+        method: 'POST',
+        auth: true,
+        body: JSON.stringify({ comment: nextComment, parentCommentId }),
+      });
+
+      setMessage(parentCommentId ? 'Reply posted successfully.' : 'Comment posted successfully.');
+      const nextCreatedComment = withCommentDefaults(data.comment);
+
+      setComments((currentComments) => {
+        if (!parentCommentId) {
+          return [nextCreatedComment, ...currentComments];
+        }
+
+        return currentComments.map((comment) =>
+          comment._id === parentCommentId
+            ? { ...comment, replies: [...(comment.replies || []), nextCreatedComment] }
+            : comment
+        );
+      });
+
+      if (parentCommentId) {
+        setReplyTargetId(null);
+        setReplyText('');
+      } else {
+        setUserComment('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : parentCommentId ? 'Unable to submit reply' : 'Unable to submit comment');
+    } finally {
+      setIsSubmittingComment(false);
+      setSubmittingReplyId(null);
+    }
+  };
+
+  const handleToggleCommentLike = async (commentId: string) => {
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await apiRequest<{ comment: PaperComment }>(`/ratings/comments/${commentId}/like`, {
+        method: 'PATCH',
+        auth: true,
+      });
+
+      setComments((currentComments) => replaceCommentInTree(currentComments, data.comment));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update comment like');
+    }
+  };
+
+  const handleRemoveComment = async (commentId: string) => {
+    setError('');
+    setMessage('');
+    setReviewError('');
+    setCommentError('');
+    setRemovingCommentId(commentId);
+
+    try {
+      await apiRequest(`/ratings/comments/${commentId}`, {
+        method: 'DELETE',
+        auth: true,
+      });
+
+      setMessage('Comment removed successfully.');
+      setComments((currentComments) => removeCommentFromTree(currentComments, commentId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to remove comment');
+    } finally {
+      setRemovingCommentId(null);
+    }
+  };
+
+  const totalCommentCount = comments.reduce((count, comment) => count + 1 + (comment.replies?.length || 0), 0);
 
   return (
     <div className="flex min-h-screen bg-surface-workspace bg-fixed">
@@ -519,7 +669,7 @@ export function PaperDetailPage() {
 
               {!isAdmin && (
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8">
-                  <h3 className="text-foreground mb-4">Review this paper</h3>
+                  <h3 className="text-foreground mb-4">Rate this paper</h3>
 
                   {!existingRatingId || isEditingReview ? (
                     <>
@@ -554,28 +704,12 @@ export function PaperDetailPage() {
                         )}
                       </div>
 
-                      <div className="space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
                         {reviewError && (
                           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                             {reviewError}
                           </div>
                         )}
-
-                        <label className="block">
-                          <p className="text-sm font-medium text-foreground mb-2">Comment:</p>
-                          <textarea
-                            value={userComment}
-                            onChange={(e) => {
-                              setUserComment(e.target.value);
-                              setReviewError('');
-                            }}
-                            placeholder="Share your thoughts about this paper..."
-                            rows={4}
-                            maxLength={500}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-foreground bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">{userComment.length}/500</p>
-                        </label>
 
                         <div className="flex gap-2">
                           <button
@@ -584,41 +718,70 @@ export function PaperDetailPage() {
                             disabled={isSubmittingRating}
                             className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {isSubmittingRating ? 'Submitting...' : isEditingReview ? 'Save review' : 'Submit review'}
+                            {isSubmittingRating ? 'Submitting...' : isEditingReview ? 'Save rating' : 'Submit rating'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={handleCancelReviewEdit}
-                            className="px-6 py-2 border border-gray-300 rounded-lg text-foreground hover:bg-gray-100 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                          {isEditingReview && (
+                            <button
+                              type="button"
+                              onClick={handleCancelReviewEdit}
+                              className="px-6 py-2 border border-gray-300 rounded-lg text-foreground hover:bg-gray-100 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
                       </div>
                     </>
                   ) : (
                     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800">Your review is listed below. Use Update or Remove to manage it.</p>
+                      <p className="text-sm text-blue-800">Your rating is listed below. Use Update or Remove to manage it.</p>
                     </div>
                   )}
+
+                  <div className="mt-6 border-t border-border pt-6">
+                    <h3 className="text-foreground mb-4">Add a comment</h3>
+                    {commentError && (
+                      <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {commentError}
+                      </div>
+                    )}
+                    <label className="block">
+                      <textarea
+                        value={userComment}
+                        onChange={(e) => {
+                          setUserComment(e.target.value);
+                          setCommentError('');
+                        }}
+                        placeholder="Share your thoughts about this paper..."
+                        rows={4}
+                        maxLength={500}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-foreground bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{userComment.length}/500</p>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleSubmitComment()}
+                      disabled={isSubmittingComment}
+                      className="mt-3 flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmittingComment ? 'Posting...' : 'Post comment'}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {ratings.length > 0 && (
+              {ratings.some((rating) => rating.user?._id === currentUser?._id) && (
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8 mt-6">
-                  <h3 className="text-foreground mb-4">Ratings</h3>
+                  <h3 className="text-foreground mb-4">Your rating</h3>
                   <div className="space-y-3">
-                    {ratings.map((rating) => {
+                    {ratings.filter((rating) => rating.user?._id === currentUser?._id).map((rating) => {
                       const isOwnRating = rating.user?._id === currentUser?._id;
 
                       return (
                         <div
                           key={rating._id}
-                          className={`rounded-lg border p-4 ${
-                            isOwnRating
-                              ? 'border-blue-300 bg-blue-50 shadow-sm'
-                              : 'border-border bg-white'
-                          }`}
+                          className="rounded-lg border border-blue-300 bg-blue-50 p-4 shadow-sm"
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div>
@@ -626,33 +789,199 @@ export function PaperDetailPage() {
                                 {rating.user?.fullName || 'User'} rated {rating.rating} / 5
                                 {isOwnRating && (
                                   <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
-                                    Your review
+                                    Your rating
                                   </span>
                                 )}
                               </p>
-                              {rating.comment && (
-                                <p className="text-muted-foreground mt-1">{rating.comment}</p>
+                            </div>
+
+                            <div className="flex shrink-0 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleStartUpdateReview(rating)}
+                                className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-blue-700 transition-colors hover:bg-blue-100"
+                              >
+                                Update
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveReview(rating._id)}
+                                disabled={isRemovingRating}
+                                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isRemovingRating ? 'Removing...' : 'Remove'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {comments.length > 0 && (
+                <div className="bg-white rounded-lg border border-border shadow-sm p-8 mt-6">
+                  <h3 className="text-foreground mb-4">Comments ({totalCommentCount})</h3>
+                  <div className="space-y-3">
+                    {comments.map((comment) => {
+                      const isOwnComment = comment.user?._id === currentUser?._id;
+                      const canRemoveComment = (isOwnComment || isAdmin) && !comment.isLegacyRatingComment;
+
+                      return (
+                        <div key={comment._id} className="rounded-lg border border-border bg-white p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-foreground">
+                                {comment.user?.fullName || 'User'}
+                                {isOwnComment && (
+                                  <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                    Your comment
+                                  </span>
+                                )}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{comment.comment}</p>
+                              <p className="mt-2 text-xs text-gray-500">{formatDisplayDate(comment.createdAt)}</p>
+
+                              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                                {!comment.isLegacyRatingComment && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleCommentLike(comment._id)}
+                                    className={`inline-flex items-center gap-1 transition-colors ${
+                                      comment.isLikedByCurrentUser ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'
+                                    }`}
+                                  >
+                                    <Heart
+                                      size={16}
+                                      className={comment.isLikedByCurrentUser ? 'fill-red-500 text-red-500' : ''}
+                                    />
+                                    {comment.likeCount} {comment.likeCount === 1 ? 'like' : 'likes'}
+                                  </button>
+                                )}
+                                {!comment.isLegacyRatingComment && !isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReplyTargetId(replyTargetId === comment._id ? null : comment._id);
+                                      setReplyText('');
+                                      setCommentError('');
+                                    }}
+                                    className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-primary"
+                                  >
+                                    <MessageCircle size={16} />
+                                    Reply
+                                  </button>
+                                )}
+                              </div>
+
+                              {replyTargetId === comment._id && (
+                                <div className="mt-4 rounded-lg border border-border bg-gray-50 p-3">
+                                  {commentError && (
+                                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                      {commentError}
+                                    </div>
+                                  )}
+                                  <textarea
+                                    value={replyText}
+                                    onChange={(e) => {
+                                      setReplyText(e.target.value);
+                                      setCommentError('');
+                                    }}
+                                    placeholder={`Reply to ${comment.user?.fullName || 'this comment'}...`}
+                                    rows={3}
+                                    maxLength={500}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                  <div className="mt-2 flex items-center justify-between gap-3">
+                                    <p className="text-xs text-gray-500">{replyText.length}/500</p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setReplyTargetId(null);
+                                          setReplyText('');
+                                          setCommentError('');
+                                        }}
+                                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-foreground transition-colors hover:bg-gray-100"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSubmitComment(comment._id)}
+                                        disabled={submittingReplyId === comment._id}
+                                        className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                      >
+                                        {submittingReplyId === comment._id ? 'Replying...' : 'Post reply'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {comment.replies && comment.replies.length > 0 && (
+                                <div className="mt-4 space-y-3 border-l-2 border-border pl-4">
+                                  {comment.replies.map((reply) => {
+                                    const isOwnReply = reply.user?._id === currentUser?._id;
+                                    const canRemoveReply = isOwnReply || isAdmin;
+
+                                    return (
+                                      <div key={reply._id} className="rounded-lg border border-border bg-gray-50 p-3">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-foreground">
+                                              {reply.user?.fullName || 'User'}
+                                              {isOwnReply && (
+                                                <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                                  Your reply
+                                                </span>
+                                              )}
+                                            </p>
+                                            <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{reply.comment}</p>
+                                            <p className="mt-2 text-xs text-gray-500">{formatDisplayDate(reply.createdAt)}</p>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleToggleCommentLike(reply._id)}
+                                              className={`mt-3 inline-flex items-center gap-1 text-sm transition-colors ${
+                                                reply.isLikedByCurrentUser ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'
+                                              }`}
+                                            >
+                                              <Heart
+                                                size={16}
+                                                className={reply.isLikedByCurrentUser ? 'fill-red-500 text-red-500' : ''}
+                                              />
+                                              {reply.likeCount} {reply.likeCount === 1 ? 'like' : 'likes'}
+                                            </button>
+                                          </div>
+
+                                          {canRemoveReply && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveComment(reply._id)}
+                                              disabled={removingCommentId === reply._id}
+                                              className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                              {removingCommentId === reply._id ? 'Removing...' : 'Remove'}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               )}
                             </div>
 
-                            {isOwnRating && (
-                              <div className="flex shrink-0 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartUpdateReview(rating)}
-                                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-blue-700 transition-colors hover:bg-blue-100"
-                                >
-                                  Update
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveReview(rating._id)}
-                                  disabled={isRemovingRating}
-                                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isRemovingRating ? 'Removing...' : 'Remove'}
-                                </button>
-                              </div>
+                            {canRemoveComment && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveComment(comment._id)}
+                                disabled={removingCommentId === comment._id}
+                                className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {removingCommentId === comment._id ? 'Removing...' : 'Remove'}
+                              </button>
                             )}
                           </div>
                         </div>

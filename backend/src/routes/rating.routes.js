@@ -1,12 +1,16 @@
 import { Router } from 'express';
 import {
+  createPaperComment,
   createRating,
+  deletePaperComment,
   deleteRating,
+  getPaperComments,
   getPaperRatings,
   getRatingById,
+  togglePaperCommentLike,
   updateRating,
 } from '../controllers/rating.controller.js';
-import { requireAuth } from '../middlewares/auth.middleware.js';
+import { optionalAuth, requireAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -27,6 +31,8 @@ const router = Router();
  *         description: List of paper ratings
  */
 router.get('/papers/:paperId', getPaperRatings);
+
+router.get('/papers/:paperId/comments', optionalAuth, getPaperComments);
 
 /**
  * @swagger
@@ -63,6 +69,12 @@ router.get('/papers/:paperId', getPaperRatings);
  *         description: Rating created
  */
 router.post('/papers/:paperId', requireAuth, createRating);
+
+router.post('/papers/:paperId/comments', requireAuth, createPaperComment);
+
+router.patch('/comments/:id/like', requireAuth, togglePaperCommentLike);
+
+router.delete('/comments/:id', requireAuth, deletePaperComment);
 
 /**
  * @swagger

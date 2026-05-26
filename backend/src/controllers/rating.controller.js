@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
+import { PaperComment } from '../models/PaperComment.js';
 import { Rating } from '../models/Rating.js';
 import { syncUserPoints } from '../utils/points.js';
 import {
@@ -38,6 +39,26 @@ async function refreshPaperRatingStats(paperId) {
   });
 }
 
+async function migrateLegacyRatingComments(paperId) {
+  const legacyRatings = await Rating.find({ paper: paperId, comment: { $ne: '' } });
+
+  for (const rating of legacyRatings) {
+    await PaperComment.updateOne(
+      { sourceRating: rating._id },
+      {
+        $setOnInsert: {
+          paper: rating.paper,
+          user: rating.user,
+          sourceRating: rating._id,
+          comment: rating.comment,
+          createdAt: rating.createdAt,
+        },
+      },
+      { upsert: true }
+    );
+  }
+}
+
 async function notifyPaperCommentRecipients({ paper, commenter, comment }) {
   if (!comment.trim() || commenter.role !== 'user') {
     return;
@@ -54,6 +75,50 @@ async function notifyPaperCommentRecipients({ paper, commenter, comment }) {
   } catch (error) {
     console.error('Failed to create user notification for paper comment:', error);
   }
+}
+
+function serializeComment(comment, currentUserId) {
+  const likedBy = (comment.likedBy || []).map((userId) => userId.toString());
+
+  return {
+    _id: comment._id,
+    paper: comment.paper,
+    parentComment: comment.parentComment || null,
+    user: comment.user,
+    comment: comment.comment,
+    createdAt: comment.createdAt,
+    updatedAt: comment.updatedAt,
+    likeCount: likedBy.length,
+    isLikedByCurrentUser: currentUserId ? likedBy.includes(currentUserId.toString()) : false,
+  };
+}
+
+function buildCommentThread(comments, legacyComments, currentUserId) {
+  const serializedComments = comments.map((comment) => ({
+    ...serializeComment(comment, currentUserId),
+    replies: [],
+  }));
+  const commentMap = new Map(serializedComments.map((comment) => [comment._id.toString(), comment]));
+  const topLevelComments = [];
+
+  for (const comment of serializedComments) {
+    const parentId = comment.parentComment?.toString();
+    const parent = parentId ? commentMap.get(parentId) : null;
+
+    if (parent) {
+      parent.replies.push(comment);
+    } else {
+      topLevelComments.push(comment);
+    }
+  }
+
+  for (const comment of topLevelComments) {
+    comment.replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  return [...topLevelComments, ...legacyComments].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }
 
 export async function createRating(req, res) {
@@ -88,8 +153,16 @@ export async function createRating(req, res) {
     paper: paperId,
     user: req.user._id,
     rating: normalizedRating,
-    comment: normalizedComment,
   });
+
+  let createdComment = null;
+  if (normalizedComment) {
+    createdComment = await PaperComment.create({
+      paper: paperId,
+      user: req.user._id,
+      comment: normalizedComment,
+    });
+  }
 
   await refreshPaperRatingStats(paperId);
   await syncUserPoints(req.user._id);
@@ -114,8 +187,11 @@ export async function createRating(req, res) {
   }
 
   const populatedRating = await Rating.findById(createdRating._id).populate('user', 'fullName university');
+  const populatedComment = createdComment
+    ? await PaperComment.findById(createdComment._id).populate('user', 'fullName university')
+    : null;
 
-  res.status(201).json({ rating: populatedRating });
+  res.status(201).json({ rating: populatedRating, comment: populatedComment });
 }
 
 export async function getPaperRatings(req, res) {
@@ -149,7 +225,7 @@ export async function getRatingById(req, res) {
 }
 
 export async function updateRating(req, res) {
-  const { rating, comment } = req.body;
+  const { rating } = req.body;
 
   if (isInvalidId(req.params.id)) {
     return res.status(400).json({ message: 'Invalid rating id' });
@@ -172,17 +248,6 @@ export async function updateRating(req, res) {
     existingRating.rating = normalizedRating;
   }
 
-  const previousComment = existingRating.comment || '';
-  const nextComment = comment !== undefined ? String(comment).trim() : previousComment;
-
-  if (nextComment.length > 500) {
-    return res.status(400).json({ message: 'Comment must be 500 characters or fewer' });
-  }
-
-  if (comment !== undefined) {
-    existingRating.comment = nextComment;
-  }
-
   await existingRating.save();
   await refreshPaperRatingStats(existingRating.paper);
 
@@ -196,13 +261,6 @@ export async function updateRating(req, res) {
         actorId: req.user._id,
       });
 
-      if (paper && comment !== undefined && nextComment && nextComment !== previousComment) {
-        await notifyPaperCommentRecipients({
-          paper,
-          commenter: req.user,
-          comment: nextComment,
-        });
-      }
     } catch (error) {
       console.error('Failed to create admin notification for rating update:', error);
     }
@@ -211,6 +269,121 @@ export async function updateRating(req, res) {
   const updatedRating = await Rating.findById(existingRating._id).populate('user', 'fullName university');
 
   res.json({ rating: updatedRating });
+}
+
+export async function getPaperComments(req, res) {
+  const { paperId } = req.params;
+
+  if (isInvalidId(paperId)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  await migrateLegacyRatingComments(paperId);
+
+  const comments = await PaperComment.find({ paper: paperId })
+    .populate('user', 'fullName university')
+    .sort({ createdAt: -1 });
+
+  res.json({ comments: buildCommentThread(comments, [], req.user?._id) });
+}
+
+export async function createPaperComment(req, res) {
+  const { paperId } = req.params;
+  const normalizedComment = String(req.body.comment || '').trim();
+  const parentCommentId = req.body.parentCommentId || null;
+
+  if (isInvalidId(paperId)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  if (parentCommentId && isInvalidId(parentCommentId)) {
+    return res.status(400).json({ message: 'Invalid parent comment id' });
+  }
+
+  if (!normalizedComment) {
+    return res.status(400).json({ message: 'Comment is required' });
+  }
+
+  if (normalizedComment.length > 500) {
+    return res.status(400).json({ message: 'Comment must be 500 characters or fewer' });
+  }
+
+  const paper = await Paper.findById(paperId).select('title requestedBy uploadedBy');
+  if (!paper) {
+    return res.status(404).json({ message: 'Paper not found' });
+  }
+
+  let parentComment = null;
+  if (parentCommentId) {
+    parentComment = await PaperComment.findOne({ _id: parentCommentId, paper: paperId });
+    if (!parentComment) {
+      return res.status(404).json({ message: 'Parent comment not found' });
+    }
+
+    if (parentComment.parentComment) {
+      return res.status(400).json({ message: 'Replies can only be added to top-level comments' });
+    }
+  }
+
+  const createdComment = await PaperComment.create({
+    paper: paperId,
+    user: req.user._id,
+    parentComment: parentComment?._id || null,
+    comment: normalizedComment,
+  });
+
+  await notifyPaperCommentRecipients({
+    paper,
+    commenter: req.user,
+    comment: normalizedComment,
+  });
+
+  const populatedComment = await PaperComment.findById(createdComment._id).populate('user', 'fullName university');
+
+  res.status(201).json({ comment: serializeComment(populatedComment, req.user._id) });
+}
+
+export async function togglePaperCommentLike(req, res) {
+  if (isInvalidId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid comment id' });
+  }
+
+  const comment = await PaperComment.findById(req.params.id).populate('user', 'fullName university');
+  if (!comment) {
+    return res.status(404).json({ message: 'Comment not found' });
+  }
+
+  const userId = req.user._id.toString();
+  const likedBy = comment.likedBy.map((likedUserId) => likedUserId.toString());
+
+  if (likedBy.includes(userId)) {
+    comment.likedBy = comment.likedBy.filter((likedUserId) => likedUserId.toString() !== userId);
+  } else {
+    comment.likedBy.push(req.user._id);
+  }
+
+  await comment.save();
+
+  res.json({ comment: serializeComment(comment, req.user._id) });
+}
+
+export async function deletePaperComment(req, res) {
+  if (isInvalidId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid comment id' });
+  }
+
+  const comment = await PaperComment.findById(req.params.id);
+  if (!comment) {
+    return res.status(404).json({ message: 'Comment not found' });
+  }
+
+  if (comment.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'You do not have permission to delete this comment' });
+  }
+
+  await PaperComment.deleteMany({ $or: [{ _id: comment._id }, { parentComment: comment._id }] });
+
+  res.json({ message: 'Comment deleted successfully', commentId: comment._id });
 }
 
 export async function deleteRating(req, res) {
