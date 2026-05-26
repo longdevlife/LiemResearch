@@ -3,6 +3,7 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
+import { User } from '../models/User.js';
 import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
 import { recordInvalidPdfUpload, syncUserPoints } from '../utils/points.js';
 import {
@@ -30,12 +31,39 @@ function isApprovedStatus(status) {
   return status === 'downloaded' || status === 'not-downloaded' || status === 'pending-requester-acceptance';
 }
 
+function getObjectIdValue(value) {
+  return value?._id || value;
+}
+
 function isPdfWaitingRequesterAcceptance(paper) {
   if (!paper?.pdfPath || !paper.uploadedBy) return false;
 
   if (paper.status === 'pending-requester-acceptance') return true;
 
-  return paper.status === 'pending' && paper.uploadedBy.toString() !== paper.requestedBy.toString();
+  return paper.status === 'pending' && !isSameObjectId(paper.uploadedBy, paper.requestedBy);
+}
+
+function isSameObjectId(left, right) {
+  const leftId = getObjectIdValue(left);
+  const rightId = getObjectIdValue(right);
+  if (!leftId || !rightId) return false;
+  return leftId.toString() === rightId.toString();
+}
+
+async function normalizeContributorPdfReviewStatus(paper) {
+  if (!paper || paper.status !== 'pending' || !paper.pdfPath || !paper.uploadedBy) return paper;
+  if (isSameObjectId(paper.uploadedBy, paper.requestedBy)) return paper;
+
+  const uploader = await User.findById(getObjectIdValue(paper.uploadedBy)).select('role');
+  if (uploader?.role === 'admin') return paper;
+
+  paper.status = 'pending-requester-acceptance';
+  await paper.save();
+  return paper;
+}
+
+async function normalizeContributorPdfReviewStatuses(papers) {
+  return Promise.all(papers.map((paper) => normalizeContributorPdfReviewStatus(paper)));
 }
 
 function normalizePaperUpdateStatus(status, paper) {
@@ -243,6 +271,7 @@ export async function createPaper(req, res) {
 
 export async function getMyPapers(req, res) {
   const papers = await Paper.find({ requestedBy: req.user._id }).sort({ createdAt: -1 });
+  await normalizeContributorPdfReviewStatuses(papers);
   res.json({ papers });
 }
 
@@ -264,6 +293,8 @@ export async function getAllPapers(req, res) {
     .populate('uploadedBy', 'fullName university email')
     .sort({ createdAt: -1 });
 
+  await normalizeContributorPdfReviewStatuses(papers);
+
   res.json({ papers });
 }
 
@@ -277,6 +308,8 @@ export async function getPaperById(req, res) {
     .populate('uploadedBy', 'fullName university email');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  await normalizeContributorPdfReviewStatus(paper);
 
   if (req.user.role !== 'admin' && paper.requestedBy._id.toString() !== req.user._id.toString()) {
     return res.status(403).json({ message: 'You do not have permission to view this paper' });
