@@ -8,7 +8,7 @@ export type PublicPaper = {
   journal?: string;
   keywords: string[];
   publishedYear: number;
-  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
+  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded' | 'pending-requester-acceptance';
   pdfPath?: string;
   uploadedBy?: {
     _id: string;

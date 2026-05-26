@@ -179,7 +179,7 @@ export function SearchPapersPage() {
                       <Eye size={18} />
                       View
                     </button>
-                    {paper.pdfPath ? (
+                    {paper.pdfPath && paper.status === 'downloaded' ? (
                       <button
                         onClick={() => handleDownload(paper)}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"

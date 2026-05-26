@@ -65,6 +65,7 @@ export function AdminDashboard() {
   const downloadedPapers = papers.filter((paper) => paper.status === 'downloaded').length;
   const pendingPapers = papers.filter((paper) => paper.status === 'pending').length;
   const notDownloadedPapers = papers.filter((paper) => paper.status === 'not-downloaded' || paper.status === 'approved').length;
+  const waitingRequesterAcceptance = papers.filter((paper) => paper.status === 'pending-requester-acceptance').length;
   const recentPendingRequests = papers
     .filter((paper) => paper.status === 'pending')
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
@@ -79,6 +80,7 @@ export function AdminDashboard() {
     { label: 'PDF available', count: downloadedPapers, color: 'bg-green-500' },
     { label: 'Pending', count: pendingPapers, color: 'bg-amber-500' },
     { label: 'No PDF yet', count: notDownloadedPapers, color: 'bg-gray-500' },
+    { label: 'Waiting requester accept', count: waitingRequesterAcceptance, color: 'bg-purple-500' },
   ];
 
   return (

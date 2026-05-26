@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
 import { getPdfDownloadUrl } from '../utils/s3.js';
 
-const visibleStatuses = ['approved', 'downloaded', 'not-downloaded'];
+const visibleStatuses = ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
 function isInvalidPaperId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -32,6 +32,7 @@ function buildSearchFilter(query) {
 
   if (query.hasPdf === 'true') {
     filter.pdfPath = { $exists: true, $ne: '' };
+    filter.status = 'downloaded';
   }
 
   if (query.hasPdf === 'false') {

@@ -9,7 +9,7 @@ export type EditablePaper = {
   abstract: string;
   keywords: string[];
   publishedYear: number;
-  status: 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
+  status: 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected' | 'pending-requester-acceptance';
 };
 
 interface EditPaperModalProps {
@@ -114,6 +114,7 @@ export function EditPaperModal({ isOpen, onClose, onSave, paper }: EditPaperModa
                 <option value="rejected">Rejected</option>
                 <option value="downloaded">PDF available</option>
                 <option value="not-downloaded">No PDF yet</option>
+                <option value="pending-requester-acceptance">Waiting requester accept</option>
               </select>
             </div>
           </div>

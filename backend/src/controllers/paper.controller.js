@@ -4,10 +4,11 @@ import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
-import { syncUserPoints } from '../utils/points.js';
+import { recordInvalidPdfUpload, syncUserPoints } from '../utils/points.js';
 import {
   notifyAdminsPaperPdfUploaded,
   notifyAdminsPaperSubmitted,
+  notifyPaperRequesterPdfUploaded,
   notifyUsersPaperApproved,
 } from '../utils/notification.js';
 
@@ -15,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, '../../uploads');
 
-const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded'];
+const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
 function normalizePaperStatus(status) {
   return status === 'approved' ? 'not-downloaded' : status;
@@ -26,7 +27,7 @@ function getApprovalStatus(paper) {
 }
 
 function isApprovedStatus(status) {
-  return status === 'downloaded' || status === 'not-downloaded';
+  return status === 'downloaded' || status === 'not-downloaded' || status === 'pending-requester-acceptance';
 }
 
 function normalizePaperUpdateStatus(status, paper) {
@@ -490,7 +491,28 @@ export async function uploadPaperPdf(req, res) {
     return res.status(409).json({ message: 'This paper already has a PDF uploaded' });
   }
 
+  const requesterId = existingPaper.requestedBy.toString();
+  const uploaderId = req.user._id.toString();
+  const isRequesterUpload = requesterId === uploaderId;
+  const isAdminUpload = req.user.role === 'admin';
+
+  if (!isAdminUpload && !isRequesterUpload && existingPaper.status !== 'not-downloaded') {
+    await removeUploadedFile(req.file);
+    return res.status(403).json({ message: 'You can only upload a PDF after the request is approved without a PDF' });
+  }
+
+  if (existingPaper.status === 'rejected') {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: 'Cannot upload a PDF for a rejected paper' });
+  }
+
   const uploadedPdfPath = await storeUploadedPdf(req.file);
+  const nextStatus =
+    isAdminUpload || isRequesterUpload || existingPaper.status === 'pending'
+      ? existingPaper.status === 'not-downloaded'
+        ? 'downloaded'
+        : existingPaper.status
+      : 'pending-requester-acceptance';
 
   const paper = await Paper.findByIdAndUpdate(
     req.params.id,
@@ -498,10 +520,11 @@ export async function uploadPaperPdf(req, res) {
       pdfPath: uploadedPdfPath,
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
-      status: 'pending',
+      status: nextStatus,
     },
     { new: true }
-  );
+  ).populate('requestedBy', 'fullName email university studentId')
+    .populate('uploadedBy', 'fullName university email');
 
   if (!paper) {
     await deleteStoredPdf(uploadedPdfPath);
@@ -510,8 +533,23 @@ export async function uploadPaperPdf(req, res) {
   }
 
   await syncUserPoints(paper.uploadedBy);
+  if (nextStatus === 'downloaded') {
+    await syncUserPoints(paper.requestedBy);
+  }
 
-  if (req.user.role === 'user') {
+  if (nextStatus === 'pending-requester-acceptance') {
+    try {
+      await notifyPaperRequesterPdfUploaded({
+        paperId: paper._id,
+        paperTitle: paper.title,
+        uploaderName: req.user.fullName,
+        actorId: req.user._id,
+        requesterId: paper.requestedBy._id || paper.requestedBy,
+      });
+    } catch (error) {
+      console.error('Failed to create requester notification for PDF upload:', error);
+    }
+  } else if (req.user.role === 'user') {
     try {
       await notifyAdminsPaperPdfUploaded({
         paperId: paper._id,
@@ -525,6 +563,79 @@ export async function uploadPaperPdf(req, res) {
   }
 
   res.json({ paper });
+}
+
+export async function acceptPaperPdf(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const paper = await Paper.findById(req.params.id);
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  if (paper.requestedBy.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'Only the requester can accept this PDF' });
+  }
+
+  if (paper.status !== 'pending-requester-acceptance' || !paper.pdfPath) {
+    return res.status(400).json({ message: 'This paper does not have a PDF waiting for requester acceptance' });
+  }
+
+  const updatedPaper = await Paper.findByIdAndUpdate(
+    req.params.id,
+    { status: 'downloaded' },
+    { new: true }
+  )
+    .populate('requestedBy', 'fullName email university studentId')
+    .populate('uploadedBy', 'fullName university email');
+
+  await syncUserPoints(updatedPaper.requestedBy);
+  if (updatedPaper.uploadedBy) {
+    await syncUserPoints(updatedPaper.uploadedBy);
+  }
+
+  res.json({ paper: updatedPaper });
+}
+
+export async function rejectPaperPdf(req, res) {
+  if (isInvalidPaperId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid paper id' });
+  }
+
+  const paper = await Paper.findById(req.params.id);
+
+  if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  if (paper.requestedBy.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'Only the requester can reject this PDF' });
+  }
+
+  if (paper.status !== 'pending-requester-acceptance' || !paper.pdfPath) {
+    return res.status(400).json({ message: 'This paper does not have a PDF waiting for requester acceptance' });
+  }
+
+  const rejectedUploader = paper.uploadedBy;
+
+  await deleteStoredPdf(paper.pdfPath);
+
+  const updatedPaper = await Paper.findByIdAndUpdate(
+    req.params.id,
+    {
+      $unset: { pdfPath: '', uploadedBy: '', uploadedAt: '' },
+      status: 'not-downloaded',
+    },
+    { new: true }
+  )
+    .populate('requestedBy', 'fullName email university studentId')
+    .populate('uploadedBy', 'fullName university email');
+
+  if (rejectedUploader) {
+    await recordInvalidPdfUpload(rejectedUploader);
+  }
+  await syncUserPoints(updatedPaper.requestedBy);
+
+  res.json({ paper: updatedPaper });
 }
 
 export async function deletePaperPdf(req, res) {

@@ -12,17 +12,17 @@ type PaperCardProps = {
 };
 
 
-function PdfStatus({ hasPdf }: { hasPdf: boolean }) {
+function PdfStatus({ isPdfAvailable }: { isPdfAvailable: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${
-        hasPdf
+        isPdfAvailable
           ? 'border-green-200 bg-green-50 text-green-700'
           : 'border-gray-200 bg-gray-50 text-gray-600'
       }`}
     >
       <FileText size={14} />
-      {hasPdf ? 'PDF available' : 'No PDF yet'}
+      {isPdfAvailable ? 'PDF available' : 'No PDF yet'}
     </span>
   );
 }
@@ -34,7 +34,7 @@ export function PaperCard({
   onTagClick,
   variant = 'public',
 }: PaperCardProps) {
-  const hasPdf = Boolean(paper.pdfPath);
+  const isPdfAvailable = Boolean(paper.pdfPath) && paper.status === 'downloaded';
   const ratingText = paper.averageRating > 0 ? paper.averageRating.toFixed(1) : 'No rating';
   const commentCount = paper.totalRatings || 0;
   // show a few lines and allow expanding
@@ -45,7 +45,7 @@ export function PaperCard({
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{getPaperAuthors(paper)}</p>
         </div>
-        <PdfStatus hasPdf={hasPdf} />
+        <PdfStatus isPdfAvailable={isPdfAvailable} />
       </div>
 
       <button
@@ -113,9 +113,9 @@ export function PaperCard({
             <button
               type="button"
               onClick={() => onDownload(paper)}
-              disabled={!hasPdf}
+              disabled={!isPdfAvailable}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                hasPdf
+                isPdfAvailable
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'cursor-not-allowed bg-muted text-muted-foreground'
               }`}
