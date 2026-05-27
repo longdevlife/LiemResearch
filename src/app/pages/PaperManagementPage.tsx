@@ -17,7 +17,6 @@ interface AdminPaper extends EditablePaper {
     fullName?: string;
     email?: string;
     university?: string;
-    studentId?: string;
   };
   pdfPath?: string;
   uploadedBy?: {
@@ -215,14 +214,13 @@ export function PaperManagementPage() {
   };
 
   const exportPapers = (items: AdminPaper[], filename: string) => {
-    const csvContent = [
-      ['Title', 'DOI', 'Requested By', 'University', 'Student ID', 'Date', 'Status'],
+      const csvContent = [
+      ['Title', 'DOI', 'Requested By', 'University', 'Date', 'Status'],
       ...items.map((paper) => [
         paper.title,
         paper.doi,
         paper.requestedBy?.fullName,
         paper.requestedBy?.university,
-        paper.requestedBy?.studentId,
         formatDisplayDate(paper.createdAt),
         paper.status,
       ]),
@@ -359,7 +357,7 @@ export function PaperManagementPage() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="text-foreground">{paper.requestedBy?.fullName || 'Unknown'}</p>
-                          <p className="text-muted-foreground">ID: {paper.requestedBy?.studentId || 'N/A'}</p>
+                          {/* Student ID removed */}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">{paper.requestedBy?.university || 'N/A'}</td>

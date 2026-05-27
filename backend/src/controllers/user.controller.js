@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
-import { validateStudentId } from '../utils/validation.js';
 
 function isInvalidUserId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -17,7 +16,6 @@ function buildUserFilter({ search, role, status }) {
       { fullName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } },
       { university: { $regex: search, $options: 'i' } },
-      { studentId: { $regex: search, $options: 'i' } },
     ];
   }
 
@@ -52,7 +50,7 @@ export async function updateUser(req, res) {
     return res.status(400).json({ message: 'Invalid user id' });
   }
 
-  const allowedFields = ['fullName', 'university', 'studentId', 'role', 'status'];
+  const allowedFields = ['fullName', 'university', 'role', 'status'];
   const updates = {};
 
   for (const field of allowedFields) {
@@ -73,16 +71,7 @@ export async function updateUser(req, res) {
     return res.status(400).json({ message: 'University is required' });
   }
 
-  if (updates.studentId !== undefined && !updates.studentId) {
-    return res.status(400).json({ message: 'Student ID is required' });
-  }
-
-  if (updates.studentId !== undefined) {
-    const studentIdError = validateStudentId(updates.studentId);
-    if (studentIdError) {
-      return res.status(400).json({ message: studentIdError });
-    }
-  }
+  // studentId removed from user profile; no validation required.
 
   if (updates.role !== undefined && !['user', 'admin'].includes(updates.role)) {
     return res.status(400).json({ message: 'Invalid role' });

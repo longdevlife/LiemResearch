@@ -23,7 +23,7 @@ function matchesSearch(user: ManagedUser, searchTerm: string) {
   const query = searchTerm.trim().toLowerCase();
   if (!query) return true;
 
-  return [user.fullName, user.email, user.university, user.studentId]
+  return [user.fullName, user.email, user.university]
     .some((value) => value?.toLowerCase().includes(query));
 }
 
@@ -222,7 +222,7 @@ export function UserManagementPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, email, university, or student ID..."
+                  placeholder="Search by name, email, or university..."
                   maxLength={128}
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                 />
@@ -274,7 +274,7 @@ export function UserManagementPage() {
                         <div>
                           <p className="text-foreground">{user.fullName}</p>
                           <p className="text-muted-foreground">{user.email}</p>
-                          <p className="text-muted-foreground">ID: {user.studentId}</p>
+                          {/* Student ID removed */}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">{user.university}</td>
@@ -410,10 +410,7 @@ export function UserManagementPage() {
                   <p className="text-muted-foreground mb-1">Full Name</p>
                   <p className="text-foreground">{selectedUser.fullName}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Student ID</p>
-                  <p className="text-foreground">{selectedUser.studentId}</p>
-                </div>
+                {/* Student ID removed from user details */}
                 <div>
                   <p className="text-muted-foreground mb-1">Email</p>
                   <p className="text-foreground">{selectedUser.email}</p>

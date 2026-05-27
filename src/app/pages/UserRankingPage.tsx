@@ -271,7 +271,7 @@ function LeaderboardRow({ item, isCurrentUser }: { item: UserRank; isCurrentUser
           {isCurrentUser && <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">You</span>}
         </div>
         <p className="truncate text-sm text-muted-foreground">{item.user.university}</p>
-        <p className="text-sm text-muted-foreground">ID: {item.user.studentId}</p>
+        {/* Student ID removed from ranking display */}
       </div>
 
       <div className="grid grid-cols-3 gap-2">

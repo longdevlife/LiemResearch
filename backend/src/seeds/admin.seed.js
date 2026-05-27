@@ -15,7 +15,6 @@ const admin = await User.findOneAndUpdate(
   {
     fullName: 'LiemResearch Admin',
     university: 'FPT University',
-    studentId: 'ADMIN001',
     email: adminEmail,
     passwordHash,
     role: 'admin',

@@ -8,7 +8,6 @@ export type AuthUser = {
   _id: string;
   fullName: string;
   university: string;
-  studentId: string;
   email: string;
   role: 'user' | 'admin';
   status?: 'active' | 'banned';

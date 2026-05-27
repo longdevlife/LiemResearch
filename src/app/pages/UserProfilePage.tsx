@@ -20,13 +20,11 @@ import {
 } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
-import { validateStudentId } from '../lib/validation';
 
 type ProfileForm = {
   fullName: string;
   email: string;
   university: string;
-  studentId: string;
   memberSince: string;
 };
 
@@ -69,7 +67,6 @@ function mapUserToProfile(user: AuthUser): ProfileForm {
     fullName: user.fullName,
     email: user.email,
     university: user.university,
-    studentId: user.studentId,
     memberSince: user.createdAt ? formatDisplayDate(user.createdAt) : '',
   };
 }
@@ -159,7 +156,7 @@ export function UserProfilePage() {
   const storedUser = getStoredUser();
   const initialProfile = storedUser
     ? mapUserToProfile(storedUser)
-    : { fullName: '', email: '', university: '', studentId: '', memberSince: '' };
+    : { fullName: '', email: '', university: '', memberSince: '' };
   const [profile, setProfile] = useState<ProfileForm>(initialProfile);
   const [editForm, setEditForm] = useState<ProfileForm>(initialProfile);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
@@ -237,11 +234,7 @@ export function UserProfilePage() {
       return;
     }
 
-    const studentIdError = validateStudentId(editForm.studentId);
-    if (studentIdError) {
-      setError(studentIdError);
-      return;
-    }
+    // studentId removed from profile
 
     setIsSaving(true);
 
@@ -250,10 +243,9 @@ export function UserProfilePage() {
         method: 'PATCH',
         auth: true,
         body: JSON.stringify({
-          fullName: editForm.fullName,
-          university: editForm.university,
-          studentId: editForm.studentId,
-        }),
+            fullName: editForm.fullName,
+            university: editForm.university,
+          }),
       });
       const token = getToken();
       const nextProfile = mapUserToProfile(data.user);
@@ -373,10 +365,7 @@ export function UserProfilePage() {
                         <Building2 size={16} />
                         {profile.university || 'No university'}
                       </span>
-                      <span className="flex items-center gap-2">
-                        <CreditCard size={16} />
-                        {profile.studentId || 'No student ID'}
-                      </span>
+                      {/* Student ID removed from profile display */}
                       <span className="flex items-center gap-2">
                         <Calendar size={16} />
                         Joined {profile.memberSince || 'recently'}
@@ -533,13 +522,7 @@ export function UserProfilePage() {
                         inputValue={editForm.university}
                         onChange={(value) => setEditForm({ ...editForm, university: value })}
                       />
-                      <div>
-                        <label className="mb-2 flex items-center gap-2 text-foreground">
-                          <CreditCard size={18} />
-                          Student ID
-                        </label>
-                        <p className="text-muted-foreground">{profile.studentId}</p>
-                      </div>
+                      {/* Student ID removed from profile */}
                     </div>
                   </section>
 

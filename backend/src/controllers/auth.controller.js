@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
 import { Paper } from '../models/Paper.js';
 import { signToken } from '../utils/token.js';
-import { validateStudentId } from '../utils/validation.js';
+// Student ID validation removed; field is no longer used.
 
 function isPresent(value) {
   return value !== undefined && value !== null;
@@ -49,9 +49,9 @@ function isValidEmail(value) {
 }
 
 export async function register(req, res) {
-  const { fullName, university, studentId, email, password, confirmPassword } = req.body;
+  const { fullName, university, email, password, confirmPassword } = req.body;
 
-  if (!fullName || !university || !studentId || !email || !password || !confirmPassword) {
+  if (!fullName || !university || !email || !password || !confirmPassword) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -63,11 +63,6 @@ export async function register(req, res) {
   const universityError = validateUniversity(university);
   if (universityError) {
     return res.status(400).json({ message: universityError });
-  }
-
-  const studentIdError = validateStudentId(studentId);
-  if (studentIdError) {
-    return res.status(400).json({ message: studentIdError });
   }
 
   if (!isValidEmail(email)) {
@@ -91,7 +86,7 @@ export async function register(req, res) {
   const user = await User.create({
     fullName: String(fullName).trim().replace(/\s+/g, ' '),
     university: String(university).trim().replace(/\s+/g, ' '),
-    studentId: String(studentId).trim(),
+    // studentId removed
     email: String(email).trim(),
     passwordHash,
   });
@@ -127,7 +122,7 @@ export async function updateMe(req, res) {
 
   if (isPresent(req.body.fullName)) updates.fullName = String(req.body.fullName).trim();
   if (isPresent(req.body.university)) updates.university = String(req.body.university).trim();
-  if (isPresent(req.body.studentId)) updates.studentId = String(req.body.studentId).trim();
+  // studentId no longer supported in profile updates
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ message: 'No valid fields provided' });
@@ -157,16 +152,7 @@ export async function updateMe(req, res) {
     updates.university = updates.university.replace(/\s+/g, ' ');
   }
 
-  if (updates.studentId !== undefined && !updates.studentId) {
-    return res.status(400).json({ message: 'Student ID is required' });
-  }
-
-  if (updates.studentId !== undefined) {
-    const studentIdError = validateStudentId(updates.studentId);
-    if (studentIdError) {
-      return res.status(400).json({ message: studentIdError });
-    }
-  }
+  // studentId removed — no further validation
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true });
   res.json({ user: user.toSafeObject() });

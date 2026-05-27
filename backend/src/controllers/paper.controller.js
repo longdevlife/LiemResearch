@@ -321,7 +321,7 @@ export async function getAllPapers(req, res) {
   }
 
   const papers = await Paper.find(filter)
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email')
     .sort({ createdAt: -1 });
 
@@ -336,7 +336,7 @@ export async function getPaperById(req, res) {
   }
 
   const paper = await Paper.findById(req.params.id)
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
@@ -494,7 +494,7 @@ export async function updatePaper(req, res) {
     new: true,
     runValidators: true,
   })
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
@@ -596,7 +596,7 @@ export async function uploadPaperPdf(req, res) {
       status: nextStatus,
     },
     { new: true }
-  ).populate('requestedBy', 'fullName email university studentId')
+  ).populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   if (!paper) {
@@ -660,7 +660,7 @@ export async function acceptPaperPdf(req, res) {
     { status: 'downloaded' },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   await syncUserPoints(updatedPaper.requestedBy);
@@ -700,7 +700,7 @@ export async function rejectPaperPdf(req, res) {
     },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   if (rejectedUploader) {
@@ -734,7 +734,7 @@ export async function deletePaperPdf(req, res) {
     },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university studentId')
+    .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
   if (!updatedPaper) return res.status(404).json({ message: 'Paper not found' });

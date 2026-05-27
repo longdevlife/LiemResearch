@@ -16,7 +16,7 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [fullName, university, studentId, email, password, confirmPassword]
+ *             required: [fullName, university, email, password, confirmPassword]
  *             properties:
  *               fullName:
  *                 type: string
@@ -24,9 +24,6 @@ const router = Router();
  *               university:
  *                 type: string
  *                 example: FPT University
- *               studentId:
- *                 type: string
- *                 example: SE190001
  *               email:
  *                 type: string
  *                 example: user@liemresearch.com
@@ -103,9 +100,7 @@ router.get('/me', requireAuth, me);
  *               university:
  *                 type: string
  *                 example: FPT University
- *               studentId:
- *                 type: string
- *                 example: SE190001
+ *               # studentId removed from profile
  *     responses:
  *       200:
  *         description: Updated user

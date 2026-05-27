@@ -14,7 +14,6 @@ type DetailPaper = PublicPaper & {
     fullName?: string;
     email?: string;
     university?: string;
-    studentId?: string;
   };
   uploadedBy?: {
     _id?: string;
