@@ -47,7 +47,7 @@ type PasswordForm = {
 type PaperRequest = {
   _id: string;
   title: string;
-  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
+  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded' | 'pending-requester-acceptance';
   pdfPath?: string;
   createdAt: string;
   updatedAt?: string;
@@ -95,6 +95,7 @@ function getStatusLabel(status: PaperRequest['status']) {
     rejected: 'Rejected',
     downloaded: 'PDF available',
     'not-downloaded': 'No PDF yet',
+    'pending-requester-acceptance': 'Waiting requester accept',
   };
 
   return labels[status];
@@ -130,7 +131,12 @@ function buildRecentActivity(papers: PaperRequest[]): ActivityItem[] {
         date: paper.updatedAt || paper.createdAt,
         tone: 'red',
       });
-    } else if (paper.status === 'downloaded' || paper.status === 'not-downloaded' || paper.status === 'approved') {
+    } else if (
+      paper.status === 'downloaded' ||
+      paper.status === 'not-downloaded' ||
+      paper.status === 'approved' ||
+      paper.status === 'pending-requester-acceptance'
+    ) {
       activities.push({
         id: `${paper._id}-approved`,
         title: 'Paper was approved',
@@ -210,9 +216,9 @@ export function UserProfilePage() {
 
   const activityItems = useMemo(() => buildRecentActivity(myPapers), [myPapers]);
   const approvedPapers = myPapers.filter((paper) =>
-    ['approved', 'downloaded', 'not-downloaded'].includes(paper.status)
+    ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'].includes(paper.status)
   ).length;
-  const pdfReadyPapers = myPapers.filter((paper) => Boolean(paper.pdfPath)).length;
+  const pdfReadyPapers = myPapers.filter((paper) => paper.status === 'downloaded' && Boolean(paper.pdfPath)).length;
   const initials = getInitials(profile.fullName) || 'U';
 
   const handleSave = async () => {

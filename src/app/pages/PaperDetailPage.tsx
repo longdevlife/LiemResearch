@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X, Check } from 'lucide-react';
 import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
@@ -17,6 +17,7 @@ type DetailPaper = PublicPaper & {
     studentId?: string;
   };
   uploadedBy?: {
+    _id?: string;
     fullName?: string;
     email?: string;
     university?: string;
@@ -50,6 +51,8 @@ export function PaperDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [isRemovingRating, setIsRemovingRating] = useState(false);
+  const [isAcceptingPdf, setIsAcceptingPdf] = useState(false);
+  const [isRejectingPdf, setIsRejectingPdf] = useState(false);
   const [reviewError, setReviewError] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -132,14 +135,62 @@ export function PaperDetailPage() {
     }
   };
 
+  const handleAcceptPdf = async () => {
+    if (!paper) return;
+
+    setError('');
+    setMessage('');
+    setIsAcceptingPdf(true);
+
+    try {
+      const data = await apiRequest<{ paper: DetailPaper }>(`/papers/${paper._id}/accept-pdf`, {
+        method: 'PATCH',
+        auth: true,
+      });
+
+      setPaper(data.paper);
+      setMessage('PDF accepted successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to accept PDF');
+    } finally {
+      setIsAcceptingPdf(false);
+    }
+  };
+
+  const handleRejectPdf = async () => {
+    if (!paper) return;
+
+    setError('');
+    setMessage('');
+    setIsRejectingPdf(true);
+
+    try {
+      const data = await apiRequest<{ paper: DetailPaper }>(`/papers/${paper._id}/reject-pdf`, {
+        method: 'PATCH',
+        auth: true,
+      });
+
+      setPaper(data.paper);
+      setMessage('PDF rejected. The paper is waiting for another PDF upload.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to reject PDF');
+    } finally {
+      setIsRejectingPdf(false);
+    }
+  };
+
   const handleDownload = async () => {
     if (!paper) return;
 
     try {
-      const data = await apiRequest<{ downloadUrl: string }>(`/public-papers/${paper._id}/download`, {
-        method: 'POST',
-        auth: true,
-      });
+      const isRequester = paper.requestedBy?._id === currentUser?._id;
+      const canUsePrivateDownload = isAdmin || isRequester;
+      const data = canUsePrivateDownload
+        ? await apiRequest<{ downloadUrl: string }>(`/papers/${paper._id}/pdf-url`, { auth: true })
+        : await apiRequest<{ downloadUrl: string }>(`/public-papers/${paper._id}/download`, {
+            method: 'POST',
+            auth: true,
+          });
 
       const fileUrl = resolveFileUrl(data.downloadUrl);
       const resp = await fetch(fileUrl);
@@ -284,6 +335,21 @@ export function PaperDetailPage() {
 
           {!isLoading && paper && (
             <>
+              {(() => {
+                const isRequester = paper.requestedBy?._id === currentUser?._id;
+                const uploadedByRequester = paper.uploadedBy?._id === paper.requestedBy?._id;
+                const isPdfAvailable = Boolean(paper.pdfPath) && paper.status === 'downloaded';
+                const isWaitingRequesterAccept =
+                  paper.status === 'pending-requester-acceptance' ||
+                  (paper.status === 'pending' && Boolean(paper.pdfPath) && !uploadedByRequester);
+                const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && paper.pdfPath);
+                const canDownloadPdf = Boolean(paper.pdfPath && (isPdfAvailable || canAcceptPdf || isAdmin));
+                const canUploadPdf = Boolean(
+                  currentUser && !paper.pdfPath && (isAdmin || isRequester || paper.status === 'not-downloaded')
+                );
+
+                return (
+                  <>
               <div className="bg-white rounded-lg border border-border shadow-sm p-8 mb-6">
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex-1">
@@ -372,7 +438,9 @@ export function PaperDetailPage() {
                 {paper.pdfPath ? (
                   <div className="space-y-4">
                     <div className="border border-border rounded-lg p-8 bg-muted flex items-center justify-center">
-                      <p className="text-muted-foreground">PDF is available for download</p>
+                      <p className="text-muted-foreground">
+                        {isPdfAvailable ? 'PDF is available for download' : 'PDF is waiting for requester acceptance'}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border bg-white p-4">
                       <p className="text-sm text-muted-foreground">PDF UPLOADED BY :</p>
@@ -384,11 +452,38 @@ export function PaperDetailPage() {
                     <div className="flex gap-4">
                       <button
                         onClick={handleDownload}
-                        className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                        disabled={!canDownloadPdf}
+                        className={`flex-1 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                          canDownloadPdf
+                            ? 'bg-primary text-primary-foreground hover:bg-blue-600'
+                            : 'bg-muted text-muted-foreground cursor-not-allowed'
+                        }`}
                       >
                         <Download size={20} />
                         Download PDF
                       </button>
+                      {canAcceptPdf ? (
+                        <button
+                          type="button"
+                          onClick={handleAcceptPdf}
+                          disabled={isAcceptingPdf}
+                          className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Check size={20} />
+                          {isAcceptingPdf ? 'Accepting...' : 'Accept PDF'}
+                        </button>
+                      ) : null}
+                      {canAcceptPdf ? (
+                        <button
+                          type="button"
+                          onClick={handleRejectPdf}
+                          disabled={isRejectingPdf}
+                          className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <X size={20} />
+                          {isRejectingPdf ? 'Rejecting...' : 'Reject PDF'}
+                        </button>
+                      ) : null}
                       {isAdmin ? (
                         <button
                           onClick={handleDeletePdf}
@@ -408,23 +503,13 @@ export function PaperDetailPage() {
                 ) : (
                   <div className="border border-border rounded-lg p-12 bg-muted text-center">
                     <p className="text-muted-foreground mb-4">No PDF yet</p>
-                    {currentUser && !isAdmin && (
+                    {canUploadPdf && (
                       <button
                         onClick={() => setUploadModalOpen(true)}
                         className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 mx-auto"
                       >
                         <Upload size={20} />
                         Upload PDF
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        disabled
-                        className="bg-muted text-muted-foreground px-6 py-3 rounded-lg cursor-not-allowed flex items-center gap-2 mx-auto"
-                      >
-                        <X size={20} />
-                        Delete PDF
                       </button>
                     )}
                     {!currentUser && <p className="text-sm text-muted-foreground">Sign in to upload the first PDF.</p>}
@@ -576,6 +661,9 @@ export function PaperDetailPage() {
                   </div>
                 </div>
               )}
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

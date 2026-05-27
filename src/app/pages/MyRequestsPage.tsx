@@ -7,7 +7,7 @@ import { Search, Plus, Eye, Calendar, BookOpen, Download } from 'lucide-react';
 import { apiRequest, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 
-type PaperStatus = 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
+type PaperStatus = 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded' | 'pending-requester-acceptance';
 
 interface PaperRequest {
   _id: string;
@@ -31,6 +31,7 @@ const filters: Array<{
   { value: 'all', label: 'Total Requests', iconBgClass: 'bg-blue-100', iconClass: 'text-blue-600' },
   { value: 'pending', label: 'Pending', iconBgClass: 'bg-amber-100', iconClass: 'text-amber-600' },
   { value: 'downloaded', label: 'PDF available', iconBgClass: 'bg-green-100', iconClass: 'text-green-600' },
+  { value: 'pending-requester-acceptance', label: 'Waiting accept', iconBgClass: 'bg-purple-100', iconClass: 'text-purple-600' },
   { value: 'not-downloaded', label: 'No PDF yet', iconBgClass: 'bg-gray-100', iconClass: 'text-gray-600' },
   { value: 'rejected', label: 'Rejected', iconBgClass: 'bg-red-100', iconClass: 'text-red-600' },
 ];
@@ -202,7 +203,7 @@ export function MyRequestsPage() {
                         <Eye size={18} />
                         View Details
                       </button>
-                      {request.pdfPath ? (
+                      {request.pdfPath && request.status === 'downloaded' ? (
                         <button
                           onClick={async () => {
                             try {

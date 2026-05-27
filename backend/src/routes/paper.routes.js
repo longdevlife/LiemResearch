@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createPaper,
+  acceptPaperPdf,
   deletePaper,
   getAllPapers,
   getMyPapers,
@@ -10,6 +11,7 @@ import {
   updatePaperStatus,
   deletePaperPdf,
   uploadPaperPdf,
+  rejectPaperPdf,
 } from '../controllers/paper.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
@@ -276,6 +278,10 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), updatePaperStatus
  *         description: Paper already has a PDF
  */
 router.post('/:id/upload-pdf', requireAuth, uploadSinglePdf, uploadPaperPdf);
+
+router.patch('/:id/accept-pdf', requireAuth, acceptPaperPdf);
+
+router.patch('/:id/reject-pdf', requireAuth, rejectPaperPdf);
 
 /**
  * @swagger

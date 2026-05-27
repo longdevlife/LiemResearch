@@ -110,6 +110,16 @@ export async function notifyAdminsPaperPdfUploaded({ paperId, paperTitle, upload
   );
 }
 
+export async function notifyPaperRequesterPdfUploaded({ paperId, paperTitle, uploaderName, actorId, requesterId }) {
+  return createNotificationsForUsers([requesterId], {
+    actor: actorId,
+    paper: paperId,
+    type: 'paper_pdf_uploaded',
+    title: 'PDF waiting for your acceptance',
+    message: `${uploaderName} uploaded a PDF for your request: ${paperTitle}`,
+  });
+}
+
 export async function notifyAdminsPaperRated({ paperId, paperTitle, raterName, actorId, rating }) {
   return createNotificationsForUserFilter(
     { role: 'admin' },

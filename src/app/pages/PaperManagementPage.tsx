@@ -10,7 +10,7 @@ import { Search, Upload, Download, Eye, Filter, Check, X, Edit, Trash2 } from 'l
 import { apiRequest, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 
-type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected';
+type PaperStatus = 'pending' | 'downloaded' | 'not-downloaded' | 'approved' | 'rejected' | 'pending-requester-acceptance';
 
 interface AdminPaper extends EditablePaper {
   requestedBy?: {
@@ -315,6 +315,7 @@ export function PaperManagementPage() {
                   <option value="rejected">Rejected</option>
                   <option value="downloaded">PDF available</option>
                   <option value="not-downloaded">No PDF yet</option>
+                  <option value="pending-requester-acceptance">Waiting requester accept</option>
                 </select>
               </div>
               <div className="relative">
@@ -404,6 +405,17 @@ export function PaperManagementPage() {
                           )}
 
                           {/* Delete PDF button removed from row actions per UX request */}
+
+                          {!paper.pdfPath && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenUploadModal(paper)}
+                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Upload PDF"
+                            >
+                              <Upload size={18} className="text-green-600" />
+                            </button>
+                          )}
 
                           {paper.pdfPath && (
                             <button

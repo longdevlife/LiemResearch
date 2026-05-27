@@ -9,7 +9,7 @@ type NotificationActor = {
 type NotificationPaper = {
   _id: string;
   title: string;
-  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded';
+  status: 'pending' | 'approved' | 'rejected' | 'downloaded' | 'not-downloaded' | 'pending-requester-acceptance';
 };
 
 export type AppNotification = {

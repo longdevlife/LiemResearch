@@ -1,11 +1,42 @@
 import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
+import { User } from '../models/User.js';
 import { getPdfDownloadUrl } from '../utils/s3.js';
 
-const visibleStatuses = ['approved', 'downloaded', 'not-downloaded'];
+const visibleStatuses = ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
 function isInvalidPaperId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
+}
+
+function getObjectIdValue(value) {
+  return value?._id || value;
+}
+
+function isSameObjectId(left, right) {
+  const leftId = getObjectIdValue(left);
+  const rightId = getObjectIdValue(right);
+  if (!leftId || !rightId) return false;
+  return leftId.toString() === rightId.toString();
+}
+
+async function repairPendingContributorPdfReviews(filter = {}) {
+  const papers = await Paper.find({
+    ...filter,
+    status: 'pending',
+    pdfPath: { $exists: true, $ne: '' },
+    uploadedBy: { $exists: true },
+  }).select('requestedBy uploadedBy status pdfPath');
+
+  for (const paper of papers) {
+    if (isSameObjectId(paper.uploadedBy, paper.requestedBy)) continue;
+
+    const uploader = await User.findById(getObjectIdValue(paper.uploadedBy)).select('role');
+    if (uploader?.role === 'admin') continue;
+
+    paper.status = 'pending-requester-acceptance';
+    await paper.save();
+  }
 }
 
 function buildSearchFilter(query) {
@@ -32,6 +63,7 @@ function buildSearchFilter(query) {
 
   if (query.hasPdf === 'true') {
     filter.pdfPath = { $exists: true, $ne: '' };
+    filter.status = 'downloaded';
   }
 
   if (query.hasPdf === 'false') {
@@ -61,6 +93,8 @@ function buildSort(sortBy) {
 }
 
 export async function searchPublicPapers(req, res) {
+  await repairPendingContributorPdfReviews();
+
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
   const skip = (page - 1) * limit;
@@ -91,6 +125,8 @@ export async function getPublicPaperById(req, res) {
   if (isInvalidPaperId(req.params.id)) {
     return res.status(400).json({ message: 'Invalid paper id' });
   }
+
+  await repairPendingContributorPdfReviews({ _id: req.params.id });
 
   const paper = await Paper.findOne({
     _id: req.params.id,
