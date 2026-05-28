@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BookOpen, Building2, CheckCircle2, CreditCard, Lock, Mail, ShieldCheck, User } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser, getToken } from '../lib/api';
-import { validateStudentId } from '../lib/validation';
 
 export function RegisterPage() {
   const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
@@ -10,7 +9,7 @@ export function RegisterPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     university: '',
-    studentId: '',
+    // studentId removed from registration form
     email: '',
     password: '',
     confirmPassword: '',
@@ -52,11 +51,7 @@ export function RegisterPage() {
       return;
     }
 
-    const studentIdError = validateStudentId(formData.studentId);
-    if (studentIdError) {
-      setError(studentIdError);
-      return;
-    }
+    // studentId removed from registration; no validation needed
 
     if (!isValidEmail(formData.email)) {
       setError('Please enter a valid email address.');
@@ -156,15 +151,7 @@ export function RegisterPage() {
                 placeholder="FPT University"
                 autoComplete="organization"
               />
-              <TextInput
-                label="Student ID"
-                name="studentId"
-                value={formData.studentId}
-                onChange={handleChange}
-                icon={CreditCard}
-                placeholder="SE190001"
-                autoComplete="off"
-              />
+              {/* Student ID removed from registration form */}
               <TextInput
                 label="Email"
                 name="email"

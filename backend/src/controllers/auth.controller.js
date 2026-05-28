@@ -49,9 +49,9 @@ function isValidEmail(value) {
 }
 
 export async function register(req, res) {
-  const { fullName, university, studentId, email, password, confirmPassword } = req.body;
+  const { fullName, university, /* studentId removed from register */ email, password, confirmPassword } = req.body;
 
-  if (!fullName || !university || !studentId || !email || !password || !confirmPassword) {
+  if (!fullName || !university || !email || !password || !confirmPassword) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -65,10 +65,7 @@ export async function register(req, res) {
     return res.status(400).json({ message: universityError });
   }
 
-  const studentIdError = validateStudentId(studentId);
-  if (studentIdError) {
-    return res.status(400).json({ message: studentIdError });
-  }
+  // studentId no longer required at registration
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ message: 'Please enter a valid email address' });
@@ -91,7 +88,7 @@ export async function register(req, res) {
   const user = await User.create({
     fullName: String(fullName).trim().replace(/\s+/g, ' '),
     university: String(university).trim().replace(/\s+/g, ' '),
-    studentId: String(studentId).trim(),
+    // studentId omitted at registration
     email: String(email).trim(),
     passwordHash,
   });
