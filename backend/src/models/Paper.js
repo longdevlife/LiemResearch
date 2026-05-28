@@ -1,14 +1,60 @@
 import mongoose from 'mongoose';
 
+const allowedPaperTypes = [
+  'Survey',
+  'Research',
+  'Preprint',
+  'Conference Paper',
+  'Journal Article',
+  'Book Chapter',
+  'Thesis',
+  'Technical Report',
+  'Workshop Paper',
+  'Review Article',
+  'Case Study',
+  'Position Paper',
+  'Editorial',
+  'White Paper',
+  'Research Note',
+  'Short Communication',
+  'Letter to Editor',
+  'News & Views',
+  'Commentary',
+  'Tutorial',
+  'Abstract',
+  'Extended Abstract',
+  'Poster Paper',
+  'Data Paper',
+  'Software Paper',
+  'Patent',
+  'Book Review',
+  'Erratum',
+  'Corrigendum',
+  'Retraction Notice',
+  'Proposal',
+  'Other',
+];
+
 const paperSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     doi: { type: String, required: true, trim: true },
+    paperType: { type: String, required: true, trim: true, enum: allowedPaperTypes },
     paperLink: { type: String, required: true, trim: true },
     abstract: { type: String, required: true, trim: true },
-    authors: [{ type: String, trim: true }],
-    journal: { type: String, trim: true },
+    authors: {
+      type: [String],
+      required: true,
+      validate: {
+        validator: function (v) {
+          return Array.isArray(v) && v.length > 0;
+        },
+        message: 'At least one author is required',
+      },
+    },
     keywords: [{ type: String, trim: true }],
+    relatedSemesters: [{ type: String, trim: true }],
+    applicationDomain: { type: String, trim: true },
     publishedYear: { type: Number, required: true },
     status: {
       type: String,
@@ -32,11 +78,13 @@ paperSchema.index({ paperLink: 1 }, { unique: true });
 paperSchema.index({
   title: 'text',
   doi: 'text',
+  paperType: 'text',
   paperLink: 'text',
   abstract: 'text',
   authors: 'text',
-  journal: 'text',
   keywords: 'text',
+  relatedSemesters: 'text',
+  applicationDomain: 'text',
 });
 
 export const Paper = mongoose.model('Paper', paperSchema);

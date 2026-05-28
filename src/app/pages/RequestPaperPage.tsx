@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { apiRequest } from '../lib/api';
+import { PAPER_TYPES, RELATED_SEMESTERS, APPLICATION_DOMAINS } from '../lib/papers';
 
 export function RequestPaperPage() {
   const navigate = useNavigate();
@@ -11,18 +12,23 @@ export function RequestPaperPage() {
   const [formData, setFormData] = useState({
     title: '',
     doi: '',
+    paperType: '',
     link: '',
+    authors: '',
     abstract: '',
     keywords: '',
     year: '',
+    relatedSemesters: [] as string[],
+    applicationDomain: '',
+    applicationDomainOther: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target as HTMLInputElement;
     setFormData({
       ...formData,
       [name]: value,
@@ -30,6 +36,34 @@ export function RequestPaperPage() {
     setError('');
     setMessage('');
   };
+
+  const handleSemesterToggle = (value: string, checked: boolean) => {
+    const next = new Set(formData.relatedSemesters);
+    if (checked) next.add(value); else next.delete(value);
+    setFormData({ ...formData, relatedSemesters: Array.from(next) });
+    setError('');
+    setMessage('');
+  };
+  const [showSemesters, setShowSemesters] = useState(false);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    function handleDocClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (showSemesters) {
+        if (
+          popoverRef.current && !popoverRef.current.contains(target) &&
+          toggleRef.current && !toggleRef.current.contains(target)
+        ) {
+          setShowSemesters(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
+  }, [showSemesters]);
 
   const handleChooseFile = () => {
     fileInputRef.current?.click();
@@ -58,10 +92,18 @@ export function RequestPaperPage() {
       const formDataPayload = new FormData();
       formDataPayload.append('title', formData.title);
       formDataPayload.append('doi', formData.doi);
+      formDataPayload.append('paperType', formData.paperType);
       formDataPayload.append('paperLink', formData.link);
+      formDataPayload.append('authors', formData.authors);
       formDataPayload.append('abstract', formData.abstract);
       formDataPayload.append('keywords', formData.keywords);
       formDataPayload.append('publishedYear', formData.year);
+        if (formData.relatedSemesters && formData.relatedSemesters.length > 0) {
+          formDataPayload.append('relatedSemesters', formData.relatedSemesters.join(','));
+        }
+
+        const domainValue = formData.applicationDomain === 'Other' ? formData.applicationDomainOther : formData.applicationDomain;
+        if (domainValue) formDataPayload.append('applicationDomain', domainValue);
 
       if (selectedFile) {
         formDataPayload.append('pdf', selectedFile);
@@ -86,10 +128,14 @@ export function RequestPaperPage() {
   const isFormInvalid =
     !formData.title.trim() ||
     !formData.doi.trim() ||
+    !formData.paperType.trim() ||
     !formData.link.trim() ||
     !formData.abstract.trim() ||
+    !formData.authors.trim() ||
     !formData.keywords.trim() ||
-    !formData.year;
+    !formData.year ||
+    formData.relatedSemesters.length === 0 ||
+    (!formData.applicationDomain.trim() || (formData.applicationDomain === 'Other' && !formData.applicationDomainOther.trim()));
 
   return (
     <div className="flex min-h-screen bg-surface-request bg-fixed">
@@ -127,7 +173,7 @@ export function RequestPaperPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-foreground mb-2">Paper Title *</label>
+                <label className="block text-foreground mb-2">Paper Title <span className="text-red-600">*</span></label>
                 <input
                   type="text"
                   name="title"
@@ -139,9 +185,10 @@ export function RequestPaperPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Row 2: DOI (left) and Paper Type (right) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-foreground mb-2">DOI *</label>
+                  <label className="block text-foreground mb-2">DOI <span className="text-red-600">*</span></label>
                   <input
                     type="text"
                     name="doi"
@@ -154,7 +201,28 @@ export function RequestPaperPage() {
                 </div>
 
                 <div>
-                  <label className="block text-foreground mb-2">Publication Year *</label>
+                  <label className="block text-foreground mb-2">Paper Type <span className="text-red-600">*</span></label>
+                  <select
+                    name="paperType"
+                    value={formData.paperType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    required
+                  >
+                    <option value="">Please Choose paper type</option>
+                    {PAPER_TYPES.map((paperType) => (
+                      <option key={paperType} value={paperType}>
+                        {paperType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Publication Year + Related Semesters (expandable) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div>
+                  <label className="block text-foreground mb-2">Publication Year <span className="text-red-600">*</span></label>
                   <input
                     type="number"
                     name="year"
@@ -167,10 +235,77 @@ export function RequestPaperPage() {
                     required
                   />
                 </div>
+
+                <div>
+                  <label className="block text-foreground mb-2">Related Semesters <span className="text-red-600">*</span></label>
+                  <div className="relative">
+                    <div className="flex items-center gap-3">
+                      <button
+                        ref={toggleRef}
+                        type="button"
+                        onClick={() => setShowSemesters((s) => !s)}
+                        className="w-full md:w-auto text-sm px-3 py-2 border border-border rounded-md bg-input-background hover:bg-gray-50 text-center"
+                        aria-expanded={showSemesters}
+                      >
+                        {formData.relatedSemesters.length > 0 ? `Selected (${formData.relatedSemesters.length})` : 'Select Semesters'}
+                      </button>
+                      <span className="text-muted-foreground text-sm">Click to expand and choose semesters</span>
+                    </div>
+
+                    {showSemesters && (
+                      <div ref={popoverRef} className="absolute left-0 mt-2 z-30 w-full p-3 bg-white border border-border rounded-md shadow-lg">
+                          <div className="max-h-64 overflow-auto p-1">
+                            <div className="flex gap-4">
+                              {(() => {
+                                const cols = 3;
+                                const perCol = Math.ceil(RELATED_SEMESTERS.length / cols);
+                                return Array.from({ length: cols }).map((_, ci) => (
+                                  <div key={ci} className="flex flex-col gap-2">
+                                    {RELATED_SEMESTERS.slice(ci * perCol, (ci + 1) * perCol).map((s) => (
+                                      <label key={s.value} className="inline-flex items-center gap-2 text-sm whitespace-nowrap">
+                                        <input
+                                          type="checkbox"
+                                          className="h-4 w-4 text-primary border-gray-300 rounded"
+                                          checked={formData.relatedSemesters.includes(s.value)}
+                                          onChange={(e) => handleSemesterToggle(s.value, e.target.checked)}
+                                          aria-checked={formData.relatedSemesters.includes(s.value)}
+                                          aria-label={s.label}
+                                        />
+                                        <span className="select-none">{s.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        <div className="flex justify-end mt-3">
+                          <button type="button" onClick={() => setShowSemesters(false)} className="text-sm text-muted-foreground px-2 py-1">Done</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {/* Row 4: Authors (required) */}
               <div>
-                <label className="block text-foreground mb-2">Paper Link *</label>
+                <label className="block text-foreground mb-2">Authors <span className="text-red-600">*</span></label>
+                <input
+                  type="text"
+                  name="authors"
+                  value={formData.authors}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                  placeholder="Nguyen Van A, Tran Thi B"
+                  required
+                />
+                <p className="text-muted-foreground mt-2">Separate author names with commas.</p>
+              </div>
+
+              {/* Row 5: Paper Link */}
+              <div>
+                <label className="block text-foreground mb-2">Paper Link <span className="text-red-600">*</span></label>
                 <input
                   type="url"
                   name="link"
@@ -182,21 +317,23 @@ export function RequestPaperPage() {
                 />
               </div>
 
+              {/* Row 6: Abstract */}
               <div>
-                <label className="block text-foreground mb-2">Abstract *</label>
+                <label className="block text-foreground mb-2">Abstract <span className="text-red-600">*</span></label>
                 <textarea
                   name="abstract"
                   value={formData.abstract}
                   onChange={handleChange}
-                  rows={4}
+                  rows={6}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background resize-none"
                   placeholder="Paste or enter the paper abstract..."
                   required
                 />
               </div>
 
+              {/* Row 7: Keywords */}
               <div>
-                <label className="block text-foreground mb-2">Keywords *</label>
+                <label className="block text-foreground mb-2">Keywords <span className="text-red-600">*</span></label>
                 <input
                   type="text"
                   name="keywords"
@@ -208,6 +345,38 @@ export function RequestPaperPage() {
                 />
                 <p className="text-muted-foreground mt-2">Separate keywords with commas</p>
               </div>
+
+              {/* Application Domain (full width) */}
+              <div>
+                <label className="block text-foreground mb-2">Application Domain <span className="text-red-600">*</span></label>
+                <select
+                  name="applicationDomain"
+                  value={formData.applicationDomain}
+                  onChange={(e) => handleChange(e)}
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                  required
+                >
+                  <option value="">Select domain</option>
+                  {APPLICATION_DOMAINS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                {formData.applicationDomain === 'Other' && (
+                  <input
+                    type="text"
+                    name="applicationDomainOther"
+                    value={formData.applicationDomainOther}
+                    onChange={handleChange}
+                    className="w-full mt-2 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    placeholder="Enter custom application domain"
+                    required
+                  />
+                )}
+              </div>
+
+              
 
               <div>
                 <label className="block text-foreground mb-2">PDF File</label>
@@ -281,10 +450,15 @@ function isHttpUrl(value: string) {
 function validatePaperRequest(data: {
   title: string;
   doi: string;
+  paperType: string;
   link: string;
   abstract: string;
   keywords: string;
   year: string;
+  authors: string;
+  relatedSemesters?: string[];
+  applicationDomain?: string;
+  applicationDomainOther?: string;
 }) {
   const title = data.title.trim();
   const doi = data.doi.trim();
@@ -297,6 +471,22 @@ function validatePaperRequest(data: {
   const maxYear = new Date().getFullYear() + 1;
   const titleWordCount = countWords(title);
   const abstractWordCount = countWords(abstract);
+  const paperType = data.paperType.trim();
+  const authors = data.authors
+    .split(',')
+    .map((author) => author.trim())
+    .filter(Boolean);
+
+  if (authors.length === 0) {
+    return 'Please enter at least one author.';
+  }
+
+  if (authors.some((author) => author.length < 2)) {
+    return 'Please enter valid author names.';
+  }
+  const relatedSemesters = data.relatedSemesters || [];
+  const applicationDomain = data.applicationDomain?.trim() || '';
+  const applicationDomainOther = data.applicationDomainOther?.trim() || '';
 
   if (title.length < 8 || !hasEnoughWords(title, 3)) {
     return 'Please enter a clearer paper title.';
@@ -310,13 +500,34 @@ function validatePaperRequest(data: {
     return 'Please enter a valid DOI, for example 10.1234/example.2024.';
   }
 
+  if (!paperType || !PAPER_TYPES.includes(paperType)) {
+    return 'Please Choose paper type';
+  }
+
   if (!isHttpUrl(data.link)) {
     return 'Please enter a valid paper link starting with http or https.';
   }
 
+  if (authors.length > 0 && authors.some((author) => author.length < 2)) {
+    return 'Please enter valid author names.';
+  }
+
+  // Validate related semesters (optional)
+  if (relatedSemesters.length > 0) {
+    const validSemValues = RELATED_SEMESTERS.map((s) => s.value);
+    if (relatedSemesters.some((s) => !validSemValues.includes(s))) {
+      return 'Invalid related semesters selected.';
+    }
+  }
+
+  // Validate application domain (optional)
+  if (applicationDomain === 'Other' && !applicationDomainOther) {
+    return 'Please provide a custom application domain.';
+  }
+
   const wordCount = countWords(abstract);
-  if (wordCount < 100 || wordCount > 300) {
-    return 'Word Count Limit: The abstract must contain between 100 and 300 words. Please revise your text to proceed.';
+  if (wordCount < 50 || wordCount > 350) {
+    return 'Word Count Limit: The abstract must contain between 50 and 350 words. Please revise your text to proceed.';
   }
 
   if (abstractWordCount > 1000) {

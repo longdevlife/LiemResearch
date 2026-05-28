@@ -128,7 +128,7 @@ export function HomePage() {
                   setSearchTerm(event.target.value);
                   setSelectedTag('');
                 }}
-                placeholder="Search papers by title, DOI, keyword, or journal..."
+                placeholder="Search papers by title, DOI, keyword, or type..."
                 maxLength={128}
                 className="w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
               />

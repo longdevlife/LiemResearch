@@ -8,6 +8,7 @@ import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X,
 import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
+import { getSemesterLabel } from '../lib/papers';
 
 type DetailPaper = PublicPaper & {
   requestedBy?: {
@@ -529,8 +530,24 @@ export function PaperDetailPage() {
                       <p className="text-foreground">{paper.doi}</p>
                     </div>
                     <div>
+                      <p className="text-muted-foreground mb-1">Paper Type</p>
+                      <p className="text-foreground">{paper.paperType || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Authors</p>
+                      <p className="text-foreground">{paper.authors?.length ? paper.authors.join(', ') : 'N/A'}</p>
+                    </div>
+                    <div>
                       <p className="text-muted-foreground mb-1">Publication Year</p>
                       <p className="text-foreground">{paper.publishedYear}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Related Semesters</p>
+                      <p className="text-foreground">{paper.relatedSemesters?.length ? paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ') : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Application Domain</p>
+                      <p className="text-foreground">{paper.applicationDomain || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground mb-1">Paper Link</p>

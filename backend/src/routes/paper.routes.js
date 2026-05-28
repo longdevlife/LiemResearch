@@ -33,7 +33,7 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [title, doi, paperLink, abstract, publishedYear]
+ *             required: [title, doi, paperType, paperLink, abstract, publishedYear]
  *             properties:
  *               title:
  *                 type: string
@@ -41,6 +41,9 @@ const router = Router();
  *               doi:
  *                 type: string
  *                 example: 10.1234/liem.2026.001
+ *               paperType:
+ *                 type: string
+ *                 example: Survey
  *               paperLink:
  *                 type: string
  *                 example: https://example.com/paper/001
@@ -52,9 +55,6 @@ const router = Router();
  *                 items:
  *                   type: string
  *                 example: [Nguyen Van A, Tran Thi B]
- *               journal:
- *                 type: string
- *                 example: Journal of Research Systems
  *               keywords:
  *                 type: array
  *                 items:
@@ -66,11 +66,13 @@ const router = Router();
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, doi, paperLink, abstract, publishedYear]
+ *             required: [title, doi, paperType, paperLink, abstract, publishedYear]
  *             properties:
  *               title:
  *                 type: string
  *               doi:
+ *                 type: string
+ *               paperType:
  *                 type: string
  *               paperLink:
  *                 type: string
@@ -80,8 +82,6 @@ const router = Router();
  *                 type: array
  *                 items:
  *                   type: string
- *               journal:
- *                 type: string
  *               keywords:
  *                 type: array
  *                 items:
@@ -184,6 +184,9 @@ router.get('/:id/pdf-url', requireAuth, getPaperPdfDownloadUrl);
  *               doi:
  *                 type: string
  *                 example: 10.1234/liem.2026.updated
+ *               paperType:
+ *                 type: string
+ *                 example: Research
  *               paperLink:
  *                 type: string
  *                 example: https://example.com/paper/updated
@@ -195,9 +198,6 @@ router.get('/:id/pdf-url', requireAuth, getPaperPdfDownloadUrl);
  *                 items:
  *                   type: string
  *                 example: [Nguyen Van A, Tran Thi B]
- *               journal:
- *                 type: string
- *                 example: Updated Research Journal
  *               keywords:
  *                 type: array
  *                 items:

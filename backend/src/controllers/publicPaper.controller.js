@@ -35,7 +35,13 @@ async function repairPendingContributorPdfReviews(filter = {}) {
     if (uploader?.role === 'admin') continue;
 
     paper.status = 'pending-requester-acceptance';
-    await paper.save();
+    try {
+      await paper.save();
+    } catch (err) {
+      console.error('Failed to update paper status during repair:', err);
+      // Skip problematic documents to avoid crashing the server
+      continue;
+    }
   }
 }
 
@@ -48,10 +54,10 @@ function buildSearchFilter(query) {
       $or: [
         { title: { $regex: query.search, $options: 'i' } },
         { doi: { $regex: query.search, $options: 'i' } },
+        { paperType: { $regex: query.search, $options: 'i' } },
         { paperLink: { $regex: query.search, $options: 'i' } },
         { abstract: { $regex: query.search, $options: 'i' } },
         { authors: { $regex: query.search, $options: 'i' } },
-        { journal: { $regex: query.search, $options: 'i' } },
         { keywords: { $regex: query.search, $options: 'i' } },
       ],
     });
@@ -59,6 +65,21 @@ function buildSearchFilter(query) {
 
   if (query.year && Number.isInteger(Number(query.year))) {
     filter.publishedYear = Number(query.year);
+  }
+
+  if (query.relatedSemesters) {
+    const semesters = String(query.relatedSemesters)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (semesters.length > 0) {
+      andConditions.push({ relatedSemesters: { $in: semesters } });
+    }
+  }
+
+  if (query.applicationDomain) {
+    andConditions.push({ applicationDomain: { $regex: query.applicationDomain, $options: 'i' } });
   }
 
   if (query.hasPdf === 'true') {

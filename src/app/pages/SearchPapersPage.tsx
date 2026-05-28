@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { Search, Download, Eye, Calendar, Filter, Star } from 'lucide-react';
 import { apiRequest, resolveFileUrl } from '../lib/api';
-import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import { getPaperAuthors, getPaperType, PublicPaper } from '../lib/papers';
 import ExpandableText from '../components/ExpandableText';
 
 export function SearchPapersPage() {
@@ -105,7 +105,7 @@ export function SearchPapersPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by title, author, DOI, keywords, or journal..."
+                  placeholder="Search by title, author, DOI, or keyword..."
                   maxLength={128}
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                 />
@@ -147,7 +147,7 @@ export function SearchPapersPage() {
                         <Calendar size={16} />
                         {paper.publishedYear}
                       </span>
-                      <span>{getPaperJournal(paper)}</span>
+                      <span>{getPaperType(paper)}</span>
                       <span className="flex items-center gap-1">
                         <Download size={16} />
                         {paper.downloadCount} downloads

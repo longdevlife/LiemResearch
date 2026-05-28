@@ -13,7 +13,9 @@ interface PaperRequest {
   _id: string;
   title: string;
   doi: string;
+  paperType: string;
   paperLink: string;
+  authors?: string[];
   abstract: string;
   keywords: string[];
   publishedYear: number;
@@ -75,7 +77,9 @@ export function MyRequestsPage() {
     const matchesSearch =
       request.title.toLowerCase().includes(normalizedSearch) ||
       request.doi.toLowerCase().includes(normalizedSearch) ||
-      request.keywords.some((keyword) => keyword.toLowerCase().includes(normalizedSearch));
+      (request.paperType || '').toLowerCase().includes(normalizedSearch) ||
+      request.keywords.some((keyword) => keyword.toLowerCase().includes(normalizedSearch)) ||
+      request.authors?.some((author) => author.toLowerCase().includes(normalizedSearch));
 
     const matchesFilter = filterStatus === 'all' || request.status === filterStatus;
 
@@ -176,6 +180,10 @@ export function MyRequestsPage() {
                         </span>
                         <span>Year: {request.publishedYear}</span>
                       </div>
+                      <p className="text-muted-foreground mb-2">
+                        Authors: {request.authors?.length ? request.authors.join(', ') : 'N/A'}
+                      </p>
+                      <p className="text-muted-foreground mb-2">Type: {request.paperType || 'N/A'}</p>
                       <p className="text-muted-foreground mb-3 line-clamp-2">{request.abstract}</p>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {request.keywords.slice(0, 3).map((keyword) => (

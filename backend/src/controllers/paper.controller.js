@@ -17,6 +17,53 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, '../../uploads');
 
+const allowedPaperTypes = [
+  'Survey',
+  'Research',
+  'Preprint',
+  'Conference Paper',
+  'Journal Article',
+  'Book Chapter',
+  'Thesis',
+  'Technical Report',
+  'Workshop Paper',
+  'Review Article',
+  'Case Study',
+  'Position Paper',
+  'Editorial',
+  'White Paper',
+  'Research Note',
+  'Short Communication',
+  'Letter to Editor',
+  'News & Views',
+  'Commentary',
+  'Tutorial',
+  'Abstract',
+  'Extended Abstract',
+  'Poster Paper',
+  'Data Paper',
+  'Software Paper',
+  'Patent',
+  'Book Review',
+  'Erratum',
+  'Corrigendum',
+  'Retraction Notice',
+  'Proposal',
+  'Other',
+];
+
+const allowedSemesters = [
+  'semester_1',
+  'semester_2',
+  'semester_3',
+  'semester_4',
+  'semester_5',
+  'semester_6',
+  'semester_7',
+  'semester_8',
+  'semester_9',
+];
+
 const allowedStatuses = ['pending', 'approved', 'rejected', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
 function normalizePaperStatus(status) {
@@ -58,7 +105,12 @@ async function normalizeContributorPdfReviewStatus(paper) {
   if (uploader?.role === 'admin') return paper;
 
   paper.status = 'pending-requester-acceptance';
-  await paper.save();
+  try {
+    await paper.save();
+  } catch (err) {
+    console.error('Failed to normalize contributor pdf review status for paper', paper._id, err);
+    return paper;
+  }
   return paper;
 }
 
@@ -114,9 +166,10 @@ function isHttpUrl(value) {
   }
 }
 
-function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publishedYear }) {
+function validatePaperRequest({ title, doi, paperType, paperLink, abstract, keywords, publishedYear, relatedSemesters, applicationDomain, authors }) {
   const trimmedTitle = String(title).trim();
   const trimmedDoi = String(doi).trim();
+  const trimmedPaperType = String(paperType).trim();
   const trimmedAbstract = String(abstract).trim();
   const publishedYearNumber = Number(publishedYear);
   const maxYear = new Date().getFullYear() + 1;
@@ -135,6 +188,10 @@ function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publi
     return 'Please enter a valid DOI';
   }
 
+  if (!trimmedPaperType || !allowedPaperTypes.includes(trimmedPaperType)) {
+    return 'Please Choose paper type';
+  }
+
   if (!isHttpUrl(paperLink)) {
     return 'Please enter a valid paper link';
   }
@@ -143,17 +200,40 @@ function validatePaperRequest({ title, doi, paperLink, abstract, keywords, publi
     return 'Please enter only one paper link for this request';
   }
 
-  if (trimmedAbstract.length < 40 || !hasEnoughWords(trimmedAbstract, 8)) {
-    return 'Please enter a short but meaningful abstract';
+  // authors required and must be meaningful
+  const authorList = Array.isArray(authors) ? authors : String(authors || '').split(',').map((a) => a.trim()).filter(Boolean);
+  if (!authorList || authorList.length === 0) {
+    return 'Please enter at least one author';
+  }
+  if (authorList.some((a) => a.length < 2)) {
+    return 'Please enter valid author names';
   }
 
-  if (abstractWordCount > 1000) {
-    return 'Abstract must be 1000 words or fewer';
+  // enforce abstract word count between 50 and 350 words
+  if (abstractWordCount < 50 || abstractWordCount > 350) {
+    return 'Word Count Limit: The abstract must contain between 50 and 350 words. Please revise your text to proceed.';
   }
 
   if (keywords.length === 0 || keywords.some((keyword) => keyword.length < 2)) {
     return 'Please enter at least one meaningful keyword';
   }
+  // relatedSemesters is required (except when only PDF provided) and must contain allowed values
+  const semesters = Array.isArray(relatedSemesters)
+    ? relatedSemesters
+    : String(relatedSemesters || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+  if (!semesters || semesters.length === 0) {
+    return 'Please select at least one related semester';
+  }
+
+  if (semesters.some((s) => !allowedSemesters.includes(s))) {
+    return 'Invalid related semesters selected';
+  }
+
+  // applicationDomain is required
+  const domain = String(applicationDomain || '').trim();
+  if (!domain) return 'Please choose an application domain';
+  if (domain.length > 200) return 'Application domain is too long';
 
   if (!Number.isInteger(publishedYearNumber) || publishedYearNumber < 1900 || publishedYearNumber > maxYear) {
     return `Publication year must be between 1900 and ${maxYear}`;
@@ -211,12 +291,27 @@ async function storeUploadedPdf(file) {
 }
 
 export async function createPaper(req, res) {
-  const { title, doi, paperLink, abstract, authors, journal, keywords, publishedYear } = req.body;
+  const { title, doi, paperType, paperLink, abstract, authors, keywords, publishedYear, relatedSemesters, applicationDomain } = req.body;
   const normalizedKeywords = normalizeKeywords(keywords);
 
-  if (!title || !doi || !paperLink || !abstract || !publishedYear) {
+  if (!title || !doi || !paperLink || !abstract || !publishedYear || !authors || String(authors).trim().length === 0) {
     await removeUploadedFile(req.file);
     return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  if (!paperType) {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: 'Please Choose paper type' });
+  }
+
+  if (!relatedSemesters || String(relatedSemesters).trim().length === 0) {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: 'Please select at least one related semester' });
+  }
+
+  if (!applicationDomain || String(applicationDomain).trim().length === 0) {
+    await removeUploadedFile(req.file);
+    return res.status(400).json({ message: 'Please choose an application domain' });
   }
 
   if (normalizedKeywords.length === 0) {
@@ -227,10 +322,14 @@ export async function createPaper(req, res) {
   const validationError = validatePaperRequest({
     title,
     doi,
+    paperType,
     paperLink,
     abstract,
     keywords: normalizedKeywords,
     publishedYear,
+    relatedSemesters,
+    applicationDomain,
+    authors: normalizeStringList(authors),
   });
 
   if (validationError) {
@@ -263,11 +362,17 @@ export async function createPaper(req, res) {
     paperLink: String(paperLink).trim(),
     abstract: String(abstract).trim(),
     authors: normalizeStringList(authors),
-    journal: journal ? String(journal).trim() : '',
     keywords: normalizedKeywords,
     publishedYear: publishedYearNumber,
     requestedBy: req.user._id,
   };
+
+  if (paperType) {
+    paperData.paperType = String(paperType).trim();
+  }
+
+  if (relatedSemesters) paperData.relatedSemesters = normalizeStringList(relatedSemesters);
+  if (applicationDomain) paperData.applicationDomain = String(applicationDomain).trim();
 
   if (uploadedPdfPath) {
     paperData.pdfPath = uploadedPdfPath;
@@ -282,7 +387,11 @@ export async function createPaper(req, res) {
     paper = await Paper.create(paperData);
   } catch (error) {
     await deleteStoredPdf(uploadedPdfPath);
-    throw error;
+    console.error('Failed to create paper:', error);
+    if (error && error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: 'Failed to create paper request' });
   }
 
   await syncUserPoints(req.user._id);
@@ -316,6 +425,7 @@ export async function getAllPapers(req, res) {
     filter.$or = [
       { title: { $regex: search, $options: 'i' } },
       { doi: { $regex: search, $options: 'i' } },
+      { paperType: { $regex: search, $options: 'i' } },
       { paperLink: { $regex: search, $options: 'i' } },
     ];
   }
@@ -424,12 +534,14 @@ export async function updatePaper(req, res) {
   const allowedFields = [
     'title',
     'doi',
+    'paperType',
     'paperLink',
     'abstract',
     'authors',
-    'journal',
     'keywords',
     'publishedYear',
+    'relatedSemesters',
+    'applicationDomain',
     'status',
   ];
   const updates = {};
@@ -448,6 +560,22 @@ export async function updatePaper(req, res) {
     updates.keywords = normalizeKeywords(updates.keywords);
   }
 
+  if (updates.relatedSemesters !== undefined) {
+    updates.relatedSemesters = normalizeStringList(updates.relatedSemesters);
+
+    if (updates.relatedSemesters.some((s) => !allowedSemesters.includes(s))) {
+      return res.status(400).json({ message: 'Invalid related semesters selected' });
+    }
+  }
+
+  if (updates.paperType !== undefined) {
+    updates.paperType = String(updates.paperType).trim();
+
+    if (!allowedPaperTypes.includes(updates.paperType)) {
+      return res.status(400).json({ message: 'Please Choose paper type' });
+    }
+  }
+
   if (updates.authors !== undefined) {
     updates.authors = normalizeStringList(updates.authors);
   }
@@ -461,6 +589,11 @@ export async function updatePaper(req, res) {
     }
 
     updates.publishedYear = publishedYear;
+  }
+
+  if (updates.applicationDomain !== undefined) {
+    updates.applicationDomain = String(updates.applicationDomain).trim();
+    if (updates.applicationDomain.length > 200) return res.status(400).json({ message: 'Application domain is too long' });
   }
 
   if (updates.status !== undefined && !allowedStatuses.includes(updates.status)) {

@@ -1,6 +1,6 @@
 import { Calendar, Download, Eye, FileText, Star } from 'lucide-react';
 import { formatDisplayDate } from '../lib/date';
-import { getPaperAuthors, getPaperJournal, PublicPaper } from '../lib/papers';
+import { getPaperAuthors, getPaperType, PublicPaper, getSemesterLabel } from '../lib/papers';
 import ExpandableText from './ExpandableText';
 
 type PaperCardProps = {
@@ -60,13 +60,18 @@ export function PaperCard({
           <Calendar size={15} />
           {paper.publishedYear}
         </span>
-        <span>{getPaperJournal(paper)}</span>
+        <span>{getPaperType(paper)}</span>
+        {paper.applicationDomain && <span>{paper.applicationDomain}</span>}
         <span>Added {formatDisplayDate(paper.createdAt)}</span>
       </div>
 
       <div className="mb-4">
         <ExpandableText text={paper.abstract} lines={variant === 'dashboard' ? 2 : 4} />
       </div>
+
+      {paper.relatedSemesters?.length ? (
+        <div className="mb-3 text-sm text-muted-foreground">Semesters: {paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ')}</div>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {paper.keywords.slice(0, variant === 'dashboard' ? 4 : 5).map((keyword) => (
