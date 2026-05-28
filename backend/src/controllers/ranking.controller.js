@@ -14,7 +14,10 @@ async function buildUserStats(user) {
   };
 }
 
-async function buildRankings() {
+export async function getTopUsers(req, res) {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 20);
+
   const users = await User.find(activeUserFilter).sort({ createdAt: 1 });
   const stats = await Promise.all(users.map(buildUserStats));
 
@@ -27,9 +30,6 @@ async function buildRankings() {
 }
 
 export async function getTopUsers(req, res) {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 20);
-
   const rankings = (await buildRankings()).slice(0, 50);
 
   const total = rankings.length;
