@@ -9,7 +9,7 @@ import { PaperCard } from '../components/PaperCard';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
 import { apiRequest, resolveFileUrl } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
-import { Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
+import { CheckCircle2, Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
 
 type FeedTab = 'newest' | 'rating' | 'downloads' | 'hasPdf';
 
@@ -34,11 +34,31 @@ export function UserDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!message) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage('');
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
+
+  useEffect(() => {
     if (location.state?.loginSuccess) {
       setMessage('Logged in successfully.');
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage('');
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   async function loadPapers() {
     setIsLoading(true);
@@ -142,8 +162,17 @@ export function UserDashboard() {
           )}
 
           {message && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-6">
-              {message}
+            <div className="fixed left-1/2 top-6 z-[80] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2">
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-[0_20px_60px_rgba(16,185,129,0.18)] backdrop-blur">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <CheckCircle2 size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-600">Success</p>
+                  <p className="text-sm font-medium text-foreground">{message}</p>
+                </div>
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" />
+              </div>
             </div>
           )}
 
