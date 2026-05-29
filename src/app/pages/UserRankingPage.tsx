@@ -14,6 +14,8 @@ import {
   Upload,
 } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser } from '../lib/api';
+import { calculateCurrentRank } from '../lib/userRanking';
+import { getRankImage } from '../lib/rankVisuals';
 
 interface UserRank {
   rank: number;
@@ -112,6 +114,7 @@ export function UserRankingPage() {
   const currentUser = getStoredUser();
   const topThree = rankings.slice(0, 3);
   const totalPoints = useMemo(() => rankings.reduce((sum, item) => sum + item.points, 0), [rankings]);
+  const currentAcademicRank = currentRank ? calculateCurrentRank(currentRank.points, currentRank.uploadedPapers) : null;
 
   return (
     <div className="flex min-h-screen bg-surface-achievement bg-fixed">
@@ -138,7 +141,10 @@ export function UserRankingPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <HeroMetric label="Contributors" value={totalContributors} />
                   <HeroMetric label="Page Points" value={totalPoints} />
-                  <HeroMetric label="Your Rank" value={currentRank ? `#${currentRank.rank}` : 'N/A'} />
+                  <HeroMetric
+                    label="Your Rank"
+                    value={currentRank && currentAcademicRank ? `#${currentRank.rank} · Lv. ${currentAcademicRank.level}` : 'N/A'}
+                  />
                 </div>
               </div>
             </div>
@@ -257,6 +263,7 @@ function HeroMetric({ label, value }: { label: string; value: number | string })
 }
 
 function TopContributorCard({ item, isCurrentUser }: { item: UserRank; isCurrentUser: boolean }) {
+  const academicRank = calculateCurrentRank(item.points, item.uploadedPapers);
   const rankStyles = {
     1: 'border-yellow-300 bg-yellow-50',
     2: 'border-gray-300 bg-gray-50',
@@ -278,6 +285,8 @@ function TopContributorCard({ item, isCurrentUser }: { item: UserRank; isCurrent
         )}
       </div>
 
+      <AcademicRankBadge rank={academicRank} className="mb-4" />
+
       <div className="mb-4 rounded-lg bg-white p-4">
         <p className="text-sm text-muted-foreground">Total score</p>
         <p className="text-3xl font-semibold text-foreground">{item.points}</p>
@@ -293,6 +302,7 @@ function TopContributorCard({ item, isCurrentUser }: { item: UserRank; isCurrent
 }
 
 function LeaderboardRow({ item, isCurrentUser }: { item: UserRank; isCurrentUser: boolean }) {
+  const academicRank = calculateCurrentRank(item.points, item.uploadedPapers);
   const positivePoints = item.uploadedPapers * 50 + item.uploadedPdfs * 50 + item.ratingsGiven * 5;
   const negativePoints = item.rejectedPapers * 10 + item.rejectedPdfs * 10 + (item.penaltyPoints || 0);
 
@@ -311,6 +321,9 @@ function LeaderboardRow({ item, isCurrentUser }: { item: UserRank; isCurrentUser
           {isCurrentUser && <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">You</span>}
         </div>
         <p className="truncate text-sm text-muted-foreground">{item.user.university}</p>
+        <div className="mt-2">
+          <AcademicRankBadge rank={academicRank} compact />
+        </div>
         {/* Student ID removed from ranking display */}
       </div>
 
@@ -332,6 +345,8 @@ function LeaderboardRow({ item, isCurrentUser }: { item: UserRank; isCurrentUser
 }
 
 function MyRankCard({ item }: { item: UserRank }) {
+  const academicRank = calculateCurrentRank(item.points, item.uploadedPapers);
+
   return (
     <section className="rounded-lg border border-border bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
@@ -354,7 +369,41 @@ function MyRankCard({ item }: { item: UserRank }) {
           <p className="text-2xl font-semibold text-foreground">{item.points}</p>
         </div>
       </div>
+
+      <div className="mt-4">
+        <AcademicRankBadge rank={academicRank} />
+      </div>
     </section>
+  );
+}
+
+function AcademicRankBadge({
+  rank,
+  compact = false,
+  className = '',
+}: {
+  rank: ReturnType<typeof calculateCurrentRank>;
+  compact?: boolean;
+  className?: string;
+}) {
+  const image = getRankImage(rank.level);
+
+  return (
+    <div
+      className={`inline-flex w-fit items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900 shadow-sm ${className}`}
+    >
+      <img
+        src={image}
+        alt={rank.name}
+        className={compact ? 'h-7 w-7 object-contain' : 'h-10 w-10 object-contain'}
+      />
+      <div className="min-w-0">
+        <p className={compact ? 'text-xs font-semibold leading-4' : 'text-sm font-semibold leading-5'}>
+          Lv. {rank.level} · {rank.name}
+        </p>
+        {!compact && <p className="text-xs text-blue-700">Visible on your leaderboard profile</p>}
+      </div>
+    </div>
   );
 }
 

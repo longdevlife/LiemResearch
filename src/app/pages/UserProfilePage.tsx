@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
+import { calculateCurrentRank, type RankConfig } from '../lib/userRanking';
+import { getRankImage } from '../lib/rankVisuals';
 
 type ProfileForm = {
   fullName: string;
@@ -96,6 +98,28 @@ function getStatusLabel(status: PaperRequest['status']) {
   };
 
   return labels[status];
+}
+
+function getRankBadgeTone(level: number) {
+  if (level === 1) return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  if (level === 2) return 'border-sky-200 bg-sky-50 text-sky-800';
+  if (level === 3) return 'border-amber-200 bg-amber-50 text-amber-800';
+  return 'border-slate-200 bg-slate-50 text-slate-700';
+}
+
+function RankBadge({ rank }: { rank: RankConfig }) {
+  const tone = getRankBadgeTone(rank.level);
+  const rankImage = getRankImage(rank.level);
+
+  return (
+    <div className={`inline-flex items-center gap-4 rounded-2xl border px-5 py-4 text-base font-semibold shadow-sm ${tone}`}>
+      <img src={rankImage} alt={`${rank.name} badge`} className="h-14 w-14 rounded-full object-cover shadow-sm" />
+      <div className="leading-tight">
+        <div className="text-xs font-medium uppercase tracking-[0.18em] opacity-70">Rank</div>
+        <span className="block text-lg font-semibold sm:text-xl">{rank.name}</span>
+      </div>
+    </div>
+  );
 }
 
 function buildRecentActivity(papers: PaperRequest[]): ActivityItem[] {
@@ -217,6 +241,7 @@ export function UserProfilePage() {
   ).length;
   const pdfReadyPapers = myPapers.filter((paper) => paper.status === 'downloaded' && Boolean(paper.pdfPath)).length;
   const initials = getInitials(profile.fullName) || 'U';
+  const currentRank = calculateCurrentRank(rankingStats?.points ?? 0, approvedPapers);
 
   const handleSave = async () => {
     setError('');
@@ -345,21 +370,23 @@ export function UserProfilePage() {
               <section className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
             <div className="h-28 bg-blue-600" />
             <div className="px-8 pb-8">
-              <div className="-mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <div className="flex h-28 w-28 items-center justify-center rounded-lg border-4 border-white bg-foreground text-4xl font-semibold text-white shadow-sm">
-                    {initials}
+              <div className="relative -mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                <div className="flex flex-col gap-4">
+                  <div className="flex w-full justify-center md:justify-start">
+                    <RankBadge rank={currentRank} />
                   </div>
-                  <div className="pb-1">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-                        {rankingStats ? `Rank #${rankingStats.rank}` : 'Rank N/A'}
-                      </span>
-                      <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border-4 border-white bg-foreground text-4xl font-semibold text-white shadow-sm">
+                      {initials}
+                    </div>
+                    <div className="pb-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h1 className="text-3xl font-semibold text-foreground">{profile.fullName || 'My Profile'}</h1>
+                      <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 shadow-sm">
                         {rankingStats?.points ?? 0} points
                       </span>
                     </div>
-                    <h1 className="text-3xl font-semibold text-foreground">{profile.fullName || 'My Profile'}</h1>
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-2">
                         <Building2 size={16} />
@@ -371,20 +398,23 @@ export function UserProfilePage() {
                         Joined {profile.memberSince || 'recently'}
                       </span>
                     </div>
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('settings');
-                    setIsEditing(true);
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-primary-foreground transition-colors hover:bg-blue-600"
-                >
-                  <Edit size={18} />
-                  Edit Profile
-                </button>
+                <div className="flex flex-col items-start gap-3 md:items-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('settings');
+                      setIsEditing(true);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-primary-foreground transition-colors hover:bg-blue-600"
+                  >
+                    <Edit size={18} />
+                    Edit Profile
+                  </button>
+                </div>
               </div>
 
               <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
