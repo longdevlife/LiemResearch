@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   Building2,
   Calendar,
+  CreditCard,
   Edit,
   Eye,
   EyeOff,
@@ -28,6 +29,7 @@ type ProfileForm = {
   email: string;
   university: string;
   memberSince: string;
+  credits: number;
 };
 
 type PasswordForm = {
@@ -80,6 +82,7 @@ function mapUserToProfile(user: AuthUser): ProfileForm {
     email: user.email,
     university: user.university,
     memberSince: user.createdAt ? formatDisplayDate(user.createdAt) : '',
+    credits: user.credits ?? 0,
   };
 }
 
@@ -133,7 +136,7 @@ export function AdminProfilePage() {
   const storedUser = getStoredUser();
   const initialProfile = storedUser
     ? mapUserToProfile(storedUser)
-    : { fullName: '', email: '', university: '', memberSince: '' };
+    : { fullName: '', email: '', university: '', memberSince: '', credits: 0 };
   const [profile, setProfile] = useState<ProfileForm>(initialProfile);
   const [editForm, setEditForm] = useState<ProfileForm>(initialProfile);
   const [message, setMessage] = useState('');
@@ -361,6 +364,10 @@ export function AdminProfilePage() {
                             <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
                               {rankingStats?.points ?? 0} points
                             </span>
+                            <span className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                              <CreditCard size={15} />
+                              {profile.credits} credits
+                            </span>
                             <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
                               Admin account
                             </span>
@@ -392,12 +399,13 @@ export function AdminProfilePage() {
                       </button>
                     </div>
 
-                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-6">
                       <ProfileMetric label="Papers" value={myPapers.length} icon={FileText} />
                       <ProfileMetric label="Approved" value={approvedPapers} icon={CheckCircle2} />
                       <ProfileMetric label="PDFs" value={pdfReadyPapers} icon={Upload} />
                       <ProfileMetric label="Ratings" value={rankingStats?.ratingsGiven ?? 0} icon={Star} />
                       <ProfileMetric label="Points" value={rankingStats?.points ?? 0} icon={Trophy} />
+                      <ProfileMetric label="Credits" value={profile.credits} icon={CreditCard} />
                     </div>
                   </div>
                 </section>
