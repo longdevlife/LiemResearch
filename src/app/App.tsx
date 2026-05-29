@@ -10,6 +10,7 @@ import { MyRequestsPage } from './pages/MyRequestsPage';
 import { UserRankingPage } from './pages/UserRankingPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { RequestPaperPage } from './pages/RequestPaperPage';
+import { AdminBrowseDashboard } from './pages/AdminBrowseDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminProfilePage } from './pages/AdminProfilePage';
 import { PaperManagementPage } from './pages/PaperManagementPage';
@@ -119,10 +120,12 @@ export default function App() {
           <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute role="user"><UserProfilePage /></ProtectedRoute>} />
           <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminBrowseDashboard /></ProtectedRoute>} />
+          <Route path="/admin/stats" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<ProtectedRoute role="admin"><AdminProfilePage /></ProtectedRoute>} />
           <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
+          <Route path="/admin/post-paper" element={<ProtectedRoute role="admin"><RequestPaperPage role="admin" /></ProtectedRoute>} />
           <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
         </Routes>
       </ToastProvider>

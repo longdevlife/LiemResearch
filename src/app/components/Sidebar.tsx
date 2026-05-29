@@ -29,7 +29,8 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
   ];
 
   const adminMenuItems = [
-    { icon: BarChart3, label: 'Dashboard', path: '/admin' },
+    { icon: Home, label: 'Dashboard', path: '/admin' },
+    { icon: BarChart3, label: 'Statistics', path: '/admin/stats' },
     { icon: FileText, label: 'Paper Management', path: '/admin/papers' },
     { icon: Users, label: 'User Management', path: '/admin/users' },
     { icon: UserIcon, label: 'Profile', path: '/admin/profile' },

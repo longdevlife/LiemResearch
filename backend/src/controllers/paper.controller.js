@@ -307,6 +307,7 @@ async function storeUploadedPdf(file) {
 export async function createPaper(req, res) {
   const { title, doi, paperType, paperLink, abstract, authors, keywords, publishedYear, relatedSemesters, applicationDomain } = req.body;
   const normalizedKeywords = normalizeKeywords(keywords);
+  const isAdmin = req.user.role === 'admin';
 
   if (!title || !doi || !paperLink || !abstract || !publishedYear || !authors || String(authors).trim().length === 0) {
     await removeUploadedFile(req.file);
@@ -392,7 +393,9 @@ export async function createPaper(req, res) {
     paperData.pdfPath = uploadedPdfPath;
     paperData.uploadedBy = req.user._id;
     paperData.uploadedAt = new Date();
-    paperData.status = 'pending';
+    paperData.status = isAdmin ? 'downloaded' : 'pending';
+  } else if (isAdmin) {
+    paperData.status = 'not-downloaded';
   }
 
   Object.assign(paperData, calculatePaperQuality(paperData));
@@ -410,18 +413,27 @@ export async function createPaper(req, res) {
     return res.status(500).json({ message: 'Failed to create paper request' });
   }
 
-  await chargePaperRequestCredit(req.user._id);
+  if (isAdmin && uploadedPdfPath) {
+    await applyUploadCreditReward(paper);
+  }
+
+  if (!isAdmin) {
+    await chargePaperRequestCredit(req.user._id);
+  }
+
   await syncUserPoints(req.user._id);
 
-  try {
-    await notifyAdminsPaperSubmitted({
-      paperId: paper._id,
-      paperTitle: paper.title,
-      requesterName: req.user.fullName,
-      actorId: req.user._id,
-    });
-  } catch (error) {
-    console.error('Failed to create admin notification for new paper:', error);
+  if (!isAdmin) {
+    try {
+      await notifyAdminsPaperSubmitted({
+        paperId: paper._id,
+        paperTitle: paper.title,
+        requesterName: req.user.fullName,
+        actorId: req.user._id,
+      });
+    } catch (error) {
+      console.error('Failed to create admin notification for new paper:', error);
+    }
   }
 
   res.status(201).json({ paper });

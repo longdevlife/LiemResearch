@@ -232,3 +232,16 @@ export async function notifyPaperCommentLiked({
     message: `${likerName} liked your comment on: ${paperTitle}`,
   });
 }
+
+export async function notifyUsersSystemAnnouncement({ title, message, actorId }) {
+  return createNotificationsForUserFilter(
+    { role: 'user' },
+    {
+      actor: actorId,
+      type: 'system_announcement',
+      title,
+      message,
+    },
+    'user'
+  );
+}

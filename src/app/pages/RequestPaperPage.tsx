@@ -6,8 +6,14 @@ import { AppHeader } from '../components/AppHeader';
 import { apiRequest } from '../lib/api';
 import { PAPER_TYPES, RELATED_SEMESTERS, APPLICATION_DOMAINS } from '../lib/papers';
 
-export function RequestPaperPage() {
+type RequestPaperPageProps = {
+  role?: 'user' | 'admin';
+};
+
+export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
   const navigate = useNavigate();
+  const isAdmin = role === 'admin';
+  const dashboardPath = isAdmin ? '/admin' : '/dashboard';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -115,9 +121,9 @@ export function RequestPaperPage() {
         body: formDataPayload,
       });
 
-      setMessage('Paper request submitted successfully.');
+      setMessage(isAdmin ? 'Paper posted successfully.' : 'Paper request submitted successfully.');
       setSelectedFile(null);
-      setTimeout(() => navigate('/my-requests'), 600);
+      setTimeout(() => navigate(isAdmin ? '/admin' : '/my-requests'), 600);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit paper request');
     } finally {
@@ -139,14 +145,14 @@ export function RequestPaperPage() {
 
   return (
     <div className="flex min-h-screen bg-surface-request bg-fixed">
-      <Sidebar role="user" />
+      <Sidebar role={role} />
 
       <div className="flex-1">
-        <AppHeader role="user" />
+        <AppHeader role={role} />
         <div className="p-8">
           <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(dashboardPath)}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
           >
             <ArrowLeft size={20} />
@@ -154,8 +160,10 @@ export function RequestPaperPage() {
           </button>
 
           <div className="mb-8">
-            <h1 className="text-foreground mb-2">Request Research Paper</h1>
-            <p className="text-muted-foreground">Fill in the details of the paper you need</p>
+            <h1 className="text-foreground mb-2">{isAdmin ? 'Post Research Paper' : 'Request Research Paper'}</h1>
+            <p className="text-muted-foreground">
+              {isAdmin ? 'Publish a paper directly to the research library.' : 'Fill in the details of the paper you need'}
+            </p>
           </div>
 
           <div className="bg-white rounded-lg border border-border shadow-sm p-8">
@@ -411,11 +419,11 @@ export function RequestPaperPage() {
                   disabled={isSubmitting || isFormInvalid}
                   className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                  {isSubmitting ? 'Submitting...' : isAdmin ? 'Post Paper' : 'Submit Request'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(dashboardPath)}
                   className="flex-1 bg-muted text-muted-foreground py-3 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cancel
