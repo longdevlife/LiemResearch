@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Notification } from '../models/Notification.js';
+import { notifyUsersSystemAnnouncement } from '../utils/notification.js';
 
 function toLimit(value) {
   const parsed = Number(value);
@@ -59,4 +60,25 @@ export async function markAllNotificationsAsRead(req, res) {
   );
 
   res.json({ updatedCount: result.modifiedCount });
+}
+
+export async function createSystemAnnouncement(req, res) {
+  const title = String(req.body.title || '').trim();
+  const message = String(req.body.message || '').trim();
+
+  if (title.length < 3 || title.length > 120) {
+    return res.status(400).json({ message: 'Announcement title must be between 3 and 120 characters' });
+  }
+
+  if (message.length < 5 || message.length > 500) {
+    return res.status(400).json({ message: 'Announcement message must be between 5 and 500 characters' });
+  }
+
+  const createdCount = await notifyUsersSystemAnnouncement({
+    title,
+    message,
+    actorId: req.user._id,
+  });
+
+  res.status(201).json({ createdCount });
 }

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
 import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
-import { recordInvalidPdfUpload, syncUserPoints } from '../utils/points.js';
+import { chargePaperRequestCredit, recordInvalidPdfUpload, rewardPaperUploadCredit, syncUserPoints } from '../utils/points.js';
+import { calculatePaperQuality } from '../utils/paperQuality.js';
 import {
   notifyAdminsPaperPdfUploaded,
   notifyAdminsPaperSubmitted,
@@ -246,6 +247,19 @@ function getResetStatus(status) {
   return status === 'pending' ? 'pending' : 'not-downloaded';
 }
 
+async function applyUploadCreditReward(paper) {
+  if (!paper?.uploadedBy || paper.status !== 'downloaded' || paper.uploadRewardedAt) return paper;
+
+  const reward = paper.uploadCreditReward || 0;
+  if (reward > 0) {
+    await rewardPaperUploadCredit(getObjectIdValue(paper.uploadedBy), reward);
+  }
+
+  paper.uploadRewardedAt = new Date();
+  await paper.save();
+  return paper;
+}
+
 function resolvePaperPdfPath(pdfPath) {
   if (!pdfPath) return '';
 
@@ -293,6 +307,7 @@ async function storeUploadedPdf(file) {
 export async function createPaper(req, res) {
   const { title, doi, paperType, paperLink, abstract, authors, keywords, publishedYear, relatedSemesters, applicationDomain } = req.body;
   const normalizedKeywords = normalizeKeywords(keywords);
+  const isAdmin = req.user.role === 'admin';
 
   if (!title || !doi || !paperLink || !abstract || !publishedYear || !authors || String(authors).trim().length === 0) {
     await removeUploadedFile(req.file);
@@ -378,8 +393,12 @@ export async function createPaper(req, res) {
     paperData.pdfPath = uploadedPdfPath;
     paperData.uploadedBy = req.user._id;
     paperData.uploadedAt = new Date();
-    paperData.status = 'pending';
+    paperData.status = isAdmin ? 'downloaded' : 'pending';
+  } else if (isAdmin) {
+    paperData.status = 'not-downloaded';
   }
+
+  Object.assign(paperData, calculatePaperQuality(paperData));
 
   let paper;
 
@@ -394,17 +413,27 @@ export async function createPaper(req, res) {
     return res.status(500).json({ message: 'Failed to create paper request' });
   }
 
+  if (isAdmin && uploadedPdfPath) {
+    await applyUploadCreditReward(paper);
+  }
+
+  if (!isAdmin) {
+    await chargePaperRequestCredit(req.user._id);
+  }
+
   await syncUserPoints(req.user._id);
 
-  try {
-    await notifyAdminsPaperSubmitted({
-      paperId: paper._id,
-      paperTitle: paper.title,
-      requesterName: req.user.fullName,
-      actorId: req.user._id,
-    });
-  } catch (error) {
-    console.error('Failed to create admin notification for new paper:', error);
+  if (!isAdmin) {
+    try {
+      await notifyAdminsPaperSubmitted({
+        paperId: paper._id,
+        paperTitle: paper.title,
+        requesterName: req.user.fullName,
+        actorId: req.user._id,
+      });
+    } catch (error) {
+      console.error('Failed to create admin notification for new paper:', error);
+    }
   }
 
   res.status(201).json({ paper });
@@ -431,8 +460,8 @@ export async function getAllPapers(req, res) {
   }
 
   const papers = await Paper.find(filter)
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email')
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role')
     .sort({ createdAt: -1 });
 
   await normalizeContributorPdfReviewStatuses(papers);
@@ -446,8 +475,8 @@ export async function getPaperById(req, res) {
   }
 
   const paper = await Paper.findById(req.params.id)
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
@@ -498,9 +527,11 @@ export async function updatePaperStatus(req, res) {
   const nextStatus = normalizePaperUpdateStatus(status, currentPaper);
   const notifyApproval = shouldNotifyApproval(previousStatus, nextStatus);
 
-  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus }, { new: true });
+  const qualityUpdates = calculatePaperQuality(currentPaper);
+  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus, ...qualityUpdates }, { new: true });
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.requestedBy);
   if (paper.uploadedBy) {
     await syncUserPoints(paper.uploadedBy);
@@ -623,15 +654,18 @@ export async function updatePaper(req, res) {
     }
   }
 
+  Object.assign(updates, calculatePaperQuality({ ...existingPaper.toObject(), ...updates }));
+
   const paper = await Paper.findByIdAndUpdate(req.params.id, updates, {
     new: true,
     runValidators: true,
   })
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.requestedBy);
   if (paper.uploadedBy) {
     await syncUserPoints(paper.uploadedBy);
@@ -727,10 +761,11 @@ export async function uploadPaperPdf(req, res) {
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
       status: nextStatus,
+      ...calculatePaperQuality({ ...existingPaper.toObject(), pdfPath: uploadedPdfPath }),
     },
     { new: true }
-  ).populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+  ).populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
   if (!paper) {
     await deleteStoredPdf(uploadedPdfPath);
@@ -738,6 +773,7 @@ export async function uploadPaperPdf(req, res) {
     return res.status(404).json({ message: 'Paper not found' });
   }
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.uploadedBy);
   if (nextStatus === 'downloaded') {
     await syncUserPoints(paper.requestedBy);
@@ -790,12 +826,13 @@ export async function acceptPaperPdf(req, res) {
 
   const updatedPaper = await Paper.findByIdAndUpdate(
     req.params.id,
-    { status: 'downloaded' },
+    { status: 'downloaded', ...calculatePaperQuality(paper) },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
+  await applyUploadCreditReward(updatedPaper);
   await syncUserPoints(updatedPaper.requestedBy);
   if (updatedPaper.uploadedBy) {
     await syncUserPoints(updatedPaper.uploadedBy);
@@ -830,11 +867,12 @@ export async function rejectPaperPdf(req, res) {
     {
       $unset: { pdfPath: '', uploadedBy: '', uploadedAt: '' },
       status: 'not-downloaded',
+      ...calculatePaperQuality({ ...paper.toObject(), pdfPath: '', uploadedBy: undefined, uploadedAt: undefined }),
     },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
   if (rejectedUploader) {
     await recordInvalidPdfUpload(rejectedUploader);
@@ -867,8 +905,8 @@ export async function deletePaperPdf(req, res) {
     },
     { new: true }
   )
-    .populate('requestedBy', 'fullName email university')
-    .populate('uploadedBy', 'fullName university email');
+    .populate('requestedBy', 'fullName email university role')
+    .populate('uploadedBy', 'fullName university email role');
 
   if (!updatedPaper) return res.status(404).json({ message: 'Paper not found' });
 

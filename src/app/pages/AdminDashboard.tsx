@@ -111,7 +111,7 @@ export function AdminDashboard() {
         <AppHeader role="admin" />
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-foreground mb-2">Admin Dashboard</h1>
+            <h1 className="text-foreground mb-2">Statistics</h1>
             <p className="text-muted-foreground">Overview of research paper requests and system statistics</p>
           </div>
 

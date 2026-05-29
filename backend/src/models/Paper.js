@@ -69,6 +69,18 @@ const paperSchema = new mongoose.Schema(
     totalRatings: { type: Number, default: 0 },
     downloadCount: { type: Number, default: 0 },
     viewCount: { type: Number, default: 0 },
+    metadataScore: { type: Number, default: 0, min: 0, max: 15 },
+    sourceScore: { type: Number, default: 0, min: 0, max: 15 },
+    duplicateScore: { type: Number, default: 20, min: 0, max: 20 },
+    relevanceScore: { type: Number, default: 0, min: 0, max: 15 },
+    prestigeScore: { type: Number, default: 0, min: 0, max: 20 },
+    utilityScore: { type: Number, default: 0, min: 0, max: 15 },
+    qualityScore: { type: Number, default: 0, min: 0, max: 100, index: true },
+    qualityTier: { type: Number, default: 0, min: 0, max: 4, index: true },
+    qualityTierName: { type: String, default: 'Không hợp lệ' },
+    downloadCost: { type: Number, default: null },
+    uploadCreditReward: { type: Number, default: 0 },
+    uploadRewardedAt: { type: Date },
   },
   { timestamps: true }
 );

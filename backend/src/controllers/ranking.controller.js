@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import { syncUserPoints } from '../utils/points.js';
 
 const activeUserFilter = {
+  role: 'user',
   $or: [{ status: 'active' }, { status: { $exists: false } }],
 };
 
@@ -51,6 +52,10 @@ async function buildRankings() {
 }
 
 export async function getMyRanking(req, res) {
+  if (req.user.role !== 'user') {
+    return res.status(404).json({ message: 'Ranking is only available for user accounts' });
+  }
+
   const rankings = await buildRankings();
 
   const ranking = rankings.find((item) => item.user._id.toString() === req.user._id.toString());

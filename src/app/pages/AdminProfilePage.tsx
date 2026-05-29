@@ -7,14 +7,13 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   Building2,
   Calendar,
+  CreditCard,
   Edit,
   Eye,
   EyeOff,
   FileText,
   CheckCircle2,
   Upload,
-  Star,
-  Trophy,
   Lock,
   Mail,
   ShieldCheck,
@@ -28,6 +27,7 @@ type ProfileForm = {
   email: string;
   university: string;
   memberSince: string;
+  credits: number;
 };
 
 type PasswordForm = {
@@ -46,24 +46,6 @@ type ActivityItem = {
   tone: 'blue' | 'green' | 'amber' | 'red';
 };
 
-type RankingStats = {
-  rank: number;
-  uploadedPapers: number;
-  uploadedPdfs: number;
-  ratingsGiven: number;
-  points: number;
-};
-
-type RankedUser = AuthUser & {
-  points?: number;
-  penaltyPoints?: number;
-  status?: 'active' | 'banned';
-};
-
-type AdminMeUser = AuthUser & {
-  points?: number;
-};
-
 type PaperRequest = {
   _id: string;
   title?: string;
@@ -80,6 +62,7 @@ function mapUserToProfile(user: AuthUser): ProfileForm {
     email: user.email,
     university: user.university,
     memberSince: user.createdAt ? formatDisplayDate(user.createdAt) : '',
+    credits: user.credits ?? 0,
   };
 }
 
@@ -133,7 +116,7 @@ export function AdminProfilePage() {
   const storedUser = getStoredUser();
   const initialProfile = storedUser
     ? mapUserToProfile(storedUser)
-    : { fullName: '', email: '', university: '', memberSince: '' };
+    : { fullName: '', email: '', university: '', memberSince: '', credits: 0 };
   const [profile, setProfile] = useState<ProfileForm>(initialProfile);
   const [editForm, setEditForm] = useState<ProfileForm>(initialProfile);
   const [message, setMessage] = useState('');
@@ -152,7 +135,6 @@ export function AdminProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [rankingStats, setRankingStats] = useState<RankingStats | null>(null);
   const [myPapers, setMyPapers] = useState<PaperRequest[]>([]);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
 
@@ -161,9 +143,8 @@ export function AdminProfilePage() {
 
     async function loadProfile() {
       try {
-        const [meData, rankingData, paperData] = await Promise.all([
-          apiRequest<{ user: AdminMeUser }>('/auth/me', { auth: true }),
-          apiRequest<{ ranking: RankingStats }>('/rankings/me', { auth: true }).catch(() => ({ ranking: null })),
+        const [meData, paperData] = await Promise.all([
+          apiRequest<{ user: AuthUser }>('/auth/me', { auth: true }),
           apiRequest<{ papers: PaperRequest[] }>('/papers/my-requests', { auth: true }).catch(() => ({ papers: [] })),
         ]);
         const data = meData;
@@ -172,7 +153,6 @@ export function AdminProfilePage() {
         if (isMounted) {
           setProfile(nextProfile);
           setEditForm(nextProfile);
-          setRankingStats(rankingData.ranking ?? null);
           setMyPapers(paperData.papers ?? []);
           const token = getToken();
           if (token) saveAuth(token, data.user);
@@ -196,7 +176,6 @@ export function AdminProfilePage() {
   }, []);
 
   const initials = useMemo(() => getInitials(profile.fullName) || 'A', [profile.fullName]);
-  const rankingLabel = rankingStats ? `Rank #${rankingStats.rank}` : 'Rank N/A';
   const approvedPapers = myPapers.filter((paper) =>
     ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'].includes(paper.status)
   ).length;
@@ -355,11 +334,9 @@ export function AdminProfilePage() {
                         </div>
                         <div className="pb-1">
                           <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-                              {rankingLabel}
-                            </span>
-                            <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-                              {rankingStats?.points ?? 0} points
+                            <span className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                              <CreditCard size={15} />
+                              {profile.credits} credits
                             </span>
                             <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
                               Admin account
@@ -368,7 +345,13 @@ export function AdminProfilePage() {
                               Secure profile
                             </span>
                           </div>
-                          <h1 className="text-3xl font-semibold text-foreground">{profile.fullName || 'Admin Profile'}</h1>
+                          <h1 className="flex flex-wrap items-center gap-3 text-3xl font-semibold text-foreground">
+                            <span>{profile.fullName || 'Admin Profile'}</span>
+                            <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-700">
+                              <ShieldCheck size={16} />
+                              Admin
+                            </span>
+                          </h1>
                           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-2">
                               <Building2 size={16} />
@@ -392,12 +375,11 @@ export function AdminProfilePage() {
                       </button>
                     </div>
 
-                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
                       <ProfileMetric label="Papers" value={myPapers.length} icon={FileText} />
                       <ProfileMetric label="Approved" value={approvedPapers} icon={CheckCircle2} />
                       <ProfileMetric label="PDFs" value={pdfReadyPapers} icon={Upload} />
-                      <ProfileMetric label="Ratings" value={rankingStats?.ratingsGiven ?? 0} icon={Star} />
-                      <ProfileMetric label="Points" value={rankingStats?.points ?? 0} icon={Trophy} />
+                      <ProfileMetric label="Credits" value={profile.credits} icon={CreditCard} />
                     </div>
                   </div>
                 </section>
@@ -419,21 +401,21 @@ export function AdminProfilePage() {
                     {activeTab === 'overview' && (
                       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                         <div>
-                          <h3 className="mb-4 text-foreground">Research Contribution</h3>
+                          <h3 className="mb-4 text-foreground">Administrative Contribution</h3>
                           <div className="space-y-4">
-                            <ContributionRow label="Valid paper requests" value={rankingStats?.uploadedPapers ?? approvedPapers} detail="Papers approved by admin" icon={FileText} />
-                            <ContributionRow label="PDF contributions" value={rankingStats?.uploadedPdfs ?? pdfReadyPapers} detail="Useful files uploaded for the library" icon={Upload} />
-                            <ContributionRow label="Ratings given" value={rankingStats?.ratingsGiven ?? 0} detail="Feedback shared with the community" icon={Star} />
+                            <ContributionRow label="Papers managed" value={myPapers.length} detail="Papers created or handled by this admin" icon={FileText} />
+                            <ContributionRow label="Approved papers" value={approvedPapers} detail="Papers available in the library" icon={CheckCircle2} />
+                            <ContributionRow label="PDF files" value={pdfReadyPapers} detail="Papers with downloadable files" icon={Upload} />
                           </div>
                         </div>
 
                         <div>
                           <h3 className="mb-4 text-foreground">Badges</h3>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                            <BadgeItem active={myPapers.length > 0} icon={FileText} title="First Paper" />
-                            <BadgeItem active={pdfReadyPapers > 0} icon={Upload} title="PDF Contributor" />
-                            <BadgeItem active={(rankingStats?.ratingsGiven ?? 0) > 0} icon={Star} title="Reviewer" />
-                            <BadgeItem active={(rankingStats?.points ?? 0) >= 100} icon={Trophy} title="Rising Scholar" />
+                            <BadgeItem active icon={ShieldCheck} title="Admin Account" />
+                            <BadgeItem active icon={Lock} title="Secure Profile" />
+                            <BadgeItem active={myPapers.length > 0} icon={FileText} title="Paper Manager" />
+                            <BadgeItem active={pdfReadyPapers > 0} icon={Upload} title="PDF Manager" />
                           </div>
                         </div>
                       </div>

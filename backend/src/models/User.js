@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     status: { type: String, enum: ['active', 'banned'], default: 'active' },
     points: { type: Number, default: 0 },
+    credits: { type: Number, default: 0 },
     penaltyPoints: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }

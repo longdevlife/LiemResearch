@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema(
   {
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    paper: { type: mongoose.Schema.Types.ObjectId, ref: 'Paper', required: true, index: true },
+    paper: { type: mongoose.Schema.Types.ObjectId, ref: 'Paper', index: true },
     type: {
       type: String,
       enum: [
@@ -15,6 +15,9 @@ const notificationSchema = new mongoose.Schema(
         'paper_rating_deleted',
         'paper_approved',
         'paper_commented',
+        'paper_comment_replied',
+        'paper_comment_liked',
+        'system_announcement',
       ],
       required: true,
     },

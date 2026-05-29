@@ -17,17 +17,30 @@ export type PublicPaper = {
     fullName?: string;
     university?: string;
     email?: string;
+    role?: 'user' | 'admin';
   };
   requestedBy?: {
     _id: string;
     fullName?: string;
     university?: string;
     email?: string;
+    role?: 'user' | 'admin';
   };
   uploadedAt?: string;
   averageRating: number;
   totalRatings: number;
   downloadCount: number;
+  metadataScore?: number;
+  sourceScore?: number;
+  duplicateScore?: number;
+  relevanceScore?: number;
+  prestigeScore?: number;
+  utilityScore?: number;
+  qualityScore?: number;
+  qualityTier?: number;
+  qualityTierName?: string;
+  downloadCost?: number | null;
+  uploadCreditReward?: number;
   createdAt: string;
 };
 

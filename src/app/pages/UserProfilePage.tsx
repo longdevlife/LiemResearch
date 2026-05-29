@@ -28,6 +28,7 @@ type ProfileForm = {
   email: string;
   university: string;
   memberSince: string;
+  credits: number;
 };
 
 type RankingStats = {
@@ -70,6 +71,7 @@ function mapUserToProfile(user: AuthUser): ProfileForm {
     email: user.email,
     university: user.university,
     memberSince: user.createdAt ? formatDisplayDate(user.createdAt) : '',
+    credits: user.credits ?? 0,
   };
 }
 
@@ -180,7 +182,7 @@ export function UserProfilePage() {
   const storedUser = getStoredUser();
   const initialProfile = storedUser
     ? mapUserToProfile(storedUser)
-    : { fullName: '', email: '', university: '', memberSince: '' };
+    : { fullName: '', email: '', university: '', memberSince: '', credits: 0 };
   const [profile, setProfile] = useState<ProfileForm>(initialProfile);
   const [editForm, setEditForm] = useState<ProfileForm>(initialProfile);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
@@ -386,6 +388,10 @@ export function UserProfilePage() {
                       <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 shadow-sm">
                         {rankingStats?.points ?? 0} points
                       </span>
+                      <span className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 shadow-sm">
+                        <CreditCard size={15} />
+                        {profile.credits} credits
+                      </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-2">
@@ -417,12 +423,13 @@ export function UserProfilePage() {
                 </div>
               </div>
 
-              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-6">
                 <ProfileMetric label="Papers" value={myPapers.length} icon={FileText} />
                 <ProfileMetric label="Approved" value={approvedPapers} icon={CheckCircle2} />
                 <ProfileMetric label="PDFs" value={pdfReadyPapers} icon={Upload} />
                 <ProfileMetric label="Ratings" value={rankingStats?.ratingsGiven ?? 0} icon={Star} />
                 <ProfileMetric label="Points" value={rankingStats?.points ?? 0} icon={Trophy} />
+                <ProfileMetric label="Credits" value={profile.credits} icon={CreditCard} />
               </div>
             </div>
               </section>

@@ -3,6 +3,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
+const REFRESHED_TOKEN_HEADER = 'x-access-token';
+
+export const AUTH_CHANGED_EVENT = 'auth-changed';
 
 export type AuthUser = {
   _id: string;
@@ -11,6 +14,7 @@ export type AuthUser = {
   email: string;
   role: 'user' | 'admin';
   status?: 'active' | 'banned';
+  credits?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -36,11 +40,27 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+function notifyAuthChanged() {
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+function saveToken(token: string) {
+  if (localStorage.getItem(TOKEN_KEY)) {
+    localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
+
+  if (sessionStorage.getItem(TOKEN_KEY)) {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
 export function saveAuth(token: string, user: AuthUser) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
+  notifyAuthChanged();
 }
 
 export function clearAuth() {
@@ -48,6 +68,7 @@ export function clearAuth() {
   sessionStorage.removeItem(USER_KEY);
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  notifyAuthChanged();
 }
 
 export function resolveFileUrl(value: string) {
@@ -83,7 +104,16 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401 && options.auth) {
+      clearAuth();
+    }
+
     throw new Error(data.message || 'Request failed');
+  }
+
+  const refreshedToken = response.headers.get(REFRESHED_TOKEN_HEADER);
+  if (options.auth && refreshedToken) {
+    saveToken(refreshedToken);
   }
 
   return data as T;

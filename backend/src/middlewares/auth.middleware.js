@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { signToken } from '../utils/token.js';
 
 export async function requireAuth(req, res, next) {
   try {
@@ -18,6 +19,7 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = user;
+    res.setHeader('X-Access-Token', signToken(user));
     next();
   } catch (_error) {
     res.status(401).json({ message: 'Invalid or expired access token' });

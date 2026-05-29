@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
 import { getPdfDownloadUrl } from '../utils/s3.js';
+import { chargePaperDownloadCredit } from '../utils/points.js';
+import { calculatePaperQuality } from '../utils/paperQuality.js';
 
 const visibleStatuses = ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
@@ -43,6 +45,19 @@ async function repairPendingContributorPdfReviews(filter = {}) {
       continue;
     }
   }
+}
+
+async function ensurePaperQuality(paper) {
+  if (!paper || paper.qualityScore > 0 || paper.qualityTier > 0) return paper;
+
+  Object.assign(paper, calculatePaperQuality(paper));
+  try {
+    await paper.save();
+  } catch (err) {
+    console.error('Failed to update paper quality score:', err);
+  }
+
+  return paper;
 }
 
 function buildSearchFilter(query) {
@@ -123,13 +138,15 @@ export async function searchPublicPapers(req, res) {
 
   const [papers, total] = await Promise.all([
     Paper.find(filter)
-      .populate('requestedBy', 'fullName university')
-      .populate('uploadedBy', 'fullName university')
+      .populate('requestedBy', 'fullName university role')
+      .populate('uploadedBy', 'fullName university role')
       .sort(buildSort(req.query.sortBy))
       .skip(skip)
       .limit(limit),
     Paper.countDocuments(filter),
   ]);
+
+  await Promise.all(papers.map((paper) => ensurePaperQuality(paper)));
 
   res.json({
     papers,
@@ -153,10 +170,12 @@ export async function getPublicPaperById(req, res) {
     _id: req.params.id,
     status: { $in: visibleStatuses },
   })
-    .populate('requestedBy', 'fullName university')
-    .populate('uploadedBy', 'fullName university');
+    .populate('requestedBy', 'fullName university role')
+    .populate('uploadedBy', 'fullName university role');
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
+
+  await ensurePaperQuality(paper);
 
   res.json({ paper });
 }
@@ -182,17 +201,23 @@ export async function downloadPublicPaper(req, res) {
     return res.status(400).json({ message: 'Invalid paper id' });
   }
 
-  const paper = await Paper.findOneAndUpdate(
+  const paper = await Paper.findOne(
     {
       _id: req.params.id,
       status: 'downloaded',
       pdfPath: { $exists: true, $ne: '' },
-    },
-    { $inc: { downloadCount: 1 } },
-    { new: true }
+    }
   );
 
   if (!paper) return res.status(404).json({ message: 'PDF is not available for this paper' });
+  await ensurePaperQuality(paper);
+  if (paper.qualityTier === 0 || paper.downloadCost === null) {
+    return res.status(403).json({ message: 'This paper does not meet the minimum quality score for download' });
+  }
+
+  const creditCharge = await chargePaperDownloadCredit({ userId: req.user._id, paper });
+  paper.downloadCount += 1;
+  await paper.save();
 
   const filename = `${paper.doi || paper.title}.pdf`;
   const downloadUrl = await getPdfDownloadUrl(paper.pdfPath, filename);
@@ -200,5 +225,7 @@ export async function downloadPublicPaper(req, res) {
   res.json({
     downloadUrl,
     downloadCount: paper.downloadCount,
+    creditCost: creditCharge.cost,
+    isRepeatDownload: creditCharge.isRepeatDownload,
   });
 }

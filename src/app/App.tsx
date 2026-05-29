@@ -10,15 +10,17 @@ import { MyRequestsPage } from './pages/MyRequestsPage';
 import { UserRankingPage } from './pages/UserRankingPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { RequestPaperPage } from './pages/RequestPaperPage';
+import { AdminBrowseDashboard } from './pages/AdminBrowseDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminProfilePage } from './pages/AdminProfilePage';
 import { PaperManagementPage } from './pages/PaperManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PaperDetailPage } from './pages/PaperDetailPage';
-import { clearAuth, getStoredUser, getToken } from './lib/api';
+import { AUTH_CHANGED_EVENT, clearAuth, getStoredUser, getToken } from './lib/api';
 import { ToastProvider } from './components/ToastProvider';
 
 const LAST_PATH_KEY = 'last-pathname';
+const PUBLIC_PATHS = new Set(['/', '/login', '/register']);
 
 function AdminRouteGuard() {
   const location = useLocation();
@@ -53,6 +55,35 @@ function AdminRouteGuard() {
   return null;
 }
 
+function AuthSessionGuard() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      if (!PUBLIC_PATHS.has(location.pathname) && (!getToken() || !getStoredUser())) {
+        navigate('/login', { replace: true });
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'token' || event.key === 'user') {
+        handleAuthChanged();
+      }
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [location.pathname, navigate]);
+
+  return null;
+}
+
 function ProtectedRoute({
   children,
   role,
@@ -79,6 +110,7 @@ export default function App() {
     <Router>
       <ToastProvider>
         <AdminRouteGuard />
+        <AuthSessionGuard />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -88,10 +120,12 @@ export default function App() {
           <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute role="user"><UserProfilePage /></ProtectedRoute>} />
           <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminBrowseDashboard /></ProtectedRoute>} />
+          <Route path="/admin/stats" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<ProtectedRoute role="admin"><AdminProfilePage /></ProtectedRoute>} />
           <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
+          <Route path="/admin/post-paper" element={<ProtectedRoute role="admin"><RequestPaperPage role="admin" /></ProtectedRoute>} />
           <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
         </Routes>
       </ToastProvider>

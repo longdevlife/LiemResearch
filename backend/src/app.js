@@ -40,6 +40,7 @@ app.use(cors({
 
     callback(new Error(`CORS blocked origin: ${origin}`));
   },
+  exposedHeaders: ['X-Access-Token'],
 }));
 app.use(express.json());
 app.use('/uploads', express.static(uploadsPath));

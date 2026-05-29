@@ -15,7 +15,7 @@ type NotificationPaper = {
 export type AppNotification = {
   _id: string;
   actor: NotificationActor;
-  paper: NotificationPaper;
+  paper?: NotificationPaper;
   type:
     | 'paper_submitted'
     | 'paper_pdf_uploaded'
@@ -23,7 +23,10 @@ export type AppNotification = {
     | 'paper_rating_updated'
     | 'paper_rating_deleted'
     | 'paper_approved'
-    | 'paper_commented';
+    | 'paper_commented'
+    | 'paper_comment_replied'
+    | 'paper_comment_liked'
+    | 'system_announcement';
   title: string;
   message: string;
   isRead: boolean;
@@ -48,5 +51,13 @@ export async function markAllNotificationsAsRead() {
   return apiRequest<{ updatedCount: number }>('/notifications/read-all', {
     method: 'POST',
     auth: true,
+  });
+}
+
+export async function postSystemAnnouncement(payload: { title: string; message: string }) {
+  return apiRequest<{ createdCount: number }>('/notifications/announcements', {
+    method: 'POST',
+    auth: true,
+    body: payload,
   });
 }

@@ -190,3 +190,58 @@ export async function notifyPaperContributorsCommented({
     message: `${commenterName} commented on: ${paperTitle}`,
   });
 }
+
+export async function notifyPaperCommentReplied({
+  paperId,
+  paperTitle,
+  replierName,
+  actorId,
+  commentOwnerId,
+}) {
+  const actorKey = actorId?.toString();
+  if (!commentOwnerId || commentOwnerId.toString() === actorKey) {
+    return 0;
+  }
+
+  return createNotificationsForUsers([commentOwnerId], {
+    actor: actorId,
+    paper: paperId,
+    type: 'paper_comment_replied',
+    title: 'New reply to your comment',
+    message: `${replierName} replied to your comment on: ${paperTitle}`,
+  });
+}
+
+export async function notifyPaperCommentLiked({
+  paperId,
+  paperTitle,
+  likerName,
+  actorId,
+  commentOwnerId,
+}) {
+  const actorKey = actorId?.toString();
+  if (!commentOwnerId || commentOwnerId.toString() === actorKey) {
+    return 0;
+  }
+
+  return createNotificationsForUsers([commentOwnerId], {
+    actor: actorId,
+    paper: paperId,
+    type: 'paper_comment_liked',
+    title: 'Someone liked your comment',
+    message: `${likerName} liked your comment on: ${paperTitle}`,
+  });
+}
+
+export async function notifyUsersSystemAnnouncement({ title, message, actorId }) {
+  return createNotificationsForUserFilter(
+    { role: 'user' },
+    {
+      actor: actorId,
+      type: 'system_announcement',
+      title,
+      message,
+    },
+    'user'
+  );
+}

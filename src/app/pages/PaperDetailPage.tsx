@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { UploadPdfModal } from '../components/UploadPdfModal';
-import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X, Check, Heart, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Calendar, User, Link as LinkIcon, Star, X, Check, Heart, MessageCircle, ShieldCheck } from 'lucide-react';
 import { apiRequest, getStoredUser, resolveFileUrl } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
@@ -12,15 +12,18 @@ import { getSemesterLabel } from '../lib/papers';
 
 type DetailPaper = PublicPaper & {
   requestedBy?: {
+    _id?: string;
     fullName?: string;
     email?: string;
     university?: string;
+    role?: 'user' | 'admin';
   };
   uploadedBy?: {
     _id?: string;
     fullName?: string;
     email?: string;
     university?: string;
+    role?: 'user' | 'admin';
   };
 };
 
@@ -31,6 +34,7 @@ type Rating = {
     _id: string;
     fullName?: string;
     university?: string;
+    role?: 'user' | 'admin';
   };
 };
 
@@ -48,8 +52,29 @@ type PaperComment = {
     _id: string;
     fullName?: string;
     university?: string;
+    role?: 'user' | 'admin';
   };
 };
+
+type ProfileNameProps = {
+  name?: string;
+  role?: 'user' | 'admin';
+  className?: string;
+};
+
+function ProfileName({ name, role, className = '' }: ProfileNameProps) {
+  return (
+    <span className={`inline-flex min-w-0 flex-wrap items-center gap-2 ${className}`}>
+      <span className="min-w-0 break-words">{name || 'User'}</span>
+      {role === 'admin' && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+          <ShieldCheck size={13} />
+          Admin
+        </span>
+      )}
+    </span>
+  );
+}
 
 function withCommentDefaults(comment: PaperComment): PaperComment {
   return {
@@ -493,7 +518,9 @@ export function PaperDetailPage() {
                   paper.status === 'pending-requester-acceptance' ||
                   (paper.status === 'pending' && Boolean(paper.pdfPath) && !uploadedByRequester);
                 const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && paper.pdfPath);
-                const canDownloadPdf = Boolean(paper.pdfPath && (isPdfAvailable || canAcceptPdf || isAdmin));
+                const isPrivateDownload = isAdmin || isRequester || canAcceptPdf;
+                const canPublicDownload = isPdfAvailable && paper.qualityTier !== 0 && paper.downloadCost !== null;
+                const canDownloadPdf = Boolean(paper.pdfPath && (isPrivateDownload || canPublicDownload));
                 const canUploadPdf = Boolean(
                   currentUser && !paper.pdfPath && (isAdmin || isRequester || paper.status === 'not-downloaded')
                 );
@@ -562,7 +589,9 @@ export function PaperDetailPage() {
                       <User size={16} className="text-muted-foreground" />
                       <div>
                         <p className="text-muted-foreground">Requested By</p>
-                        <p className="text-foreground">{paper.requestedBy?.fullName || 'N/A'}</p>
+                        <p className="text-foreground">
+                          <ProfileName name={paper.requestedBy?.fullName || 'N/A'} role={paper.requestedBy?.role} />
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -611,9 +640,27 @@ export function PaperDetailPage() {
                     <div className="rounded-lg border border-border bg-white p-4">
                       <p className="text-sm text-muted-foreground">PDF UPLOADED BY :</p>
                       <p className="text-foreground">
-                        {paper.uploadedBy?.fullName || 'N/A'}
+                        <ProfileName name={paper.uploadedBy?.fullName || 'N/A'} role={paper.uploadedBy?.role} />
                         {paper.uploadedBy?.university ? ` - ${paper.uploadedBy.university}` : ''}
                       </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Quality Score</p>
+                        <p className="text-xl font-semibold text-foreground">{paper.qualityScore ?? 'N/A'}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Tier</p>
+                        <p className="text-xl font-semibold text-foreground">
+                          {paper.qualityTierName || (paper.qualityTier !== undefined ? `Tier ${paper.qualityTier}` : 'N/A')}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Download Cost</p>
+                        <p className="text-xl font-semibold text-foreground">
+                          {paper.downloadCost === null || paper.qualityTier === 0 ? 'Not allowed' : `${paper.downloadCost ?? 0} credits`}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-4">
                       <button
@@ -683,7 +730,7 @@ export function PaperDetailPage() {
                 )}
               </div>
 
-              {!isAdmin && (
+              {currentUser && (
                 <div className="bg-white rounded-lg border border-border shadow-sm p-8">
                   <h3 className="text-foreground mb-4">Rate this paper</h3>
 
@@ -802,7 +849,8 @@ export function PaperDetailPage() {
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <p className="text-foreground">
-                                {rating.user?.fullName || 'User'} rated {rating.rating} / 5
+                                <ProfileName name={rating.user?.fullName || 'User'} role={rating.user?.role} />
+                                <span className="ml-1">rated {rating.rating} / 5</span>
                                 {isOwnRating && (
                                   <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                                     Your rating
@@ -849,7 +897,7 @@ export function PaperDetailPage() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
                               <p className="text-foreground">
-                                {comment.user?.fullName || 'User'}
+                                <ProfileName name={comment.user?.fullName || 'User'} role={comment.user?.role} />
                                 {isOwnComment && (
                                   <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                                     Your comment
@@ -875,7 +923,7 @@ export function PaperDetailPage() {
                                     {comment.likeCount} {comment.likeCount === 1 ? 'like' : 'likes'}
                                   </button>
                                 )}
-                                {!comment.isLegacyRatingComment && !isAdmin && (
+                                {!comment.isLegacyRatingComment && (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -947,7 +995,7 @@ export function PaperDetailPage() {
                                         <div className="flex items-start justify-between gap-4">
                                           <div className="min-w-0 flex-1">
                                             <p className="text-foreground">
-                                              {reply.user?.fullName || 'User'}
+                                              <ProfileName name={reply.user?.fullName || 'User'} role={reply.user?.role} />
                                               {isOwnReply && (
                                                 <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                                                   Your reply
