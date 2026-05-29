@@ -28,6 +28,17 @@ export type PublicPaper = {
   averageRating: number;
   totalRatings: number;
   downloadCount: number;
+  metadataScore?: number;
+  sourceScore?: number;
+  duplicateScore?: number;
+  relevanceScore?: number;
+  prestigeScore?: number;
+  utilityScore?: number;
+  qualityScore?: number;
+  qualityTier?: number;
+  qualityTierName?: string;
+  downloadCost?: number | null;
+  uploadCreditReward?: number;
   createdAt: string;
 };
 

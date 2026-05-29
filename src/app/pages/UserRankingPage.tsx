@@ -27,6 +27,7 @@ interface UserRank {
   rejectedPapers: number;
   rejectedPdfs: number;
   penaltyPoints?: number;
+  uploadCreditReward?: number;
   points: number;
 }
 
@@ -42,19 +43,19 @@ const pointRules: Array<{
 }> = [
   {
     id: 'paper',
-    title: 'Approved Paper',
+    title: 'Request new paper',
     icon: FileText,
-    earn: '+50 points',
-    lose: '-10 if rejected',
-    description: 'Paper requests add points after admin approval. Rejected papers reduce the score lightly.',
+    earn: '-100 credits',
+    lose: 'Charged on submit',
+    description: 'New requests cost credits because the system or admin needs to process them.',
   },
   {
     id: 'pdf',
-    title: 'Valid PDF Upload',
+    title: 'Accepted PDF upload',
     icon: Upload,
-    earn: '+50 points',
-    lose: '-10 if rejected',
-    description: 'PDF uploads count when accepted as a valid file for the paper.',
+    earn: '+100 to +300 credits',
+    lose: 'No rank drop on download',
+    description: 'Upload rewards depend on paper quality tier after the PDF is accepted.',
   },
   {
     id: 'rating',
@@ -62,7 +63,7 @@ const pointRules: Array<{
     icon: Star,
     earn: '+5 points',
     lose: 'No penalty',
-    description: 'Every helpful rating contributes to the research community score.',
+    description: 'Every helpful rating contributes a small amount to the research community score.',
   },
 ];
 
@@ -340,8 +341,8 @@ function TopContributorCard({ item, isCurrentUser }: { item: UserRank; isCurrent
 
 function LeaderboardRow({ item, isCurrentUser }: { item: UserRank; isCurrentUser: boolean }) {
   const academicRank = calculateCurrentRank(item.points, item.uploadedPapers);
-  const positivePoints = item.uploadedPapers * 50 + item.uploadedPdfs * 50 + item.ratingsGiven * 5;
-  const negativePoints = item.rejectedPapers * 10 + item.rejectedPdfs * 10 + (item.penaltyPoints || 0);
+  const positivePoints = (item.uploadCreditReward || 0) + item.ratingsGiven * 5;
+  const negativePoints = item.penaltyPoints || 0;
 
   return (
     <div className={`grid grid-cols-1 gap-4 px-6 py-5 transition-colors lg:grid-cols-[72px_minmax(0,1fr)_240px_120px] lg:items-center ${

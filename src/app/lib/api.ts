@@ -14,6 +14,7 @@ export type AuthUser = {
   email: string;
   role: 'user' | 'admin';
   status?: 'active' | 'banned';
+  credits?: number;
   createdAt?: string;
   updatedAt?: string;
 };

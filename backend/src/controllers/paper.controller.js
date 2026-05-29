@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
 import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
-import { recordInvalidPdfUpload, syncUserPoints } from '../utils/points.js';
+import { chargePaperRequestCredit, recordInvalidPdfUpload, rewardPaperUploadCredit, syncUserPoints } from '../utils/points.js';
+import { calculatePaperQuality } from '../utils/paperQuality.js';
 import {
   notifyAdminsPaperPdfUploaded,
   notifyAdminsPaperSubmitted,
@@ -246,6 +247,19 @@ function getResetStatus(status) {
   return status === 'pending' ? 'pending' : 'not-downloaded';
 }
 
+async function applyUploadCreditReward(paper) {
+  if (!paper?.uploadedBy || paper.status !== 'downloaded' || paper.uploadRewardedAt) return paper;
+
+  const reward = paper.uploadCreditReward || 0;
+  if (reward > 0) {
+    await rewardPaperUploadCredit(getObjectIdValue(paper.uploadedBy), reward);
+  }
+
+  paper.uploadRewardedAt = new Date();
+  await paper.save();
+  return paper;
+}
+
 function resolvePaperPdfPath(pdfPath) {
   if (!pdfPath) return '';
 
@@ -381,6 +395,8 @@ export async function createPaper(req, res) {
     paperData.status = 'pending';
   }
 
+  Object.assign(paperData, calculatePaperQuality(paperData));
+
   let paper;
 
   try {
@@ -394,6 +410,7 @@ export async function createPaper(req, res) {
     return res.status(500).json({ message: 'Failed to create paper request' });
   }
 
+  await chargePaperRequestCredit(req.user._id);
   await syncUserPoints(req.user._id);
 
   try {
@@ -498,9 +515,11 @@ export async function updatePaperStatus(req, res) {
   const nextStatus = normalizePaperUpdateStatus(status, currentPaper);
   const notifyApproval = shouldNotifyApproval(previousStatus, nextStatus);
 
-  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus }, { new: true });
+  const qualityUpdates = calculatePaperQuality(currentPaper);
+  const paper = await Paper.findByIdAndUpdate(req.params.id, { status: nextStatus, ...qualityUpdates }, { new: true });
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.requestedBy);
   if (paper.uploadedBy) {
     await syncUserPoints(paper.uploadedBy);
@@ -623,6 +642,8 @@ export async function updatePaper(req, res) {
     }
   }
 
+  Object.assign(updates, calculatePaperQuality({ ...existingPaper.toObject(), ...updates }));
+
   const paper = await Paper.findByIdAndUpdate(req.params.id, updates, {
     new: true,
     runValidators: true,
@@ -632,6 +653,7 @@ export async function updatePaper(req, res) {
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.requestedBy);
   if (paper.uploadedBy) {
     await syncUserPoints(paper.uploadedBy);
@@ -727,6 +749,7 @@ export async function uploadPaperPdf(req, res) {
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
       status: nextStatus,
+      ...calculatePaperQuality({ ...existingPaper.toObject(), pdfPath: uploadedPdfPath }),
     },
     { new: true }
   ).populate('requestedBy', 'fullName email university')
@@ -738,6 +761,7 @@ export async function uploadPaperPdf(req, res) {
     return res.status(404).json({ message: 'Paper not found' });
   }
 
+  await applyUploadCreditReward(paper);
   await syncUserPoints(paper.uploadedBy);
   if (nextStatus === 'downloaded') {
     await syncUserPoints(paper.requestedBy);
@@ -790,12 +814,13 @@ export async function acceptPaperPdf(req, res) {
 
   const updatedPaper = await Paper.findByIdAndUpdate(
     req.params.id,
-    { status: 'downloaded' },
+    { status: 'downloaded', ...calculatePaperQuality(paper) },
     { new: true }
   )
     .populate('requestedBy', 'fullName email university')
     .populate('uploadedBy', 'fullName university email');
 
+  await applyUploadCreditReward(updatedPaper);
   await syncUserPoints(updatedPaper.requestedBy);
   if (updatedPaper.uploadedBy) {
     await syncUserPoints(updatedPaper.uploadedBy);
@@ -830,6 +855,7 @@ export async function rejectPaperPdf(req, res) {
     {
       $unset: { pdfPath: '', uploadedBy: '', uploadedAt: '' },
       status: 'not-downloaded',
+      ...calculatePaperQuality({ ...paper.toObject(), pdfPath: '', uploadedBy: undefined, uploadedAt: undefined }),
     },
     { new: true }
   )

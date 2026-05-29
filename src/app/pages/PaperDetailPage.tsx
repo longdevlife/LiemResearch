@@ -493,7 +493,9 @@ export function PaperDetailPage() {
                   paper.status === 'pending-requester-acceptance' ||
                   (paper.status === 'pending' && Boolean(paper.pdfPath) && !uploadedByRequester);
                 const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && paper.pdfPath);
-                const canDownloadPdf = Boolean(paper.pdfPath && (isPdfAvailable || canAcceptPdf || isAdmin));
+                const isPrivateDownload = isAdmin || isRequester || canAcceptPdf;
+                const canPublicDownload = isPdfAvailable && paper.qualityTier !== 0 && paper.downloadCost !== null;
+                const canDownloadPdf = Boolean(paper.pdfPath && (isPrivateDownload || canPublicDownload));
                 const canUploadPdf = Boolean(
                   currentUser && !paper.pdfPath && (isAdmin || isRequester || paper.status === 'not-downloaded')
                 );
@@ -614,6 +616,24 @@ export function PaperDetailPage() {
                         {paper.uploadedBy?.fullName || 'N/A'}
                         {paper.uploadedBy?.university ? ` - ${paper.uploadedBy.university}` : ''}
                       </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Quality Score</p>
+                        <p className="text-xl font-semibold text-foreground">{paper.qualityScore ?? 'N/A'}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Tier</p>
+                        <p className="text-xl font-semibold text-foreground">
+                          {paper.qualityTierName || (paper.qualityTier !== undefined ? `Tier ${paper.qualityTier}` : 'N/A')}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white p-4">
+                        <p className="text-sm text-muted-foreground">Download Cost</p>
+                        <p className="text-xl font-semibold text-foreground">
+                          {paper.downloadCost === null || paper.qualityTier === 0 ? 'Not allowed' : `${paper.downloadCost ?? 0} credits`}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-4">
                       <button
