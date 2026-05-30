@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Redirect, Tabs, type Href } from "expo-router";
-import { View, Text, TouchableOpacity, Animated, Dimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity, Animated, Dimensions, useColorScheme } from "react-native";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 import { useAuthStore } from "@/stores/auth-store";
@@ -12,6 +12,8 @@ import { useAuthStore } from "@/stores/auth-store";
  */
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = Dimensions.get("window");
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   
   // Chiều rộng tổng thể của viên thuốc Tab Bar
   const tabBarWidth = width - 48; // Cách 24px mỗi bên
@@ -35,20 +37,20 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     <View
       style={{
         position: "absolute",
-        bottom: 24, // Nổi lơ lửng cách đáy màn hình 24px
+        bottom: 24,
         left: 24,
         right: 24,
         height: 64,
-        backgroundColor: "#FFFFFF",
+        backgroundColor: isDark ? "#1A2332" : "#FFFFFF",
         borderRadius: 32,
         borderWidth: 1,
-        borderColor: "#E2E8F0",
+        borderColor: isDark ? "#26334A" : "#E2E8F0",
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: padding,
         shadowColor: "#000000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
+        shadowOpacity: isDark ? 0.3 : 0.08,
         shadowRadius: 12,
         elevation: 8,
       }}
@@ -59,7 +61,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           position: "absolute",
           height: 48,
           width: tabWidth,
-          backgroundColor: "#09258A", // Màu xanh navy từ mockup
+          backgroundColor: isDark ? "#1D4ED8" : "#09258A", // Active pill color
           borderRadius: 24,
           left: padding,
           transform: [{ translateX: slideAnim }],
@@ -87,16 +89,18 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           }
         };
 
-        let iconName: any = "search";
+        let iconName: any = "home";
         if (route.name === "index") {
-          iconName = isFocused ? "search" : "search-outline";
+          iconName = "home";
         } else if (route.name === "bookmarks") {
-          iconName = isFocused ? "bookmark" : "bookmark-outline";
+          iconName = "bookmark";
         } else if (route.name === "notifications") {
-          iconName = isFocused ? "notifications" : "notifications-outline";
+          iconName = "bell";
         } else if (route.name === "profile") {
-          iconName = isFocused ? "person" : "person-outline";
+          iconName = "user";
         }
+        
+        const inactiveColor = isDark ? "#94A3B8" : "#5A6E85";
 
         return (
           <TouchableOpacity
@@ -110,14 +114,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             }}
             activeOpacity={0.8}
           >
-            <Ionicons
+            <Feather
               name={iconName}
               size={20}
-              color={isFocused ? "#FFFFFF" : "#5A6E85"}
+              color={isFocused ? "#FFFFFF" : inactiveColor}
             />
             <Text
               style={{
-                color: isFocused ? "#FFFFFF" : "#5A6E85",
+                color: isFocused ? "#FFFFFF" : inactiveColor,
                 fontSize: 10,
                 fontWeight: "bold",
                 marginTop: 2,
@@ -149,7 +153,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Search",
+          title: "Home",
         }}
       />
       <Tabs.Screen

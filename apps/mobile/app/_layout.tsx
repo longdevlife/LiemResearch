@@ -28,8 +28,8 @@ export default function RootLayout() {
               name="paper/[id]"
               options={{
                 title: "Paper detail",
-                headerBackTitle: "Back",
-                presentation: "card",
+                presentation: "modal",
+                headerShown: false,
               }}
             />
           </Stack>

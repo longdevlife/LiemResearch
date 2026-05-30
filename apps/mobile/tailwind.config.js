@@ -2,16 +2,21 @@
 module.exports = {
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        background: "#ffffff",
-        foreground: "#0a0a0a",
-        muted: "#f4f4f5",
-        "muted-foreground": "#71717a",
-        primary: "#18181b",
-        "primary-foreground": "#fafafa",
-        border: "#e4e4e7",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        muted: "var(--muted)",
+        "muted-foreground": "var(--muted-foreground)",
+        primary: "var(--primary)",
+        "primary-foreground": "var(--primary-foreground)",
+        border: "var(--border)",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)",
+        success: "var(--success)",
+        accent: "var(--accent)",
       },
     },
   },
