@@ -6,6 +6,7 @@ import { HomePage } from "@/pages/home";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
+import { SearchPage } from "@/pages/search";
 
 export function AppRoutes() {
   return (
@@ -17,7 +18,8 @@ export function AppRoutes() {
         {/* Authenticated-only group */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          {/* TODO: /search, /papers/:id, /trends, /reports */}
+          <Route path="/search" element={<SearchPage />} />
+          {/* TODO: /papers/:id, /trends, /reports */}
         </Route>
       </Route>
 
