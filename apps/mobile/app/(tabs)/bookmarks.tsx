@@ -15,15 +15,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
  */
 export default function BookmarksScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
-        <Text className="text-3xl font-bold text-foreground">Bookmarks</Text>
-        <Text className="mt-2 text-sm text-muted-foreground">
+        <Text className="text-3xl font-bold text-foreground dark:text-white">Bookmarks</Text>
+        <Text className="mt-2 text-sm text-muted-foreground dark:text-[#94A3B8]">
           Saved papers, topics, and authors
         </Text>
 
-        <View className="mt-8 rounded-lg border border-dashed border-border p-12">
-          <Text className="text-center text-sm text-muted-foreground">
+        <View className="mt-8 rounded-lg border border-dashed border-border dark:border-[#26334A] p-12">
+          <Text className="text-center text-sm text-muted-foreground dark:text-[#94A3B8]">
             TODO: bookmark list with filter chips and swipe-to-delete
           </Text>
         </View>
