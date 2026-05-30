@@ -212,12 +212,13 @@ apps/backend/src/modules/users/             EXTEND existing
 - `apps/mobile/src/stores/auth-store.ts` — đã wire `expo-secure-store`
 - `apps/web/src/features/auth/components/login-form.tsx` — copy logic, đổi UI sang RN
 
-#### Done khi
-- [ ] Expo Go: đăng ký account mới → toast → vào Home
-- [ ] Đóng app, mở lại → vẫn đăng nhập
+#### Done khi (test trên Android — team không có iOS)
+- [ ] Expo Go **Android** hoặc Android Studio emulator: đăng ký account mới → toast → vào Home
+- [ ] Đóng app, mở lại → vẫn đăng nhập (token trong AsyncStorage/SecureStore)
 - [ ] Tab Profile → email + Logout button
 - [ ] Web `/profile` → form sửa fullName, save → API PATCH thành công
 - [ ] Logout cả web + mobile xong → redirect /login
+- [ ] Hardware back button trên Android xử lý đúng (không crash app)
 
 **Effort:** 5–7 giờ.
 

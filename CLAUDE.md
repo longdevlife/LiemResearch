@@ -410,6 +410,8 @@ These are the things that caused real bugs or near-misses. Keep them in mind:
 
 10. **The Atlas free tier (M0) is 512 MB.** Phase A targets ~100 papers (≪ 50 MB). `paper_source_records.rawMetadata` is the heaviest field; document an archive policy when usage approaches the cap.
 
+11. **Mobile is Android-only for testing.** Team has no Macs and no iOS devices. Code stays cross-platform Expo (so iOS support comes free later), but every PR is tested on Android Studio emulator or Expo Go Android. Design mockups frame on **Pixel 6 (412×892dp)** — not iPhone. Touch target minimum is Material 3's 48dp, not iOS's 44pt. Forms use `KeyboardAvoidingView behavior="height"` (Android), not the iOS-style `"padding"`. See [docs/DESIGN_LANGUAGE.md §11](docs/DESIGN_LANGUAGE.md) for the full Android-specific gotcha list.
+
 ---
 
 ## 12. Where Else To Look

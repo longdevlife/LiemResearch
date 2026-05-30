@@ -7,19 +7,31 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { queryClient } from "@/services/query-client";
 import "../src/theme/globals.css";
 
+/**
+ * Root navigator. Three top-level stacks live alongside each other:
+ *   (tabs)      — the authenticated app (bottom-tab navigation, root URL)
+ *   (auth)      — login + register, shown when no token
+ *   paper/[id]  — paper detail, pushed on top of tabs
+ *
+ * The redirect when unauthenticated happens inside `app/(tabs)/_layout.tsx`.
+ */
 export default function RootLayout() {
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: "#ffffff" },
-              headerTintColor: "#0a0a0a",
-            }}
-          >
-            <Stack.Screen name="index" options={{ title: "Trend" }} />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="paper/[id]"
+              options={{
+                title: "Paper detail",
+                headerBackTitle: "Back",
+                presentation: "card",
+              }}
+            />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>
