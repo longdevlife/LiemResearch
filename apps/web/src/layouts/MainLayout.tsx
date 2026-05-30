@@ -1,7 +1,9 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Sparkles, User } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/utils/cn";
@@ -24,39 +25,47 @@ const navItems = [
 
 export function MainLayout() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center gap-6">
-          <Link to="/" className="font-bold">
-            Publication Trend
-          </Link>
-          <nav className="flex flex-1 gap-1 text-sm">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground",
-                    isActive && "bg-muted text-foreground",
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
+      <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-[100]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="text-xl font-bold text-blue-700 dark:text-blue-500 tracking-tight">
+              Publication Trend
+            </Link>
+          </div>
+          
+          <div className="flex-1 max-w-2xl hidden md:flex items-center mx-4">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input 
+                className="w-full pl-9 rounded-full bg-slate-100 dark:bg-zinc-900 border-none h-10 focus-visible:ring-1" 
+                placeholder="Search papers, authors, topics..." 
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
             <ThemeToggle />
+            <Button variant="ghost" size="icon" className="relative text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-full">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border border-white dark:border-[#0f0f11]"></span>
+            </Button>
             <UserMenu />
           </div>
         </div>
       </header>
-      <main className="flex-1">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        Publication Trend System · FPT University WDP301
+      <footer className="border-t bg-white dark:bg-[#0f0f11] py-6 mt-auto">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+          <p>© 2024 Publication Trend. All rights reserved.</p>
+          <div className="flex gap-4 mt-4 md:mt-0">
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Privacy Policy</Link>
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Terms of Service</Link>
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Contact Support</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
@@ -93,7 +102,7 @@ function UserMenu() {
           <span className="hidden sm:inline">{fullName}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 z-[100]">
         <DropdownMenuLabel>
           <div className="text-sm font-medium">{fullName}</div>
           <div className="text-xs text-muted-foreground">{email}</div>

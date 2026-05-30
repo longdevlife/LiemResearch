@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -22,22 +22,13 @@ import { AdminSyncPage } from "@/pages/admin/sync";
 import { AdminUsersPage } from "@/pages/admin/users";
 import { NotFoundPage } from "@/pages/not-found";
 
-/**
- * App route table. Three zones:
- *
- *   MainLayout    public + protected pages (header/footer chrome)
- *   AuthLayout    /login + /register (centered card, no header)
- *   *             404 catch-all
- *
- * Admin-only pages live under /admin/* and additionally check
- * `useCurrentUser().data.user.role === "admin"` inside the page component.
- */
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
         {/* Public */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/papers/:id" element={<PaperDetailPage />} />
         <Route path="/trends" element={<TrendsPage />} />
@@ -45,6 +36,7 @@ export function AppRoutes() {
         {/* Protected (any signed-in user) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/bookmarks" element={<BookmarksPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
