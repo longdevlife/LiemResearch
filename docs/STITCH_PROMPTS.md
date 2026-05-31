@@ -1,6 +1,6 @@
 # Stitch Prompts — Publication Trend System
 
-> 12 ready-to-paste prompts cho Google Stitch để generate UI mockups. **7 web + 5 mobile**. Mỗi prompt tự đứng được, có thể paste vào Stitch lần lượt mà không cần thêm context.
+> 13 ready-to-paste prompts cho Google Stitch để generate UI mockups. **7 web + 6 mobile**. Mỗi prompt tự đứng được, có thể paste vào Stitch lần lượt mà không cần thêm context.
 >
 > **Workflow:** Stitch generate mockup → bạn xem visual → team translate qua shadcn components theo design tokens trong [DESIGN_LANGUAGE.md](DESIGN_LANGUAGE.md).
 >
@@ -27,6 +27,7 @@
 10. [Mobile 3 — Paper Detail](#mobile-3--paper-detail)
 11. [Mobile 4 — Bookmarks Tab](#mobile-4--bookmarks-tab)
 12. [Mobile 5 — Profile Tab](#mobile-5--profile-tab)
+13. [Mobile 6 — Admin Sync](#mobile-6--admin-sync) (admin only)
 
 ---
 
@@ -798,6 +799,71 @@ BOTTOM TAB BAR: "Profile" tab active.
 
 Generate dark mode. Use subtle dividers between menu sections.
 Row tap state: brief flash background highlight.
+```
+
+---
+
+## Mobile 6 — Admin Sync
+
+> ⚠️ Admin-only screen. KHÔNG nằm trong bottom tab bar (chỉ admin thấy). Vào từ Profile → "Admin" row (chỉ hiện khi `role === "admin"`). Bảng nhiều cột của web → trên mobile chuyển thành **list of cards** + **bottom sheet** để trigger (theo DESIGN_LANGUAGE §11: "Bottom sheets > Modals").
+
+```
+Design a mobile Admin Sync Management screen (412dp × 892dp Android Pixel 6).
+User is admin role. Use shared visual system. Dark mode default.
+Built with Expo / React Native + NativeWind.
+
+This is the mobile version of the web "Admin Panel" — but redesigned for a
+phone: NO wide tables. Use stacked cards + a bottom sheet for the form.
+
+LAYOUT:
+
+TOP NAV (Android system bar + 56dp toolbar header):
+  Back chevron left (returns to Profile)
+  Title center: "Sync Management" (16px semibold)
+  No right action
+
+SCROLL CONTENT (vertical stack, 16px padding):
+
+1. "System status" card (top, accent border):
+   Row 1: Worker process — ● Running (green dot + label)
+   Row 2: Queue depth — "3 jobs waiting"
+   Row 3: Today — "287 papers ingested · 0 errors"
+   Compact, 3 rows with icon + label + value.
+
+2. Section title "Run history" (h3 18px) + count "(20)" muted.
+
+3. List of RUN CARDS (full-width, 12px gap), each card:
+   Top row:
+     Left: search text "large language model education" (16px semibold, 1 line truncate)
+     Right: status pill — ● Succeeded (green) / ● Running (amber, pulsing) /
+            ● Failed (red)
+   Middle row (4 stat chips, small, horizontal):
+     "200 fetched" · "200 inserted" · "0 updated" · "0 dup"
+   Bottom row (12px muted):
+     "Started 2h ago · finished in 47s"
+   If failed: show red error line "OpenAlex 503: service unavailable".
+
+   Show 5 cards: 1 running (amber, no finished time), 3 succeeded, 1 failed.
+
+BOTTOM ACTION (sticky, system-nav aware):
+  Full-width primary button "＋ Trigger new sync" (blue solid, 48dp tall)
+  → tapping opens a BOTTOM SHEET (not a modal):
+
+BOTTOM SHEET "Trigger sync" (slides up from bottom, rounded-top 16px):
+  Drag handle at top (small pill)
+  Title "Trigger new sync"
+  Form fields:
+    "Search text" input (full width, 48dp) placeholder "e.g. LLM education"
+    "Year from" stepper/input (default 2022)
+    "Max pages" stepper (default 1, max 50)
+  Primary button "Run now" (full width)
+  Secondary "Cancel" (ghost)
+  Helper note (caption muted): "Runs in background — refresh to see result."
+
+Generate dark mode. Status pills colored (green/amber/red) WITH text label
+(never color alone). Run cards use subtle border, no heavy shadow.
+Show the bottom sheet open in one variant, closed in another.
+Touch targets ≥ 48dp. Respect Android gesture-nav bottom inset.
 ```
 
 ---

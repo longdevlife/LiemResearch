@@ -26,4 +26,8 @@ export const API_ROUTES = {
     detail: (id: string) => `/reports/${id}`,
     generate: "/reports/generate",
   },
+  admin: {
+    sync: "/admin/sync",
+    syncRuns: "/admin/sync/runs",
+  },
 } as const;
