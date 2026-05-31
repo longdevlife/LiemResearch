@@ -283,7 +283,7 @@ Public register **không cho** tạo admin (`role?: Exclude<UserRole,"admin">`).
 - **Tạm (dev):** đặt `SYNC_ADMIN_BYPASS=true` trong `apps/backend/.env` → endpoint bỏ qua auth, test UI được ngay. (Nhớ tắt khi xong.)
 - **Đúng:** cần 1 script promote 1 user thành admin trong Mongo (chưa có — nói Lead làm `scripts/promote-admin.ts`, hoặc dùng MongoDB MCP "set role của user X thành admin").
 
-> Mobile admin: **không làm** ở phase này (việc admin là dashboard desktop — xem khuyến nghị của Lead).
+> Mobile admin: **CÓ build** (xem `UI_BUILD_PLAN.md` Đợt 1 + mockup `STITCH_PROMPTS.md` Mobile 6). Endpoint/shape giống hệt web (§6.1, §6.2), nhưng mobile dùng route Expo `app/admin/sync.tsx`, mobile api-client, NativeWind + bottom sheet (không phải table/dialog). Code mẫu ở trên là cho **web**.
 
 ---
 
