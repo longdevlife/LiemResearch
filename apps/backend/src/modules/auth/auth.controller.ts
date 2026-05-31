@@ -24,6 +24,8 @@ export const authController = {
   },
 
   async me(req: Request, res: Response) {
-    res.json({ success: true, data: { user: req.user } });
+    if (!req.user) return res.status(401).json({ success: false, error: { message: "Unauthorized" } });
+    const user = await authService.me(req.user.sub);
+    res.json({ success: true, data: { user } });
   },
 };

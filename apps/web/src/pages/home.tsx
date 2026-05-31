@@ -1,6 +1,9 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Sparkles, History, Search, ExternalLink, TrendingUp, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/features/auth";
+import { usePapers } from "@/features/papers";
+import { Link, useNavigate } from "react-router-dom";
 
 const mockVelocityData = [
   { name: "2020", value: 40 },
@@ -11,11 +14,16 @@ const mockVelocityData = [
 ];
 
 export function HomePage() {
+  const { data } = useCurrentUser();
+  const userName = data?.user?.fullName || data?.user?.email || "Researcher";
+  const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
+  const recentPapers = papersData?.items || [];
+
   return (
     <div className="w-full">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Welcome back, Hoàng Long Anh
+          Welcome back, {userName}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
           Here is an overview of your research ecosystem today.
@@ -58,26 +66,28 @@ export function HomePage() {
             </div>
             
             <div className="flex flex-col gap-4">
-              <PaperCard 
-                journal="Nature Education 2024"
-                date="Published 2 days ago"
-                title="Evaluating Large Language Models in Automated Essay Scoring: A Comprehensive Benchmarking Study"
-                abstract="This paper presents a large-scale evaluation of state-of-the-art LLMs applied to the task of automated essay scoring (AES). We introduce a novel dataset and benchmarking suite..."
-                authors="[1] Li et al."
-                score="0.92"
-              />
-              <PaperCard 
-                journal="IEEE Access 2024"
-                date="Published 1 week ago"
-                title="Retrieval-Augmented Generation for Domain-Specific Knowledge Base Construction"
-                abstract="We explore the efficacy of RAG architectures in automatically constructing robust knowledge bases from unstructured, domain-specific text corpora, significantly reducing manual annotation efforts."
-                authors="[2] Wang & Zhang"
-                score="0.85"
-              />
+              {isLoading ? (
+                <p className="text-sm text-slate-500">Loading recent papers...</p>
+              ) : recentPapers.length > 0 ? (
+                recentPapers.map((paper) => (
+                  <PaperCard 
+                    key={paper.id}
+                    id={paper.id}
+                    journal={paper.journal || "Unknown Journal"}
+                    date={new Date(paper.publicationDate).toLocaleDateString()}
+                    title={paper.title}
+                    abstract={paper.abstract || "No abstract available"}
+                    authors={paper.authors?.map((a) => a.displayName).join(", ") || "Unknown Authors"}
+                    score={paper.dataQualityScore?.toFixed(2) || "N/A"}
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No papers found.</p>
+              )}
             </div>
             
-            <Button variant="outline" className="w-full mt-4 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              Load more papers
+            <Button variant="outline" className="w-full mt-4 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50" asChild>
+              <Link to="/search">Load more papers</Link>
             </Button>
           </div>
 
@@ -189,9 +199,14 @@ function TrendingChip({ label, trend, color }: { label: string, trend: 'up'|'dow
   );
 }
 
-function PaperCard({ journal, date, title, abstract, authors, score }: { journal: string, date: string, title: string, abstract: string, authors: string, score: string }) {
+function PaperCard({ id, journal, date, title, abstract, authors, score }: { id: string, journal: string, date: string, title: string, abstract: string, authors: string, score: string }) {
+  const navigate = useNavigate();
+
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm hover:shadow-md transition-shadow relative group">
+    <div 
+      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm hover:shadow-md transition-shadow relative group cursor-pointer"
+      onClick={() => navigate(`/papers/${id}`)}
+    >
       <div className="flex items-center gap-2 text-xs mb-3">
         <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded font-medium">{journal}</span>
         <span className="text-slate-400">•</span>
@@ -199,7 +214,7 @@ function PaperCard({ journal, date, title, abstract, authors, score }: { journal
       </div>
       
       <div className="pr-16">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors cursor-pointer">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {title}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">

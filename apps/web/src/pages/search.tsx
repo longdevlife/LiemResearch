@@ -1,7 +1,24 @@
 import { ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePapers } from "@/features/papers";
+import { useSearchParams, Link } from "react-router-dom";
 
 export function SearchPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get("q") || "";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  
+  const { data, isLoading } = usePapers({ q, page, pageSize: 20 });
+  const papers = data?.papers ?? [];
+  const meta = data?.meta;
+
+  const handlePageChange = (newPage: number) => {
+    setSearchParams(prev => {
+      prev.set("page", newPage.toString());
+      return prev;
+    });
+  };
+
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 items-start">
       {/* LEFT SIDEBAR: Filters (roughly 3/12 columns on large screens) */}
@@ -112,7 +129,9 @@ export function SearchPage() {
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">1,247 papers found</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {isLoading ? "Searching..." : `${meta?.total || 0} papers found`}
+            </h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <span className="text-xs font-medium text-slate-500">Active:</span>
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium">
@@ -142,67 +161,57 @@ export function SearchPage() {
 
         {/* Results List */}
         <div className="space-y-4">
-          <SearchResultCard 
-            title="Evaluating the Efficacy of Large Language Models in Automated Code Generation for CS Education"
-            authors="Chen, Y., Smith, J., & Davis, R."
-            journal="Journal of Computing in Higher Education (2024)"
-            doi="10.1007/x12528-024-09512-x"
-            abstract="This study investigates the integration of generative AI, specifically large language models (LLMs), into introductory computer science curricula. We analyzed over 5,000 student interactions with an LLM-based coding assistant to..."
-            score="0.96"
-            keywords={["Generative AI", "CS Education", "Automated Feedback"]}
-          />
-          <SearchResultCard 
-            title="Prompt Engineering as a Core Competency: Integrating LLMs into Multidisciplinary Syllabi"
-            authors="Williams, S., & Thompson, K."
-            journal="Educational Technology Research and Development (2023)"
-            doi="10.1007/s11423-023-10291-5"
-            abstract="As LLMs become ubiquitous tools for knowledge generation, the ability to effectively construct prompts is emerging as a critical digital literacy skill. This paper proposes a framework for teaching prompt engineering across various..."
-            score="0.92"
-            keywords={["Prompt Engineering", "Digital Literacy"]}
-          />
-          <SearchResultCard 
-            title="Hallucinations in the Classroom: Mitigating Risks of LLM Adoption in Secondary Education"
-            authors="Garcia, L. M."
-            journal="Computers & Education (2023)"
-            doi="10.1016/j.compedu.2023.104820"
-            abstract="While large language models offer unprecedented opportunities for personalized learning, their propensity to generate plausible but incorrect information (“hallucinations”) poses a significant risk in educational settings. This..."
-            score="0.88"
-            keywords={["AI Ethics", "Fact-Checking", "Secondary Ed"]}
-          />
-          <SearchResultCard 
-            title="Personalized AI Tutors: A Meta-Analysis of LLM Applications in Language Learning"
-            authors="Kim, Y., & Lee, H."
-            journal="Language Learning & Technology (2022)"
-            doi="10.1125/llt.v26i3.3081"
-            abstract="A systematic review of 42 empirical studies examining the use of large language models as conversational agents for second language acquisition. We analyze the effectiveness of these tools across different proficiency levels an..."
-            score="0.85"
-            keywords={["Language Learning", "Conversational AI"]}
-          />
-          <SearchResultCard 
-            title="The Impact of ChatGPT on Academic Integrity: A Faculty Perspective"
-            authors="Patel, R., et al."
-            journal="Assessment & Evaluation in Higher Education (2023)"
-            doi="10.1080/02602938.2023.2185671"
-            abstract="The sudden availability of highly capable generative text models has prompted urgent discussions regarding academic integrity. Through a survey of 500 university faculty members, this paper explores current attitudes,..."
-            score="0.78"
-            keywords={["Academic Integrity", "Assessment"]}
-          />
+          {isLoading ? (
+            <div className="py-8 text-center text-slate-500">Loading papers...</div>
+          ) : papers.length === 0 ? (
+            <div className="py-8 text-center text-slate-500">No papers found.</div>
+          ) : (
+            papers.map(paper => (
+              <SearchResultCard 
+                key={paper.id}
+                id={paper.id}
+                title={paper.title}
+                authors={
+                  paper.authors.length > 3 
+                    ? paper.authors.slice(0, 3).map(a => a.displayName).join(", ") + ` +${paper.authors.length - 3} more`
+                    : paper.authors.map(a => a.displayName).join(", ")
+                }
+                journal={paper.journalName || "Unknown Journal"}
+                doi={paper.externalIds?.doi || ""}
+                abstract={paper.abstractText || "No abstract available."}
+                score={paper.dataQualityScore?.toFixed(2) || "N/A"}
+                keywords={paper.keywords?.map(k => k.keywordName) || []}
+              />
+            ))
+          )}
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-center gap-1 mt-10 mb-8">
-          <Button variant="outline" size="icon" className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800" disabled>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="default" className="h-8 w-8 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-md px-0">1</Button>
-          <Button variant="ghost" className="h-8 w-8 text-slate-600 dark:text-slate-400 font-medium rounded-md px-0">2</Button>
-          <Button variant="ghost" className="h-8 w-8 text-slate-600 dark:text-slate-400 font-medium rounded-md px-0">3</Button>
-          <span className="px-1 text-slate-400">...</span>
-          <Button variant="ghost" className="h-8 w-8 text-slate-600 dark:text-slate-400 font-medium rounded-md px-0">24</Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1 mt-10 mb-8">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800" 
+              disabled={page <= 1}
+              onClick={() => handlePageChange(page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-slate-600 dark:text-slate-400 mx-4">
+              Page {page} of {meta.totalPages}
+            </span>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800"
+              disabled={page >= meta.totalPages}
+              onClick={() => handlePageChange(page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -210,7 +219,7 @@ export function SearchPage() {
 
 // Sub-components
 
-function SearchResultCard({ title, authors, journal, doi, abstract, score, keywords }: { title: string, authors: string, journal: string, doi: string, abstract: string, score: string, keywords: string[] }) {
+function SearchResultCard({ id, title, authors, journal, doi, abstract, score, keywords }: { id: string, title: string, authors: string, journal: string, doi: string, abstract: string, score: string, keywords: string[] }) {
   const isHigh = parseFloat(score) >= 0.8;
   const badgeColors = isHigh 
     ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
@@ -220,9 +229,9 @@ function SearchResultCard({ title, authors, journal, doi, abstract, score, keywo
     <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative">
       {/* Title & Score */}
       <div className="flex items-start justify-between gap-4 mb-2">
-        <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100 leading-tight pr-16 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer">
+        <Link to={`/papers/${id}`} className="text-lg font-bold text-blue-900 dark:text-blue-100 leading-tight pr-16 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer block">
           {title}
-        </h3>
+        </Link>
         <div className={`flex flex-col items-center justify-center border rounded-lg px-2 py-1 shrink-0 ${badgeColors}`}>
           <span className="font-extrabold text-sm flex items-center leading-none">
              <span className="w-2.5 h-2.5 bg-current opacity-20 rounded-full inline-block mr-1"></span>
@@ -236,10 +245,14 @@ function SearchResultCard({ title, authors, journal, doi, abstract, score, keywo
         <span className="text-slate-700 dark:text-slate-300 font-bold">{authors}</span>
         <span className="text-slate-300 dark:text-slate-600">•</span>
         <span>{journal}</span>
-        <span className="text-slate-300 dark:text-slate-600">•</span>
-        <a href="#" className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline">
-          {doi} <ExternalLink className="w-3 h-3" />
-        </a>
+        {doi && (
+          <>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
+            <a href={`https://doi.org/${doi}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline">
+              {doi} <ExternalLink className="w-3 h-3" />
+            </a>
+          </>
+        )}
       </div>
 
       {/* Abstract */}

@@ -102,13 +102,13 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-bold text-slate-900 dark:text-white">Username / Email <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-sm font-bold text-slate-900 dark:text-white">Email <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input
                       className="rounded-xl h-12 bg-white dark:bg-[#2a2a2a] border-slate-300 dark:border-[#3a3a3a] text-slate-900 dark:text-gray-100 focus-visible:ring-[#42bdf5] placeholder:text-slate-400 dark:placeholder:text-gray-500 shadow-sm"
                       type="text"
                       autoComplete="username"
-                      placeholder="khoakiki123 or example@gmail.com"
+                      placeholder="example@gmail.com"
                       {...field}
                     />
                   </FormControl>

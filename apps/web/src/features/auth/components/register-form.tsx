@@ -28,8 +28,8 @@ export function RegisterForm() {
   const onSubmit = (values: RegisterFormValues) => {
     register.mutate(values, {
       onSuccess: () => {
-        toast.success("Account created — welcome aboard.");
-        navigate("/", { replace: true });
+        toast.success("Registration successful! Please login to continue.");
+        navigate("/login", { replace: true });
       },
       onError: (err) => {
         const axiosErr = err as AxiosError<{ error?: { message?: string } }>;

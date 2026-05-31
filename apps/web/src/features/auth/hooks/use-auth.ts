@@ -12,10 +12,8 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: (payload: RegisterRequest) => authApi.register(payload),
-    onSuccess: (data) => setAuth(data),
   });
 }
 
@@ -32,9 +30,11 @@ export function useLogout() {
 
 export function useCurrentUser() {
   const tokens = useAuthStore((s) => s.tokens);
+  const user = useAuthStore((s) => s.user);
   return useQuery({
     queryKey: ["current-user"],
     queryFn: () => authApi.me(),
     enabled: !!tokens?.accessToken,
+    initialData: user ? { user } : undefined,
   });
 }

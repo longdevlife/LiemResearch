@@ -65,6 +65,12 @@ export const authService = {
     const tokenHash = hashToken(refreshToken);
     await RefreshTokenModel.updateOne({ tokenHash }, { $set: { revokedAt: new Date() } });
   },
+
+  async me(userId: string): Promise<User> {
+    const user = await UserModel.findById(userId);
+    if (!user) throw AppError.unauthorized();
+    return toUserDto(user);
+  },
 };
 
 async function issueTokens(user: UserDoc): Promise<AuthTokens> {
