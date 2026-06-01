@@ -1,8 +1,8 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Plus, Search } from 'lucide-react';
+import { LayoutDashboard, LogOut, Plus, Search, User } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
-import { getStoredUser } from '../lib/api';
+import { clearAuth, getStoredUser } from '../lib/api';
 
 interface AppHeaderProps {
   role?: 'user' | 'admin';
@@ -17,6 +17,8 @@ export function AppHeader({ role = 'user' }: AppHeaderProps) {
   const actionLabel = role === 'admin' ? 'Post Paper' : 'Request Paper';
   const profilePath = role === 'admin' ? '/admin/profile' : '/profile';
   const [query, setQuery] = useState('');
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -29,6 +31,31 @@ export function AppHeader({ role = 'user' }: AppHeaderProps) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'U';
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setIsAccountOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsAccountOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login');
+  };
 
   return (
     <>
@@ -64,13 +91,56 @@ export function AppHeader({ role = 'user' }: AppHeaderProps) {
 
             <NotificationBell />
 
-            <Link
-              to={profilePath}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6f5438] text-xs font-semibold text-white transition-opacity hover:opacity-85"
-              aria-label="Open profile"
-            >
-              {initials}
-            </Link>
+            <div ref={accountMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAccountOpen((current) => !current)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6f5438] text-xs font-semibold text-white transition-opacity hover:opacity-85"
+                aria-label="Open account menu"
+                aria-expanded={isAccountOpen}
+              >
+                {initials}
+              </button>
+
+              {isAccountOpen && (
+                <div className="absolute right-0 top-12 w-64 rounded-lg border border-[#dfd4c7] bg-white p-2 text-sm shadow-xl">
+                  <div className="border-b border-[#eadfce] px-3 py-2.5">
+                    <p className="font-semibold text-[#1f1a17]">{user?.fullName || 'LiemResearch user'}</p>
+                    <p className="mt-0.5 truncate text-xs text-[#7d6d60]">{user?.email}</p>
+                  </div>
+
+                  <div className="py-2">
+                    <Link
+                      to={profilePath}
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2.5 text-[#1f1a17] transition-colors hover:bg-[#f3ebe1]"
+                    >
+                      <User size={17} />
+                      Profile
+                    </Link>
+                    <Link
+                      to={workspacePath}
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2.5 text-[#1f1a17] transition-colors hover:bg-[#f3ebe1]"
+                    >
+                      <LayoutDashboard size={17} />
+                      Dashboard
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-[#eadfce] pt-2">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <LogOut size={17} />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
