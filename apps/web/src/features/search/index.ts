@@ -1,3 +1,2 @@
-// TODO: implement search feature
-// Planned files: api/search.api.ts, hooks/use-search.ts, components/SearchBar.tsx
-export {};
+export { searchApi, type SearchParams, type ScoredPaper } from "./api/search.api";
+export { useSearch } from "./hooks/use-search";

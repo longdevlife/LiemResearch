@@ -1,6 +1,6 @@
 import { ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePapers } from "@/features/papers";
+import { useSearch } from "@/features/search";
 import { useSearchParams, Link } from "react-router-dom";
 
 export function SearchPage() {
@@ -8,7 +8,7 @@ export function SearchPage() {
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
   
-  const { data, isLoading } = usePapers({ q, page, pageSize: 20 });
+  const { data, isLoading } = useSearch({ q, page, pageSize: 20 });
   const papers = data?.papers ?? [];
   const meta = data?.meta;
 
@@ -179,7 +179,7 @@ export function SearchPage() {
                 journal={paper.journalName || "Unknown Journal"}
                 doi={paper.externalIds?.doi || ""}
                 abstract={paper.abstractText || "No abstract available."}
-                score={paper.dataQualityScore?.toFixed(2) || "N/A"}
+                score={paper.score?.toFixed(2) ?? "N/A"}
                 keywords={paper.keywords?.map(k => k.keywordName) || []}
               />
             ))
