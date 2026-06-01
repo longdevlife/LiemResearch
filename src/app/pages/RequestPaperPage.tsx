@@ -144,7 +144,7 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
     (!formData.applicationDomain.trim() || (formData.applicationDomain === 'Other' && !formData.applicationDomainOther.trim()));
 
   return (
-    <div className="flex min-h-screen bg-surface-request bg-fixed">
+    <div className="flex min-h-screen flex-col bg-surface-request bg-fixed">
       <Sidebar role={role} />
 
       <div className="flex-1">

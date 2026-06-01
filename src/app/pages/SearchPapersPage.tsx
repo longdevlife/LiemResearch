@@ -79,7 +79,7 @@ export function SearchPapersPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
       <Sidebar role="user" />
 
       <div className="flex-1">

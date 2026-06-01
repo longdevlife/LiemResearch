@@ -353,7 +353,7 @@ export function UserProfilePage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-achievement bg-fixed">
+    <div className="flex min-h-screen flex-col bg-surface-achievement bg-fixed">
       <Sidebar role="user" />
 
       <div className="flex-1">

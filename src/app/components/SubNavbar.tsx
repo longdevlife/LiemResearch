@@ -12,9 +12,9 @@ interface SubNavbarProps {
 
 export function SubNavbar({ items, activeValue, onSelect, title }: SubNavbarProps) {
   return (
-    <div className="border-b border-border bg-white">
+    <div className="border-b border-[#dfd4c7] bg-[#fffaf4]">
       <div className="px-8 py-0">
-        {title && <p className="text-sm text-muted-foreground pt-4 mb-3">{title}</p>}
+        {title && <p className="mb-3 pt-4 text-sm text-[#7d6d60]">{title}</p>}
         <div className="flex gap-1 flex-wrap pb-4">
           {items.map((item) => {
             const isActive = activeValue === item.value;
@@ -25,8 +25,8 @@ export function SubNavbar({ items, activeValue, onSelect, title }: SubNavbarProp
                 onClick={() => onSelect(item.value)}
                 className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'bg-[#2f251f] text-[#fffaf4] shadow-sm'
+                    : 'bg-[#f4ebe1] text-[#7b5b3a] hover:bg-[#ead9c7] hover:text-[#5e4630]'
                 }`}
               >
                 {item.label}

@@ -148,7 +148,7 @@ export function AdminBrowseDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
       <Sidebar role="admin" />
 
       <div className="flex-1">

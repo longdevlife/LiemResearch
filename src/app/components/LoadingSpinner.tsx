@@ -7,16 +7,16 @@ export function LoadingSpinner({ fullPage = false, label = 'Loading...' }: Loadi
   const spinnerContent = (
     <div className="flex flex-col items-center justify-center gap-4">
       <div className="relative h-12 w-12">
-        <div className="absolute inset-0 rounded-full border-4 border-border" />
-        <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-r-primary border-t-primary" />
+        <div className="absolute inset-0 rounded-full border-4 border-[#e2d6c7]" />
+        <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-r-[#b88944] border-t-[#b88944]" />
       </div>
-      {label && <p className="text-sm font-medium text-muted-foreground">{label}</p>}
+      {label && <p className="text-sm font-medium text-[#7d6d60]">{label}</p>}
     </div>
   );
 
   if (fullPage) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-workspace">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6efe7]">
         {spinnerContent}
       </div>
     );

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
-import { SubNavbar } from '../components/SubNavbar';
 import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { PaperCard } from '../components/PaperCard';
@@ -125,34 +124,53 @@ export function UserDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col bg-[#f6efe7] bg-fixed">
       <Sidebar role="user" />
 
       <div className="flex-1">
         <AppHeader role="user" />
-        <SubNavbar 
-          items={feedTabs}
-          activeValue={activeTab}
-          onSelect={(value) => {
-            setPage(1);
-            setActiveTab(value as FeedTab);
-          }}
-          title="Filter by"
-        />
         <div className="p-8">
           <div className="max-w-7xl mx-auto">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-foreground mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Browse research papers and request what you need.</p>
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-foreground mb-2">Dashboard</h1>
+                <p className="text-[#7d6d60]">Browse research papers and request what you need.</p>
+              </div>
+
+              <button
+                onClick={() => navigate('/request-paper')}
+                className="inline-flex items-center gap-2 self-start rounded-lg bg-[#2f251f] px-6 py-3 text-[#fffaf4] transition-colors hover:bg-[#1f1a17] lg:self-auto"
+              >
+                <Plus size={20} />
+                Request Paper
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/request-paper')}
-              className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
-            >
-              <Plus size={20} />
-              Request Paper
-            </button>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#dfd4c7] bg-[#fffaf4] p-2 shadow-sm">
+              <span className="px-3 text-sm font-medium text-[#7d6d60]">Filter by</span>
+              {feedTabs.map((item) => {
+                const isActive = activeTab === item.value;
+
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => {
+                      setPage(1);
+                      setActiveTab(item.value);
+                    }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-[#2f251f] text-[#fffaf4] shadow-sm'
+                        : 'bg-[#f4ebe1] text-[#7b5b3a] hover:bg-[#ead9c7] hover:text-[#5e4630]'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {error && (
@@ -163,23 +181,23 @@ export function UserDashboard() {
 
           {message && (
             <div className="fixed left-1/2 top-6 z-[80] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-[0_20px_60px_rgba(16,185,129,0.18)] backdrop-blur">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <div className="flex items-center gap-3 rounded-2xl border border-[#e1d4c4] bg-[#fffaf4]/90 px-4 py-3 shadow-[0_20px_60px_rgba(120,92,66,0.14)] backdrop-blur">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f4ebe1] text-[#7b5b3a]">
                   <CheckCircle2 size={22} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-600">Success</p>
-                  <p className="text-sm font-medium text-foreground">{message}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7b5b3a]">Success</p>
+                  <p className="text-sm font-medium text-[#1f1a17]">{message}</p>
                 </div>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#b88944] shadow-[0_0_0_6px_rgba(184,137,68,0.14)]" />
               </div>
             </div>
           )}
 
-          <div className="mb-6 rounded-lg border border-border bg-white p-5 shadow-sm">
+          <div className="mb-6 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8a7b6f]" size={20} />
                 <input
                   type="text"
                   value={searchTerm}
@@ -189,18 +207,18 @@ export function UserDashboard() {
                   }}
                   placeholder="Search by title, author, DOI, keywords, or type..."
                   maxLength={128}
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                  className="w-full pl-10 pr-4 py-3 border border-[#d8c8b7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d7c7b3] bg-[#fffdf9]"
                 />
               </div>
               <div className="relative lg:w-48">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8a7b6f]" size={20} />
                 <select
                   value={yearFilter}
                   onChange={(e) => {
                     setPage(1);
                     setYearFilter(e.target.value);
                   }}
-                  className="pl-10 pr-8 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background appearance-none"
+                  className="pl-10 pr-8 py-3 border border-[#d8c8b7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d7c7b3] bg-[#fffdf9] appearance-none"
                 >
                   <option value="all">All Years</option>
                   {years.map((year) => (
@@ -211,7 +229,7 @@ export function UserDashboard() {
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[#7d6d60]">
                 {isLoading ? 'Loading papers...' : `Showing ${papers.length} paper${papers.length !== 1 ? 's' : ''}`}
               </p>
             </div>
@@ -220,10 +238,10 @@ export function UserDashboard() {
           {isLoading ? (
             <LoadingSkeleton rows={5} />
           ) : papers.length === 0 ? (
-            <div className="bg-white rounded-lg border border-border shadow-sm p-12 text-center">
-              <Search size={48} className="mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-foreground mb-2">No papers found</h3>
-              <p className="text-muted-foreground">
+            <div className="bg-[#fffaf4] rounded-lg border border-[#dfd4c7] shadow-sm p-12 text-center">
+              <Search size={48} className="mx-auto text-[#9a897a] mb-4" />
+              <h3 className="text-[#1f1a17] mb-2">No papers found</h3>
+              <p className="text-[#7d6d60]">
                 Try adjusting your search terms or filters.
               </p>
             </div>
@@ -242,8 +260,8 @@ export function UserDashboard() {
               </div>
 
               {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-between gap-4 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                  <p className="text-sm text-muted-foreground">
+                <div className="mt-8 flex items-center justify-between gap-4 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] px-4 py-3 shadow-sm">
+                  <p className="text-sm text-[#7d6d60]">
                     Page {page} of {totalPages}
                   </p>
                   <div className="flex items-center gap-3">
@@ -251,7 +269,7 @@ export function UserDashboard() {
                       type="button"
                       onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
                       disabled={page === 1 || isLoading}
-                      className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-[#d8c8b7] px-4 py-2 text-sm font-medium text-[#1f1a17] transition-colors hover:bg-[#f3ebe1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Previous
                     </button>
@@ -259,7 +277,7 @@ export function UserDashboard() {
                       type="button"
                       onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
                       disabled={page === totalPages || isLoading}
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg bg-[#2f251f] px-4 py-2 text-sm font-medium text-[#fffaf4] transition-colors hover:bg-[#1f1a17] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Next
                     </button>

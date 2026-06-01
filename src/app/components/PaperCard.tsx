@@ -17,8 +17,8 @@ function PdfStatus({ isPdfAvailable }: { isPdfAvailable: boolean }) {
     <span
       className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${
         isPdfAvailable
-          ? 'border-green-200 bg-green-50 text-green-700'
-          : 'border-gray-200 bg-gray-50 text-gray-600'
+          ? 'border-[#d6e1cf] bg-[#f2f8ee] text-[#5b7d57]'
+          : 'border-[#eadfce] bg-[#f8f1e8] text-[#7d6d60]'
       }`}
     >
       <FileText size={14} />
@@ -39,7 +39,7 @@ export function PaperCard({
   // show a few lines and allow expanding
 
   return (
-    <article className="rounded-lg border border-border bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
+    <article className="rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-5 shadow-sm transition-all hover:border-[#d4a84f] hover:shadow-md">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{getPaperAuthors(paper)}</p>
@@ -80,17 +80,17 @@ export function PaperCard({
             type="button"
             onClick={() => onTagClick?.(keyword)}
             disabled={!onTagClick}
-            className="rounded-md bg-accent px-2 py-1 text-sm text-accent-foreground transition-colors hover:bg-blue-200 disabled:cursor-default disabled:hover:bg-accent"
+            className="rounded-md bg-[#f4ebe1] px-2 py-1 text-sm text-[#7b5b3a] transition-colors hover:bg-[#ead9c7] disabled:cursor-default disabled:hover:bg-[#f4ebe1]"
           >
             #{keyword}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#eadfce] pt-4">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-[#7d6d60]">
           <span className="flex items-center gap-1">
-            <Star size={15} className={paper.averageRating > 0 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+            <Star size={15} className={paper.averageRating > 0 ? 'fill-[#b88944] text-[#b88944]' : 'text-[#c9b8a8]'} />
             {ratingText}
             {paper.totalRatings > 0 ? ` (${paper.totalRatings})` : ''}
           </span>
@@ -104,7 +104,7 @@ export function PaperCard({
           <button
             type="button"
             onClick={() => onOpen(paper)}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#d8c8b7] px-3 py-2 text-sm text-[#1f1a17] transition-colors hover:bg-[#f3ebe1]"
           >
             <Eye size={16} />
             View
@@ -116,8 +116,8 @@ export function PaperCard({
               disabled={!isPdfAvailable}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                 isPdfAvailable
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'cursor-not-allowed bg-muted text-muted-foreground'
+                  ? 'bg-[#2f251f] text-[#fffaf4] hover:bg-[#1f1a17]'
+                  : 'cursor-not-allowed bg-[#e9dfd2] text-[#a19384]'
               }`}
             >
               <Download size={16} />
