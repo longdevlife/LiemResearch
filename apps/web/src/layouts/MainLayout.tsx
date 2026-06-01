@@ -24,6 +24,7 @@ const navItems = [
 ] as const;
 
 export function MainLayout() {
+  const navigate = useNavigate();
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-40">
@@ -35,13 +36,24 @@ export function MainLayout() {
           </div>
           
           <div className="flex-1 max-w-2xl hidden md:flex items-center mx-4">
-            <div className="relative w-full">
+            <form 
+              className="relative w-full"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const q = formData.get("q")?.toString().trim();
+                if (q) {
+                  navigate(`/search?q=${encodeURIComponent(q)}`);
+                }
+              }}
+            >
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
+                name="q"
                 className="w-full pl-9 rounded-full bg-slate-100 dark:bg-zinc-900 border-none h-10 focus-visible:ring-1" 
                 placeholder="Search papers, authors, topics..." 
               />
-            </div>
+            </form>
           </div>
 
           <div className="flex items-center gap-4">
@@ -103,7 +115,7 @@ function UserMenu() {
           <User className="h-4 w-4" />
           <span className="hidden sm:inline">{fullName}</span>
         </Button>
-      </DropdownMenuTrigger>
+      </DropdownMenuTrigger>  
       <DropdownMenuContent align="end" className="w-56 z-50">
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/profile")}>
