@@ -142,11 +142,12 @@
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   #root {
     min-height: 100%;
-    overflow-x: hidden;
   }
 
   /**

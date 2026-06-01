@@ -262,7 +262,7 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
 
                     {showSemesters && (
                       <div ref={popoverRef} className="absolute left-0 mt-2 z-30 w-full p-3 bg-white border border-border rounded-md shadow-lg">
-                          <div className="max-h-64 overflow-auto p-1">
+                          <div className="p-1">
                             <div className="flex gap-4">
                               {(() => {
                                 const cols = 3;
