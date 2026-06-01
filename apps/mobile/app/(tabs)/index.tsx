@@ -9,6 +9,7 @@ import { useColorScheme } from "nativewind";
 import { useAuthStore } from "@/stores/auth-store";
 import { getTrendingTopics, TrendingTopic } from "@/services/mockApi";
 import { usePapers } from "@/features/papers";
+import { useSearch } from "@/features/search";
 
 /**
  * Home / Search tab — primary entry after sign-in.
@@ -35,14 +36,14 @@ export default function HomeScreen() {
   }, [searchQuery]);
 
   const combinedQ = [debouncedQuery, debouncedTitle, debouncedKeyword].filter(Boolean).join(" ");
+  const hasQuery = combinedQ.trim().length > 0;
 
-  const { data: papersData, isLoading: papersLoading } = usePapers({
-    q: combinedQ || undefined,
-    page: 1,
-    pageSize: 5
-  });
+  // Browse (no query) → keyword /papers. Searching → semantic /search (Phase B).
+  const { data: browseData, isLoading: browseLoading } = usePapers({ page: 1, pageSize: 5 });
+  const { data: searchData, isLoading: searchLoading } = useSearch({ q: combinedQ, page: 1, pageSize: 5 });
 
-  const papers = papersData?.papers ?? [];
+  const papers = (hasQuery ? searchData?.papers : browseData?.papers) ?? [];
+  const papersLoading = hasQuery ? searchLoading : browseLoading;
 
   useEffect(() => {
     const fetchData = async () => {

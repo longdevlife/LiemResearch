@@ -1,2 +1,2 @@
-// TODO: implement search feature (api/, hooks/, components/SearchBar.tsx)
-export {};
+export { searchApi, type SearchParams, type ScoredPaper } from "./api/search.api";
+export { useSearch } from "./hooks/use-search";

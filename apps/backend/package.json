@@ -18,6 +18,7 @@
     "seed:providers": "tsx scripts/seed-providers.ts",
     "promote-admin": "tsx scripts/promote-admin.ts",
     "sync:once": "tsx scripts/run-sync-once.ts",
+    "embed:once": "tsx scripts/run-embed-once.ts",
     "worker:sync": "tsx src/workers/sync.worker.ts",
     "worker:embedding": "tsx src/workers/embedding.worker.ts",
     "worker:report": "tsx src/workers/report.worker.ts"

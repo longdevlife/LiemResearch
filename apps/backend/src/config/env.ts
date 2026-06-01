@@ -30,6 +30,11 @@ const EnvSchema = z.object({
   SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(200),
   SYNC_MAX_PAGES_PER_RUN: z.coerce.number().int().positive().default(10),
 
+  // Phase B — embedding worker.
+  EMBED_CRON: z.string().default("0 3 * * *"),
+  EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(50),
+  EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
+
   // DEV ONLY: when "true", the /api/v1/admin/sync endpoints skip auth so the
   // team can demo before an admin user is seeded. Never enable in production.
   // (Plain z.coerce.boolean() is unsafe — "false" would coerce to true — so we
