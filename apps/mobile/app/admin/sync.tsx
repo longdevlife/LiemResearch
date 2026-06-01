@@ -18,6 +18,7 @@ import { useColorScheme } from "nativewind";
 
 import { useAuthStore } from "@/stores/auth-store";
 import { useSyncRuns, useTriggerSync, type ApiSyncRun } from "@/features/admin";
+import type { AxiosError } from "axios";
 
 export default function AdminSyncScreen() {
   const router = useRouter();
@@ -88,8 +89,10 @@ export default function AdminSyncScreen() {
           Alert.alert("Thành công", "Tiến trình đồng bộ đã được đưa vào hàng đợi!");
           setIsModalOpen(false);
         },
-        onError: (err: any) => {
-          const errMsg = err?.response?.data?.error?.message ?? "Không thể kích hoạt đồng bộ.";
+        onError: (err) => {
+          const errMsg =
+            (err as AxiosError<{ error?: { message?: string } }>)?.response?.data?.error?.message ??
+            "Không thể kích hoạt đồng bộ.";
           Alert.alert("Lỗi", errMsg);
         },
       }

@@ -8,7 +8,7 @@ import { useColorScheme } from "nativewind";
 
 import { useAuthStore } from "@/stores/auth-store";
 import { getTrendingTopics, TrendingTopic } from "@/services/mockApi";
-import { useInfinitePapers } from "@/features/papers";
+import { usePapers } from "@/features/papers";
 
 /**
  * Home / Search tab — primary entry after sign-in.
@@ -36,18 +36,13 @@ export default function HomeScreen() {
 
   const combinedQ = [debouncedQuery, debouncedTitle, debouncedKeyword].filter(Boolean).join(" ");
 
-  const { 
-    data: papersData, 
-    isLoading: papersLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage
-  } = useInfinitePapers({
+  const { data: papersData, isLoading: papersLoading } = usePapers({
     q: combinedQ || undefined,
+    page: 1,
     pageSize: 5
   });
 
-  const papers = papersData?.pages.flatMap((page) => page.papers) ?? [];
+  const papers = papersData?.papers ?? [];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -87,7 +82,7 @@ export default function HomeScreen() {
         <View className="flex-row items-center bg-card dark:bg-[#1A2332] rounded-full px-4 py-3 mb-8 border border-border dark:border-[#26334A]">
           <Feather name="search" color={isDark ? "#94A3B8" : "#64748B"} size={20} />
           <TextInput
-            className="flex-1 ml-3 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-[#94A3B8]"
+            className="flex-1 ml-3 text-foreground dark:text-white"
             placeholder="Search papers, authors, topics..."
             placeholderTextColor={isDark ? "#94A3B8" : "#64748B"}
             value={searchQuery}
@@ -172,37 +167,16 @@ export default function HomeScreen() {
                   </Text>
 
                   <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1 mr-4">
-                      {!!paper.journalName && (
-                        <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold flex-shrink" numberOfLines={1}>
-                          {paper.journalName}
-                        </Text>
-                      )}
-                      <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold flex-shrink-0">
-                        {paper.journalName ? " · " : ""}{paper.publicationYear} · ❞ {paper.citationCount || 0}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md flex-shrink-0">
+                    <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold mr-4">
+                      {paper.journalName ? `${paper.journalName} · ` : ""}{paper.publicationYear} · ❞ {paper.citationCount || 0}
+                    </Text>
+                    <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md">
                       <Ionicons name="sparkles" color="#06B6D4" size={12} />
                       <Text className="text-accent text-xs font-bold ml-1">Q {(paper.dataQualityScore || 0).toFixed(2)}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
               ))}
-              
-              {hasNextPage && (
-                <TouchableOpacity
-                  onPress={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="bg-primary/10 dark:bg-[#3B82F6]/10 rounded-xl p-4 items-center mt-2 border border-primary/20 dark:border-[#3B82F6]/20"
-                >
-                  {isFetchingNextPage ? (
-                    <ActivityIndicator color="#3B82F6" />
-                  ) : (
-                    <Text className="text-primary dark:text-[#3B82F6] font-semibold">Load more</Text>
-                  )}
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Quick Actions Section */}

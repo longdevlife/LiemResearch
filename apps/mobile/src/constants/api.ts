@@ -18,4 +18,8 @@ export const API_ROUTES = {
     keyword: "/search",
     semantic: "/search/semantic",
   },
+  admin: {
+    sync: "/admin/sync",
+    syncRuns: "/admin/sync/runs",
+  },
 } as const;
