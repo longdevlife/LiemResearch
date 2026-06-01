@@ -353,10 +353,10 @@ export function UserProfilePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-achievement bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-surface-achievement bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <AppHeader role="user" />
         <div className="p-8">
           <div className="mx-auto max-w-6xl">

@@ -476,10 +476,10 @@ export function PaperDetailPage() {
   const totalCommentCount = comments.reduce((count, comment) => count + 1 + (comment.replies?.length || 0), 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-surface-workspace bg-fixed">
       <Sidebar role={isAdmin ? 'admin' : 'user'} />
 
-      <div className="flex-1 p-8">
+      <div className="min-w-0 flex-1 p-8">
         <AppHeader role={isAdmin ? 'admin' : 'user'} />
         <div className="max-w-5xl mx-auto">
           <button

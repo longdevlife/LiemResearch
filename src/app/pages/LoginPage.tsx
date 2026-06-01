@@ -15,7 +15,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  // Kiểm tra nếu đã đăng nhập, tự động chuyển hướng
+  // Redirect users who already have an active session.
   useEffect(() => {
     const token = getToken();
     const user = getStoredUser();

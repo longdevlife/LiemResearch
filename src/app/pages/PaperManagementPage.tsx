@@ -362,10 +362,10 @@ export function PaperManagementPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-surface-workspace bg-fixed">
       <Sidebar role="admin" />
 
-      <div className="flex-1 p-8">
+      <div className="min-w-0 flex-1 p-8">
         <AppHeader role="admin" />
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">

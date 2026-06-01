@@ -24,7 +24,7 @@ export function RegisterPage() {
     university.toLowerCase().includes(formData.university.trim().toLowerCase())
   ).slice(0, 8);
 
-  // Kiểm tra nếu đã đăng nhập, tự động chuyển hướng
+  // Redirect users who already have an active session.
   useEffect(() => {
     const token = getToken();
     const user = getStoredUser();
