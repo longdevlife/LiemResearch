@@ -11,7 +11,7 @@ export function AppHeader({ role = 'user' }: AppHeaderProps) {
 
   return (
     <header className="hidden sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-3.5 lg:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-5">
         <Link
           to={workspacePath}
           onClick={() => window.scrollTo(0, 0)}

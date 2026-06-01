@@ -107,10 +107,10 @@ export function AdminDashboard() {
     <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
       <Sidebar role="admin" />
 
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-5">
         <AppHeader role="admin" />
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-foreground mb-2">Statistics</h1>
             <p className="text-muted-foreground">Overview of research paper requests and system statistics</p>
           </div>
@@ -137,16 +137,16 @@ export function AdminDashboard() {
           )}
 
           {isLoading ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <LoadingSkeleton variant="stats" />
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <LoadingSkeleton rows={5} />
                 <LoadingSkeleton rows={3} />
               </div>
             </div>
           ) : (
             <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatsCard
               title="Total Requests"
               value={totalRequests}
@@ -173,9 +173,9 @@ export function AdminDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg border border-border shadow-sm p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-foreground">Recent Pending Requests</h3>
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export function AdminDashboard() {
                 ))}
 
                 {!isLoading && recentPendingRequests.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
                     <p className="text-foreground">No pending requests.</p>
                     <p className="mt-1 text-sm text-muted-foreground">New requests that need review will appear here.</p>
                   </div>
@@ -213,9 +213,9 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border border-border shadow-sm p-6">
-              <h3 className="text-foreground mb-4">Request Status Distribution</h3>
-              <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-4">
+              <h3 className="text-foreground mb-3">Request Status Distribution</h3>
+              <div className="space-y-3">
                 {distribution.map((item) => {
                   const percent = getPercent(item.count);
 

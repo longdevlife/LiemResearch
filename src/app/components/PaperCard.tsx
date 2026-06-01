@@ -39,8 +39,8 @@ export function PaperCard({
   // show a few lines and allow expanding
 
   return (
-    <article className="rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-5 shadow-sm transition-all hover:border-[#d4a84f] hover:shadow-md">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <article className="rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-4 shadow-sm transition-all hover:border-[#d4a84f] hover:shadow-md">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{getPaperAuthors(paper)}</p>
         </div>
@@ -55,7 +55,7 @@ export function PaperCard({
         {paper.title}
       </button>
 
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
         <span className="flex items-center gap-1">
           <Calendar size={15} />
           {paper.publishedYear}
@@ -65,15 +65,15 @@ export function PaperCard({
         <span>Added {formatDisplayDate(paper.createdAt)}</span>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-3">
         <ExpandableText text={paper.abstract} lines={variant === 'dashboard' ? 2 : 4} />
       </div>
 
       {paper.relatedSemesters?.length ? (
-        <div className="mb-3 text-sm text-muted-foreground">Semesters: {paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ')}</div>
+        <div className="mb-2 text-sm text-muted-foreground">Semesters: {paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ')}</div>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {paper.keywords.slice(0, variant === 'dashboard' ? 4 : 5).map((keyword) => (
           <button
             key={keyword}
@@ -87,8 +87,8 @@ export function PaperCard({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#eadfce] pt-4">
-        <div className="flex flex-wrap items-center gap-4 text-sm text-[#7d6d60]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfce] pt-3">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-[#7d6d60]">
           <span className="flex items-center gap-1">
             <Star size={15} className={paper.averageRating > 0 ? 'fill-[#b88944] text-[#b88944]' : 'text-[#c9b8a8]'} />
             {ratingText}

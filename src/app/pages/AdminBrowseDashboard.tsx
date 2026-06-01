@@ -153,18 +153,9 @@ export function AdminBrowseDashboard() {
 
       <div className="flex-1">
         <AppHeader role="admin" />
-        <SubNavbar
-          items={feedTabs}
-          activeValue={activeTab}
-          onSelect={(value) => {
-            setPage(1);
-            setActiveTab(value as FeedTab);
-          }}
-          title="Filter by"
-        />
-        <div className="p-8">
+        <div className="p-5">
           <div className="mx-auto max-w-7xl">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h1 className="mb-2 text-foreground">Dashboard</h1>
                 <p className="text-muted-foreground">Browse published papers, post new papers, and send announcements.</p>
@@ -173,7 +164,7 @@ export function AdminBrowseDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowAnnouncement((current) => !current)}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-white px-5 py-3 font-medium text-foreground transition-colors hover:bg-muted"
+                  className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted"
                 >
                   <Megaphone size={20} />
                   Announcement
@@ -181,13 +172,23 @@ export function AdminBrowseDashboard() {
                 <button
                   type="button"
                   onClick={() => navigate('/admin/post-paper')}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-colors hover:bg-blue-600"
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-blue-600"
                 >
                   <Plus size={20} />
                   Post Paper
                 </button>
               </div>
             </div>
+
+            <SubNavbar
+              items={feedTabs}
+              activeValue={activeTab}
+              onSelect={(value) => {
+                setPage(1);
+                setActiveTab(value as FeedTab);
+              }}
+              title="Filter by"
+            />
 
             {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
@@ -209,7 +210,7 @@ export function AdminBrowseDashboard() {
             {showAnnouncement && (
               <form
                 onSubmit={handlePostAnnouncement}
-                className="mb-6 rounded-lg border border-border bg-white p-5 shadow-sm"
+                className="mb-4 rounded-lg border border-border bg-white p-4 shadow-sm"
               >
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
@@ -225,7 +226,7 @@ export function AdminBrowseDashboard() {
                     <X size={20} />
                   </button>
                 </div>
-                <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.45fr)_minmax(320px,1fr)_auto]">
+                <div className="grid gap-3 lg:grid-cols-[minmax(220px,0.45fr)_minmax(320px,1fr)_auto]">
                   <input
                     type="text"
                     value={announcementTitle}
@@ -256,7 +257,7 @@ export function AdminBrowseDashboard() {
               </form>
             )}
 
-            <div className="mb-6 rounded-lg border border-border bg-white p-5 shadow-sm">
+            <div className="mb-4 rounded-lg border border-border bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
@@ -292,7 +293,7 @@ export function AdminBrowseDashboard() {
                 </div>
               </div>
 
-              <p className="mt-3 text-sm text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {isLoading ? 'Loading papers...' : `Showing ${papers.length} paper${papers.length !== 1 ? 's' : ''}`}
               </p>
             </div>
@@ -307,7 +308,7 @@ export function AdminBrowseDashboard() {
               </div>
             ) : (
               <>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {papers.map((paper) => (
                     <PaperCard
                       key={paper._id}
@@ -320,7 +321,7 @@ export function AdminBrowseDashboard() {
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="mt-8 flex items-center justify-between gap-4 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                  <div className="mt-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm">
                     <p className="text-sm text-muted-foreground">
                       Page {page} of {totalPages}
                     </p>
@@ -329,7 +330,7 @@ export function AdminBrowseDashboard() {
                         type="button"
                         onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
                         disabled={page === 1 || isLoading}
-                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Previous
                       </button>
@@ -337,7 +338,7 @@ export function AdminBrowseDashboard() {
                         type="button"
                         onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
                         disabled={page === totalPages || isLoading}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Next
                       </button>
