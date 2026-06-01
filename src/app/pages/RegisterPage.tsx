@@ -102,16 +102,16 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-auth bg-fixed">
-      <header className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3">
+    <div className="min-h-screen bg-surface-feed bg-fixed text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3.5 lg:px-6">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 text-left"
+            className="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
           >
-            <img src={logo} alt="LiemResearch" className="h-10 w-auto" />
-            <span className="text-lg font-medium text-foreground">LiemResearch</span>
+            <img src={logo} alt="LiemResearch" className="h-9 w-auto lg:h-10" />
+            <span className="text-base font-semibold tracking-tight text-foreground lg:text-lg">LiemResearch</span>
           </button>
 
           
@@ -120,13 +120,13 @@ export function RegisterPage() {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Login
             </button>
             <button
               type="button"
-              className="rounded-lg bg-accent px-4 py-2 text-accent-foreground"
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
             >
               Create account
             </button>
@@ -134,7 +134,7 @@ export function RegisterPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-7xl justify-center px-6 py-10">
+      <main className="mx-auto flex max-w-7xl justify-center px-5 py-10 lg:px-6">
         <section className="w-full max-w-xl">
           <div className="mb-8 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
@@ -148,7 +148,7 @@ export function RegisterPage() {
             <BenefitPill icon={CheckCircle2} label="Track profile" />
           </div>
 
-          <div className="rounded-lg border border-border bg-white p-6 shadow-sm md:p-8">
+          <div className="rounded-[2rem] border border-border/80 bg-white/75 p-6 shadow-[0_20px_60px_rgba(31,29,26,0.08)] backdrop-blur md:p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <TextInput
                 label="Full Name"
@@ -217,7 +217,7 @@ export function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full rounded-lg bg-primary py-3 text-primary-foreground transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-full bg-primary py-3 text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? 'Creating account...' : 'Create account'}
               </button>
@@ -249,7 +249,7 @@ function BenefitPill({
   label: string;
 }) {
   return (
-    <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-3 text-sm font-medium text-muted-foreground shadow-sm">
+    <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/80 bg-white/75 px-3 py-3 text-sm font-medium text-muted-foreground shadow-sm backdrop-blur">
       <Icon size={16} className="text-primary" />
       {label}
     </div>
@@ -285,7 +285,7 @@ function TextInput({
           name={name}
           value={value}
           onChange={onChange}
-          className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full rounded-lg border border-border bg-[color:var(--input-background)] py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder={placeholder}
           autoComplete={autoComplete}
           required
@@ -337,7 +337,7 @@ function UniversitySearchInput({
       </div>
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-lg border border-border bg-white shadow-lg">
+        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-2xl border border-border/80 bg-white/95 shadow-[0_20px_60px_rgba(31,29,26,0.12)] backdrop-blur">
           {suggestions.map((item) => (
             <button
               key={item}

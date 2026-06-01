@@ -82,16 +82,16 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-auth bg-fixed">
-      <header className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3">
+    <div className="min-h-screen bg-surface-feed bg-fixed text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3.5 lg:px-6">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 text-left"
+            className="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
           >
-            <img src={logo} alt="LiemResearch" className="h-10 w-auto" />
-            <span className="text-lg font-medium text-foreground">LiemResearch</span>
+            <img src={logo} alt="LiemResearch" className="h-9 w-auto lg:h-10" />
+            <span className="text-base font-semibold tracking-tight text-foreground lg:text-lg">LiemResearch</span>
           </button>
 
           
@@ -99,14 +99,14 @@ export function LoginPage() {
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              className="rounded-lg bg-accent px-4 py-2 text-accent-foreground"
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="rounded-lg border border-primary px-4 py-2 text-primary transition-colors hover:bg-accent"
+              className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
             >
               Create account
             </button>
@@ -114,7 +114,7 @@ export function LoginPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-7xl justify-center px-6 py-12">
+      <main className="mx-auto flex max-w-7xl justify-center px-5 py-12 lg:px-6">
         <div className="w-full max-w-xl">
           <div className="mb-8 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
@@ -122,7 +122,7 @@ export function LoginPage() {
             <p className="text-muted-foreground">Read papers, request research, and track your contributions.</p>
           </div>
 
-          <div className="rounded-lg border border-border bg-white p-8 shadow-sm">
+          <div className="rounded-[2rem] border border-border/80 bg-white/75 p-8 shadow-[0_20px_60px_rgba(31,29,26,0.08)] backdrop-blur">
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
                 <label className="block text-foreground mb-2">Email</label>
@@ -132,10 +132,10 @@ export function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 bg-input-background transition-colors ${
+                    className={`w-full rounded-lg border bg-[color:var(--input-background)] py-3 pl-10 pr-4 transition-colors focus:outline-none focus:ring-2 ${
                       emailError
                         ? 'border-red-500 focus:ring-red-500'
-                        : 'border-border focus:ring-primary'
+                        : 'border-border focus:ring-ring'
                     }`}
                     placeholder="student@university.edu"
                     required
@@ -152,7 +152,7 @@ export function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
+                    className="w-full rounded-lg border border-border bg-[color:var(--input-background)] py-3 pl-10 pr-12 focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Enter your password"
                     required
                   />
@@ -170,7 +170,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-full bg-primary py-3 text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>

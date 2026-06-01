@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BookOpen, Search, Star, TrendingUp, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Search, Star, TrendingUp, X } from 'lucide-react';
 import { apiRequest, getStoredUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 import { PaperCard } from '../components/PaperCard';
@@ -9,27 +9,33 @@ type SortOption = 'newest' | 'rating' | 'downloads';
 
 const sortTabs: Array<{ label: string; value: SortOption }> = [
   { label: 'Latest', value: 'newest' },
-  { label: 'Top Rated', value: 'rating' },
+  { label: 'Highest Rated', value: 'rating' },
   { label: 'Most Downloaded', value: 'downloads' },
 ];
 
 const sortCopy = {
   newest: {
     title: 'Latest papers',
-    description: 'Recently approved research papers from the library.',
+    description: 'Recently approved research materials from the community library.',
     icon: BookOpen,
   },
   rating: {
-    title: 'Top rated papers',
-    description: 'Research ranked highest by community ratings.',
+    title: 'Highly rated papers',
+    description: 'Research papers ranked highest by the community.',
     icon: Star,
   },
   downloads: {
     title: 'Popular papers',
-    description: 'Most downloaded papers across the collection.',
+    description: 'The most downloaded materials in the collection.',
     icon: TrendingUp,
   },
 };
+
+const navigationItems = [
+  { label: 'EXPLORE', value: 'explore' },
+  { label: 'REQUEST', value: 'request' },
+  { label: 'RANKING', value: 'ranking' },
+];
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -107,245 +113,354 @@ export function HomePage() {
   const ActiveSortIcon = activeSort.icon;
 
   return (
-    <div className="min-h-screen bg-surface-feed bg-fixed">
-      <header className="sticky top-0 z-40 border-b border-border bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3">
+    <div className="min-h-screen bg-surface-feed text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3.5 lg:px-6">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 text-left"
+            className="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
           >
-            <img src={logo} alt="LiemResearch" className="h-10 w-auto" />
-            <span className="text-lg font-medium text-foreground">LiemResearch</span>
+            <img src={logo} alt="LiemResearch" className="h-9 w-auto lg:h-10" />
+            <span className="text-base font-semibold tracking-tight text-foreground lg:text-lg">LiemResearch</span>
           </button>
 
-            <div className="relative hidden flex-1 md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setSelectedTag('');
+          <nav className="hidden items-center gap-6 lg:flex">
+            {navigationItems.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => {
+                  if (item.value === 'explore') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+
+                  if (item.value === 'ranking') {
+                    navigate('/rankings');
+                    return;
+                  }
+
+                  navigate('/request-paper');
                 }}
-                placeholder="Search papers by title, DOI, keyword, or type..."
-                maxLength={128}
-                className="w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+                className="text-[0.78rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="relative hidden flex-1 xl:block">
+            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setSelectedTag('');
+              }}
+              placeholder="Search papers by title, DOI, or keyword..."
+              maxLength={128}
+              className="w-full rounded-full border border-border bg-[color:var(--input-background)] py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none transition-shadow focus:shadow-[0_0_0_3px_rgba(122,111,97,0.12)]"
+            />
           </div>
 
-          {currentUser ? (
+          <div className="ml-auto flex items-center gap-2">
+            {currentUser ? (
             <button
               type="button"
               onClick={() => navigate(currentUser.role === 'admin' ? '/admin' : '/dashboard')}
-              className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-blue-600"
+              className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:opacity-90"
             >
               Dashboard
             </button>
-          ) : (
-            <div className="ml-auto flex items-center gap-2">
+            ) : (
+              <>
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 Login
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/register')}
-                className="rounded-lg border border-primary px-4 py-2 text-primary transition-colors hover:bg-accent"
+                className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
               >
-                Create account
+                Create Account
               </button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_280px]">
-        <aside className="hidden lg:block">
-          <nav className="space-y-1">
-            {sortTabs.map((item) => {
-              const Icon = sortCopy[item.value].icon;
-              const isActive = sortBy === item.value;
+      <main>
+        <section className="mx-auto max-w-7xl px-5 pb-12 pt-14 lg:px-6 lg:pb-16 lg:pt-20">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_360px] lg:items-start">
+            <div>
+              <span className="inline-flex items-center rounded-full border border-border/80 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Community papers
+              </span>
 
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setSortBy(item.value)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-white hover:text-foreground'
-                  }`}
-                >
-                  <Icon size={18} />
-                  {item.value === 'downloads' ? 'Popular' : item.label}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
+              <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[0.95] text-foreground md:text-6xl lg:text-7xl">
+                Explore a community-built library of scientific papers.
+              </h1>
 
-        <section className="min-w-0">
-          <div className="mb-4 md:hidden">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setSelectedTag('');
-                }}
-                placeholder="Search papers..."
-                maxLength={128}
-                className="w-full rounded-lg border border-border bg-input-background py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
+                Search, request, and share research materials. Earn points for contributing as we build
+                an open knowledge library together.
+              </p>
 
-          <div className="mb-4 rounded-lg border border-border bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary">
-                  <ActiveSortIcon size={20} />
-                </div>
-                <div>
-                  <h2 className="text-foreground">{activeSort.title}</h2>
-                  <p className="text-sm text-muted-foreground">{activeSort.description}</p>
-                </div>
-              </div>
-
-              {(selectedTag || searchTerm) && (
+              <div className="mt-8 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedTag('');
-                    setSearchTerm('');
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                  onClick={() => navigate(currentUser ? '/request-paper' : '/login')}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
                 >
-                  <X size={16} />
-                  Clear filter
+                  Request papers
+                  <ArrowRight size={16} />
                 </button>
-              )}
-            </div>
-
-            {(selectedTag || searchTerm) && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-                <span className="text-sm text-muted-foreground">Showing results for</span>
-                <span className="rounded-md bg-primary px-2 py-1 text-sm text-primary-foreground">
-                  {selectedTag ? `#${selectedTag}` : searchTerm}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate(currentUser ? '/request-paper' : '/login')}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-white/60 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent"
+                >
+                  Contribute PDF
+                </button>
               </div>
-            )}
-          </div>
 
-          <div className="mb-4 flex items-center gap-2 border-b border-border">
-            {sortTabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setSortBy(tab.value)}
-                className={`border-b-2 px-3 py-3 text-sm transition-colors ${
-                  sortBy === tab.value
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-              {error}
+              <div className="mt-10 grid gap-3 sm:grid-cols-3">
+                {[
+                  'Search by title, DOI, keyword, or paper type.',
+                  'Rank results by community ratings and download volume.',
+                  'Share PDFs to support other research groups.',
+                ].map((copy) => (
+                  <div key={copy} className="rounded-2xl border border-border/80 bg-white/65 p-4 text-sm leading-6 text-muted-foreground shadow-sm">
+                    {copy}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
 
-          {isLoading && (
-            <div className="rounded-lg border border-border bg-white p-8 text-center text-muted-foreground">
-              Loading papers...
-            </div>
-          )}
+            <aside className="rounded-[2rem] border border-border/80 bg-white/75 p-6 shadow-[0_20px_60px_rgba(31,29,26,0.08)] backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Quick search</p>
+              <div className="mt-5 space-y-4">
+                <div className="relative xl:hidden">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                      setSelectedTag('');
+                    }}
+                    placeholder="Search papers..."
+                    maxLength={128}
+                    className="w-full rounded-full border border-border bg-[color:var(--input-background)] py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none transition-shadow focus:shadow-[0_0_0_3px_rgba(122,111,97,0.12)]"
+                  />
+                </div>
 
-          <div className="space-y-4">
-            {papers.map((paper) => (
-              <PaperCard
-                key={paper._id}
-                paper={paper}
-                onOpen={(selectedPaper) => handleOpenPaper(selectedPaper._id)}
-                onTagClick={(keyword) => {
-                  setSelectedTag(keyword);
-                  setSearchTerm('');
-                }}
-              />
-            ))}
+                <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                  <p className="text-sm font-medium text-foreground">Popular actions</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {navigationItems.slice(1).map((item) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => {
+                          if (item.value === 'ranking') {
+                            navigate('/rankings');
+                            return;
+                          }
+
+                          navigate('/request-paper');
+                        }}
+                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {!currentUser && (
+                  <div className="rounded-2xl bg-primary px-4 py-4 text-primary-foreground">
+                    <p className="text-sm font-semibold">Sign in to save your history and download PDFs.</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline decoration-white/40 underline-offset-4"
+                    >
+                      Sign in now
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </aside>
           </div>
-
-          {!isLoading && papers.length === 0 && (
-            <div className="rounded-lg border border-border bg-white p-10 text-center">
-              <Search size={40} className="mx-auto mb-3 text-muted-foreground" />
-              <h3 className="text-foreground">No papers found</h3>
-              <p className="mt-1 text-muted-foreground">Try another keyword or browse the latest papers.</p>
-            </div>
-          )}
         </section>
 
-        <aside className="space-y-4">
-          <div className="rounded-lg border border-border bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-foreground">Popular Keywords</h3>
-            <div className="flex flex-wrap gap-2">
-              {popularTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => {
-                    setSelectedTag(tag);
-                    setSearchTerm('');
-                  }}
-                  className={`rounded-md px-2 py-1 text-sm transition-colors ${
-                    selectedTag === tag
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              ))}
-              {popularTags.length === 0 && <p className="text-sm text-muted-foreground">No keywords yet.</p>}
-            </div>
-          </div>
+        <section className="mx-auto max-w-7xl px-6 pb-16">
+          <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_280px]">
+            <aside className="hidden lg:block">
+              <div className="sticky top-24 rounded-[1.75rem] border border-border/80 bg-white/75 p-4 shadow-sm backdrop-blur">
+                <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sort by</p>
+                <nav className="space-y-1">
+                  {sortTabs.map((item) => {
+                    const Icon = sortCopy[item.value].icon;
+                    const isActive = sortBy === item.value;
 
-          {!currentUser && (
-            <div className="rounded-lg border border-border bg-white p-5 shadow-sm">
-              <h3 className="mb-2 text-foreground">Join LiemResearch</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Sign in to request papers, upload PDFs, rate research, and track your contribution points.
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/register')}
-                  className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-blue-600"
-                >
-                  Create account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="rounded-lg border border-border px-4 py-2 text-foreground transition-colors hover:bg-accent"
-                >
-                  Login
-                </button>
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => setSortBy(item.value)}
+                        className={`flex w-full items-center gap-2 rounded-2xl px-3 py-3 text-left transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        }`}
+                      >
+                        <Icon size={18} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </nav>
               </div>
-            </div>
-          )}
-        </aside>
+            </aside>
+
+            <section className="min-w-0">
+              <div className="mb-4 rounded-[1.75rem] border border-border/80 bg-white/75 p-5 shadow-sm backdrop-blur">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Latest papers</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
+                        <ActiveSortIcon size={20} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl text-foreground">{activeSort.title}</h2>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{activeSort.description}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(selectedTag || searchTerm) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTag('');
+                        setSearchTerm('');
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                    >
+                      <X size={16} />
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
+                {(selectedTag || searchTerm) && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                    <span className="text-sm text-muted-foreground">Showing results for</span>
+                    <span className="rounded-full bg-primary px-3 py-1 text-sm text-primary-foreground">
+                      {selectedTag ? `#${selectedTag}` : searchTerm}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+                  {error}
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="rounded-2xl border border-border bg-white/75 p-8 text-center text-muted-foreground">
+                  Loading papers...
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {papers.map((paper) => (
+                  <PaperCard
+                    key={paper._id}
+                    paper={paper}
+                    onOpen={(selectedPaper) => handleOpenPaper(selectedPaper._id)}
+                    onTagClick={(keyword) => {
+                      setSelectedTag(keyword);
+                      setSearchTerm('');
+                    }}
+                  />
+                ))}
+              </div>
+
+              {!isLoading && papers.length === 0 && (
+                <div className="rounded-2xl border border-border bg-white/75 p-10 text-center">
+                  <Search size={40} className="mx-auto mb-3 text-muted-foreground" />
+                  <h3 className="text-foreground">No papers yet.</h3>
+                  <p className="mt-1 text-muted-foreground">Try another keyword or come back later.</p>
+                </div>
+              )}
+            </section>
+
+            <aside className="space-y-4">
+              <div className="rounded-[1.75rem] border border-border/80 bg-white/75 p-5 shadow-sm backdrop-blur">
+                <h3 className="mb-3 text-foreground">Popular keywords</h3>
+                <div className="flex flex-wrap gap-2">
+                  {popularTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTag(tag);
+                        setSearchTerm('');
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                        selectedTag === tag
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                  {popularTags.length === 0 && <p className="text-sm text-muted-foreground">No keywords yet.</p>}
+                </div>
+              </div>
+
+              {!currentUser && (
+                <div className="rounded-[1.75rem] border border-border/80 bg-primary p-5 text-primary-foreground shadow-sm">
+                  <h3 className="mb-2 text-primary-foreground">Join LiemResearch</h3>
+                  <p className="mb-4 text-sm text-primary-foreground/80">
+                    Sign in to request papers, download PDFs, rate research, and track your contribution points.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/register')}
+                      className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent"
+                    >
+                      Create account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-white/10"
+                    >
+                      Sign in
+                    </button>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
       </main>
     </div>
   );

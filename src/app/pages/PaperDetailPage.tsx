@@ -644,20 +644,20 @@ export function PaperDetailPage() {
                         {paper.uploadedBy?.university ? ` - ${paper.uploadedBy.university}` : ''}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border border-border bg-white p-4">
-                        <p className="text-sm text-muted-foreground">Quality Score</p>
-                        <p className="text-xl font-semibold text-foreground">{paper.qualityScore ?? 'N/A'}</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white p-3">
+                        <p className="text-xs text-muted-foreground">Quality Score</p>
+                        <p className="text-base font-semibold text-foreground">{paper.qualityScore ?? 'N/A'}</p>
                       </div>
-                      <div className="rounded-lg border border-border bg-white p-4">
-                        <p className="text-sm text-muted-foreground">Tier</p>
-                        <p className="text-xl font-semibold text-foreground">
+                      <div className="rounded-lg border border-border bg-white p-3">
+                        <p className="text-xs text-muted-foreground">Tier</p>
+                        <p className="text-base font-semibold text-foreground">
                           {paper.qualityTierName || (paper.qualityTier !== undefined ? `Tier ${paper.qualityTier}` : 'N/A')}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-border bg-white p-4">
-                        <p className="text-sm text-muted-foreground">Download Cost</p>
-                        <p className="text-xl font-semibold text-foreground">
+                      <div className="rounded-lg border border-border bg-white p-3">
+                        <p className="text-xs text-muted-foreground">Download Cost</p>
+                        <p className="text-base font-semibold text-foreground">
                           {paper.downloadCost === null || paper.qualityTier === 0 ? 'Not allowed' : `${paper.downloadCost ?? 0} credits`}
                         </p>
                       </div>

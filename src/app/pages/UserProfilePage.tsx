@@ -396,6 +396,10 @@ export function UserProfilePage() {
                     <div className="pb-1">
                     <div className="flex flex-wrap items-center gap-3">
                       <h1 className="text-3xl font-semibold text-foreground">{profile.fullName || 'My Profile'}</h1>
+                      <span className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 shadow-sm">
+                        <Trophy size={15} />
+                        {rankingStats?.rank ? `Rank #${rankingStats.rank}` : 'Rank N/A'}
+                      </span>
                       <span className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 shadow-sm">
                         {rankingStats?.points ?? 0} points
                       </span>
