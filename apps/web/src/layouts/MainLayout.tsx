@@ -27,7 +27,7 @@ export function MainLayout() {
   const navigate = useNavigate();
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
-      <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-40">
+      <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link to="/" className="text-xl font-bold text-blue-700 dark:text-blue-500 tracking-tight">
@@ -68,7 +68,7 @@ export function MainLayout() {
           </div>
         </div>
       </header>
-      <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <Outlet />
       </main>
       <footer className="border-t bg-white dark:bg-[#0f0f11] py-6 mt-auto">
@@ -115,8 +115,8 @@ function UserMenu() {
           <User className="h-4 w-4" />
           <span className="hidden sm:inline">{fullName}</span>
         </Button>
-      </DropdownMenuTrigger>  
-      <DropdownMenuContent align="end" className="w-56 z-50">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 z-[9999]">
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/profile")}>
           Profile

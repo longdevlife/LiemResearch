@@ -164,14 +164,126 @@ interface Paper {
 
 ---
 
-## 6. Admin Sync — Chỉ Lead/Admin (Tham Khảo)
+## 6. Admin Sync — Hướng Dẫn Tự Build Trang Admin (Web)
 
-| Method | Path | Body | Ghi chú |
-|---|---|---|---|
-| POST | `/admin/sync` | `{ searchText, yearFrom?, maxPages? }` | Trigger sync, trả `{ jobId, status: "queued" }`. Cần role admin |
-| GET | `/admin/sync/runs` | — | List lịch sử sync với stats |
+> Trang `pages/admin/sync.tsx` **đã scaffold sẵn** (role gate + nút "Trigger new sync") nhưng body còn là TODO. Phần này chỉ cho bạn **tự nối API** vào nó. Backend Phase A đã xong 2 endpoint này.
 
-→ FE thường KHÔNG đụng cái này (là việc của Lead/admin panel). Liệt kê để biết.
+### 6.1 Hai endpoint
+
+**`POST /admin/sync`** — kích hoạt 1 lần sync (đẩy job vào queue, trả NGAY):
+```jsonc
+// Request body (Zod validate):
+{
+  "searchText": "large language model education",  // bắt buộc, >=1 ký tự
+  "yearFrom": 2022,                                  // optional, default 2022 (1900-2100)
+  "maxPages": 1                                       // optional, default 1, max 50
+}
+// Response 202 Accepted:
+{ "success": true, "data": { "jobId": "12", "status": "queued", "searchText": "...", "yearFrom": 2022, "maxPages": 1 } }
+```
+> ⚠️ Trả **202** (không phải 200) = "đã nhận, đang xử lý nền". Sync chạy ở worker riêng, KHÔNG xong ngay. Sau khi trigger, **đợi vài giây rồi refetch danh sách runs** để thấy kết quả.
+
+**`GET /admin/sync/runs`** — lịch sử 20 lần sync gần nhất:
+```jsonc
+{
+  "success": true,
+  "data": [ /* ApiSyncRun[] */ ],
+  "meta": { "total": 20 }   // ⚠️ chỉ là SỐ phần tử trả về (max 20), không phải tổng trong DB
+}
+```
+
+### 6.2 Shape `ApiSyncRun` (render bảng lịch sử)
+
+> ⚠️ Endpoint này trả **raw Mongo doc** (qua `.lean()`), KHÔNG qua DTO mapper → field là **`_id`** (không phải `id`), date là ISO string.
+
+```ts
+interface ApiSyncRun {
+  _id: string;
+  runStatus: "running" | "succeeded" | "failed" | "cancelled";
+  searchText?: string;
+  startedAt: string;          // ISO
+  finishedAt?: string;        // ISO (chưa có khi đang running)
+  totalFetched: number;
+  totalInserted: number;
+  totalUpdated: number;
+  totalDuplicates: number;
+  errorMessage?: string;      // chỉ có khi runStatus="failed"
+  createdAt: string; updatedAt: string;
+}
+```
+
+### 6.3 Bước 1 — Thêm route admin vào `constants/api.ts`
+Hiện `API_ROUTES` **chưa có** nhóm admin. Thêm:
+```ts
+// apps/web/src/constants/api.ts
+export const API_ROUTES = {
+  // ...auth, papers, search, trends, reports đã có...
+  admin: {
+    sync: "/admin/sync",
+    syncRuns: "/admin/sync/runs",
+  },
+} as const;
+```
+
+### 6.4 Bước 2 — Tạo `features/admin/api/admin.api.ts`
+Theo đúng pattern `papersApi` (dùng `api` client — đã tự gắn Bearer + refresh):
+```ts
+import { api } from "@/services/api-client";
+import { API_ROUTES } from "@/constants";
+
+export interface TriggerSyncInput {
+  searchText: string;
+  yearFrom?: number;
+  maxPages?: number;
+}
+
+export const adminApi = {
+  async triggerSync(input: TriggerSyncInput) {
+    const res = await api.post(API_ROUTES.admin.sync, input);
+    return res.data.data as { jobId: string; status: string };
+  },
+  async listRuns() {
+    const res = await api.get(API_ROUTES.admin.syncRuns);
+    return res.data.data as ApiSyncRun[];
+  },
+};
+```
+
+### 6.5 Bước 3 — Tạo hook `features/admin/hooks/use-admin-sync.ts`
+Theo pattern `usePapers`, thêm mutation cho trigger + invalidate để bảng tự refresh:
+```ts
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { adminApi, type TriggerSyncInput } from "../api/admin.api";
+
+export function useSyncRuns() {
+  return useQuery({ queryKey: ["admin", "sync-runs"], queryFn: adminApi.listRuns });
+}
+
+export function useTriggerSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TriggerSyncInput) => adminApi.triggerSync(input),
+    onSuccess: () => {
+      // đợi worker chạy chút rồi refetch (202 = async)
+      setTimeout(() => qc.invalidateQueries({ queryKey: ["admin", "sync-runs"] }), 2000);
+    },
+  });
+}
+```
+
+### 6.6 Bước 4 — Lắp vào `pages/admin/sync.tsx` (đã có sẵn role gate)
+Trang đã check `role === "admin"` rồi. Bạn chỉ thay khối `<div>TODO...</div>` bằng UI thật:
+- **Nút "Trigger new sync"** (đã có) → mở dialog form (`searchText`, `yearFrom`, `maxPages`) → gọi `useTriggerSync().mutate(...)`.
+- **Bảng Run History** → `const { data: runs } = useSyncRuns()` → render bảng cột: `searchText · runStatus (badge màu) · fetched/inserted/updated/duplicates · startedAt · finishedAt`.
+- **Status badge**: `running`=vàng, `succeeded`=xanh, `failed`=đỏ (+ tooltip `errorMessage`).
+- Sau khi trigger → toast "Sync queued" + bảng tự refresh sau 2s.
+
+### 6.7 ⚠️ Trước khi test thật: cần 1 user admin
+Public register **không cho** tạo admin (`role?: Exclude<UserRole,"admin">`). Hai cách:
+- **Tạm (dev):** đặt `SYNC_ADMIN_BYPASS=true` trong `apps/backend/.env` → endpoint bỏ qua auth, test UI được ngay. (Nhớ tắt khi xong.)
+- **Đúng:** cần 1 script promote 1 user thành admin trong Mongo (chưa có — nói Lead làm `scripts/promote-admin.ts`, hoặc dùng MongoDB MCP "set role của user X thành admin").
+
+> Mobile admin: **CÓ build** (xem `UI_BUILD_PLAN.md` Đợt 1 + mockup `STITCH_PROMPTS.md` Mobile 6). Endpoint/shape giống hệt web (§6.1, §6.2), nhưng mobile dùng route Expo `app/admin/sync.tsx`, mobile api-client, NativeWind + bottom sheet (không phải table/dialog). Code mẫu ở trên là cho **web**.
 
 ---
 

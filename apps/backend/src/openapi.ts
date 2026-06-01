@@ -18,6 +18,7 @@ export const openapiSpec = {
     { name: "Health" },
     { name: "Auth" },
     { name: "Papers" },
+    { name: "Search" },
     { name: "Admin" },
   ],
   components: {
@@ -222,6 +223,60 @@ export const openapiSpec = {
             content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } },
           },
         },
+      },
+    },
+    "/api/v1/search": {
+      get: {
+        tags: ["Search"],
+        summary: "Semantic search (Phase B) — match by meaning via vector embeddings",
+        parameters: [
+          { name: "q", in: "query", required: true, schema: { type: "string" }, description: "Natural-language query" },
+          { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "pageSize", in: "query", schema: { type: "integer", default: 20, maximum: 50 } },
+          { name: "yearFrom", in: "query", schema: { type: "integer" } },
+          { name: "yearTo", in: "query", schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description: "Papers ranked by semantic similarity (each item has a `score` 0..1)",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: {
+                        allOf: [
+                          { $ref: "#/components/schemas/Paper" },
+                          { type: "object", properties: { score: { type: "number", example: 0.91 } } },
+                        ],
+                      },
+                    },
+                    meta: { $ref: "#/components/schemas/Meta" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/admin/embed": {
+      post: {
+        tags: ["Admin"],
+        summary: "Trigger an embedding run (enqueues a job)",
+        security: [{ bearerAuth: [] }],
+        responses: { "202": { description: "Queued — returns { jobId, status }" }, "403": { description: "Admin only" } },
+      },
+    },
+    "/api/v1/admin/embed/status": {
+      get: {
+        tags: ["Admin"],
+        summary: "Embedding coverage — how many analyzable papers have vectors",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "{ analyzable, embedded, pending }" } },
       },
     },
     "/api/v1/admin/sync": {

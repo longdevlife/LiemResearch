@@ -9,6 +9,7 @@ import { useColorScheme } from "nativewind";
 import { useAuthStore } from "@/stores/auth-store";
 import { getTrendingTopics, TrendingTopic } from "@/services/mockApi";
 import { usePapers } from "@/features/papers";
+import { useSearch } from "@/features/search";
 
 /**
  * Home / Search tab — primary entry after sign-in.
@@ -35,14 +36,14 @@ export default function HomeScreen() {
   }, [searchQuery]);
 
   const combinedQ = [debouncedQuery, debouncedTitle, debouncedKeyword].filter(Boolean).join(" ");
+  const hasQuery = combinedQ.trim().length > 0;
 
-  const { data: papersData, isLoading: papersLoading } = usePapers({
-    q: combinedQ || undefined,
-    page: 1,
-    pageSize: 5
-  });
+  // Browse (no query) → keyword /papers. Searching → semantic /search (Phase B).
+  const { data: browseData, isLoading: browseLoading } = usePapers({ page: 1, pageSize: 5 });
+  const { data: searchData, isLoading: searchLoading } = useSearch({ q: combinedQ, page: 1, pageSize: 5 });
 
-  const papers = papersData?.papers ?? [];
+  const papers = (hasQuery ? searchData?.papers : browseData?.papers) ?? [];
+  const papersLoading = hasQuery ? searchLoading : browseLoading;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,7 +83,7 @@ export default function HomeScreen() {
         <View className="flex-row items-center bg-card dark:bg-[#1A2332] rounded-full px-4 py-3 mb-8 border border-border dark:border-[#26334A]">
           <Feather name="search" color={isDark ? "#94A3B8" : "#64748B"} size={20} />
           <TextInput
-            className="flex-1 ml-3 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-[#94A3B8]"
+            className="flex-1 ml-3 text-foreground dark:text-white"
             placeholder="Search papers, authors, topics..."
             placeholderTextColor={isDark ? "#94A3B8" : "#64748B"}
             value={searchQuery}

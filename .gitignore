@@ -66,3 +66,4 @@ android/build/
 
 # Claude
 .claude/local-state/
+*.md

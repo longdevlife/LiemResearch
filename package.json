@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:backend": "turbo run dev --filter=backend",
+    "dev:backend:all": "pnpm --filter backend dev:all",
     "dev:web": "turbo run dev --filter=web",
     "dev:mobile": "pnpm --filter mobile exec expo start",
     "build": "turbo run build",

@@ -13,7 +13,7 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         {description && (
@@ -21,6 +21,6 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
         )}
       </div>
       {actions && <div className="flex flex-shrink-0 gap-2">{actions}</div>}
-    </header>
+    </div>
   );
 }
