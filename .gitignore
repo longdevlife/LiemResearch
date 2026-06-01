@@ -67,3 +67,6 @@ android/build/
 # Claude
 .claude/local-state/
 *.md
+
+# Agent tooling (Antigravity / skills lock state — machine-local, not for repo)
+.agent/
