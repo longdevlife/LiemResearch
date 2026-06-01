@@ -45,8 +45,14 @@ export function HomePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedTag, setSelectedTag] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedTag, sortBy]);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,15 +64,20 @@ export function HomePage() {
       try {
         const params = new URLSearchParams();
         params.set('sortBy', sortBy);
-        params.set('limit', '30');
+        params.set('page', String(page));
+        params.set('limit', '5');
 
         const query = selectedTag || searchTerm;
         if (query) params.set('search', query);
 
-        const data = await apiRequest<{ papers: PublicPaper[] }>(`/public-papers?${params.toString()}`);
+        const data = await apiRequest<{ papers: PublicPaper[]; pagination?: { page?: number; totalPages?: number } }>(
+          `/public-papers?${params.toString()}`
+        );
 
         if (isMounted) {
           setPapers(data.papers);
+          setPage(data.pagination?.page ?? page);
+          setTotalPages(data.pagination?.totalPages ?? 1);
         }
       } catch (err) {
         if (isMounted) setError(err instanceof Error ? err.message : 'Unable to load papers');
@@ -81,7 +92,7 @@ export function HomePage() {
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [searchTerm, selectedTag, sortBy]);
+  }, [page, searchTerm, selectedTag, sortBy]);
 
   const popularTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -399,6 +410,32 @@ export function HomePage() {
                   />
                 ))}
               </div>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex flex-col gap-4 rounded-[1.75rem] border border-border/80 bg-white/75 px-5 py-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+                      disabled={page === 1 || isLoading}
+                      className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
+                      disabled={page === totalPages || isLoading}
+                      className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {!isLoading && papers.length === 0 && (
                 <div className="rounded-2xl border border-border bg-white/75 p-10 text-center">
