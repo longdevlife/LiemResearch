@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { getPdfDownloadUrl } from '../utils/s3.js';
 import { chargePaperDownloadCredit } from '../utils/points.js';
 import { calculatePaperQuality } from '../utils/paperQuality.js';
+import { escapeRegexSearch } from '../utils/search.js';
 
 const visibleStatuses = ['approved', 'downloaded', 'not-downloaded', 'pending-requester-acceptance'];
 
@@ -65,15 +66,16 @@ function buildSearchFilter(query) {
   const andConditions = [];
 
   if (query.search) {
+    const search = escapeRegexSearch(query.search);
     andConditions.push({
       $or: [
-        { title: { $regex: query.search, $options: 'i' } },
-        { doi: { $regex: query.search, $options: 'i' } },
-        { paperType: { $regex: query.search, $options: 'i' } },
-        { paperLink: { $regex: query.search, $options: 'i' } },
-        { abstract: { $regex: query.search, $options: 'i' } },
-        { authors: { $regex: query.search, $options: 'i' } },
-        { keywords: { $regex: query.search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
+        { doi: { $regex: search, $options: 'i' } },
+        { paperType: { $regex: search, $options: 'i' } },
+        { paperLink: { $regex: search, $options: 'i' } },
+        { abstract: { $regex: search, $options: 'i' } },
+        { authors: { $regex: search, $options: 'i' } },
+        { keywords: { $regex: search, $options: 'i' } },
       ],
     });
   }
@@ -94,7 +96,7 @@ function buildSearchFilter(query) {
   }
 
   if (query.applicationDomain) {
-    andConditions.push({ applicationDomain: { $regex: query.applicationDomain, $options: 'i' } });
+    andConditions.push({ applicationDomain: { $regex: escapeRegexSearch(query.applicationDomain), $options: 'i' } });
   }
 
   if (query.hasPdf === 'true') {

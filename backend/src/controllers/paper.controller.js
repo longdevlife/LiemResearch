@@ -8,6 +8,7 @@ import { deletePdfFromS3, getPdfDownloadUrl, isObjectStorageConfigured, isS3Path
 import { chargePaperRequestCredit, recordInvalidPdfUpload, rewardPaperUploadCredit, syncUserPoints } from '../utils/points.js';
 import { calculatePaperQuality } from '../utils/paperQuality.js';
 import { deletePapersWithRelatedData } from '../utils/paperCleanup.js';
+import { escapeRegexSearch } from '../utils/search.js';
 import {
   notifyAdminsPaperPdfUploaded,
   notifyAdminsPaperSubmitted,
@@ -452,11 +453,12 @@ export async function getAllPapers(req, res) {
 
   if (status) filter.status = status;
   if (search) {
+    const escapedSearch = escapeRegexSearch(search);
     filter.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { doi: { $regex: search, $options: 'i' } },
-      { paperType: { $regex: search, $options: 'i' } },
-      { paperLink: { $regex: search, $options: 'i' } },
+      { title: { $regex: escapedSearch, $options: 'i' } },
+      { doi: { $regex: escapedSearch, $options: 'i' } },
+      { paperType: { $regex: escapedSearch, $options: 'i' } },
+      { paperLink: { $regex: escapedSearch, $options: 'i' } },
     ];
   }
 

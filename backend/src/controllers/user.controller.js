@@ -3,6 +3,7 @@ import { User } from '../models/User.js';
 import { deleteUserRelatedData } from '../utils/paperCleanup.js';
 import { syncUserPoints } from '../utils/points.js';
 import { normalizeText, validateFullName, validateUniversity } from '../utils/validation.js';
+import { escapeRegexSearch } from '../utils/search.js';
 
 function isInvalidUserId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -14,10 +15,11 @@ function buildUserFilter({ search, role, status }) {
   if (role) filter.role = role;
   if (status) filter.status = status;
   if (search) {
+    const escapedSearch = escapeRegexSearch(search);
     filter.$or = [
-      { fullName: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } },
-      { university: { $regex: search, $options: 'i' } },
+      { fullName: { $regex: escapedSearch, $options: 'i' } },
+      { email: { $regex: escapedSearch, $options: 'i' } },
+      { university: { $regex: escapedSearch, $options: 'i' } },
     ];
   }
 
