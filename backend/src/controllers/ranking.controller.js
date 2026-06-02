@@ -1,18 +1,38 @@
 import { User } from '../models/User.js';
-import { syncUserPoints } from '../utils/points.js';
+import { calculateUserPointStatsBatch } from '../utils/points.js';
 
 const activeUserFilter = {
   role: 'user',
   $or: [{ status: 'active' }, { status: { $exists: false } }],
 };
 
-async function buildUserStats(user) {
-  const stats = await syncUserPoints(user._id);
-
+function serializePublicUser(user, points) {
   return {
-    user: { ...user.toSafeObject(), points: stats.points },
-    ...stats,
+    _id: user._id,
+    fullName: user.fullName,
+    university: user.university,
+    role: user.role,
+    points,
   };
+}
+
+function buildRankings(entries, startRank = 1) {
+  return entries.map(({ user, stats }, index) => ({
+    rank: startRank + index,
+    user: serializePublicUser(user, stats.points),
+    ...stats,
+  }));
+}
+
+async function getRankedUsers() {
+  const users = await User.find(activeUserFilter)
+    .select('_id fullName university role')
+    .lean();
+  const statsByUserId = await calculateUserPointStatsBatch(users.map((user) => user._id));
+
+  return users
+    .map((user) => ({ user, stats: statsByUserId.get(user._id.toString()) }))
+    .sort((left, right) => right.stats.points - left.stats.points || left.user.fullName.localeCompare(right.user.fullName));
 }
 
 export async function getTopUsers(req, res) {
@@ -20,15 +40,15 @@ export async function getTopUsers(req, res) {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 50);
 
-    const rankings = await buildRankings();
-
-    const total = rankings.length;
+    const rankedUsers = await getRankedUsers();
+    const total = rankedUsers.length;
     const totalPages = Math.max(Math.ceil(total / limit), 1);
     const currentPage = Math.min(page, totalPages);
     const skip = (currentPage - 1) * limit;
+    const rankings = buildRankings(rankedUsers.slice(skip, skip + limit), skip + 1);
 
     res.json({
-      rankings: rankings.slice(skip, skip + limit),
+      rankings,
       pagination: {
         page: currentPage,
         limit,
@@ -42,38 +62,30 @@ export async function getTopUsers(req, res) {
   }
 }
 
-async function buildRankings() {
-  const users = await User.find(activeUserFilter).sort({ createdAt: 1 });
-  const stats = await Promise.all(users.map(buildUserStats));
-
-  return stats
-    .sort((left, right) => right.points - left.points || left.user.fullName.localeCompare(right.user.fullName))
-    .map((item, index) => ({ rank: index + 1, ...item }));
-}
-
 export async function getMyRanking(req, res) {
   if (req.user.role !== 'user') {
     return res.status(404).json({ message: 'Ranking is only available for user accounts' });
   }
 
-  const rankings = await buildRankings();
+  const rankedUsers = await getRankedUsers();
+  const userIndex = rankedUsers.findIndex(({ user }) => user._id.toString() === req.user._id.toString());
 
-  const ranking = rankings.find((item) => item.user._id.toString() === req.user._id.toString());
-
-  if (!ranking) {
+  if (userIndex === -1) {
     return res.status(404).json({ message: 'Ranking not found for current user' });
   }
 
+  const [ranking] = buildRankings([rankedUsers[userIndex]], userIndex + 1);
   res.json({ ranking });
 }
 
 export async function getUserRankingById(req, res) {
-  const rankings = await buildRankings();
-  const ranking = rankings.find((item) => item.user._id.toString() === req.params.id.toString());
+  const rankedUsers = await getRankedUsers();
+  const userIndex = rankedUsers.findIndex(({ user }) => user._id.toString() === req.params.id.toString());
 
-  if (!ranking) {
+  if (userIndex === -1) {
     return res.status(404).json({ message: 'Ranking not found for user' });
   }
 
+  const [ranking] = buildRankings([rankedUsers[userIndex]], userIndex + 1);
   res.json({ ranking });
 }

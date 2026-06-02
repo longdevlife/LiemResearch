@@ -1,24 +1,26 @@
 import type React from 'react';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { useLocation, useNavigate } from 'react-router';
-import { LoginPage } from './pages/LoginPage';
-import { HomePage } from './pages/HomePage';
-import { RegisterPage } from './pages/RegisterPage';
-import { UserDashboard } from './pages/UserDashboard';
-import { MyRequestsPage } from './pages/MyRequestsPage';
-import { UserRankingPage } from './pages/UserRankingPage';
-import { UserPublicProfilePage } from './pages/UserPublicProfilePage';
-import { UserProfileSettingsPage } from './pages/UserProfileSettingsPage';
-import { RequestPaperPage } from './pages/RequestPaperPage';
-import { AdminBrowseDashboard } from './pages/AdminBrowseDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { AdminProfilePage } from './pages/AdminProfilePage';
-import { PaperManagementPage } from './pages/PaperManagementPage';
-import { UserManagementPage } from './pages/UserManagementPage';
-import { PaperDetailPage } from './pages/PaperDetailPage';
 import { AUTH_CHANGED_EVENT, clearAuth, getStoredUser, getToken } from './lib/api';
+import { LoadingSpinner } from './components/LoadingSpinner';
 import { ToastProvider } from './components/ToastProvider';
+
+const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })));
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then((module) => ({ default: module.RegisterPage })));
+const UserDashboard = lazy(() => import('./pages/UserDashboard').then((module) => ({ default: module.UserDashboard })));
+const MyRequestsPage = lazy(() => import('./pages/MyRequestsPage').then((module) => ({ default: module.MyRequestsPage })));
+const UserRankingPage = lazy(() => import('./pages/UserRankingPage').then((module) => ({ default: module.UserRankingPage })));
+const UserPublicProfilePage = lazy(() => import('./pages/UserPublicProfilePage').then((module) => ({ default: module.UserPublicProfilePage })));
+const UserProfileSettingsPage = lazy(() => import('./pages/UserProfileSettingsPage').then((module) => ({ default: module.UserProfileSettingsPage })));
+const RequestPaperPage = lazy(() => import('./pages/RequestPaperPage').then((module) => ({ default: module.RequestPaperPage })));
+const AdminBrowseDashboard = lazy(() => import('./pages/AdminBrowseDashboard').then((module) => ({ default: module.AdminBrowseDashboard })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
+const AdminProfilePage = lazy(() => import('./pages/AdminProfilePage').then((module) => ({ default: module.AdminProfilePage })));
+const PaperManagementPage = lazy(() => import('./pages/PaperManagementPage').then((module) => ({ default: module.PaperManagementPage })));
+const UserManagementPage = lazy(() => import('./pages/UserManagementPage').then((module) => ({ default: module.UserManagementPage })));
+const PaperDetailPage = lazy(() => import('./pages/PaperDetailPage').then((module) => ({ default: module.PaperDetailPage })));
 
 const LAST_PATH_KEY = 'last-pathname';
 const PUBLIC_PATHS = new Set(['/', '/login', '/register']);
@@ -112,26 +114,28 @@ export default function App() {
       <ToastProvider>
         <AdminRouteGuard />
         <AuthSessionGuard />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
-          <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
-          <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute role="user"><UserPublicProfilePage /></ProtectedRoute>} />
-          <Route path="/profile/settings" element={<Navigate to="/settings/profile" replace />} />
-          <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
-          <Route path="/settings/:section" element={<ProtectedRoute role="user"><UserProfileSettingsPage /></ProtectedRoute>} />
-          <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminBrowseDashboard /></ProtectedRoute>} />
-          <Route path="/admin/stats" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/profile" element={<ProtectedRoute role="admin"><AdminProfilePage /></ProtectedRoute>} />
-          <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
-          <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
-          <Route path="/admin/post-paper" element={<ProtectedRoute role="admin"><RequestPaperPage role="admin" /></ProtectedRoute>} />
-          <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
-        </Routes>
+        <Suspense fallback={<LoadingSpinner fullPage label="Loading page..." />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
+            <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
+            <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute role="user"><UserPublicProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/settings" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="/settings/:section" element={<ProtectedRoute role="user"><UserProfileSettingsPage /></ProtectedRoute>} />
+            <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute role="admin"><AdminBrowseDashboard /></ProtectedRoute>} />
+            <Route path="/admin/stats" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/profile" element={<ProtectedRoute role="admin"><AdminProfilePage /></ProtectedRoute>} />
+            <Route path="/admin/papers" element={<ProtectedRoute role="admin"><PaperManagementPage /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute role="admin"><UserManagementPage /></ProtectedRoute>} />
+            <Route path="/admin/post-paper" element={<ProtectedRoute role="admin"><RequestPaperPage role="admin" /></ProtectedRoute>} />
+            <Route path="/paper/:id" element={<ProtectedRoute><PaperDetailPage /></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
       </ToastProvider>
     </Router>
   );
