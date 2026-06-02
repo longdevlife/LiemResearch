@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
-import { deletePdfFromS3, getPdfDownloadUrl, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
+import { deletePdfFromS3, getPdfDownloadUrl, isObjectStorageConfigured, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
 import { chargePaperRequestCredit, recordInvalidPdfUpload, rewardPaperUploadCredit, syncUserPoints } from '../utils/points.js';
 import { calculatePaperQuality } from '../utils/paperQuality.js';
 import {
@@ -290,7 +290,7 @@ async function deleteStoredPdf(pdfPath) {
 async function storeUploadedPdf(file) {
   if (!file) return '';
 
-  if (!process.env.AWS_S3_BUCKET || !process.env.AWS_REGION) {
+  if (!isObjectStorageConfigured()) {
     await fs.mkdir(uploadsDir, { recursive: true });
 
     const safeName = path.basename(String(file.originalname || 'paper.pdf'));
