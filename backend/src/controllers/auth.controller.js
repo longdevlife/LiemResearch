@@ -3,46 +3,11 @@ import { User } from '../models/User.js';
 import { signToken } from '../utils/token.js';
 import { deleteUserRelatedData } from '../utils/paperCleanup.js';
 import { syncUserPoints } from '../utils/points.js';
+import { normalizeText, validateFullName, validateUniversity } from '../utils/validation.js';
 // Student ID validation removed; field is no longer used.
 
 function isPresent(value) {
   return value !== undefined && value !== null;
-}
-
-function validateUniversity(value) {
-  const university = String(value).trim().replace(/\s+/g, ' ');
-  const words = university.split(' ').filter(Boolean);
-  const hasLetters = /[a-z]/i.test(university);
-  const hasUniversityWord = /\b(university|college|institute|academy|school|đại học|dai hoc|trường|truong|fpt|hutech|rmit)\b/i.test(university);
-
-  if (university.length < 5 || !hasLetters) {
-    return 'Please enter a valid university name';
-  }
-
-  if (!/^[a-z0-9\s.'&\-À-ỹ]+$/i.test(university)) {
-    return 'University name contains invalid characters';
-  }
-
-  if (words.length < 2 && !hasUniversityWord) {
-    return 'Please enter the full university name';
-  }
-
-  return '';
-}
-
-function validateFullName(value) {
-  const fullName = String(value).trim().replace(/\s+/g, ' ');
-  const words = fullName.split(' ').filter(Boolean);
-
-  if (fullName.length < 4 || words.length < 2 || !/[a-zÀ-ỹ]/i.test(fullName)) {
-    return 'Please enter your full name';
-  }
-
-  if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
-    return 'Full name contains invalid characters';
-  }
-
-  return '';
 }
 
 function isValidEmail(value) {
@@ -85,8 +50,8 @@ export async function register(req, res) {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await User.create({
-    fullName: String(fullName).trim().replace(/\s+/g, ' '),
-    university: String(university).trim().replace(/\s+/g, ' '),
+    fullName: normalizeText(fullName),
+    university: normalizeText(university),
     // studentId removed
     email: String(email).trim(),
     passwordHash,
@@ -138,7 +103,7 @@ export async function updateMe(req, res) {
     if (fullNameError) {
       return res.status(400).json({ message: fullNameError });
     }
-    updates.fullName = updates.fullName.replace(/\s+/g, ' ');
+    updates.fullName = normalizeText(updates.fullName);
   }
 
   if (updates.university !== undefined && !updates.university) {
@@ -150,7 +115,7 @@ export async function updateMe(req, res) {
     if (universityError) {
       return res.status(400).json({ message: universityError });
     }
-    updates.university = updates.university.replace(/\s+/g, ' ');
+    updates.university = normalizeText(updates.university);
   }
 
   // studentId removed — no further validation

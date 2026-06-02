@@ -4,6 +4,7 @@ import { Building2, Lock, Mail, User } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser, getToken } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
 import { UNIVERSITY_LIST_VN } from '../lib/universities';
+import { normalizeText, validateFullName } from '../lib/validation';
 
 export function RegisterPage() {
   const logo = new URL('../../imports/liemresearch-logo.png', import.meta.url).href;
@@ -299,7 +300,7 @@ function UniversitySearchInput({
       </div>
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-2xl border border-border/80 bg-white/95 shadow-[0_20px_60px_rgba(31,29,26,0.12)] backdrop-blur">
+        <div className="mt-2 max-h-56 w-full overflow-auto rounded-2xl border border-border/80 bg-white/95 shadow-[0_20px_60px_rgba(31,29,26,0.12)] backdrop-blur">
           {suggestions.map((item) => (
             <button
               key={item}
@@ -319,32 +320,17 @@ function UniversitySearchInput({
 }
 
 function validateUniversity(value: string) {
-  const university = value.trim().replace(/\s+/g, ' ');
+  const university = normalizeText(value);
   if (!university) {
     return 'Please select your university.';
   }
 
   const isMatch = UNIVERSITY_LIST_VN.some(
-    (item) => item.trim().replace(/\s+/g, ' ').toLowerCase() === university.toLowerCase()
+    (item) => normalizeText(item).toLowerCase() === university.toLowerCase()
   );
 
   if (!isMatch) {
     return 'Please choose a university from the list.';
-  }
-
-  return '';
-}
-
-function validateFullName(value: string) {
-  const fullName = value.trim().replace(/\s+/g, ' ');
-  const words = fullName.split(' ').filter(Boolean);
-
-  if (fullName.length < 4 || words.length < 2 || !/\p{L}/u.test(fullName)) {
-    return 'Please enter your full name.';
-  }
-
-  if (!/^[\p{L}\s.'-]+$/u.test(fullName)) {
-    return 'Full name contains invalid characters.';
   }
 
   return '';

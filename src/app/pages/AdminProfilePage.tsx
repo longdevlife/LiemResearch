@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
+import { validateFullName, validateUniversityName } from '../lib/validation';
 
 type ProfileForm = {
   fullName: string;
@@ -73,42 +74,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
-}
-
-function validateFullName(value: string) {
-  const fullName = String(value).trim().replace(/\s+/g, ' ');
-  const words = fullName.split(' ').filter(Boolean);
-
-  if (fullName.length < 4 || words.length < 2 || !/[a-zÀ-ỹ]/i.test(fullName)) {
-    return 'Please enter your full name';
-  }
-
-  if (!/^[a-z\s.'-À-ỹ]+$/i.test(fullName)) {
-    return 'Full name contains invalid characters';
-  }
-
-  return '';
-}
-
-function validateUniversity(value: string) {
-  const university = String(value).trim().replace(/\s+/g, ' ');
-  const words = university.split(' ').filter(Boolean);
-  const hasLetters = /[a-z]/i.test(university);
-  const hasUniversityWord = /\b(university|college|institute|academy|school|đại học|dai hoc|trường|truong|fpt|hutech|rmit)\b/i.test(university);
-
-  if (university.length < 5 || !hasLetters) {
-    return 'Please enter a valid university name';
-  }
-
-  if (!/^[a-z0-9\s.'&\-À-ỹ]+$/i.test(university)) {
-    return 'University name contains invalid characters';
-  }
-
-  if (words.length < 2 && !hasUniversityWord) {
-    return 'Please enter the full university name';
-  }
-
-  return '';
 }
 
 export function AdminProfilePage() {
@@ -192,7 +157,7 @@ export function AdminProfilePage() {
       return;
     }
 
-    const universityError = validateUniversity(editForm.university);
+    const universityError = validateUniversityName(editForm.university);
     if (universityError) {
       setError(universityError);
       return;

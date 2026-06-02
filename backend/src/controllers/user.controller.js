@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { deleteUserRelatedData } from '../utils/paperCleanup.js';
 import { syncUserPoints } from '../utils/points.js';
+import { normalizeText, validateFullName, validateUniversity } from '../utils/validation.js';
 
 function isInvalidUserId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -68,11 +69,25 @@ export async function updateUser(req, res) {
     return res.status(400).json({ message: 'Full name is required' });
   }
 
+  if (updates.fullName !== undefined) {
+    const fullNameError = validateFullName(updates.fullName);
+    if (fullNameError) {
+      return res.status(400).json({ message: fullNameError });
+    }
+    updates.fullName = normalizeText(updates.fullName);
+  }
+
   if (updates.university !== undefined && !updates.university) {
     return res.status(400).json({ message: 'University is required' });
   }
 
-  // studentId removed from user profile; no validation required.
+  if (updates.university !== undefined) {
+    const universityError = validateUniversity(updates.university);
+    if (universityError) {
+      return res.status(400).json({ message: universityError });
+    }
+    updates.university = normalizeText(updates.university);
+  }
 
   if (updates.role !== undefined && !['user', 'admin'].includes(updates.role)) {
     return res.status(400).json({ message: 'Invalid role' });
