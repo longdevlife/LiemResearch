@@ -3,6 +3,10 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 import { Paper } from '../models/Paper.js';
+import { Notification } from '../models/Notification.js';
+import { PaperComment } from '../models/PaperComment.js';
+import { PaperDownload } from '../models/PaperDownload.js';
+import { Rating } from '../models/Rating.js';
 import { User } from '../models/User.js';
 import { deletePdfFromS3, getPdfDownloadUrl, isObjectStorageConfigured, isS3Path, uploadPdfToS3 } from '../utils/s3.js';
 import { chargePaperRequestCredit, recordInvalidPdfUpload, rewardPaperUploadCredit, syncUserPoints } from '../utils/points.js';
@@ -696,14 +700,26 @@ export async function deletePaper(req, res) {
     return res.status(400).json({ message: 'Invalid paper id' });
   }
 
-  const paper = await Paper.findByIdAndDelete(req.params.id);
+  const paper = await Paper.findById(req.params.id);
 
   if (!paper) return res.status(404).json({ message: 'Paper not found' });
 
-  await syncUserPoints(paper.requestedBy);
-  if (paper.uploadedBy) {
-    await syncUserPoints(paper.uploadedBy);
-  }
+  const ratings = await Rating.find({ paper: paper._id }).select('user');
+  const affectedUserIds = new Set([
+    paper.requestedBy.toString(),
+    ...(paper.uploadedBy ? [paper.uploadedBy.toString()] : []),
+    ...ratings.map((rating) => rating.user.toString()),
+  ]);
+
+  await Promise.all([
+    Paper.findByIdAndDelete(paper._id),
+    Rating.deleteMany({ paper: paper._id }),
+    PaperComment.deleteMany({ paper: paper._id }),
+    PaperDownload.deleteMany({ paper: paper._id }),
+    Notification.deleteMany({ paper: paper._id }),
+  ]);
+
+  await Promise.all([...affectedUserIds].map((userId) => syncUserPoints(userId)));
 
   await deleteStoredPdf(paper.pdfPath);
 

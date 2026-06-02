@@ -12,7 +12,7 @@ export const INVALID_PDF_PENALTY = 0;
 const validPaperStatuses = ['approved', 'not-downloaded', 'downloaded'];
 
 export async function calculateUserPointStats(userId) {
-  const [user, requestedPapers, uploadedPdfPapers, ratingsGiven, rejectedPapers, rejectedPdfs] = await Promise.all([
+  const [user, requestedPapers, uploadedPdfPapers, ratedPaperIds, rejectedPapers, rejectedPdfs] = await Promise.all([
     User.findById(userId).select('penaltyPoints'),
     Paper.countDocuments({
       requestedBy: userId,
@@ -23,7 +23,7 @@ export async function calculateUserPointStats(userId) {
       status: 'downloaded',
       pdfPath: { $exists: true, $ne: '' },
     }).select('uploadCreditReward'),
-    Rating.countDocuments({ user: userId }),
+    Rating.distinct('paper', { user: userId }),
     Paper.countDocuments({
       requestedBy: userId,
       status: 'rejected',
@@ -35,6 +35,7 @@ export async function calculateUserPointStats(userId) {
     }),
   ]);
 
+  const ratingsGiven = await Paper.countDocuments({ _id: { $in: ratedPaperIds } });
   const uploadCreditReward = uploadedPdfPapers.reduce((sum, paper) => sum + (paper.uploadCreditReward || 0), 0);
 
   return {
