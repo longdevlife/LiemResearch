@@ -3,9 +3,10 @@ import { useState } from 'react';
 type ExpandableTextProps = {
   text: string;
   lines?: number; // number of lines to show when collapsed
+  expandable?: boolean;
 };
 
-export default function ExpandableText({ text, lines = 4 }: ExpandableTextProps) {
+export default function ExpandableText({ text, lines = 4, expandable = true }: ExpandableTextProps) {
   const [expanded, setExpanded] = useState(false);
 
   const clampClass =
@@ -14,7 +15,7 @@ export default function ExpandableText({ text, lines = 4 }: ExpandableTextProps)
   return (
     <div>
       <p className={`${expanded ? '' : clampClass} mb-2 text-muted-foreground`}>{text}</p>
-      {text.split('\n').join(' ').trim().length > 0 && (
+      {expandable && text.split('\n').join(' ').trim().length > 0 && (
         <button
           type="button"
           onClick={() => setExpanded((s) => !s)}

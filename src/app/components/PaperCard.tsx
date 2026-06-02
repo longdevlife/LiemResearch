@@ -36,59 +36,66 @@ export function PaperCard({
 }: PaperCardProps) {
   const isPdfAvailable = Boolean(paper.pdfPath) && paper.status === 'downloaded';
   const ratingText = paper.averageRating > 0 ? paper.averageRating.toFixed(1) : 'No rating';
-  // show a few lines and allow expanding
+  const isDashboard = variant === 'dashboard';
 
   return (
-    <article className="rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-5 shadow-sm transition-all hover:border-[#d4a84f] hover:shadow-md">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={() => onOpen(paper)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') onOpen(paper);
+      }}
+      className="cursor-pointer rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-4 shadow-sm transition-colors hover:border-[#cdbda9] focus:outline-none focus:ring-2 focus:ring-[#b9aa97]"
+    >
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{getPaperAuthors(paper)}</p>
         </div>
         <PdfStatus isPdfAvailable={isPdfAvailable} />
       </div>
 
-      <button
-        type="button"
-        onClick={() => onOpen(paper)}
-        className="mb-2 block text-left text-xl font-medium leading-snug text-foreground transition-colors hover:text-primary"
-      >
+      <h3 className="mb-2 text-xl font-semibold leading-snug text-foreground transition-colors hover:text-[#6f5438]">
         {paper.title}
-      </button>
+      </h3>
 
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
         <span className="flex items-center gap-1">
           <Calendar size={15} />
           {paper.publishedYear}
         </span>
         <span>{getPaperType(paper)}</span>
         {paper.applicationDomain && <span>{paper.applicationDomain}</span>}
-        <span>Added {formatDisplayDate(paper.createdAt)}</span>
+        {isDashboard && <span>Added {formatDisplayDate(paper.createdAt)}</span>}
       </div>
 
-      <div className="mb-4">
-        <ExpandableText text={paper.abstract} lines={variant === 'dashboard' ? 2 : 4} />
+      <div className="mb-3" onClick={(event) => event.stopPropagation()}>
+        <ExpandableText text={paper.abstract} lines={isDashboard ? 2 : 3} expandable={isDashboard} />
       </div>
 
-      {paper.relatedSemesters?.length ? (
-        <div className="mb-3 text-sm text-muted-foreground">Semesters: {paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ')}</div>
+      {isDashboard && paper.relatedSemesters?.length ? (
+        <div className="mb-2 text-sm text-muted-foreground">Semesters: {paper.relatedSemesters.map((s) => getSemesterLabel(s)).join(', ')}</div>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {paper.keywords.slice(0, variant === 'dashboard' ? 4 : 5).map((keyword) => (
+      <div className="mb-3 flex flex-wrap gap-2">
+        {paper.keywords.slice(0, 4).map((keyword) => (
           <button
             key={keyword}
             type="button"
-            onClick={() => onTagClick?.(keyword)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onTagClick?.(keyword);
+            }}
             disabled={!onTagClick}
-            className="rounded-md bg-[#f4ebe1] px-2 py-1 text-sm text-[#7b5b3a] transition-colors hover:bg-[#ead9c7] disabled:cursor-default disabled:hover:bg-[#f4ebe1]"
+            className="rounded-md bg-[#f4ebe1] px-2 py-1 text-xs text-[#7b5b3a] transition-colors hover:bg-[#ead9c7] disabled:cursor-default disabled:hover:bg-[#f4ebe1]"
           >
             #{keyword}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#eadfce] pt-4">
-        <div className="flex flex-wrap items-center gap-4 text-sm text-[#7d6d60]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfce] pt-3">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-[#7d6d60]">
           <span className="flex items-center gap-1">
             <Star size={15} className={paper.averageRating > 0 ? 'fill-[#b88944] text-[#b88944]' : 'text-[#c9b8a8]'} />
             {ratingText}
@@ -101,18 +108,26 @@ export function PaperCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onOpen(paper)}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#d8c8b7] px-3 py-2 text-sm text-[#1f1a17] transition-colors hover:bg-[#f3ebe1]"
-          >
-            <Eye size={16} />
-            View
-          </button>
+          {isDashboard && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen(paper);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#d8c8b7] px-3 py-2 text-sm text-[#1f1a17] transition-colors hover:bg-[#f3ebe1]"
+            >
+              <Eye size={16} />
+              View
+            </button>
+          )}
           {onDownload && (
             <button
               type="button"
-              onClick={() => onDownload(paper)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDownload(paper);
+              }}
               disabled={!isPdfAvailable}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                 isPdfAvailable

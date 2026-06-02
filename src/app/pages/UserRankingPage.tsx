@@ -130,10 +130,10 @@ export function UserRankingPage() {
   }, [showRankInfo]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f6efe7] bg-fixed text-[#1f1a17]">
+    <div className="flex min-h-screen flex-col md:flex-row bg-[#f6efe7] bg-fixed text-[#1f1a17]">
       <Sidebar role="user" />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <AppHeader role="user" />
         <div className="p-8">
           <div className="mx-auto max-w-7xl">

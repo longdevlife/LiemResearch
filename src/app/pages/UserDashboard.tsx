@@ -6,9 +6,10 @@ import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { PaperCard } from '../components/PaperCard';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
+import { SuccessToast } from '../components/SuccessToast';
 import { apiRequest, resolveFileUrl } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
-import { CheckCircle2, Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
+import { Search, Plus, Download as DownloadIcon, Filter } from 'lucide-react';
 
 type FeedTab = 'newest' | 'rating' | 'downloads' | 'hasPdf';
 
@@ -45,6 +46,13 @@ export function UserDashboard() {
   useEffect(() => {
     if (location.state?.loginSuccess) {
       setMessage('Logged in successfully.');
+      navigate(location.pathname, { replace: true, state: {} });
+      return;
+    }
+
+    if (typeof location.state?.headerSearch === 'string') {
+      setSearchTerm(location.state.headerSearch);
+      setPage(1);
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
@@ -124,15 +132,15 @@ export function UserDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f6efe7] bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-[#f6efe7] bg-fixed">
       <Sidebar role="user" />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <AppHeader role="user" />
-        <div className="p-8">
+        <div className="p-5">
           <div className="max-w-7xl mx-auto">
-          <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
                 <h1 className="text-foreground mb-2">Dashboard</h1>
                 <p className="text-[#7d6d60]">Browse research papers and request what you need.</p>
@@ -140,13 +148,12 @@ export function UserDashboard() {
 
               <button
                 onClick={() => navigate('/request-paper')}
-                className="inline-flex items-center gap-2 self-start rounded-lg bg-[#2f251f] px-6 py-3 text-[#fffaf4] transition-colors hover:bg-[#1f1a17] lg:self-auto"
+                className="inline-flex items-center gap-2 self-start rounded-lg bg-[#2f251f] px-4 py-2 text-[#fffaf4] transition-colors hover:bg-[#1f1a17] lg:self-auto"
               >
                 <Plus size={20} />
                 Request Paper
               </button>
             </div>
-
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#dfd4c7] bg-[#fffaf4] p-2 shadow-sm">
               <span className="px-3 text-sm font-medium text-[#7d6d60]">Filter by</span>
               {feedTabs.map((item) => {
@@ -180,21 +187,10 @@ export function UserDashboard() {
           )}
 
           {message && (
-            <div className="fixed left-1/2 top-6 z-[80] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2">
-              <div className="flex items-center gap-3 rounded-2xl border border-[#e1d4c4] bg-[#fffaf4]/90 px-4 py-3 shadow-[0_20px_60px_rgba(120,92,66,0.14)] backdrop-blur">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f4ebe1] text-[#7b5b3a]">
-                  <CheckCircle2 size={22} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7b5b3a]">Success</p>
-                  <p className="text-sm font-medium text-[#1f1a17]">{message}</p>
-                </div>
-                <span className="h-2.5 w-2.5 rounded-full bg-[#b88944] shadow-[0_0_0_6px_rgba(184,137,68,0.14)]" />
-              </div>
-            </div>
+            <SuccessToast message={message} onDismiss={() => setMessage('')} />
           )}
 
-          <div className="mb-6 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-5 shadow-sm">
+            <div className="mb-4 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-4 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8a7b6f]" size={20} />
@@ -245,9 +241,9 @@ export function UserDashboard() {
                 Try adjusting your search terms or filters.
               </p>
             </div>
-          ) : (
+            ) : (
             <>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {papers.map((paper) => (
                   <PaperCard
                     key={paper._id}
@@ -260,7 +256,7 @@ export function UserDashboard() {
               </div>
 
               {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-between gap-4 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] px-4 py-3 shadow-sm">
+                <div className="mt-6 flex items-center justify-between gap-3 rounded-lg border border-[#dfd4c7] bg-[#fffaf4] px-3 py-2 shadow-sm">
                   <p className="text-sm text-[#7d6d60]">
                     Page {page} of {totalPages}
                   </p>
@@ -269,7 +265,7 @@ export function UserDashboard() {
                       type="button"
                       onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
                       disabled={page === 1 || isLoading}
-                      className="rounded-lg border border-[#d8c8b7] px-4 py-2 text-sm font-medium text-[#1f1a17] transition-colors hover:bg-[#f3ebe1] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-[#d8c8b7] px-3 py-2 text-sm font-medium text-[#1f1a17] transition-colors hover:bg-[#f3ebe1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Previous
                     </button>
@@ -277,7 +273,7 @@ export function UserDashboard() {
                       type="button"
                       onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
                       disabled={page === totalPages || isLoading}
-                      className="rounded-lg bg-[#2f251f] px-4 py-2 text-sm font-medium text-[#fffaf4] transition-colors hover:bg-[#1f1a17] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg bg-[#2f251f] px-3 py-2 text-sm font-medium text-[#fffaf4] transition-colors hover:bg-[#1f1a17] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Next
                     </button>

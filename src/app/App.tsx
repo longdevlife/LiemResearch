@@ -8,7 +8,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { UserDashboard } from './pages/UserDashboard';
 import { MyRequestsPage } from './pages/MyRequestsPage';
 import { UserRankingPage } from './pages/UserRankingPage';
-import { UserProfilePage } from './pages/UserProfilePage';
+import { UserPublicProfilePage } from './pages/UserPublicProfilePage';
+import { UserProfileSettingsPage } from './pages/UserProfileSettingsPage';
 import { RequestPaperPage } from './pages/RequestPaperPage';
 import { AdminBrowseDashboard } from './pages/AdminBrowseDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -118,7 +119,10 @@ export default function App() {
           <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
           <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
           <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute role="user"><UserProfilePage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute role="user"><UserPublicProfilePage /></ProtectedRoute>} />
+          <Route path="/profile/settings" element={<Navigate to="/settings/profile" replace />} />
+          <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
+          <Route path="/settings/:section" element={<ProtectedRoute role="user"><UserProfileSettingsPage /></ProtectedRoute>} />
           <Route path="/request-paper" element={<ProtectedRoute role="user"><RequestPaperPage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminBrowseDashboard /></ProtectedRoute>} />
           <Route path="/admin/stats" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />

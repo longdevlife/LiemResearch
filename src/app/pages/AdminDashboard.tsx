@@ -5,7 +5,8 @@ import { AppHeader } from '../components/AppHeader';
 import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
-import { CheckCircle2, FileText, Download, Clock, Users } from 'lucide-react';
+import { SuccessToast } from '../components/SuccessToast';
+import { FileText, Download, Clock, Users } from 'lucide-react';
 import { apiRequest, AuthUser } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { PublicPaper } from '../lib/papers';
@@ -104,13 +105,13 @@ export function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-workspace bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-surface-workspace bg-fixed">
       <Sidebar role="admin" />
 
-      <div className="flex-1 p-8">
+      <div className="min-w-0 flex-1 p-5">
         <AppHeader role="admin" />
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-foreground mb-2">Statistics</h1>
             <p className="text-muted-foreground">Overview of research paper requests and system statistics</p>
           </div>
@@ -122,31 +123,20 @@ export function AdminDashboard() {
           )}
 
           {message && (
-            <div className="fixed left-1/2 top-6 z-[80] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-[0_20px_60px_rgba(16,185,129,0.18)] backdrop-blur">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                  <CheckCircle2 size={22} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-600">Success</p>
-                  <p className="text-sm font-medium text-foreground">{message}</p>
-                </div>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" />
-              </div>
-            </div>
+            <SuccessToast message={message} onDismiss={() => setMessage('')} />
           )}
 
           {isLoading ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <LoadingSkeleton variant="stats" />
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <LoadingSkeleton rows={5} />
                 <LoadingSkeleton rows={3} />
               </div>
             </div>
           ) : (
             <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatsCard
               title="Total Requests"
               value={totalRequests}
@@ -173,9 +163,9 @@ export function AdminDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg border border-border shadow-sm p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-foreground">Recent Pending Requests</h3>
                 <button
                   type="button"
@@ -205,7 +195,7 @@ export function AdminDashboard() {
                 ))}
 
                 {!isLoading && recentPendingRequests.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
                     <p className="text-foreground">No pending requests.</p>
                     <p className="mt-1 text-sm text-muted-foreground">New requests that need review will appear here.</p>
                   </div>
@@ -213,9 +203,9 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border border-border shadow-sm p-6">
-              <h3 className="text-foreground mb-4">Request Status Distribution</h3>
-              <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-4">
+              <h3 className="text-foreground mb-3">Request Status Distribution</h3>
+              <div className="space-y-3">
                 {distribution.map((item) => {
                   const percent = getPercent(item.count);
 

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
@@ -12,7 +12,9 @@ type RequestPaperPageProps = {
 
 export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isAdmin = role === 'admin';
+  const isContribution = !isAdmin && searchParams.get('mode') === 'contribute';
   const dashboardPath = isAdmin ? '/admin' : '/dashboard';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
@@ -86,6 +88,11 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
     setError('');
     setMessage('');
 
+    if (isContribution && !selectedFile) {
+      setError('Please choose a PDF file before submitting your contribution.');
+      return;
+    }
+
     const validationError = validatePaperRequest(formData);
     if (validationError) {
       setError(validationError);
@@ -121,7 +128,13 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
         body: formDataPayload,
       });
 
-      setMessage(isAdmin ? 'Paper posted successfully.' : 'Paper request submitted successfully.');
+      setMessage(
+        isAdmin
+          ? 'Paper posted successfully.'
+          : isContribution
+          ? 'PDF contribution submitted successfully.'
+          : 'Paper request submitted successfully.'
+      );
       setSelectedFile(null);
       setTimeout(() => navigate(isAdmin ? '/admin' : '/my-requests'), 600);
     } catch (err) {
@@ -141,13 +154,14 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
     !formData.keywords.trim() ||
     !formData.year ||
     formData.relatedSemesters.length === 0 ||
+    (isContribution && !selectedFile) ||
     (!formData.applicationDomain.trim() || (formData.applicationDomain === 'Other' && !formData.applicationDomainOther.trim()));
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-request bg-fixed">
+    <div className="flex min-h-screen flex-col md:flex-row bg-surface-request bg-fixed">
       <Sidebar role={role} />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <AppHeader role={role} />
         <div className="p-8">
           <div className="max-w-3xl mx-auto">
@@ -160,9 +174,15 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
           </button>
 
           <div className="mb-8">
-            <h1 className="text-foreground mb-2">{isAdmin ? 'Post Research Paper' : 'Request Research Paper'}</h1>
+            <h1 className="text-foreground mb-2">
+              {isAdmin ? 'Post Research Paper' : isContribution ? 'Contribute a Research PDF' : 'Request Research Paper'}
+            </h1>
             <p className="text-muted-foreground">
-              {isAdmin ? 'Publish a paper directly to the research library.' : 'Fill in the details of the paper you need'}
+              {isAdmin
+                ? 'Publish a paper directly to the research library.'
+                : isContribution
+                ? 'Share a PDF with the community and provide the paper details for review.'
+                : 'Fill in the details of the paper you need.'}
             </p>
           </div>
 
@@ -387,7 +407,9 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
               
 
               <div>
-                <label className="block text-foreground mb-2">PDF File</label>
+                <label className="block text-foreground mb-2">
+                  PDF File {isContribution && <span className="text-red-600">*</span>}
+                </label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -408,7 +430,7 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
                   </span>
                 </div>
                 <p className="text-muted-foreground mt-2">
-                  Optional. Upload a PDF now if you already have one. Only PDF files up to 50MB are accepted.
+                  {isContribution ? 'Required for contributions.' : 'Optional. Upload a PDF now if you already have one.'} Only PDF files up to 50MB are accepted.
                 </p>
                 {selectedFile && <p className="text-foreground mt-2">Selected file: {selectedFile.name}</p>}
               </div>
@@ -419,7 +441,7 @@ export function RequestPaperPage({ role = 'user' }: RequestPaperPageProps) {
                   disabled={isSubmitting || isFormInvalid}
                   className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Submitting...' : isAdmin ? 'Post Paper' : 'Submit Request'}
+                  {isSubmitting ? 'Submitting...' : isAdmin ? 'Post Paper' : isContribution ? 'Submit Contribution' : 'Submit Request'}
                 </button>
                 <button
                   type="button"

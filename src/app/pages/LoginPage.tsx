@@ -6,7 +6,7 @@ import { useToast } from '../components/ToastProvider';
 
 export function LoginPage() {
   const { showToast } = useToast();
-  const logo = new URL('../../imports/Gemini_Generated_Image_s2fnqas2fnqas2fn.png', import.meta.url).href;
+  const logo = new URL('../../imports/liemresearch-logo.png', import.meta.url).href;
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  // Kiểm tra nếu đã đăng nhập, tự động chuyển hướng
+  // Redirect users who already have an active session.
   useEffect(() => {
     const token = getToken();
     const user = getStoredUser();
@@ -84,7 +84,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-surface-feed bg-fixed text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3.5 lg:px-6">
+        <div className="mx-auto flex max-w-7xl items-center px-4 py-3 sm:px-5 lg:px-6">
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -94,36 +94,19 @@ export function LoginPage() {
             <span className="text-base font-semibold tracking-tight text-foreground lg:text-lg">LiemResearch</span>
           </button>
 
-          
-
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              Create account
-            </button>
-          </div>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-7xl justify-center px-5 py-12 lg:px-6">
-        <div className="w-full max-w-xl">
-          <div className="mb-8 text-center">
-            <img src={logo} alt="LiemResearch" className="mx-auto mb-6 h-20 w-auto" />
-            <h1 className="text-foreground mb-2 text-2xl md:text-3xl font-semibold whitespace-nowrap">Login to LiemResearch</h1>
-            <p className="text-muted-foreground">Read papers, request research, and track your contributions.</p>
+      <main className="mx-auto flex max-w-7xl justify-center px-4 py-10 sm:px-5 lg:px-6">
+        <div className="w-full max-w-lg">
+          <div className="mb-6 text-center">
+            <img src={logo} alt="LiemResearch" className="mx-auto mb-4 h-14 w-auto" />
+            <h1 className="mb-2 text-2xl font-semibold text-foreground md:text-3xl">Welcome back</h1>
+            <p className="text-sm leading-6 text-muted-foreground">Sign in to continue to the LiemResearch community.</p>
           </div>
 
-          <div className="rounded-[2rem] border border-border/80 bg-white/75 p-8 shadow-[0_20px_60px_rgba(31,29,26,0.08)] backdrop-blur">
-            <form onSubmit={handleLogin} className="space-y-6">
+          <div className="rounded-2xl border border-border/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
+            <form onSubmit={handleLogin} className="space-y-5">
               <div>
                 <label className="block text-foreground mb-2">Email</label>
                 <div className="relative">
@@ -170,20 +153,20 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full rounded-full bg-primary py-3 text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-muted-foreground">
+            <div className="mt-6 border-t border-border/70 pt-5 text-center">
+              <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
                 <button
                   onClick={() => navigate('/register')}
-                  className="text-primary hover:underline"
+                  className="font-semibold text-primary hover:underline"
                 >
-                  Register here
+                  Create account
                 </button>
               </p>
             </div>
