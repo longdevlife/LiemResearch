@@ -1,31 +1,58 @@
+import { useNavigate } from 'react-router';
+
 export function Footer() {
   const logo = new URL('../../imports/liemresearch-logo.png', import.meta.url).href;
+  const navigate = useNavigate();
 
   return (
-    <footer className="mt-6 bg-transparent text-muted-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-5">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+    <footer className="bg-[#1a1614] text-white">
+      <div className="mx-auto max-w-7xl px-5 py-12 md:px-6 md:py-14 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-[280px_1fr]">
           <div>
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="LiemResearch" className="h-8 w-auto" />
-              <p className="text-sm font-semibold text-foreground">LiemResearch</p>
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-3 w-3 items-center justify-center">
+                <span className="absolute inline-block h-3 w-3 rounded-full bg-[#b5aea6]" />
+              </div>
+              <span className="text-sm font-bold tracking-wide text-white">LiemResearch</span>
             </div>
-            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-              Dự án phi lợi nhuận vì mục tiêu bình đẳng hóa quyền truy cập tri thức khoa học tại Việt Nam.
+            <p className="mt-4 max-w-[220px] text-xs leading-6 text-[#8f8780]">
+              A non-profit project to democratize access to scientific knowledge in Vietnam.
             </p>
           </div>
 
-          <div className="flex items-start justify-end">
-            <nav className="flex gap-6 text-sm uppercase tracking-[0.18em]">
-              <a href="/" className="text-muted-foreground hover:text-foreground">Khám phá</a>
-              <a href="/request-paper" className="text-muted-foreground hover:text-foreground">Request</a>
-              <a href="/rankings" className="text-muted-foreground hover:text-foreground">Ranking</a>
-            </nav>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#5a544f]">Explore</p>
+              <nav className="mt-4 space-y-3">
+                <a href="/" className="block text-sm text-[#8f8780] transition-colors hover:text-white">Papers</a>
+                <a href="/request-paper" className="block text-sm text-[#8f8780] transition-colors hover:text-white">Requests</a>
+                <a href="/rankings" className="block text-sm text-[#8f8780] transition-colors hover:text-white">Rankings</a>
+              </nav>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#5a544f]">Contribute</p>
+              <nav className="mt-4 space-y-3">
+                <a href="/request-paper?mode=contribute" className="block text-sm text-[#8f8780] transition-colors hover:text-white">Upload PDF</a>
+                <button type="button" onClick={() => navigate('/login')} className="block text-left text-sm text-[#8f8780] transition-colors hover:text-white">Sign in</button>
+                <button type="button" onClick={() => navigate('/register')} className="block text-left text-sm text-[#8f8780] transition-colors hover:text-white">Profile</button>
+              </nav>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#5a544f]">Contact</p>
+              <nav className="mt-4 space-y-3">
+                <p className="text-sm text-[#8f8780]">Hanoi · Vietnam</p>
+                <p className="text-sm text-[#8f8780]">Open Science Initiative</p>
+                <p className="text-sm text-[#8f8780]">MMXXVI</p>
+              </nav>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 border-t border-border/60 pt-5">
-          <p className="text-xs">© 2026 LiemResearch Community · Designed for open science</p>
+        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#5a544f] sm:flex-row sm:items-center">
+          <span>© 2026 LiemResearch Community</span>
+          <span>Designed for open science · Made with ♥ in Vietnam</span>
         </div>
       </div>
     </footer>

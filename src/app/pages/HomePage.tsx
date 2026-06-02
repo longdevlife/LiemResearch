@@ -5,6 +5,7 @@ import { apiRequest, getStoredUser } from '../lib/api';
 import { PublicPaper } from '../lib/papers';
 import { PaperCard } from '../components/PaperCard';
 import { Footer } from '../components/Footer';
+import { HomeLandingSections } from '../components/HomeLandingSections';
 
 type SortOption = 'newest' | 'rating' | 'downloads';
 
@@ -456,6 +457,8 @@ export function HomePage() {
             </aside>
           </div>
         </section>
+
+        <HomeLandingSections />
       </main>
       <Footer />
     </div>

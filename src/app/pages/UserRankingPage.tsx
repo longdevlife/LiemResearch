@@ -165,7 +165,7 @@ export function UserRankingPage() {
                 <button
                   type="button"
                   onClick={() => setShowRankInfo((s) => !s)}
-                  aria-label="Thông tin các cấp rank"
+                  aria-label="Rank level information"
                   className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d8c8b7] bg-[#fffaf4]/90 text-[#6f5438] shadow-sm transition-colors hover:bg-[#f6eadf]"
                 >
                   <HelpCircle size={18} />
@@ -182,13 +182,13 @@ export function UserRankingPage() {
 
                 <div className="relative z-10 w-full max-w-3xl rounded-lg border border-[#dfd4c7] bg-[#fffaf4] p-6 shadow-2xl">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-[#1f1a17]">Cấp bậc (Levels)</h2>
+                    <h2 className="text-lg font-semibold text-[#1f1a17]">Rank levels</h2>
                     <button
                       type="button"
                       onClick={() => setShowRankInfo(false)}
                       className="rounded px-2 py-1 text-sm text-[#7d6d60] hover:bg-[#f2e7dc]"
                     >
-                      Đóng
+                      Close
                     </button>
                   </div>
 
@@ -215,7 +215,9 @@ export function UserRankingPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-sm text-[#7d6d60]">Người dùng phải thỏa cả hai điều kiện điểm và số bài để đạt cấp tương ứng.</p>
+                  <p className="mt-4 text-sm text-[#7d6d60]">
+                    Users must meet both the points and paper requirements to reach each level.
+                  </p>
                 </div>
               </div>
             )}
