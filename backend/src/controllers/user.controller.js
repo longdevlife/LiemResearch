@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import { Paper } from '../models/Paper.js';
 import { User } from '../models/User.js';
+import { deleteUserRelatedData } from '../utils/paperCleanup.js';
+import { syncUserPoints } from '../utils/points.js';
 
 function isInvalidUserId(id) {
   return !mongoose.Types.ObjectId.isValid(id);
@@ -126,9 +127,9 @@ export async function deleteUser(req, res) {
 
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  await Paper.deleteMany({ requestedBy: user._id });
-  await Paper.updateMany({ uploadedBy: user._id }, { $unset: { uploadedBy: '', uploadedAt: '' } });
+  const affectedUserIds = await deleteUserRelatedData(user._id);
   await User.findByIdAndDelete(user._id);
+  await Promise.all(affectedUserIds.map((userId) => syncUserPoints(userId)));
 
   res.json({ message: 'User deleted successfully', userId: user._id });
 }

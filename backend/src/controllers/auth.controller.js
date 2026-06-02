@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
-import { Paper } from '../models/Paper.js';
 import { signToken } from '../utils/token.js';
+import { deleteUserRelatedData } from '../utils/paperCleanup.js';
+import { syncUserPoints } from '../utils/points.js';
 // Student ID validation removed; field is no longer used.
 
 function isPresent(value) {
@@ -101,7 +102,7 @@ export async function login(req, res) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: String(email).trim().toLowerCase() });
   if (!user || !(await user.comparePassword(password))) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
@@ -210,10 +211,9 @@ export async function deleteMe(req, res) {
     return res.status(401).json({ message: 'Invalid password' });
   }
 
-  // Papers require requestedBy, so delete the user's own requests as part of account deletion.
-  await Paper.deleteMany({ requestedBy: user._id });
-
+  const affectedUserIds = await deleteUserRelatedData(user._id);
   await User.findByIdAndDelete(user._id);
+  await Promise.all(affectedUserIds.map((userId) => syncUserPoints(userId)));
 
   res.json({ message: 'Account deleted' });
 }

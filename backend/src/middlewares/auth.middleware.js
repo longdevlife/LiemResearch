@@ -18,6 +18,10 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ message: 'Invalid access token' });
     }
 
+    if (user.status === 'banned') {
+      return res.status(403).json({ message: 'Your account has been banned' });
+    }
+
     req.user = user;
     res.setHeader('X-Access-Token', signToken(user));
     next();
@@ -34,7 +38,7 @@ export async function optionalAuth(req, _res, next) {
     if (token) {
       const payload = jwt.verify(token, process.env.JWT_SECRET || 'liemresearch_local_secret');
       const user = await User.findById(payload.id);
-      if (user) req.user = user;
+      if (user && user.status !== 'banned') req.user = user;
     }
   } catch (_error) {
     req.user = undefined;
