@@ -14,7 +14,7 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
   const userMenuItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
     { icon: FileText, label: 'My Requests', path: '/my-requests' },
-    { icon: Trophy, label: 'Rankings', path: '/rankings' },
+    { icon: Trophy, label: 'Rankings', path: '/dashboard/rankings' },
   ];
 
   const adminMenuItems = [

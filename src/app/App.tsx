@@ -8,6 +8,8 @@ import { ToastProvider } from './components/ToastProvider';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const ExplorePage = lazy(() => import('./pages/ExplorePage').then((module) => ({ default: module.ExplorePage })));
+const PublicRankingsPage = lazy(() => import('./pages/PublicRankingsPage').then((module) => ({ default: module.PublicRankingsPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then((module) => ({ default: module.RegisterPage })));
 const UserDashboard = lazy(() => import('./pages/UserDashboard').then((module) => ({ default: module.UserDashboard })));
 const MyRequestsPage = lazy(() => import('./pages/MyRequestsPage').then((module) => ({ default: module.MyRequestsPage })));
@@ -23,7 +25,7 @@ const UserManagementPage = lazy(() => import('./pages/UserManagementPage').then(
 const PaperDetailPage = lazy(() => import('./pages/PaperDetailPage').then((module) => ({ default: module.PaperDetailPage })));
 
 const LAST_PATH_KEY = 'last-pathname';
-const PUBLIC_PATHS = new Set(['/', '/login', '/register']);
+const PUBLIC_PATHS = new Set(['/', '/explore', '/rankings', '/login', '/register']);
 
 function AdminRouteGuard() {
   const location = useLocation();
@@ -117,11 +119,13 @@ export default function App() {
         <Suspense fallback={<LoadingSpinner fullPage label="Loading page..." />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/rankings" element={<PublicRankingsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
             <Route path="/my-requests" element={<ProtectedRoute role="user"><MyRequestsPage /></ProtectedRoute>} />
-            <Route path="/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
+            <Route path="/dashboard/rankings" element={<ProtectedRoute role="user"><UserRankingPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute role="user"><UserPublicProfilePage /></ProtectedRoute>} />
             <Route path="/profile/settings" element={<Navigate to="/settings/profile" replace />} />
             <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
