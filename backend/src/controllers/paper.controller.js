@@ -139,6 +139,20 @@ function normalizeKeywords(keywords) {
   return [];
 }
 
+function escapeRegexLiteral(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeTitleForDuplicateCheck(value) {
+  return String(value).trim().replace(/\s+/g, ' ');
+}
+
+function buildTitleDuplicateRegex(title) {
+  const normalizedTitle = normalizeTitleForDuplicateCheck(title);
+  const flexibleWhitespaceTitle = escapeRegexLiteral(normalizedTitle).replace(/\s+/g, '\\s+');
+  return new RegExp(`^${flexibleWhitespaceTitle}$`, 'i');
+}
+
 function normalizeStringList(value) {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -362,11 +376,13 @@ export async function createPaper(req, res) {
     return res.status(400).json({ message: `Publication year must be between 1900 and ${maxYear}` });
   }
 
-  const duplicate = await Paper.findOne({ $or: [{ doi }, { paperLink }] });
+  const duplicate = await Paper.findOne({
+    $or: [{ title: buildTitleDuplicateRegex(title) }, { doi: String(doi).trim() }, { paperLink: String(paperLink).trim() }],
+  });
   if (duplicate) {
     await removeUploadedFile(req.file);
     return res.status(409).json({
-      message: 'A paper with this DOI or link already exists',
+      message: 'A paper with this title, DOI, or link already exists',
       duplicatePaperId: duplicate._id,
     });
   }
@@ -374,7 +390,7 @@ export async function createPaper(req, res) {
   const uploadedPdfPath = await storeUploadedPdf(req.file);
 
   const paperData = {
-    title: String(title).trim(),
+    title: normalizeTitleForDuplicateCheck(title),
     doi: String(doi).trim(),
     paperLink: String(paperLink).trim(),
     abstract: String(abstract).trim(),
@@ -614,6 +630,18 @@ export async function updatePaper(req, res) {
     updates.authors = normalizeStringList(updates.authors);
   }
 
+  if (updates.title !== undefined) {
+    updates.title = normalizeTitleForDuplicateCheck(updates.title);
+  }
+
+  if (updates.doi !== undefined) {
+    updates.doi = String(updates.doi).trim();
+  }
+
+  if (updates.paperLink !== undefined) {
+    updates.paperLink = String(updates.paperLink).trim();
+  }
+
   if (updates.publishedYear !== undefined) {
     const publishedYear = Number(updates.publishedYear);
     const maxYear = new Date().getFullYear() + 1;
@@ -638,11 +666,12 @@ export async function updatePaper(req, res) {
     updates.status = normalizePaperUpdateStatus(updates.status, existingPaper);
   }
 
-  if (updates.doi || updates.paperLink) {
+  if (updates.title || updates.doi || updates.paperLink) {
     const duplicateFilters = [];
 
-    if (updates.doi) duplicateFilters.push({ doi: updates.doi });
-    if (updates.paperLink) duplicateFilters.push({ paperLink: updates.paperLink });
+    if (updates.title) duplicateFilters.push({ title: buildTitleDuplicateRegex(updates.title) });
+    if (updates.doi) duplicateFilters.push({ doi: String(updates.doi).trim() });
+    if (updates.paperLink) duplicateFilters.push({ paperLink: String(updates.paperLink).trim() });
 
     const duplicate = await Paper.findOne({
       _id: { $ne: req.params.id },
@@ -651,7 +680,7 @@ export async function updatePaper(req, res) {
 
     if (duplicate) {
       return res.status(409).json({
-        message: 'A paper with this DOI or link already exists',
+        message: 'A paper with this title, DOI, or link already exists',
         duplicatePaperId: duplicate._id,
       });
     }
