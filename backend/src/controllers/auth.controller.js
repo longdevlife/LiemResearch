@@ -4,6 +4,7 @@ import { signToken } from '../utils/token.js';
 import { deleteUserRelatedData } from '../utils/paperCleanup.js';
 import { syncUserPoints } from '../utils/points.js';
 import { normalizeText, validateFullName, validateUniversity } from '../utils/validation.js';
+import { validatePasswordStrength } from '../utils/passwordStrength.js';
 // Student ID validation removed; field is no longer used.
 
 function isPresent(value) {
@@ -35,8 +36,9 @@ export async function register(req, res) {
     return res.status(400).json({ message: 'Please enter a valid email address' });
   }
 
-  if (String(password).length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  const passwordStrengthError = validatePasswordStrength(password);
+  if (passwordStrengthError) {
+    return res.status(400).json({ message: passwordStrengthError });
   }
 
   if (password !== confirmPassword) {
@@ -131,8 +133,9 @@ export async function changePassword(req, res) {
     return res.status(400).json({ message: 'currentPassword and newPassword are required' });
   }
 
-  if (String(newPassword).length < 8) {
-    return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  const passwordStrengthError = validatePasswordStrength(newPassword, 'New password');
+  if (passwordStrengthError) {
+    return res.status(400).json({ message: passwordStrengthError });
   }
 
   if (isPresent(confirmPassword) && newPassword !== confirmPassword) {

@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router';
 import { Building2, Lock, Mail, User } from 'lucide-react';
 import { apiRequest, AuthUser, getStoredUser, getToken } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
+import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist';
 import { UNIVERSITY_LIST_VN } from '../lib/universities';
 import { normalizeText, validateFullName } from '../lib/validation';
+import { getPasswordStrengthError } from '../lib/passwordStrength';
+import { translateAuthMessage } from '../lib/authMessages';
 
 export function RegisterPage() {
   const logo = new URL('../../imports/liemresearch-logo.png', import.meta.url).href;
@@ -58,7 +61,7 @@ export function RegisterPage() {
 
     const fullNameError = validateFullName(formData.fullName);
     if (fullNameError) {
-      setError(fullNameError);
+      setError(translateAuthMessage(fullNameError));
       return;
     }
 
@@ -70,17 +73,18 @@ export function RegisterPage() {
 
     // studentId removed from registration
     if (!isValidEmail(formData.email)) {
-      setError('Please enter a valid email address.');
+      setError('Vui lòng nhập email hợp lệ.');
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    const passwordError = getPasswordStrengthError(formData.password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Mật khẩu xác nhận không khớp.');
       return;
     }
 
@@ -92,11 +96,11 @@ export function RegisterPage() {
         body: JSON.stringify(formData),
       });
 
-      showToast('Account created successfully. Please login.', 'success');
+      showToast('Tạo tài khoản thành công. Vui lòng đăng nhập.', 'success');
 
       navigate('/login', { state: { registered: true, email: formData.email } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Register failed');
+      setError(translateAuthMessage(err instanceof Error ? err.message : 'Đăng ký thất bại.'));
     } finally {
       setIsLoading(false);
     }
@@ -122,23 +126,23 @@ export function RegisterPage() {
         <section className="w-full max-w-lg">
           <div className="mb-6 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-4 h-14 w-auto" />
-            <h1 className="mb-2 text-2xl font-semibold text-foreground md:text-3xl">Join LiemResearch</h1>
-            <p className="text-sm leading-6 text-muted-foreground">Create an account to request papers, share PDFs, and track your contributions.</p>
+            <h1 className="mb-2 text-2xl font-semibold text-foreground md:text-3xl">Tham gia LiemResearch</h1>
+            <p className="text-sm leading-6 text-muted-foreground">Tạo tài khoản để yêu cầu bài báo, chia sẻ PDF và theo dõi đóng góp của bạn.</p>
           </div>
 
           <div className="rounded-2xl border border-border/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <TextInput
-                label="Full Name"
+                label="Họ và tên"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
                 icon={User}
-                placeholder="Nguyen Van A"
+                placeholder="Nguyễn Văn A"
                 autoComplete="name"
               />
               <UniversitySearchInput
-                label="University"
+                label="Trường đại học"
                 value={formData.university}
                 onChange={(value) => {
                   setFormData({ ...formData, university: value });
@@ -153,7 +157,7 @@ export function RegisterPage() {
                 isOpen={isUniversityOpen}
                 suggestions={filteredUniversities}
                 icon={Building2}
-                placeholder="Search and select your university"
+                placeholder="Tìm và chọn trường đại học"
               />
               <TextInput
                 label="Email"
@@ -166,23 +170,24 @@ export function RegisterPage() {
                 autoComplete="email"
               />
               <TextInput
-                label="Password"
+                label="Mật khẩu"
                 name="password"
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
                 icon={Lock}
-                placeholder="At least 8 characters"
+                placeholder="Ít nhất 8 ký tự"
                 autoComplete="new-password"
               />
+              <PasswordStrengthChecklist password={formData.password} />
               <TextInput
-                label="Confirm Password"
+                label="Xác nhận mật khẩu"
                 name="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 icon={Lock}
-                placeholder="Re-enter password"
+                placeholder="Nhập lại mật khẩu"
                 autoComplete="new-password"
               />
 
@@ -197,18 +202,18 @@ export function RegisterPage() {
                 disabled={isLoading}
                 className="w-full rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isLoading ? 'Creating account...' : 'Create account'}
+                {isLoading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
               </button>
             </form>
 
             <div className="mt-6 border-t border-border/70 pt-5 text-center">
               <p className="text-sm text-muted-foreground">
-                Already have an account?{' '}
+                Đã có tài khoản?{' '}
                 <button
                   onClick={() => navigate('/login')}
                   className="font-semibold text-primary hover:underline"
                 >
-                  Sign in
+                  Đăng nhập
                 </button>
               </p>
             </div>
@@ -322,7 +327,7 @@ function UniversitySearchInput({
 function validateUniversity(value: string) {
   const university = normalizeText(value);
   if (!university) {
-    return 'Please select your university.';
+    return 'Vui lòng chọn trường đại học.';
   }
 
   const isMatch = UNIVERSITY_LIST_VN.some(
@@ -330,7 +335,7 @@ function validateUniversity(value: string) {
   );
 
   if (!isMatch) {
-    return 'Please choose a university from the list.';
+    return 'Vui lòng chọn trường đại học trong danh sách.';
   }
 
   return '';

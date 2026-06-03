@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { apiRequest, AuthUser, saveAuth, getStoredUser, getToken } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
+import { translateAuthMessage } from '../lib/authMessages';
 
 export function LoginPage() {
   const { showToast } = useToast();
@@ -27,7 +28,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (location.state?.registered) {
-      showToast('Account created successfully. Please login.', 'success');
+      showToast('Tạo tài khoản thành công. Vui lòng đăng nhập.', 'success');
       if (location.state.email) setEmail(location.state.email as string);
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -37,17 +38,17 @@ export function LoginPage() {
     e.preventDefault();
 
     if (!email.trim()) {
-      setEmailError('Email is required.');
+      setEmailError('Vui lòng nhập email.');
       return;
     }
 
     if (!isValidEmail(email)) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError('Vui lòng nhập email hợp lệ.');
       return;
     }
 
     if (!password.trim()) {
-      showToast('Password is required.', 'error');
+      showToast('Vui lòng nhập mật khẩu.', 'error');
       return;
     }
 
@@ -66,7 +67,7 @@ export function LoginPage() {
         replace: true,
       });
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Login failed', 'error');
+      showToast(translateAuthMessage(err instanceof Error ? err.message : 'Đăng nhập thất bại.'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +76,7 @@ export function LoginPage() {
   const handleEmailChange = (value: string) => {
     setEmail(value);
     if (value.trim() && !isValidEmail(value)) {
-      setEmailError('Invalid email format');
+      setEmailError('Email không đúng định dạng.');
     } else {
       setEmailError('');
     }
@@ -101,8 +102,8 @@ export function LoginPage() {
         <div className="w-full max-w-lg">
           <div className="mb-6 text-center">
             <img src={logo} alt="LiemResearch" className="mx-auto mb-4 h-14 w-auto" />
-            <h1 className="mb-2 text-2xl font-semibold text-foreground md:text-3xl">Welcome back</h1>
-            <p className="text-sm leading-6 text-muted-foreground">Sign in to continue to the LiemResearch community.</p>
+            <h1 className="mb-2 text-2xl font-semibold text-foreground md:text-3xl">Chào mừng trở lại</h1>
+            <p className="text-sm leading-6 text-muted-foreground">Đăng nhập để tiếp tục sử dụng LiemResearch.</p>
           </div>
 
           <div className="rounded-2xl border border-border/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
@@ -128,7 +129,7 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-foreground mb-2">Password</label>
+                <label className="block text-foreground mb-2">Mật khẩu</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                   <input
@@ -136,14 +137,14 @@ export function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full rounded-lg border border-border bg-[color:var(--input-background)] py-3 pl-10 pr-12 focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Enter your password"
+                    placeholder="Nhập mật khẩu"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -155,18 +156,18 @@ export function LoginPage() {
                 disabled={isLoading}
                 className="w-full rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isLoading ? 'Logging in...' : 'Login'}
+                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </button>
             </form>
 
             <div className="mt-6 border-t border-border/70 pt-5 text-center">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Chưa có tài khoản?{' '}
                 <button
                   onClick={() => navigate('/register')}
                   className="font-semibold text-primary hover:underline"
                 >
-                  Create account
+                  Tạo tài khoản
                 </button>
               </p>
             </div>

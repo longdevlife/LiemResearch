@@ -3,7 +3,9 @@ import { Link, useParams } from 'react-router';
 import { Bell, Lock, Palette, Save, Settings2, User } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist';
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
+import { getPasswordStrengthError } from '../lib/passwordStrength';
 
 type SettingsSection = 'profile' | 'customization' | 'notifications' | 'account';
 
@@ -67,8 +69,14 @@ export function UserProfileSettingsPage() {
     setError('');
     setMessage('');
 
-    if (passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setError('Please check your new password and confirmation.');
+    const passwordError = getPasswordStrengthError(passwordForm.newPassword, 'New password');
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setError('New passwords do not match.');
       return;
     }
 
@@ -161,6 +169,7 @@ export function UserProfileSettingsPage() {
                 </div>
                 <PasswordInput label="Current password" value={passwordForm.currentPassword} onChange={(value) => setPasswordForm({ ...passwordForm, currentPassword: value })} />
                 <PasswordInput label="New password" value={passwordForm.newPassword} onChange={(value) => setPasswordForm({ ...passwordForm, newPassword: value })} />
+                <PasswordStrengthChecklist password={passwordForm.newPassword} />
                 <PasswordInput label="Confirm new password" value={passwordForm.confirmPassword} onChange={(value) => setPasswordForm({ ...passwordForm, confirmPassword: value })} />
                 <button disabled={isSaving} className="rounded-md bg-primary px-5 py-3 font-semibold text-white disabled:opacity-60">
                   {isSaving ? 'Updating...' : 'Update password'}

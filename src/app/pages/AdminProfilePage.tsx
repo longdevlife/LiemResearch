@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { AppHeader } from '../components/AppHeader';
 import { LoadingSkeleton } from '../components/LoadingSpinner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist';
 import {
   Building2,
   Calendar,
@@ -22,6 +23,7 @@ import {
 import { apiRequest, AuthUser, clearAuth, getStoredUser, getToken, saveAuth } from '../lib/api';
 import { formatDisplayDate } from '../lib/date';
 import { validateFullName, validateUniversityName } from '../lib/validation';
+import { getPasswordStrengthError } from '../lib/passwordStrength';
 
 type ProfileForm = {
   fullName: string;
@@ -205,8 +207,9 @@ export function AdminProfilePage() {
       return;
     }
 
-    if (passwordForm.newPassword.length < 8) {
-      setError('New password must be at least 8 characters.');
+    const passwordError = getPasswordStrengthError(passwordForm.newPassword, 'New password');
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -458,6 +461,7 @@ export function AdminProfilePage() {
                           <form onSubmit={handleChangePassword} className="space-y-5">
                             <PasswordInput label="Current Password" value={passwordForm.currentPassword} onChange={(value) => setPasswordForm({ ...passwordForm, currentPassword: value })} placeholder="Enter your current password" autoComplete="current-password" show={showCurrentPassword} onToggle={() => setShowCurrentPassword((value) => !value)} />
                             <PasswordInput label="New Password" value={passwordForm.newPassword} onChange={(value) => setPasswordForm({ ...passwordForm, newPassword: value })} placeholder="At least 8 characters" autoComplete="new-password" show={showNewPassword} onToggle={() => setShowNewPassword((value) => !value)} />
+                            <PasswordStrengthChecklist password={passwordForm.newPassword} />
                             <PasswordInput label="Confirm New Password" value={passwordForm.confirmPassword} onChange={(value) => setPasswordForm({ ...passwordForm, confirmPassword: value })} placeholder="Re-enter new password" autoComplete="new-password" show={showConfirmPassword} onToggle={() => setShowConfirmPassword((value) => !value)} />
 
                             <button
