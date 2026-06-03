@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   downloadPublicPaper,
   getPublicPaperById,
+  getPublicPaperYears,
   recordPaperView,
   searchPublicPapers,
 } from '../controllers/publicPaper.controller.js';
@@ -48,6 +49,8 @@ const router = Router();
  *         description: List of visible papers
  */
 router.get('/', searchPublicPapers);
+
+router.get('/years', getPublicPaperYears);
 
 /**
  * @swagger

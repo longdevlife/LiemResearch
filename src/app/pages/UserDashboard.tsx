@@ -29,6 +29,7 @@ export function UserDashboard() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [papers, setPapers] = useState<PublicPaper[]>([]);
+  const [years, setYears] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -104,9 +105,24 @@ export function UserDashboard() {
     return () => window.clearTimeout(timeoutId);
   }, [page, searchTerm, yearFilter, activeTab]);
 
-  const years = Array.from(new Set(papers.map((paper) => String(paper.publishedYear)))).sort((a, b) =>
-    b.localeCompare(a)
-  );
+  useEffect(() => {
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('search', searchTerm);
+        if (activeTab === 'hasPdf') params.set('hasPdf', 'true');
+
+        const data = await apiRequest<{ years: string[] }>(`/public-papers/years?${params.toString()}`, {
+          auth: true,
+        });
+        setYears(data.years);
+      } catch {
+        setYears([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchTerm, activeTab]);
 
   const handleDownload = async (paper: PublicPaper) => {
     try {

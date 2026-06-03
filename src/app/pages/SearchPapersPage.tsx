@@ -11,6 +11,7 @@ export function SearchPapersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  const [years, setYears] = useState<string[]>([]);
   const [papers, setPapers] = useState<PublicPaper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,9 +46,23 @@ export function SearchPapersPage() {
     return () => window.clearTimeout(timeoutId);
   }, [searchTerm, yearFilter]);
 
-  const years = Array.from(new Set(papers.map((paper) => String(paper.publishedYear)))).sort((a, b) =>
-    b.localeCompare(a)
-  );
+  useEffect(() => {
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('search', searchTerm);
+
+        const data = await apiRequest<{ years: string[] }>(`/public-papers/years?${params.toString()}`, {
+          auth: true,
+        });
+        setYears(data.years);
+      } catch {
+        setYears([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const handleDownload = async (paper: PublicPaper) => {
     try {

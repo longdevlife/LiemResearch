@@ -61,7 +61,7 @@ async function ensurePaperQuality(paper) {
   return paper;
 }
 
-function buildSearchFilter(query) {
+function buildSearchFilter(query, { includeYear = true } = {}) {
   const filter = { status: { $in: visibleStatuses } };
   const andConditions = [];
 
@@ -80,7 +80,7 @@ function buildSearchFilter(query) {
     });
   }
 
-  if (query.year && Number.isInteger(Number(query.year))) {
+  if (includeYear && query.year && Number.isInteger(Number(query.year))) {
     filter.publishedYear = Number(query.year);
   }
 
@@ -158,6 +158,18 @@ export async function searchPublicPapers(req, res) {
       total,
       totalPages: Math.ceil(total / limit),
     },
+  });
+}
+
+export async function getPublicPaperYears(req, res) {
+  const filter = buildSearchFilter(req.query, { includeYear: false });
+  const years = await Paper.distinct('publishedYear', filter);
+
+  res.json({
+    years: years
+      .filter((year) => Number.isInteger(Number(year)))
+      .map((year) => String(year))
+      .sort((a, b) => b.localeCompare(a)),
   });
 }
 
