@@ -1,28 +1,30 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "publication-trend-system",
+  "version": "0.1.0",
   "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "dev": "vite"
+  "description": "AI-assisted Scientific Publication Trend Analysis System",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=11.0.0"
   },
-  "dependencies": {
-    "lucide-react": "0.487.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-router": "7.13.0",
-    "socket.io-client": "^4.8.3"
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=backend",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:mobile": "pnpm --filter mobile exec expo start",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.12",
-    "@vitejs/plugin-react": "4.7.0",
-    "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "6.3.5"
-    }
+    "@types/node": "^22.10.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
   }
 }
