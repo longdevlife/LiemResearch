@@ -1,5 +1,7 @@
 import { ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Paper } from "@trend/shared-types";
+import { usePapers } from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useSearchParams, Link } from "react-router-dom";
 
@@ -8,8 +10,13 @@ export function SearchPage() {
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
   
-  const { data, isLoading } = useSearch({ q, page, pageSize: 20 });
-  const papers = data?.papers ?? [];
+  const hasQuery = q.trim().length > 0;
+  // No query → browse all papers (keyword). With a query → semantic search.
+  const browse = usePapers({ page, pageSize: 20 });
+  const search = useSearch({ q, page, pageSize: 20 });
+  const data = hasQuery ? search.data : browse.data;
+  const isLoading = hasQuery ? search.isLoading : browse.isLoading;
+  const papers = (data?.papers ?? []) as (Paper & { score?: number })[];
   const meta = data?.meta;
 
   const handlePageChange = (newPage: number) => {
