@@ -1,0 +1,30 @@
+{
+  "name": "publication-trend-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-assisted Scientific Publication Trend Analysis System",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=backend",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:mobile": "pnpm --filter mobile exec expo start",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  }
+}
