@@ -35,6 +35,12 @@ const EnvSchema = z.object({
   EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(50),
   EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
 
+  // Phase C — RAG analytical reports.
+  REPORT_TOP_K: z.coerce.number().int().min(1).max(10).default(8),
+  REPORT_MAX_PENDING_PER_USER: z.coerce.number().int().positive().default(2),
+  REPORT_MAX_PER_HOUR: z.coerce.number().int().positive().default(10),
+  REPORT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
+
   // DEV ONLY: when "true", the /api/v1/admin/sync endpoints skip auth so the
   // team can demo before an admin user is seeded. Never enable in production.
   // (Plain z.coerce.boolean() is unsafe — "false" would coerce to true — so we

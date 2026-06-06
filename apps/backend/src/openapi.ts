@@ -19,6 +19,8 @@ export const openapiSpec = {
     { name: "Auth" },
     { name: "Papers" },
     { name: "Search" },
+    { name: "Trends" },
+    { name: "Reports" },
     { name: "Admin" },
   ],
   components: {
@@ -96,6 +98,139 @@ export const openapiSpec = {
           primaryProvider: { type: "string", example: "openalex" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      YearlyCount: {
+        type: "object",
+        properties: {
+          year: { type: "integer", example: 2024 },
+          count: { type: "integer", example: 87 },
+        },
+      },
+      TopItem: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string", example: "Computers and Education" },
+          count: { type: "integer", example: 12 },
+        },
+      },
+      TrendingTopic: {
+        type: "object",
+        properties: {
+          topic: { type: "string", example: "Artificial Intelligence" },
+          totalPapers: { type: "integer", example: 142 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+          growthRatePct: { type: "number", example: 38.5, description: "YoY %, last complete year vs the one before" },
+          cagr3yPct: { type: "number", nullable: true, example: 52.1, description: "Compound annual growth over <=3 complete years" },
+          momentum: { type: "number", example: 21.4, description: "Least-squares slope, papers/year" },
+        },
+      },
+      RisingKeyword: {
+        type: "object",
+        properties: {
+          keyword: { type: "string", example: "retrieval-augmented generation" },
+          totalPapers: { type: "integer", example: 9 },
+          growthRatePct: { type: "number", example: 350 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+        },
+      },
+      TrendsOverview: {
+        type: "object",
+        properties: {
+          yearFrom: { type: "integer", example: 2021 },
+          yearTo: { type: "integer", example: 2026 },
+          lastCompleteYear: {
+            type: "integer",
+            example: 2025,
+            description:
+              "Metrics use years <= this. yearlyBreakdown entries beyond it are the running YTD year — label/style them accordingly on charts.",
+          },
+          totalPapersInWindow: { type: "integer", example: 594 },
+          topics: { type: "array", items: { $ref: "#/components/schemas/TrendingTopic" } },
+          risingKeywords: { type: "array", items: { $ref: "#/components/schemas/RisingKeyword" } },
+          computedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PublicationTrend: {
+        type: "object",
+        properties: {
+          topic: { type: "string", example: "Artificial Intelligence" },
+          totalPapers: { type: "integer", example: 142 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+          lastCompleteYear: {
+            type: "integer",
+            example: 2025,
+            description: "Same semantics as TrendsOverview.lastCompleteYear",
+          },
+          growthRatePct: { type: "number", example: 38.5 },
+          cagr3yPct: { type: "number", nullable: true, example: 52.1 },
+          momentum: { type: "number", example: 21.4 },
+          topJournals: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          topAuthors: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          topKeywords: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          computedAt: { type: "string", format: "date-time" },
+        },
+      },
+      ResearchGap: {
+        type: "object",
+        properties: {
+          title: { type: "string", example: "Thiếu nghiên cứu dài hạn về tác động học tập" },
+          description: { type: "string" },
+          rationale: { type: "string" },
+          supportingPaperIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "RESOLVED paper ids (not citation numbers) — link directly to /papers/{id}",
+          },
+          confidence: { type: "number", example: 0.7 },
+        },
+      },
+      AnalyticalReport: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          userId: { type: "string" },
+          topic: { type: "string", description: "Optional display label — may be absent" },
+          query: { type: "string", example: "Xu hướng dùng LLM trong giáo dục đại học?" },
+          status: { type: "string", enum: ["queued", "generating", "ready", "failed"] },
+          markdown: {
+            type: "string",
+            description:
+              "Report body, present when ready. Inline citations are [n] where n is 1-BASED " +
+              "into groundingPaperIds: render [n] as a link to groundingPaperIds[n-1].",
+          },
+          groundingPaperIds: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Paper ids in RETRIEVAL ORDER — ORDER-SIGNIFICANT. Citation [n] in markdown " +
+              "maps to index n-1. Do NOT sort or dedupe this array.",
+          },
+          researchGaps: { type: "array", items: { $ref: "#/components/schemas/ResearchGap" } },
+          modelVersion: { type: "string", example: "gemini-3.5-flash" },
+          promptVersion: { type: "string", example: "report-v2" },
+          errorMessage: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+          completedAt: { type: "string", format: "date-time" },
+        },
+      },
+      ReportListItem: {
+        type: "object",
+        description:
+          "Light row returned by GET /reports — markdown, researchGaps and groundingPaperIds " +
+          "are STRIPPED to keep the list cheap; fetch GET /reports/{id} for the full report.",
+        properties: {
+          id: { type: "string" },
+          userId: { type: "string" },
+          topic: { type: "string" },
+          query: { type: "string" },
+          status: { type: "string", enum: ["queued", "generating", "ready", "failed"] },
+          modelVersion: { type: "string" },
+          promptVersion: { type: "string" },
+          errorMessage: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+          completedAt: { type: "string", format: "date-time" },
         },
       },
       AuthCredentials: {
@@ -260,6 +395,159 @@ export const openapiSpec = {
               },
             },
           },
+        },
+      },
+    },
+    "/api/v1/trends": {
+      get: {
+        tags: ["Trends"],
+        summary: "Trending topics overview — yearly series + growth metrics + rising keywords",
+        description:
+          "Aggregates research_papers per topic per year, then computes growth metrics " +
+          "over COMPLETE years (the running calendar year is charted but excluded from " +
+          "the math). Formulas: YoY growth %, 3-year CAGR %, momentum (least-squares " +
+          "slope, papers/year). Cached in Redis for 1h.",
+        parameters: [
+          { name: "yearFrom", in: "query", schema: { type: "integer" }, description: "Default: yearTo - 5" },
+          { name: "yearTo", in: "query", schema: { type: "integer" }, description: "Default: current year" },
+          { name: "limit", in: "query", schema: { type: "integer", default: 10, maximum: 50 } },
+          { name: "minPapers", in: "query", schema: { type: "integer", default: 3 }, description: "Hide topics with fewer total papers (noise filter)" },
+          { name: "sortBy", in: "query", schema: { type: "string", enum: ["momentum", "growth", "total"], default: "momentum" } },
+        ],
+        responses: {
+          "200": {
+            description: "Trends overview",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/TrendsOverview" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/trends/{topic}": {
+      get: {
+        tags: ["Trends"],
+        summary: "Deep dive into one topic — series, metrics, top journals/authors/keywords",
+        parameters: [
+          { name: "topic", in: "path", required: true, schema: { type: "string" }, description: "Exact topic name (URL-encoded), e.g. 'Artificial Intelligence'" },
+          { name: "yearFrom", in: "query", schema: { type: "integer" } },
+          { name: "yearTo", in: "query", schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description: "Topic trend detail",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/PublicationTrend" },
+                  },
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Topic has no papers in the window",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } },
+          },
+        },
+      },
+    },
+    "/api/v1/reports": {
+      post: {
+        tags: ["Reports"],
+        summary: "Request an AI analytical report (RAG) — async, returns 202",
+        description:
+          "Creates a queued report and enqueues a BullMQ job. The report worker runs the " +
+          "RAG pipeline: embed the question → vector-search top-K evidence papers → " +
+          "Gemini 2.5 Pro writes a grounded markdown report with [n] citations plus " +
+          "preliminary research gaps. The report mirrors the question's language. " +
+          "Poll GET /reports/{id} (~3s) until status is ready/failed.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          description: "yearFrom must be <= yearTo, otherwise 400 BAD_REQUEST.",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["query"],
+                properties: {
+                  query: { type: "string", minLength: 3, maxLength: 500, example: "Xu hướng dùng LLM trong giáo dục đại học?" },
+                  topic: { type: "string", maxLength: 200, example: "Artificial Intelligence in Healthcare and Education" },
+                  yearFrom: { type: "integer", minimum: 1900, maximum: 2100, example: 2022 },
+                  yearTo: { type: "integer", minimum: 1900, maximum: 2100, example: 2026 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "202": { description: "Queued — returns { id, status: 'queued' }" },
+          "400": { description: "Validation failed (query too short/long, yearFrom > yearTo)" },
+          "401": { description: "Login required" },
+          "429": { description: "Too many pending reports, or hourly creation limit reached" },
+        },
+      },
+      get: {
+        tags: ["Reports"],
+        summary: "List my reports (newest first — light rows, no markdown/gaps)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "pageSize", in: "query", schema: { type: "integer", default: 20, maximum: 50 } },
+        ],
+        responses: {
+          "200": {
+            description: "Paginated list of the caller's reports",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { type: "array", items: { $ref: "#/components/schemas/ReportListItem" } },
+                    meta: { $ref: "#/components/schemas/Meta" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/reports/{id}": {
+      get: {
+        tags: ["Reports"],
+        summary: "Get one report (full content) — owner only",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "The report",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/AnalyticalReport" },
+                  },
+                },
+              },
+            },
+          },
+          "404": { description: "Not found (or not yours)" },
         },
       },
     },
