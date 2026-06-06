@@ -19,6 +19,7 @@ export const openapiSpec = {
     { name: "Auth" },
     { name: "Papers" },
     { name: "Search" },
+    { name: "Trends" },
     { name: "Admin" },
   ],
   components: {
@@ -96,6 +97,78 @@ export const openapiSpec = {
           primaryProvider: { type: "string", example: "openalex" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      YearlyCount: {
+        type: "object",
+        properties: {
+          year: { type: "integer", example: 2024 },
+          count: { type: "integer", example: 87 },
+        },
+      },
+      TopItem: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string", example: "Computers and Education" },
+          count: { type: "integer", example: 12 },
+        },
+      },
+      TrendingTopic: {
+        type: "object",
+        properties: {
+          topic: { type: "string", example: "Artificial Intelligence" },
+          totalPapers: { type: "integer", example: 142 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+          growthRatePct: { type: "number", example: 38.5, description: "YoY %, last complete year vs the one before" },
+          cagr3yPct: { type: "number", nullable: true, example: 52.1, description: "Compound annual growth over <=3 complete years" },
+          momentum: { type: "number", example: 21.4, description: "Least-squares slope, papers/year" },
+        },
+      },
+      RisingKeyword: {
+        type: "object",
+        properties: {
+          keyword: { type: "string", example: "retrieval-augmented generation" },
+          totalPapers: { type: "integer", example: 9 },
+          growthRatePct: { type: "number", example: 350 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+        },
+      },
+      TrendsOverview: {
+        type: "object",
+        properties: {
+          yearFrom: { type: "integer", example: 2021 },
+          yearTo: { type: "integer", example: 2026 },
+          lastCompleteYear: {
+            type: "integer",
+            example: 2025,
+            description:
+              "Metrics use years <= this. yearlyBreakdown entries beyond it are the running YTD year — label/style them accordingly on charts.",
+          },
+          totalPapersInWindow: { type: "integer", example: 594 },
+          topics: { type: "array", items: { $ref: "#/components/schemas/TrendingTopic" } },
+          risingKeywords: { type: "array", items: { $ref: "#/components/schemas/RisingKeyword" } },
+          computedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PublicationTrend: {
+        type: "object",
+        properties: {
+          topic: { type: "string", example: "Artificial Intelligence" },
+          totalPapers: { type: "integer", example: 142 },
+          yearlyBreakdown: { type: "array", items: { $ref: "#/components/schemas/YearlyCount" } },
+          lastCompleteYear: {
+            type: "integer",
+            example: 2025,
+            description: "Same semantics as TrendsOverview.lastCompleteYear",
+          },
+          growthRatePct: { type: "number", example: 38.5 },
+          cagr3yPct: { type: "number", nullable: true, example: 52.1 },
+          momentum: { type: "number", example: 21.4 },
+          topJournals: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          topAuthors: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          topKeywords: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+          computedAt: { type: "string", format: "date-time" },
         },
       },
       AuthCredentials: {
@@ -259,6 +332,71 @@ export const openapiSpec = {
                 },
               },
             },
+          },
+        },
+      },
+    },
+    "/api/v1/trends": {
+      get: {
+        tags: ["Trends"],
+        summary: "Trending topics overview — yearly series + growth metrics + rising keywords",
+        description:
+          "Aggregates research_papers per topic per year, then computes growth metrics " +
+          "over COMPLETE years (the running calendar year is charted but excluded from " +
+          "the math). Formulas: YoY growth %, 3-year CAGR %, momentum (least-squares " +
+          "slope, papers/year). Cached in Redis for 1h.",
+        parameters: [
+          { name: "yearFrom", in: "query", schema: { type: "integer" }, description: "Default: yearTo - 5" },
+          { name: "yearTo", in: "query", schema: { type: "integer" }, description: "Default: current year" },
+          { name: "limit", in: "query", schema: { type: "integer", default: 10, maximum: 50 } },
+          { name: "minPapers", in: "query", schema: { type: "integer", default: 3 }, description: "Hide topics with fewer total papers (noise filter)" },
+          { name: "sortBy", in: "query", schema: { type: "string", enum: ["momentum", "growth", "total"], default: "momentum" } },
+        ],
+        responses: {
+          "200": {
+            description: "Trends overview",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/TrendsOverview" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/trends/{topic}": {
+      get: {
+        tags: ["Trends"],
+        summary: "Deep dive into one topic — series, metrics, top journals/authors/keywords",
+        parameters: [
+          { name: "topic", in: "path", required: true, schema: { type: "string" }, description: "Exact topic name (URL-encoded), e.g. 'Artificial Intelligence'" },
+          { name: "yearFrom", in: "query", schema: { type: "integer" } },
+          { name: "yearTo", in: "query", schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description: "Topic trend detail",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/PublicationTrend" },
+                  },
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Topic has no papers in the window",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } },
           },
         },
       },
