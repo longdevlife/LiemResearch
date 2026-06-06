@@ -24,8 +24,22 @@ export interface GenerateOptions {
   maxOutputTokens?: number;
 }
 
+/**
+ * Thrown when generation stops because the output hit maxOutputTokens.
+ * Retrying with the same budget can never succeed — callers (BullMQ workers)
+ * should treat this as non-retryable and fail fast instead of burning quota.
+ */
+export class LlmTruncationError extends Error {
+  readonly nonRetryable = true;
+  constructor(model: string, maxOutputTokens: number) {
+    super(`Gemini output truncated at MAX_TOKENS (model=${model}, budget=${maxOutputTokens})`);
+    this.name = "LlmTruncationError";
+  }
+}
+
 export async function generateText(prompt: string, opts: GenerateOptions = {}): Promise<string> {
   const model = opts.model ?? env.GEMINI_MODEL_FAST;
+  const maxOutputTokens = opts.maxOutputTokens ?? 1024;
   const t0 = Date.now();
   try {
     const result = await client.models.generateContent({
@@ -34,14 +48,21 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
       config: {
         systemInstruction: opts.system,
         temperature: opts.temperature ?? 0.4,
-        maxOutputTokens: opts.maxOutputTokens ?? 1024,
+        maxOutputTokens,
       },
     });
+    // result.text silently returns the PARTIAL text when the model ran out of
+    // output budget — detect and fail fast rather than hand back broken JSON.
+    const finishReason = String(result.candidates?.[0]?.finishReason ?? "");
+    if (finishReason === "MAX_TOKENS") {
+      logger.error({ model, maxOutputTokens }, "gemini output truncated at MAX_TOKENS");
+      throw new LlmTruncationError(model, maxOutputTokens);
+    }
     const text = result.text ?? "";
     logger.debug({ model, ms: Date.now() - t0, chars: text.length }, "gemini.text");
     return text;
   } catch (err) {
-    logger.error({ err, model }, "gemini.text failed");
+    if (!(err instanceof LlmTruncationError)) logger.error({ err, model }, "gemini.text failed");
     throw err;
   }
 }
