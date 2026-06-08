@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Sparkles, History, Search, ExternalLink, TrendingUp, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
 import { usePapers } from "@/features/papers";
+import { useTrendsOverview } from "@/features/trends";
 import { Link, useNavigate } from "react-router-dom";
 
 const mockVelocityData = [
@@ -17,7 +19,26 @@ export function HomePage() {
   const { data } = useCurrentUser();
   const userName = data?.user?.fullName || data?.user?.email || "Researcher";
   const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
-  const recentPapers = papersData?.items || [];
+  const recentPapers = papersData?.papers || [];
+
+  const { data: trendsData, isLoading: isTrendsLoading } = useTrendsOverview({ limit: 10 });
+
+  // Sum up counts per year from all topics (approximate trend representation)
+  const realVelocityData = useMemo(() => {
+    if (!trendsData?.topics) return [];
+    const counts: Record<number, number> = {};
+    trendsData.topics.forEach((t) => {
+      t.yearlyBreakdown.forEach((yb) => {
+        counts[yb.year] = (counts[yb.year] || 0) + yb.count;
+      });
+    });
+    return Object.entries(counts)
+      .map(([year, val]) => ({
+        name: year,
+        value: val,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [trendsData]);
 
   return (
     <div className="w-full">
@@ -36,8 +57,17 @@ export function HomePage() {
           
           {/* KPI Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard label="PAPERS INDEXED" value="12,450" trend="+12%" />
-            <KpiCard label="TOPICS FOLLOWED" value="18" trend="-- 0" isNeutral />
+            <KpiCard 
+              label="PAPERS INDEXED" 
+              value={isLoading ? "..." : (papersData?.meta?.total?.toLocaleString() || "0")} 
+              trend="+12%" 
+            />
+            <KpiCard 
+              label="TOPICS FOLLOWED" 
+              value={isTrendsLoading ? "..." : (trendsData?.topics?.length?.toString() || "0")} 
+              trend="-- 0" 
+              isNeutral 
+            />
             <KpiCard label="REPORTS GEN." value="42" trend="+5" />
             <KpiCard label="SAVED PAPERS" value="156" trend="+24" />
           </div>
@@ -46,13 +76,33 @@ export function HomePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Trending Topics in Your Feed</h2>
-              <Button variant="link" className="text-blue-600 dark:text-blue-400 text-sm p-0 h-auto">View All</Button>
+              <Button variant="link" className="text-blue-600 dark:text-blue-400 text-sm p-0 h-auto" asChild>
+                <Link to="/trends">View All</Link>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-3">
-              <TrendingChip label="LLM in Education" trend="up" color="blue" />
-              <TrendingChip label="RAG Architectures" trend="up" color="emerald" />
-              <TrendingChip label="Quantum Machine Learning" trend="neutral" color="purple" />
-              <TrendingChip label="Neuromorphic Computing" trend="down" color="slate" />
+              {isTrendsLoading ? (
+                <p className="text-sm text-slate-500">Loading trending topics...</p>
+              ) : trendsData?.topics && trendsData.topics.length > 0 ? (
+                trendsData.topics.slice(0, 4).map((topic, index) => {
+                  const colors = ["blue", "emerald", "purple", "slate"];
+                  const color = colors[index % colors.length];
+                  let trend: "up" | "down" | "neutral" = "neutral";
+                  if (topic.momentum > 0.05) trend = "up";
+                  else if (topic.momentum < -0.05) trend = "down";
+
+                  return (
+                    <TrendingChip
+                      key={topic.topic}
+                      label={topic.topic}
+                      trend={trend}
+                      color={color}
+                    />
+                  );
+                })
+              ) : (
+                <p className="text-sm text-slate-500">No trending topics found.</p>
+              )}
             </div>
           </div>
 
@@ -73,10 +123,10 @@ export function HomePage() {
                   <PaperCard 
                     key={paper.id}
                     id={paper.id}
-                    journal={paper.journal || "Unknown Journal"}
-                    date={new Date(paper.publicationDate).toLocaleDateString()}
+                    journal={paper.journalName || "Unknown Journal"}
+                    date={paper.publicationDate ? new Date(paper.publicationDate).toLocaleDateString() : paper.publicationYear.toString()}
                     title={paper.title}
-                    abstract={paper.abstract || "No abstract available"}
+                    abstract={paper.abstractText || "No abstract available"}
                     authors={paper.authors?.map((a) => a.displayName).join(", ") || "Unknown Authors"}
                     score={paper.dataQualityScore?.toFixed(2) || "N/A"}
                   />
@@ -106,8 +156,8 @@ export function HomePage() {
             <p className="text-blue-100 text-sm mb-6">
               Synthesize current literature trends instantly.
             </p>
-            <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none shadow-none font-semibold backdrop-blur-sm transition-all">
-              Start Generation
+            <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none shadow-none font-semibold backdrop-blur-sm transition-all" asChild>
+              <Link to="/reports">Start Generation</Link>
             </Button>
           </div>
 
@@ -143,7 +193,7 @@ export function HomePage() {
             </h3>
             <div className="h-40 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockVelocityData} barSize={24}>
+                <BarChart data={realVelocityData.length > 0 ? realVelocityData : mockVelocityData} barSize={24}>
                   <Tooltip 
                     cursor={{fill: 'transparent'}}
                     contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}

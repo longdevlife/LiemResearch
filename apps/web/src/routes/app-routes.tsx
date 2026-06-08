@@ -40,6 +40,8 @@ export function AppRoutes() {
           <Route path="/bookmarks" element={<BookmarksPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<Navigate to="/profile" replace />} />
+          <Route path="/settings/:section" element={<ProfilePage />} />
           <Route path="/reports" element={<ReportsListPage />} />
           <Route path="/reports/:id" element={<ReportViewerPage />} />
           <Route path="/projects" element={<ProjectsListPage />} />

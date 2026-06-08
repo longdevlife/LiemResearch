@@ -121,30 +121,45 @@ export function PaperDetailPage() {
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Relevance</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.95</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.relevanceScore.toFixed(2) : "0.95"}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '95%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.relevanceScore : 0.95) * 100}%` }}
+                  ></div>
                 </div>
               </div>
               {/* Metric 2 */}
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Semantic Fit</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.88</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.semanticSimilarityScore.toFixed(2) : "0.88"}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '88%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.semanticSimilarityScore : 0.88) * 100}%` }}
+                  ></div>
                 </div>
               </div>
               {/* Metric 3 */}
               <div>
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Methodology</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.93</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metadata Quality</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.metadataQualityScore.toFixed(2) : paper.dataQualityScore.toFixed(2)}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '93%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.metadataQualityScore : paper.dataQualityScore) * 100}%` }}
+                  ></div>
                 </div>
               </div>
             </div>

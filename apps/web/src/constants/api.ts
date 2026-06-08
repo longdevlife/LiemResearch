@@ -9,6 +9,7 @@ export const API_ROUTES = {
     refresh: "/auth/refresh",
     logout: "/auth/logout",
     me: "/auth/me",
+    changePassword: "/auth/change-password",
   },
   papers: {
     list: "/papers",

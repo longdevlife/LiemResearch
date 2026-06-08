@@ -6,6 +6,8 @@ export {
   useRegister,
   useLogout,
   useCurrentUser,
+  useUpdateProfile,
+  useChangePassword,
 } from "./hooks/use-auth";
 export {
   loginSchema,
