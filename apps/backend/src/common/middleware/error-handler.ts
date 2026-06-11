@@ -35,6 +35,10 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   logger.error({ err }, "unhandled error");
   res.status(500).json({
     success: false,
-    error: { code: "INTERNAL", message: "Internal server error" },
+    error: { 
+      code: "INTERNAL", 
+      message: err instanceof Error ? err.message : "Internal server error",
+      details: err instanceof Error ? err.stack : String(err)
+    },
   });
 }

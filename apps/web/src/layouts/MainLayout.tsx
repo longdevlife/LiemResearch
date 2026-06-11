@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Bookmark } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,12 @@ export function MainLayout() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400" asChild title="Library">
+              <Link to="/bookmarks">
+                <Bookmark className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild title="Notifications">
               <Link to="/notifications">
                 <Bell className="h-5 w-5" />
                 <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border border-white dark:border-[#0f0f11]"></span>
@@ -115,25 +120,35 @@ function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 z-[9999]">
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate("/profile")}>
-          Profile
+        <DropdownMenuItem asChild>
+          <Link to="/profile" className="w-full flex items-center cursor-pointer">
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/bookmarks" className="w-full flex items-center cursor-pointer">
+            Library
+          </Link>
         </DropdownMenuItem>
         {role === "admin" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate("/admin/sync")}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Admin
+            <DropdownMenuItem asChild>
+              <Link to="/admin/sync" className="w-full flex items-center cursor-pointer">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Admin
+              </Link>
             </DropdownMenuItem>
           </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() => {
+          onClick={() => {
             logout.mutate(undefined, {
               onSettled: () => navigate("/login", { replace: true }),
             });
           }}
+          className="cursor-pointer"
         >
           <LogOut className="mr-2 h-4 w-4" />
           Sign out

@@ -1,7 +1,9 @@
+// Trigger backend restart to load new environment variables
 import { env } from "../../config/env.js";
 import { geminiClient } from "../llm/gemini.client.js";
 import { logger } from "../../infrastructure/logger.js";
 import type { EmbeddingProvider } from "./embedding.provider.js";
+import { AppError } from "../../common/exceptions/app-error.js";
 
 /**
  * Gemini embedding provider. Uses `gemini-embedding-2` by default.
@@ -36,6 +38,23 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
       return vec;
     } catch (err) {
+      const errStr = String(err instanceof Error ? err.message : err);
+      const isApiKeyError =
+        errStr.includes("API key") ||
+        errStr.includes("API_KEY") ||
+        errStr.includes("apikey") ||
+        errStr.includes("key expired") ||
+        errStr.includes("expired");
+
+      if (isApiKeyError) {
+        throw new AppError(
+          400,
+          "GEMINI_API_KEY_ERROR",
+          "Gemini API key is expired or invalid. Please check your GEMINI_API_KEY in the backend .env file.",
+          errStr
+        );
+      }
+
       const status = (err as { status?: number }).status;
       if ((status === 429 || status === 503) && attempt <= MAX_RETRIES) {
         const backoff = 3000 * 2 ** (attempt - 1); // 3s, 6s, 12s, 24s

@@ -21,6 +21,7 @@ export function SearchPage() {
   const [journalTypes, setJournalTypes] = useState<string[]>(["article", "proceedings"]);
   const [primaryProvider, setPrimaryProvider] = useState<string>("all");
   const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0.8);
+  const [showFixGuide, setShowFixGuide] = useState<boolean>(false);
 
   const parsedYearFrom = yearFrom ? parseInt(yearFrom, 10) : undefined;
   const parsedYearTo = yearTo ? parseInt(yearTo, 10) : undefined;
@@ -46,6 +47,18 @@ export function SearchPage() {
   const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
   const rawPapers = (data?.papers ?? []) as (Paper & { score?: number })[];
   const meta = data?.meta;
+
+  const errorObj = search.error as any;
+  const axiosErrorData = errorObj?.response?.data?.error;
+  const isApiKeyError = axiosErrorData?.code === "GEMINI_API_KEY_ERROR" || 
+                        (axiosErrorData?.message && (
+                          axiosErrorData.message.includes("API key") || 
+                          axiosErrorData.message.includes("expired")
+                        )) ||
+                        (errorObj?.message && (
+                          errorObj.message.includes("API key") || 
+                          errorObj.message.includes("expired")
+                        ));
 
   const { data: bookmarks } = useBookmarks();
 
@@ -342,7 +355,69 @@ export function SearchPage() {
 
         {/* Results List */}
         <div className="space-y-4">
-          {isLoading ? (
+          {isSemanticSearchActive && search.isError ? (
+            <div className="backdrop-blur-md bg-red-50/70 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-2xl p-6 shadow-md animate-fadeIn">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-xl shrink-0">
+                  <X className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-red-900 dark:text-red-400">
+                    {isApiKeyError ? "Lỗi API Key Gemini (Hết hạn hoặc Không hợp lệ)" : "Tìm kiếm Semantic Thất bại"}
+                  </h3>
+                  <p className="text-sm text-slate-700 dark:text-slate-350 mt-2 leading-relaxed">
+                    {isApiKeyError 
+                      ? "Chế độ tìm kiếm Semantic sử dụng AI Gemini để phân tích ngữ nghĩa câu hỏi của bạn. Tuy nhiên, khóa API (Gemini API Key) hiện tại đã hết hạn hoặc không hợp lệ. Bạn có thể chuyển ngay sang tìm kiếm theo từ khóa thông thường (Keyword Mode) để tìm kiếm mà không cần dùng AI, hoặc cập nhật lại khóa API."
+                      : (axiosErrorData?.message || errorObj?.message || "Đã có lỗi không mong muốn xảy ra trong quá trình gọi API tìm kiếm Semantic.")}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3 mt-4">
+                    <Button 
+                      className="bg-blue-750 hover:bg-blue-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-md cursor-pointer"
+                      onClick={() => {
+                        setSearchMode("keyword");
+                        toast.success("Đã chuyển sang chế độ tìm kiếm Keyword");
+                      }}
+                    >
+                      Chuyển sang Tìm kiếm Từ khóa (Keyword Mode)
+                    </Button>
+                    {isApiKeyError && (
+                      <Button
+                        variant="outline"
+                        className="border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-355 text-xs px-4 py-2 rounded-lg transition-all cursor-pointer"
+                        onClick={() => setShowFixGuide(!showFixGuide)}
+                      >
+                        {showFixGuide ? "Ẩn hướng dẫn" : "Cách cập nhật API Key"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {showFixGuide && isApiKeyError && (
+                    <div className="mt-5 bg-white/60 dark:bg-black/35 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed animate-fadeIn">
+                      <p className="font-bold text-slate-900 dark:text-slate-200 text-sm mb-1">Các bước thay thế API Key mới:</p>
+                      <ol className="list-decimal list-inside space-y-1.5 font-medium">
+                        <li>
+                          Truy cập trang <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 font-bold">Google AI Studio</a> để nhận API Key mới miễn phí.
+                        </li>
+                        <li>
+                          Mở file cấu hình môi trường backend tại đường dẫn:{" "}
+                          <a href="file:///d:/SUMMER-2026/WDP301/LiemResearch/apps/backend/.env" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+                            apps/backend/.env
+                          </a>
+                        </li>
+                        <li>
+                          Tìm dòng <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-red-600 dark:text-red-400 font-semibold">GEMINI_API_KEY=...</code> và thay thế bằng khóa mới của bạn.
+                        </li>
+                        <li>
+                          Lưu file. Backend server chạy trong terminal sẽ tự động tải lại môi trường mới.
+                        </li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isLoading ? (
             <div className="py-8 text-center text-slate-500">Loading papers...</div>
           ) : filteredPapers.length === 0 ? (
             <div className="py-8 text-center text-slate-500">No papers found matching the filters.</div>

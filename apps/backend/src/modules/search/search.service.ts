@@ -31,6 +31,12 @@ export const searchService = {
   async semantic(params: SemanticSearchParams): Promise<SemanticSearchResult> {
     const { q, page, pageSize, yearFrom, yearTo } = params;
 
+    // Diagnostic DB count logs
+    const totalCount = await PaperModel.countDocuments({});
+    const activeCount = await PaperModel.countDocuments({ dataStatus: "active" });
+    const embeddingCount = await PaperModel.countDocuments({ embedding: { $exists: true, $ne: null } });
+    console.log(`[Diagnostic] Total papers: ${totalCount}, Active papers: ${activeCount}, Papers with embedding: ${embeddingCount}`);
+
     const queryVector = await getEmbeddingProvider().embed(q);
 
     const limit = page * pageSize; // fetch enough rows to cover the requested page
