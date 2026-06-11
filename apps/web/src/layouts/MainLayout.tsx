@@ -90,7 +90,7 @@ export function MainLayout() {
       </main>
       <footer className="border-t bg-white dark:bg-[#0f0f11] py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-          <p>© 2024 Publication Trend. All rights reserved.</p>
+          <p>© 2026 Publication Trend. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Privacy Policy</Link>
             <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Terms of Service</Link>

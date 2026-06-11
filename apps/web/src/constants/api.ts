@@ -16,7 +16,7 @@ export const API_ROUTES = {
     detail: (id: string) => `/papers/${id}`,
   },
   search: {
-    semantic: "/search", // GET /search?q= — semantic search (Phase B)
+    semantic: "/search", 
   },
   trends: {
     topic: (topic: string) => `/trends/${encodeURIComponent(topic)}`,
@@ -24,7 +24,7 @@ export const API_ROUTES = {
   reports: {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
-    generate: "/reports/generate",
+    create: "/reports",
   },
   bookmarks: {
     list: "/bookmarks",

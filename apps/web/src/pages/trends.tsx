@@ -1,40 +1,52 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { Download, Sparkles, Users, BookOpen, Search, Calendar, FileText } from "lucide-react";
+import { Download, Sparkles, Users, BookOpen, Search, Calendar, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
-const areaChartData = [
-  { year: "2015", publications: 100 },
-  { year: "2016", publications: 120 },
-  { year: "2017", publications: 150 },
-  { year: "2018", publications: 200 },
-  { year: "2019", publications: 320 },
-  { year: "2020", publications: 450 },
-  { year: "2021", publications: 700 },
-  { year: "2022", publications: 1100 },
-  { year: "2023", publications: 1800 },
-  { year: "2024", publications: 2200 },
-];
-
-const barChartData = [
-  { topic: "Generative AI", count: 1240 },
-  { topic: "Prompt Engineering", count: 850 },
-  { topic: "AI Alignment", count: 620 },
-  { topic: "RAG Systems", count: 480 },
-  { topic: "LLM Evaluation", count: 390 },
-];
-
-const keywordsData = [
-  { keyword: "chain of thought", growth: "+145%", status: "Hot" },
-  { keyword: "fine-tuning", growth: "+88%", status: "Rising" },
-  { keyword: "hallucination", growth: "+76%", status: "Rising" },
-  { keyword: "agentic workflow", growth: "+210%", status: "Hot" },
-  { keyword: "context window", growth: "+54%", status: "Stable" },
-];
+import { useTrendsOverview } from "@/features/trends/hooks/use-trends";
 
 export function TrendsPage() {
   const navigate = useNavigate();
+  const { data, isLoading } = useTrendsOverview();
+
+  const areaChartData = useMemo(() => {
+    if (!data?.topics) return [];
+    const yearlyMap = new Map<number, number>();
+    data.topics.forEach((t) => {
+      t.yearlyBreakdown.forEach((y) => {
+        yearlyMap.set(y.year, (yearlyMap.get(y.year) || 0) + y.count);
+      });
+    });
+    return Array.from(yearlyMap.entries())
+      .map(([year, publications]) => ({ year: String(year), publications }))
+      .sort((a, b) => Number(a.year) - Number(b.year));
+  }, [data]);
+
+  const barChartData = useMemo(() => {
+    if (!data?.topics) return [];
+    return data.topics
+      .map((t) => ({ topic: t.topic, count: t.totalPapers }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [data]);
+
+  const keywordsData = useMemo(() => {
+    if (!data?.risingKeywords) return [];
+    return data.risingKeywords.map((k) => ({
+      keyword: k.keyword,
+      growth: `+${k.growthRatePct}%`,
+      status: k.growthRatePct > 100 ? "Hot" : "Rising",
+    }));
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-96 flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+        <p className="text-slate-500">Loading trends data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -79,21 +91,21 @@ export function TrendsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPICard 
           title="Total papers" 
-          value="1,247" 
-          trend="+14% vs last period" 
+          value={data?.totalPapersInWindow?.toLocaleString() || "0"} 
+          trend={`From ${data?.yearFrom || 2015} to ${data?.yearTo || 2024}`} 
           icon={<FileText className="w-5 h-5 text-blue-600" />} 
         />
         <KPICard 
-          title="Active authors" 
-          value="423" 
-          trend="+8% vs last period" 
-          icon={<Users className="w-5 h-5 text-purple-600" />} 
+          title="Total topics" 
+          value={data?.topics?.length?.toString() || "0"} 
+          trend="Tracked in window" 
+          icon={<BookOpen className="w-5 h-5 text-purple-600" />} 
         />
         <KPICard 
-          title="Top journal" 
-          value="Nature Education" 
-          subtitle="184 publications" 
-          icon={<BookOpen className="w-5 h-5 text-emerald-600" />} 
+          title="Rising keywords" 
+          value={data?.risingKeywords?.length?.toString() || "0"} 
+          subtitle="Emerging trends" 
+          icon={<Sparkles className="w-5 h-5 text-emerald-600" />} 
         />
         <KPICard 
           title="Avg citations" 
@@ -162,8 +174,8 @@ export function TrendsPage() {
                   type="category" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 13, fill: '#475569', fontWeight: 500 }} 
-                  width={140}
+                  tick={{ fontSize: 13, fill: '#475569', fontWeight: 500, fontFamily: 'inherit' }} 
+                  width={220}
                 />
                 <Tooltip 
                   cursor={{ fill: 'transparent' }}
@@ -171,7 +183,12 @@ export function TrendsPage() {
                 />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={24}>
                   {barChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#1e3a8a' : '#60a5fa'} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === 0 ? '#1e3a8a' : '#60a5fa'} 
+                      onClick={() => navigate(`/trends/${encodeURIComponent(entry.topic)}`)}
+                      style={{ cursor: 'pointer' }}
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -198,7 +215,12 @@ export function TrendsPage() {
                 {keywordsData.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 capitalize">
-                      {row.keyword}
+                      <button 
+                        onClick={() => navigate(`/trends/${encodeURIComponent(row.keyword)}`)}
+                        className="hover:text-blue-600 transition-colors text-left"
+                      >
+                        {row.keyword}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-emerald-600">
                       {row.growth}
