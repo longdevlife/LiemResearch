@@ -21,6 +21,7 @@ const navItems = [
   { to: "/trends", label: "Trends" },
   { to: "/reports", label: "Reports" },
   { to: "/projects", label: "Projects" },
+  { to: "/rankings", label: "Rankings" },
 ] as const;
 
 export function MainLayout() {
@@ -29,10 +30,29 @@ export function MainLayout() {
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="text-xl font-bold text-blue-700 dark:text-blue-500 tracking-tight">
+          <div className="flex items-center gap-8">
+            <Link to="/" className="text-xl font-bold text-[#001b69] dark:text-blue-400 tracking-tight shrink-0">
               Publication Trend
             </Link>
+            
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
           </div>
 
           <div className="flex-1 max-w-2xl hidden md:flex items-center mx-4">
