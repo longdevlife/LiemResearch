@@ -1,3 +1,2 @@
-// TODO: implement trends feature
-// Planned files: api/trends.api.ts, hooks/use-trend.ts, components/TrendChart.tsx
-export {};
+export * from "./api/trends.api";
+export * from "./hooks/use-trends";

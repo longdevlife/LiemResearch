@@ -2,10 +2,15 @@ import { useParams } from "react-router-dom";
 import { ExternalLink, Bookmark, Quote, Link2, ChevronRight, UserPlus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePaper } from "@/features/papers";
+import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
+import { toast } from "sonner";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: paper, isLoading } = usePaper(id);
+  const { data: bookmarkStatus } = useBookmarkStatus("paper", id);
+  const createBookmark = useCreateBookmark();
+  const deleteBookmark = useDeleteBookmark();
 
   if (isLoading) {
     return <div className="container py-8 text-center text-slate-500 mt-20">Loading paper details...</div>;
@@ -14,6 +19,36 @@ export function PaperDetailPage() {
   if (!paper) {
     return <div className="container py-8 text-center text-slate-500 mt-20">Paper not found.</div>;
   }
+
+  const isBookmarked = !!bookmarkStatus?.bookmarked;
+  const bookmarkId = bookmarkStatus?.bookmarkId;
+
+  const handleBookmarkToggle = () => {
+    if (isBookmarked && bookmarkId) {
+      deleteBookmark.mutate({ id: bookmarkId, targetKind: "paper", targetId: id! });
+    } else {
+      createBookmark.mutate({ targetKind: "paper", targetId: id! });
+    }
+  };
+
+  const handleCopyCitation = () => {
+    if (!paper) return;
+    const authorString = paper.authors.length > 0
+      ? paper.authors.map(a => a.displayName).join(", ")
+      : "Unknown Authors";
+    const titleString = paper.title.endsWith(".") ? paper.title : `${paper.title}.`;
+    const journalString = paper.journalName ? `${paper.journalName}` : "";
+    const citation = `${authorString} (${paper.publicationYear}). ${titleString}${journalString ? ` ${journalString}.` : ""}`;
+    
+    navigator.clipboard.writeText(citation).then(
+      () => {
+        toast.success("APA Citation copied to clipboard!");
+      },
+      () => {
+        toast.error("Failed to copy citation.");
+      }
+    );
+  };
 
   return (
     <main className="container py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -88,10 +123,24 @@ export function PaperDetailPage() {
                     <FileText className="w-4 h-4" /> Read PDF
                   </Button>
                 )}
-                <Button variant="outline" className="h-10 px-4 gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-300 dark:border-slate-700 rounded-lg">
-                  <Bookmark className="w-4 h-4" /> Save
+                <Button 
+                  variant={isBookmarked ? "default" : "outline"} 
+                  className={`h-10 px-4 gap-2 font-bold rounded-lg ${
+                    isBookmarked 
+                      ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600" 
+                      : "text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                  }`}
+                  onClick={handleBookmarkToggle}
+                  disabled={createBookmark.isPending || deleteBookmark.isPending}
+                >
+                  <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} /> 
+                  {isBookmarked ? "Saved" : "Save"}
                 </Button>
-                <Button variant="outline" className="h-10 px-4 gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-300 dark:border-slate-700 rounded-lg">
+                 <Button 
+                  variant="outline" 
+                  className="h-10 px-4 gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-300 dark:border-slate-700 rounded-lg"
+                  onClick={handleCopyCitation}
+                >
                   <Quote className="w-4 h-4" /> Cite
                 </Button>
               </div>
@@ -121,30 +170,45 @@ export function PaperDetailPage() {
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Relevance</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.95</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.relevanceScore.toFixed(2) : "0.95"}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '95%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.relevanceScore : 0.95) * 100}%` }}
+                  ></div>
                 </div>
               </div>
               {/* Metric 2 */}
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Semantic Fit</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.88</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.semanticSimilarityScore.toFixed(2) : "0.88"}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '88%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.semanticSimilarityScore : 0.88) * 100}%` }}
+                  ></div>
                 </div>
               </div>
               {/* Metric 3 */}
               <div>
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Methodology</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">0.93</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metadata Quality</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                    {paper.aiScore ? paper.aiScore.metadataQualityScore.toFixed(2) : paper.dataQualityScore.toFixed(2)}
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: '93%' }}></div>
+                  <div 
+                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
+                    style={{ width: `${(paper.aiScore ? paper.aiScore.metadataQualityScore : paper.dataQualityScore) * 100}%` }}
+                  ></div>
                 </div>
               </div>
             </div>

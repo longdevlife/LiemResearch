@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { LoginInput, RefreshInput, RegisterInput } from "./dto/auth.schema.js";
+import type { LoginInput, RefreshInput, RegisterInput, UpdateProfileInput, ChangePasswordInput } from "./dto/auth.schema.js";
 import { authService } from "./auth.service.js";
 
 export const authController = {
@@ -27,5 +27,17 @@ export const authController = {
     if (!req.user) return res.status(401).json({ success: false, error: { message: "Unauthorized" } });
     const user = await authService.me(req.user.sub);
     res.json({ success: true, data: { user } });
+  },
+
+  async updateProfile(req: Request<unknown, unknown, UpdateProfileInput>, res: Response) {
+    if (!req.user) return res.status(401).json({ success: false, error: { message: "Unauthorized" } });
+    const user = await authService.updateProfile(req.user.sub, req.body);
+    res.json({ success: true, data: { user } });
+  },
+
+  async changePassword(req: Request<unknown, unknown, ChangePasswordInput>, res: Response) {
+    if (!req.user) return res.status(401).json({ success: false, error: { message: "Unauthorized" } });
+    await authService.changePassword(req.user.sub, req.body);
+    res.json({ success: true, data: { ok: true } });
   },
 };

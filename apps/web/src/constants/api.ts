@@ -9,6 +9,7 @@ export const API_ROUTES = {
     refresh: "/auth/refresh",
     logout: "/auth/logout",
     me: "/auth/me",
+    changePassword: "/auth/change-password",
   },
   papers: {
     list: "/papers",
@@ -24,6 +25,13 @@ export const API_ROUTES = {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
     generate: "/reports/generate",
+  },
+  bookmarks: {
+    list: "/bookmarks",
+    create: "/bookmarks",
+    delete: (id: string) => `/bookmarks/${id}`,
+    check: "/bookmarks/check",
+    updateNote: (id: string) => `/bookmarks/${id}`,
   },
   admin: {
     sync: "/admin/sync",

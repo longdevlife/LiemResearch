@@ -9,3 +9,4 @@ export * from "./journal.js";
 export * from "./search.js";
 export * from "./report.js";
 export * from "./trend.js";
+export * from "./bookmark.js";

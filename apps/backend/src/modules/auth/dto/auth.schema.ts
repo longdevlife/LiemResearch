@@ -18,3 +18,17 @@ export const RefreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
 export type RefreshInput = z.infer<typeof RefreshSchema>;
+
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().min(1).max(120).optional(),
+  institution: z.string().max(120).optional().nullable(),
+  researchInterests: z.array(z.string()).optional(),
+});
+export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+

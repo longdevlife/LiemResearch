@@ -28,4 +28,23 @@ export const authApi = {
     const res = await api.get(API_ROUTES.auth.me);
     return res.data.data;
   },
+  async updateProfile(payload: UpdateProfileRequest): Promise<{ user: User }> {
+    const res = await api.patch(API_ROUTES.auth.me, payload);
+    return res.data.data;
+  },
+  async changePassword(payload: ChangePasswordRequest): Promise<void> {
+    await api.post(API_ROUTES.auth.changePassword, payload);
+  },
 };
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  institution?: string;
+  researchInterests?: string[];
+}
+
+export interface ChangePasswordRequest {
+  currentPassword?: string;
+  newPassword?: string;
+}
+
