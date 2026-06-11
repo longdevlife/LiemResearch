@@ -21,6 +21,7 @@ import { ResearchGapsPage } from "@/pages/research-gaps";
 import { AdminSyncPage } from "@/pages/admin/sync";
 import { AdminUsersPage } from "@/pages/admin/users";
 import { NotFoundPage } from "@/pages/not-found";
+import { RankingsPage } from "@/pages/rankings";
 
 export function AppRoutes() {
   return (
@@ -47,6 +48,7 @@ export function AppRoutes() {
           <Route path="/projects" element={<ProjectsListPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/research-gaps" element={<ResearchGapsPage />} />
+          <Route path="/rankings" element={<RankingsPage />} />
 
           {/* Admin (additional role check inside each page) */}
           <Route path="/admin/sync" element={<AdminSyncPage />} />
