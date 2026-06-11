@@ -4,37 +4,26 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-
-const initialReports = [
-  { id: "123", title: "LLM in Education Trends 2020-2024", topic: "LLM in Education", date: "Oct 24, 2024", status: "ready" },
-  { id: "124", title: "RAG Systems Architecture and Performance", topic: "RAG Architecture", date: "Oct 23, 2024", status: "ready" },
-  { id: "125", title: "AI Alignment in Medical Papers", topic: "AI Alignment", date: "Oct 20, 2024", status: "failed" },
-];
+import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
 
 export function ReportsListPage() {
-  const [reports, setReports] = useState(initialReports);
+  const { data: reports, isLoading } = useReports();
+  const createReport = useCreateReport();
+  
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const navigate = useNavigate();
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!topic.trim()) return;
     
-    // Fake adding a report to the list
-    const newId = "generating-" + Date.now();
-    setReports([{
-      id: newId,
-      title: "Generating report for: " + topic,
-      topic: topic,
-      date: "Just now",
-      status: "generating"
-    }, ...reports]);
-    
-    setOpen(false);
-    setTopic("");
-
-    // Automatically navigate to the generating viewer (as per typical flow)
-    navigate(`/reports/generating`);
+    try {
+      await createReport.mutateAsync({ query: topic, topic });
+      setOpen(false);
+      setTopic("");
+    } catch (error) {
+      console.error("Failed to create report:", error);
+    }
   };
 
   return (
@@ -67,71 +56,82 @@ export function ReportsListPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button onClick={handleGenerate} className="bg-[#001b69] hover:bg-[#001040] text-white">Generate</Button>
+                <Button variant="outline" onClick={() => setOpen(false)} disabled={createReport.isPending}>Cancel</Button>
+                <Button onClick={handleGenerate} disabled={createReport.isPending} className="bg-[#001b69] hover:bg-[#001040] text-white">
+                  {createReport.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Generate
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         }
       />
 
-      <div className="mt-8 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50/50 dark:bg-[#181818] text-slate-500 text-xs uppercase font-semibold tracking-wider">
-            <tr>
-              <th className="px-6 py-4">Report Title</th>
-              <th className="px-6 py-4 hidden md:table-cell">Topic</th>
-              <th className="px-6 py-4 text-center">Status</th>
-              <th className="px-6 py-4 text-right">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-            {reports.map((report) => (
-              <tr key={report.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1c1f26] transition-colors group">
-                <td className="px-6 py-4">
-                  <Link to={`/reports/${report.status === 'generating' ? 'generating' : report.id}`} className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
-                      report.status === 'generating' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:border-blue-900/30' : 
-                      report.status === 'failed' ? 'bg-red-50 text-red-600 border-red-200 dark:border-red-900/30' : 
-                      'bg-emerald-50 text-emerald-600 border-emerald-200 dark:border-emerald-900/30'
-                    }`}>
-                      {report.status === 'generating' ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-                       report.status === 'failed' ? <XCircle className="w-4 h-4" /> : 
-                       <FileText className="w-4 h-4" />}
-                    </div>
-                    <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
-                      {report.title}
-                    </span>
-                  </Link>
-                </td>
-                <td className="px-6 py-4 text-slate-500 font-medium hidden md:table-cell">{report.topic}</td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                    report.status === 'generating' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-400' :
-                    report.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400' :
-                    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
-                  }`}>
-                    {report.status === 'generating' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
-                     report.status === 'failed' ? <XCircle className="w-3 h-3" /> : 
-                     <CheckCircle2 className="w-3 h-3" />}
-                    {report.status === 'generating' ? 'Generating' : 
-                     report.status === 'failed' ? 'Failed' : 'Ready'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right text-slate-500 font-medium whitespace-nowrap">
-                  {report.date}
-                </td>
-              </tr>
-            ))}
-            {reports.length === 0 && (
+      <div className="mt-8 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden min-h-[300px]">
+        {isLoading ? (
+          <div className="w-full h-[300px] flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+            <p className="text-slate-500">Loading reports...</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50/50 dark:bg-[#181818] text-slate-500 text-xs uppercase font-semibold tracking-wider">
               <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                  No reports generated yet. Click "New report" to get started.
-                </td>
+                <th className="px-6 py-4">Report Topic</th>
+                <th className="px-6 py-4 hidden md:table-cell">Query</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-right">Date</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              {reports?.map((report) => (
+                <tr key={report.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1c1f26] transition-colors group">
+                  <td className="px-6 py-4">
+                    <Link to={`/reports/${report.id}`} className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                        (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-600 border-blue-200 dark:border-blue-900/30' : 
+                        report.status === 'failed' ? 'bg-red-50 text-red-600 border-red-200 dark:border-red-900/30' : 
+                        'bg-emerald-50 text-emerald-600 border-emerald-200 dark:border-emerald-900/30'
+                      }`}>
+                        {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+                         report.status === 'failed' ? <XCircle className="w-4 h-4" /> : 
+                         <FileText className="w-4 h-4" />}
+                      </div>
+                      <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                        {report.topic || 'AI Report'}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 font-medium hidden md:table-cell truncate max-w-xs">{report.query}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                      (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-400' :
+                      report.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400' :
+                      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
+                    }`}>
+                      {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                       report.status === 'failed' ? <XCircle className="w-3 h-3" /> : 
+                       <CheckCircle2 className="w-3 h-3" />}
+                      {report.status === 'generating' ? 'Generating' : 
+                       report.status === 'queued' ? 'Queued' : 
+                       report.status === 'failed' ? 'Failed' : 'Ready'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-500 font-medium whitespace-nowrap">
+                    {new Date(report.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {(!reports || reports.length === 0) && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                    No reports generated yet. Click "New report" to get started.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </main>
   );

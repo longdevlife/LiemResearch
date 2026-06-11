@@ -1,0 +1,19 @@
+import { api } from "@/services/api-client";
+import { API_ROUTES } from "@/constants/api";
+import type { AnalyticalReport, ReportListItem, CreateReportRequest } from "@trend/shared-types";
+
+export const reportsApi = {
+  async list(): Promise<ReportListItem[]> {
+    const res = await api.get(API_ROUTES.reports.list);
+    return res.data.data;
+  },
+
+  async detail(id: string): Promise<AnalyticalReport> {
+    const res = await api.get(API_ROUTES.reports.detail(id));
+    return res.data.data;
+  },
+
+  async create(payload: CreateReportRequest): Promise<void> {
+    await api.post(API_ROUTES.reports.create, payload);
+  },
+};

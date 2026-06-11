@@ -9,6 +9,7 @@ import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
 import { SearchPage } from "@/pages/search";
 import { TrendsPage } from "@/pages/trends";
+import { TopicDetailPage } from "@/pages/trends-topic";
 import { BookmarksPage } from "@/pages/bookmarks";
 import { NotificationsPage } from "@/pages/notifications";
 import { ProfilePage } from "@/pages/profile";
@@ -33,6 +34,7 @@ export function AppRoutes() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/papers/:id" element={<PaperDetailPage />} />
         <Route path="/trends" element={<TrendsPage />} />
+        <Route path="/trends/:topic" element={<TopicDetailPage />} />
 
         {/* Protected (any signed-in user) */}
         <Route element={<ProtectedRoute />}>

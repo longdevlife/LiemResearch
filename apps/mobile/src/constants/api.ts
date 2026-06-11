@@ -15,7 +15,7 @@ export const API_ROUTES = {
     detail: (id: string) => `/papers/${id}`,
   },
   search: {
-    semantic: "/search", // GET /search?q= — semantic search (Phase B)
+    semantic: "/search", 
   },
   admin: {
     sync: "/admin/sync",
