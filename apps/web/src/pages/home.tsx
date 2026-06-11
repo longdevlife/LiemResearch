@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
 import { usePapers } from "@/features/papers";
 import { useTrendsOverview } from "@/features/trends";
+import { useBookmarks } from "@/features/bookmarks";
 import { Link, useNavigate } from "react-router-dom";
 
 const mockVelocityData = [
@@ -22,6 +23,7 @@ export function HomePage() {
   const recentPapers = papersData?.papers || [];
 
   const { data: trendsData, isLoading: isTrendsLoading } = useTrendsOverview({ limit: 10 });
+  const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks();
 
   // Sum up counts per year from all topics (approximate trend representation)
   const realVelocityData = useMemo(() => {
@@ -68,8 +70,13 @@ export function HomePage() {
               trend="-- 0" 
               isNeutral 
             />
-            <KpiCard label="REPORTS GEN." value="42" trend="+5" />
-            <KpiCard label="SAVED PAPERS" value="156" trend="+24" />
+            <KpiCard label="REPORTS GEN." value="0" trend="" isNeutral />
+            <KpiCard 
+              label="SAVED PAPERS" 
+              value={isBookmarksLoading ? "..." : (bookmarksData?.length?.toString() || "0")} 
+              trend="" 
+              isNeutral 
+            />
           </div>
 
           {/* Trending Topics */}

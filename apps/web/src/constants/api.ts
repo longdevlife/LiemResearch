@@ -26,6 +26,13 @@ export const API_ROUTES = {
     detail: (id: string) => `/reports/${id}`,
     generate: "/reports/generate",
   },
+  bookmarks: {
+    list: "/bookmarks",
+    create: "/bookmarks",
+    delete: (id: string) => `/bookmarks/${id}`,
+    check: "/bookmarks/check",
+    updateNote: (id: string) => `/bookmarks/${id}`,
+  },
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",

@@ -1,3 +1,2 @@
-// TODO: implement bookmarks feature
-// Planned files: api/bookmarks.api.ts, hooks/use-bookmarks.ts
-export {};
+export * from "./api/bookmarks.api";
+export * from "./hooks/use-bookmarks";

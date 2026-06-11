@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
-import { ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Check, X, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Paper } from "@trend/shared-types";
 import { usePapers } from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useSearchParams, Link } from "react-router-dom";
+import { useBookmarks, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
+import { toast } from "sonner";
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,6 +46,18 @@ export function SearchPage() {
   const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
   const rawPapers = (data?.papers ?? []) as (Paper & { score?: number })[];
   const meta = data?.meta;
+
+  const { data: bookmarks } = useBookmarks();
+
+  const bookmarkedPaperIds = useMemo(() => {
+    if (!bookmarks) return new Set<string>();
+    return new Set(bookmarks.filter(b => b.targetKind === "paper").map(b => b.targetId));
+  }, [bookmarks]);
+
+  const bookmarkIdMap = useMemo(() => {
+    if (!bookmarks) return new Map<string, string>();
+    return new Map(bookmarks.filter(b => b.targetKind === "paper").map(b => [b.targetId, b.id]));
+  }, [bookmarks]);
 
   const filteredPapers = useMemo(() => {
     return rawPapers.filter(paper => {
@@ -348,6 +362,8 @@ export function SearchPage() {
                 abstract={paper.abstractText || "No abstract available."}
                 score={paper.score?.toFixed(2) ?? "N/A"}
                 keywords={paper.keywords?.map(k => k.keywordName) || []}
+                isBookmarked={bookmarkedPaperIds.has(paper.id)}
+                bookmarkId={bookmarkIdMap.get(paper.id)}
               />
             ))
           )}
@@ -386,12 +402,60 @@ export function SearchPage() {
 
 // Sub-components
 
-function SearchResultCard({ id, title, authors, journal, doi, abstract, score, keywords }: { id: string, title: string, authors: string, journal: string, doi: string, abstract: string, score: string, keywords: string[] }) {
+function SearchResultCard({ 
+  id, 
+  title, 
+  authors, 
+  journal, 
+  doi, 
+  abstract, 
+  score, 
+  keywords,
+  isBookmarked,
+  bookmarkId
+}: { 
+  id: string, 
+  title: string, 
+  authors: string, 
+  journal: string, 
+  doi: string, 
+  abstract: string, 
+  score: string, 
+  keywords: string[],
+  isBookmarked: boolean,
+  bookmarkId?: string
+}) {
   const isHigh = parseFloat(score) >= 0.8;
   const badgeColors = isHigh 
     ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
     : "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400";
   
+  const createBookmark = useCreateBookmark();
+  const deleteBookmark = useDeleteBookmark();
+
+  const handleBookmarkToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (isBookmarked && bookmarkId) {
+      deleteBookmark.mutate(
+        { id: bookmarkId, targetKind: "paper", targetId: id },
+        {
+          onSuccess: () => toast.success("Removed from library"),
+          onError: () => toast.error("Failed to remove bookmark"),
+        }
+      );
+    } else {
+      createBookmark.mutate(
+        { targetKind: "paper", targetId: id },
+        {
+          onSuccess: () => toast.success("Saved to library"),
+          onError: () => toast.error("Failed to save bookmark"),
+        }
+      );
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative">
       {/* Title & Score */}
@@ -399,11 +463,27 @@ function SearchResultCard({ id, title, authors, journal, doi, abstract, score, k
         <Link to={`/papers/${id}`} className="text-lg font-bold text-blue-900 dark:text-blue-100 leading-tight pr-16 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer block">
           {title}
         </Link>
-        <div className={`flex flex-col items-center justify-center border rounded-lg px-2 py-1 shrink-0 ${badgeColors}`}>
-          <span className="font-extrabold text-sm flex items-center leading-none">
-             <span className="w-2.5 h-2.5 bg-current opacity-20 rounded-full inline-block mr-1"></span>
-             {score}
-          </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-full transition-colors ${
+              isBookmarked
+                ? "text-amber-500 hover:text-amber-600 bg-amber-500/10 hover:bg-amber-500/20"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+            onClick={handleBookmarkToggle}
+            disabled={createBookmark.isPending || deleteBookmark.isPending}
+          >
+            <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+          </Button>
+
+          <div className={`flex flex-col items-center justify-center border rounded-lg px-2 py-1 shrink-0 ${badgeColors}`}>
+            <span className="font-extrabold text-sm flex items-center leading-none">
+               <span className="w-2.5 h-2.5 bg-current opacity-20 rounded-full inline-block mr-1"></span>
+               {score}
+            </span>
+          </div>
         </div>
       </div>
 
