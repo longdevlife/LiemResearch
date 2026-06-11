@@ -7,6 +7,7 @@ import { usePapers } from "@/features/papers";
 import { useTrendsOverview } from "@/features/trends";
 import { useBookmarks } from "@/features/bookmarks";
 import { Link, useNavigate } from "react-router-dom";
+import { PaperCard } from "@/components/paper-card";
 
 const mockVelocityData = [
   { name: "2020", value: 40 },
@@ -256,41 +257,4 @@ function TrendingChip({ label, trend, color }: { label: string, trend: 'up'|'dow
   );
 }
 
-function PaperCard({ id, journal, date, title, abstract, authors, score }: { id: string, journal: string, date: string, title: string, abstract: string, authors: string, score: string }) {
-  const navigate = useNavigate();
 
-  return (
-    <div 
-      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm hover:shadow-md transition-shadow relative group cursor-pointer"
-      onClick={() => navigate(`/papers/${id}`)}
-    >
-      <div className="flex items-center gap-2 text-xs mb-3">
-        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded font-medium">{journal}</span>
-        <span className="text-slate-400">•</span>
-        <span className="text-slate-500">{date}</span>
-      </div>
-      
-      <div className="pr-16">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {title}
-        </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">
-          {abstract}
-        </p>
-        <div className="text-xs font-mono text-slate-500">
-          {authors}
-        </div>
-      </div>
-
-      <div className="absolute top-5 right-5 flex flex-col items-end gap-2">
-        <div className="flex flex-col items-center justify-center bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-lg p-2 min-w-[3rem]">
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm leading-none">{score}</span>
-          <span className="text-[8px] font-bold text-emerald-500/70 uppercase mt-1">AI Score</span>
-        </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
-          <ExternalLink className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
