@@ -364,16 +364,34 @@ export const openapiSpec = {
       get: {
         tags: ["Search"],
         summary: "Semantic search (Phase B) — match by meaning via vector embeddings",
+        description:
+          "Embeds the query and finds nearest paper vectors (cosine). With " +
+          "`rerank=true`, the top candidate pool is additionally re-scored by an " +
+          "LLM for true query relevance and re-ordered (each item then carries " +
+          "`rerankScore` 0..1); results are LLM-cached 7 days and the rerank path " +
+          "is rate-limited per IP. meta.mode reflects 'semantic' or 'semantic+rerank'. " +
+          "PAGINATION NOTE: with rerank=true, results are bounded to a candidate pool " +
+          "(>= the requested page; ~RERANK_CANDIDATES default 20) and meta.total is the " +
+          "pool size, so pages far beyond the pool are empty. Plain mode's meta.total " +
+          "is a running lower-bound estimate, not the exact corpus match count.",
         parameters: [
           { name: "q", in: "query", required: true, schema: { type: "string" }, description: "Natural-language query" },
           { name: "page", in: "query", schema: { type: "integer", default: 1 } },
           { name: "pageSize", in: "query", schema: { type: "integer", default: 20, maximum: 50 } },
           { name: "yearFrom", in: "query", schema: { type: "integer" } },
           { name: "yearTo", in: "query", schema: { type: "integer" } },
+          {
+            name: "rerank",
+            in: "query",
+            schema: { type: "string", enum: ["true", "false"], default: "false" },
+            description: "Opt-in LLM re-ranking of the top candidate pool",
+          },
         ],
         responses: {
           "200": {
-            description: "Papers ranked by semantic similarity (each item has a `score` 0..1)",
+            description:
+              "Papers ranked by relevance. Each item has `score` (0..1 vector similarity); " +
+              "when reranked, also `rerankScore` (0..1 LLM relevance, the sort key).",
             content: {
               "application/json": {
                 schema: {
@@ -385,7 +403,13 @@ export const openapiSpec = {
                       items: {
                         allOf: [
                           { $ref: "#/components/schemas/Paper" },
-                          { type: "object", properties: { score: { type: "number", example: 0.91 } } },
+                          {
+                            type: "object",
+                            properties: {
+                              score: { type: "number", example: 0.91 },
+                              rerankScore: { type: "number", nullable: true, example: 0.97, description: "Present only when rerank=true" },
+                            },
+                          },
                         ],
                       },
                     },

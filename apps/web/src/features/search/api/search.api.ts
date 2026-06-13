@@ -1,9 +1,8 @@
-import type { Paper } from "@trend/shared-types";
+import type { ScoredPaper, SearchResultMode } from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
-/** A paper plus its semantic-similarity score (0..1, higher = closer). */
-export type ScoredPaper = Paper & { score: number };
+export type { ScoredPaper } from "@trend/shared-types";
 
 export interface SearchParams {
   q: string;
@@ -11,11 +10,13 @@ export interface SearchParams {
   pageSize?: number;
   yearFrom?: number;
   yearTo?: number;
+  /** Opt-in LLM re-ranking — each result then carries `rerankScore`. */
+  rerank?: boolean;
 }
 
 export const searchApi = {
   /** Semantic search (Phase B) — GET /api/v1/search. Same envelope as /papers,
-   *  but each paper carries a relevance `score`. */
+   *  but each paper carries a relevance `score` (and `rerankScore` if rerank). */
   async semantic(params: SearchParams) {
     const res = await api.get(API_ROUTES.search.semantic, { params });
     return {
@@ -25,6 +26,7 @@ export const searchApi = {
         pageSize: number;
         total: number;
         totalPages: number;
+        mode: SearchResultMode;
       },
     };
   },

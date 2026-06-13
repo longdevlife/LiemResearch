@@ -16,8 +16,15 @@ export const searchController = {
       return;
     }
 
-    const { q, page, pageSize, yearFrom, yearTo } = parsed.data;
-    const { papers, total } = await searchService.semantic({ q, page, pageSize, yearFrom, yearTo });
+    const { q, page, pageSize, yearFrom, yearTo, rerank } = parsed.data;
+    const { papers, total, reranked } = await searchService.semantic({
+      q,
+      page,
+      pageSize,
+      yearFrom,
+      yearTo,
+      rerank,
+    });
 
     res.json({
       success: true,
@@ -27,7 +34,7 @@ export const searchController = {
         pageSize,
         total,
         totalPages: Math.ceil(total / pageSize),
-        mode: "semantic",
+        mode: reranked ? "semantic+rerank" : "semantic",
       },
     });
   },
