@@ -1,7 +1,14 @@
 import { env } from "../../config/env.js";
 import { geminiClient } from "../llm/gemini.client.js";
 import { logger } from "../../infrastructure/logger.js";
+import { AppError } from "../../common/exceptions/app-error.js";
 import type { EmbeddingProvider } from "./embedding.provider.js";
+
+/** True when an error looks like an expired/invalid Gemini API key. */
+function isApiKeyError(err: unknown): boolean {
+  const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+  return msg.includes("api key") || msg.includes("api_key") || msg.includes("expired");
+}
 
 /**
  * Gemini embedding provider. Uses `gemini-embedding-2` by default.
@@ -42,6 +49,14 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
         logger.warn({ status, attempt, backoffMs: backoff }, "gemini embed rate-limited — retrying");
         await sleep(backoff);
         return this.embedWithRetry(text, attempt + 1);
+      }
+      // Expired/invalid key is a server config problem, not the caller's fault —
+      // surface an actionable 503 (raw error stays in the log, never the client).
+      if (isApiKeyError(err)) {
+        logger.error({ err }, "gemini API key appears expired/invalid");
+        throw AppError.serviceUnavailable(
+          "AI service is unavailable (Gemini API key expired or invalid). Check GEMINI_API_KEY.",
+        );
       }
       throw err;
     }
