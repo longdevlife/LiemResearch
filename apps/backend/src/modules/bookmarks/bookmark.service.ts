@@ -32,8 +32,9 @@ export const bookmarkService = {
       note: input.note,
     });
 
-    const populated = await this.populateDetails([doc]);
-    return populated[0];
+    const [created] = await this.populateDetails([doc]);
+    if (!created) throw AppError.internal("Failed to load created bookmark");
+    return created;
   },
 
   async delete(userId: string, id: string): Promise<void> {
@@ -63,8 +64,9 @@ export const bookmarkService = {
     bookmark.note = input.note || undefined;
     await bookmark.save();
 
-    const populated = await this.populateDetails([bookmark]);
-    return populated[0];
+    const [updated] = await this.populateDetails([bookmark]);
+    if (!updated) throw AppError.internal("Failed to load updated bookmark");
+    return updated;
   },
 
   async checkStatus(userId: string, targetKind: "paper" | "report", targetId: string): Promise<{ bookmarked: boolean; bookmarkId?: string }> {
