@@ -41,12 +41,12 @@ bookmarkRouter.post("/", validate(CreateBookmarkSchema), async (req, res) => {
 
 /** PATCH /bookmarks/:id - Update note */
 bookmarkRouter.patch("/:id", validate(UpdateBookmarkSchema), async (req, res) => {
-  const bookmark = await bookmarkService.updateNote(req.user!.sub, req.params.id, req.body);
+  const bookmark = await bookmarkService.updateNote(req.user!.sub, req.params.id as string, req.body);
   res.json({ success: true, data: bookmark });
 });
 
 /** DELETE /bookmarks/:id - Delete a bookmark */
 bookmarkRouter.delete("/:id", async (req, res) => {
-  await bookmarkService.delete(req.user!.sub, req.params.id);
+  await bookmarkService.delete(req.user!.sub, req.params.id as string);
   res.json({ success: true, data: { ok: true } });
 });
