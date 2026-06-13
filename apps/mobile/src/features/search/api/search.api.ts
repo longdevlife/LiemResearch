@@ -1,14 +1,15 @@
-import type { Paper } from "@trend/shared-types";
+import type { ScoredPaper } from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
-/** A paper plus its semantic-similarity score (0..1, higher = closer). */
-export type ScoredPaper = Paper & { score: number };
+export type { ScoredPaper } from "@trend/shared-types";
 
 export interface SearchParams {
   q: string;
   page?: number;
   pageSize?: number;
+  /** Opt-in LLM re-ranking — each result then carries `rerankScore`. */
+  rerank?: boolean;
 }
 
 export const searchApi = {

@@ -43,3 +43,6 @@ export const cache = {
 export function hashKey(parts: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 32);
 }
+
+/** §6: cache every LLM response. Default TTL 7 days — one policy, all callers. */
+export const LLM_CACHE_TTL_SECONDS = 7 * 24 * 3600;

@@ -41,6 +41,13 @@ const EnvSchema = z.object({
   REPORT_MAX_PER_HOUR: z.coerce.number().int().positive().default(10),
   REPORT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
 
+  // Phase B/C — LLM re-rank of semantic search. Size of the candidate pool the
+  // LLM re-scores (bounded — re-ranking refines the head of the results).
+  RERANK_CANDIDATES: z.coerce.number().int().min(2).max(50).default(20),
+  // Per-IP cap on rerank=true (the LLM path) — /search is public, so this
+  // throttle stops an unauthenticated loop from draining the Gemini quota.
+  RERANK_MAX_PER_HOUR: z.coerce.number().int().positive().default(30),
+
   // DEV ONLY: when "true", the /api/v1/admin/sync endpoints skip auth so the
   // team can demo before an admin user is seeded. Never enable in production.
   // (Plain z.coerce.boolean() is unsafe — "false" would coerce to true — so we

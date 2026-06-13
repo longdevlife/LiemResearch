@@ -1,7 +1,7 @@
 import type { PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
-import { cache } from "../../infrastructure/cache.js";
+import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
@@ -18,8 +18,6 @@ import {
 
 /** Atlas Vector Search index — same one the /search endpoint uses. */
 const VECTOR_INDEX = "paper_vector_index";
-const LLM_CACHE_TTL_SECONDS = 7 * 24 * 3600; // §6: cache every LLM response, 7d
-
 export interface ReportJob {
   reportId: string;
 }
