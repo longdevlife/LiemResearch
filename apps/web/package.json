@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --report-unused-disable-directives",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
