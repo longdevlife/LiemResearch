@@ -1,28 +1,62 @@
-import React from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View, Switch } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 
+import { useCurrentUser, useLogout } from "@/features/auth";
+import { useBookmarks } from "@/features/bookmarks";
+import { useReports } from "@/features/reports";
 import { useAuthStore } from "@/stores/auth-store";
-import { useLogout } from "@/features/auth";
 
-/**
- * Profile tab — user info, settings, logout.
- */
-export default function ProfileScreen() {
-  const user = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clear);
-  const logoutMutation = useLogout();
-  
-  const { colorScheme, toggleColorScheme } = useColorScheme();
+function SettingsRow({
+  icon,
+  label,
+  value,
+  danger,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  value?: string;
+  danger?: boolean;
+  onPress?: () => void;
+}) {
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
+  return (
+    <TouchableOpacity
+      className="flex-row items-center p-4 border-b border-border dark:border-[#26334A] last:border-b-0"
+      activeOpacity={0.8}
+      onPress={onPress}
+    >
+      <Feather name={icon} size={19} color={danger ? "#EF4444" : isDark ? "#94A3B8" : "#64748B"} />
+      <Text className={`flex-1 ml-3 font-medium ${danger ? "text-[#EF4444]" : "text-foreground dark:text-[#F8FAFC]"}`}>{label}</Text>
+      {value ? <Text className="text-muted-foreground dark:text-[#94A3B8] mr-2 text-sm">{value}</Text> : null}
+      <Feather name="chevron-right" size={19} color={isDark ? "#64748B" : "#94A3B8"} />
+    </TouchableOpacity>
+  );
+}
+
+export default function ProfileScreen() {
+  const fallbackUser = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clear);
+  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const userQuery = useCurrentUser();
+  const bookmarksQuery = useBookmarks();
+  const reportsQuery = useReports({ page: 1, pageSize: 1 });
+  const logoutMutation = useLogout();
+  const user = userQuery.data?.user ?? fallbackUser;
+  const bookmarks = bookmarksQuery.data ?? [];
+  const reportTotal = reportsQuery.data?.meta?.total ?? reportsQuery.data?.reports.length ?? 0;
+  const topicCount = new Set(bookmarks.flatMap((bookmark) => bookmark.paperDetail?.topics?.map((topic) => topic.topicName) ?? [])).size;
+
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert("Sign out", "Do you want to sign out of Publication Trend?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Đăng xuất",
+        text: "Sign out",
         style: "destructive",
         onPress: () => {
           clearAuth();
@@ -34,140 +68,81 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top"]}>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-        
-        {/* Header */}
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 112 }}>
         <View className="flex-row justify-between items-center mb-6">
-          <Text className="text-2xl font-bold text-foreground dark:text-white">Profile</Text>
-          <TouchableOpacity>
-            <Feather name="settings" size={22} color={isDark ? "#94A3B8" : "#5A6E85"} />
+          <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">Profile</Text>
+          <TouchableOpacity className="h-10 w-10 rounded-full bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] items-center justify-center">
+            <Feather name="settings" size={19} color={isDark ? "#94A3B8" : "#64748B"} />
           </TouchableOpacity>
         </View>
 
-        {/* User Info */}
         <View className="items-center mb-6">
-          <View className="w-20 h-20 rounded-full bg-border dark:bg-[#1A2332] border border-transparent dark:border-[#26334A] items-center justify-center mb-3 overflow-hidden">
-            <Feather name="user" size={32} color={isDark ? "#FFFFFF" : "#0F172A"} />
+          <View className="w-20 h-20 rounded-full bg-card dark:bg-[#111C2E] border border-[#06B6D4] items-center justify-center mb-3">
+            <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">{user?.fullName?.slice(0, 1).toUpperCase() ?? "R"}</Text>
           </View>
-          <Text className="text-2xl font-bold text-primary dark:text-white mb-1">
-            {user?.fullName || "Hoàng Long Anh"}
-          </Text>
-          <View className="bg-primary/20 dark:bg-primary/30 px-3 py-1 rounded-full mb-2">
-            <Text className="text-primary dark:text-[#3B82F6] text-xs font-semibold">
-              {user?.role === "admin" ? "Admin" : "Researcher"}
-            </Text>
+          <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC] mb-1">{user?.fullName ?? "Researcher"}</Text>
+          <View className="bg-cyan-50 dark:bg-[#083344] px-3 py-1 rounded-full mb-2">
+            <Text className="text-[#0891B2] dark:text-[#67E8F9] text-xs font-semibold">{user?.role ?? "researcher"}</Text>
           </View>
           <View className="flex-row items-center">
             <Ionicons name="school-outline" size={14} color={isDark ? "#94A3B8" : "#64748B"} />
-            <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm ml-1">FPT University</Text>
+            <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm ml-1">{user?.institution ?? "FPT University"}</Text>
           </View>
         </View>
 
-        {/* Stats */}
         <View className="flex-row justify-between mb-8 gap-3">
-          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl py-3 items-center">
-            <Text className="text-xl font-bold text-primary dark:text-white">47</Text>
+          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl py-3 items-center">
+            <Text className="text-xl font-bold text-foreground dark:text-[#F8FAFC]">{bookmarks.length}</Text>
             <Text className="text-xs text-muted-foreground dark:text-[#94A3B8] mt-1">Bookmarks</Text>
           </View>
-          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl py-3 items-center">
-            <Text className="text-xl font-bold text-primary dark:text-white">8</Text>
+          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl py-3 items-center">
+            <Text className="text-xl font-bold text-foreground dark:text-[#F8FAFC]">{topicCount}</Text>
             <Text className="text-xs text-muted-foreground dark:text-[#94A3B8] mt-1">Topics</Text>
           </View>
-          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl py-3 items-center">
-            <Text className="text-xl font-bold text-primary dark:text-white">14</Text>
+          <View className="flex-1 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl py-3 items-center">
+            <Text className="text-xl font-bold text-foreground dark:text-[#F8FAFC]">{reportTotal}</Text>
             <Text className="text-xs text-muted-foreground dark:text-[#94A3B8] mt-1">Reports</Text>
           </View>
         </View>
 
-        {/* ACTIVITY */}
         <View className="mb-6">
-          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1 tracking-wider">
-            Activity
-          </Text>
+          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1">Activity</Text>
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
-            <TouchableOpacity className="flex-row items-center p-4 border-b border-border dark:border-[#26334A]">
-              <Feather name="clock" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Reading history</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
-            <View className="flex-row items-center p-4 border-b border-border dark:border-[#26334A]">
-              <Feather name="bell" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Notifications</Text>
-              <Switch 
-                value={true} 
-                trackColor={{ false: "#E2E8F0", true: "#1D4ED8" }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-            <TouchableOpacity className="flex-row items-center p-4">
-              <Feather name="folder" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Projects</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
+            <SettingsRow icon="clock" label="Reading history" />
+            <SettingsRow icon="bell" label="Notifications" value="Not connected" />
+            <SettingsRow icon="folder" label="Projects" />
           </View>
         </View>
 
-        {/* ACCOUNT */}
         <View className="mb-6">
-          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1 tracking-wider">
-            Account
-          </Text>
+          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1">Account</Text>
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
-            <TouchableOpacity className="flex-row items-center p-4 border-b border-border dark:border-[#26334A]">
-              <Feather name="user" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Edit profile</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center p-4">
-              <Feather name="lock" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Password</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
+            <SettingsRow icon="user" label="Edit profile" />
+            <SettingsRow icon="lock" label="Password" />
           </View>
         </View>
 
-        {/* APPEARANCE */}
         <View className="mb-6">
-          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1 tracking-wider">
-            Appearance
-          </Text>
+          <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1">Appearance</Text>
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
-            <TouchableOpacity className="flex-row items-center p-4 border-b border-border dark:border-[#26334A]" onPress={toggleColorScheme}>
-              <Ionicons name="color-palette-outline" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Theme</Text>
-              <Text className="text-muted-foreground dark:text-[#94A3B8] mr-2">{isDark ? "Dark" : "Light"}</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center p-4">
-              <Feather name="type" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Font size</Text>
-              <Text className="text-muted-foreground dark:text-[#94A3B8] mr-2">Default</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
+            <SettingsRow icon={isDark ? "moon" : "sun"} label="Theme" value={isDark ? "Dark" : "Light"} onPress={toggleColorScheme} />
+            <SettingsRow icon="type" label="Font size" value="Default" />
           </View>
         </View>
 
-        {/* HELP */}
         <View className="mb-8">
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
-            <TouchableOpacity className="flex-row items-center p-4">
-              <Feather name="help-circle" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-              <Text className="flex-1 ml-3 text-foreground dark:text-white font-medium">Help</Text>
-              <Feather name="chevron-right" size={20} color={isDark ? "#94A3B8" : "#CBD5E1"} />
-            </TouchableOpacity>
+            <SettingsRow icon="help-circle" label="Help" />
           </View>
         </View>
 
-        {/* LOGOUT */}
         <TouchableOpacity
-          className="w-full bg-transparent border border-red-500 rounded-xl py-4 flex-row items-center justify-center active:bg-red-50"
+          className="w-full bg-transparent border border-[#EF4444] rounded-xl py-4 flex-row items-center justify-center"
           onPress={handleLogout}
+          disabled={logoutMutation.isPending}
         >
-          <Text className="text-red-500 text-base font-bold">
-            Sign out
-          </Text>
+          <Text className="text-[#EF4444] text-base font-bold">Sign out</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
