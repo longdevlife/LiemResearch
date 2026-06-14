@@ -13,302 +13,219 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useColorScheme } from "nativewind";
 
-import { useLogin } from "@/features/auth";
+import { useLogin, useRegister } from "@/features/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
-/**
- * Màn hình Đăng nhập (Login screen) - Giao diện Light Mode Clean UI
- * Giống 100% ảnh mockup 1 bạn cung cấp
- */
+const ROLES = ["student", "lecturer", "researcher"] as const;
+
 export default function LoginScreen() {
-  const [email, setEmail] = useState("khoakiki");
-  const [password, setPassword] = useState("khoakiki");
-  const [showPassword, setShowPassword] = useState(false);
   const [isRegisterTab, setIsRegisterTab] = useState(false);
-  const [isMocking, setIsMocking] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<(typeof ROLES)[number]>("researcher");
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = useLogin();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const registerMutation = useRegister();
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-  // Tự động chuyển hướng sang màn hình chính khi phát hiện có accessToken
   useEffect(() => {
-    if (accessToken) {
-      router.replace("/(tabs)");
-    }
+    if (accessToken) router.replace("/(tabs)");
   }, [accessToken]);
 
+  const isLoading = loginMutation.isPending || registerMutation.isPending;
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ tài khoản và mật khẩu");
+  const handleSubmit = () => {
+    if (!email.trim() || !password) {
+      Alert.alert("Missing fields", "Please enter your email and password.");
       return;
     }
 
-    // 1. Kiểm tra mockup tài khoản khoakiki / khoakiki
-    if (email.trim() === "khoakiki" && password === "khoakiki") {
-      setIsMocking(true);
-      setTimeout(() => {
-        setAuth({
-          user: {
-            id: "mock-id-khoakiki",
-            email: "khoakiki@university.edu",
-            fullName: "Khoa Kiki",
-            role: "researcher",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+    if (isRegisterTab) {
+      if (!fullName.trim()) {
+        Alert.alert("Missing name", "Please enter your full name.");
+        return;
+      }
+
+      registerMutation.mutate(
+        { email: email.trim(), password, fullName: fullName.trim(), role },
+        {
+          onError: (error: any) => {
+            Alert.alert("Registration failed", error?.response?.data?.error?.message ?? "Could not create account.");
           },
-          tokens: {
-            accessToken: "mock-access-token-khoakiki",
-            refreshToken: "mock-refresh-token-khoakiki",
-            accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-          },
-        });
-        setIsMocking(false);
-      }, 800);
+        },
+      );
       return;
     }
 
-    // 2. Nếu là tài khoản khác, thực hiện gọi API qua hook useLogin thực tế.
-    //    Backend LoginSchema yêu cầu email hợp lệ (z.string().email()), nên ô
-    //    này nên nhập email thật khi gọi API thực — "khoakiki" chỉ dùng cho mock.
     loginMutation.mutate(
-      { email, password },
+      { email: email.trim(), password },
       {
         onError: (error: any) => {
-          const errMsg =
-            error?.response?.data?.error?.message ||
-            "Sai tài khoản hoặc mật khẩu";
-          Alert.alert("Đăng nhập thất bại", errMsg);
+          Alert.alert("Sign in failed", error?.response?.data?.error?.message ?? "Wrong email or password.");
         },
       },
     );
   };
 
-  const isLoading = loginMutation.isPending || isMocking;
-
   return (
-    <SafeAreaView className="flex-1 bg-[#FFFFFF]" edges={["top", "bottom"]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+    <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         <ScrollView
           className="flex-1 px-6"
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 28 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Section */}
+          <View className="absolute -top-20 -right-24 h-64 w-64 rounded-full bg-[#06B6D4]/20" />
+          <View className="absolute -bottom-16 -left-20 h-52 w-52 rounded-full bg-[#1D4ED8]/25" />
+
           <View className="items-center mb-8">
-            <View className="w-16 h-16 rounded-2xl bg-[#EAEFFC] border border-[#D5E1F9] flex items-center justify-center mb-5 shadow-sm">
-              <Ionicons name="analytics" size={30} color="#09258A" />
+            <View className="w-16 h-16 rounded-2xl bg-[#0B2B45] border border-[#0E7490] items-center justify-center mb-5">
+              <Ionicons name="analytics" size={30} color="#06B6D4" />
             </View>
-            <Text className="text-3xl font-bold text-[#0F172A] tracking-tight text-center">
-              Publication Trend
-            </Text>
-            <Text className="mt-1.5 text-sm text-[#5A6E85] text-center">
-              AI-powered research discovery
-            </Text>
+            <Text className="text-3xl font-bold text-foreground dark:text-[#F8FAFC] tracking-tight text-center">Publication Trend</Text>
+            <Text className="mt-1.5 text-sm text-[#94A3B8] text-center">AI-powered research discovery</Text>
           </View>
 
-          {/* Form Area */}
-          <View className="w-full">
-            {/* Tab Switcher */}
-            <View className="bg-[#F1F3F7] rounded-xl p-1 flex-row mb-6">
+          <View className="bg-card dark:bg-[#111C2E]/95 border border-border dark:border-[#26334A] rounded-3xl p-5">
+            <View className="bg-muted dark:bg-[#1A2332] rounded-xl p-1 flex-row mb-6">
               <TouchableOpacity
-                className={`flex-1 py-2.5 rounded-lg flex-row justify-center items-center ${
-                  !isRegisterTab ? "bg-white shadow-sm" : ""
-                }`}
+                className={`flex-1 py-2.5 rounded-lg items-center ${!isRegisterTab ? "bg-[#06B6D4]" : ""}`}
                 onPress={() => setIsRegisterTab(false)}
                 activeOpacity={0.8}
               >
-                <Text
-                  className={`font-semibold text-sm ${
-                    !isRegisterTab ? "text-[#0F172A]" : "text-[#5A6E85]"
-                  }`}
-                >
-                  Sign in
-                </Text>
+                <Text className={`font-semibold text-sm ${!isRegisterTab ? "text-white" : "text-[#94A3B8]"}`}>Sign in</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className={`flex-1 py-2.5 rounded-lg flex-row justify-center items-center ${
-                  isRegisterTab ? "bg-white shadow-sm" : ""
-                }`}
+                className={`flex-1 py-2.5 rounded-lg items-center ${isRegisterTab ? "bg-[#26334A]" : ""}`}
                 onPress={() => setIsRegisterTab(true)}
                 activeOpacity={0.8}
               >
-                <Text
-                  className={`font-semibold text-sm ${
-                    isRegisterTab ? "text-[#0F172A]" : "text-[#5A6E85]"
-                  }`}
-                >
-                  Create account
-                </Text>
+                <Text className={`font-semibold text-sm ${isRegisterTab ? "text-white" : "text-[#94A3B8]"}`}>Create account</Text>
               </TouchableOpacity>
             </View>
 
-            {isRegisterTab ? (
-              /* Register View placeholder for other devs */
-              <View className="py-8 items-center justify-center bg-white border border-[#E2E8F0] rounded-2xl p-6">
-                <Ionicons name="person-add-outline" size={48} color="#A0AEC0" />
-                <Text className="mt-4 text-[#0F172A] font-semibold text-center">
-                  Create account
-                </Text>
-                <Text className="mt-2 text-[#5A6E85] text-xs text-center px-4">
-                  Login...
-                </Text>
-                <TouchableOpacity
-                  className="mt-6 border border-dashed border-[#09258A]/30 rounded-xl px-4 py-2"
-                  onPress={() => setIsRegisterTab(false)}
-                >
-                  <Text className="text-[#09258A] text-xs font-semibold">
-                    Quay lại Sign in
-                  </Text>
-                </TouchableOpacity>
+            <View className="gap-4">
+              {isRegisterTab && (
+                <View className="gap-2">
+                  <Text className="text-xs font-semibold text-[#94A3B8] pl-1">Full name</Text>
+                  <View className="h-12 flex-row items-center rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] px-4">
+                    <Ionicons name="person-outline" size={18} color="#64748B" />
+                    <TextInput
+                      className="ml-3 flex-1 text-sm text-foreground dark:text-[#F8FAFC]"
+                      placeholder="Hoang Long Anh"
+                      placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                      value={fullName}
+                      onChangeText={setFullName}
+                      editable={!isLoading}
+                    />
+                  </View>
+                </View>
+              )}
+
+              <View className="gap-2">
+                <Text className="text-xs font-semibold text-[#94A3B8] pl-1">Email address</Text>
+                <View className="h-12 flex-row items-center rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] px-4">
+                  <Ionicons name="mail-outline" size={18} color="#64748B" />
+                  <TextInput
+                    className="ml-3 flex-1 text-sm text-foreground dark:text-[#F8FAFC]"
+                    placeholder="researcher@university.edu"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    editable={!isLoading}
+                  />
+                </View>
               </View>
-            ) : (
-              /* Sign in Form */
-              <View className="gap-5">
-                {/* Email/Username Input */}
-                <View className="gap-2">
-                  <Text className="text-xs font-semibold text-[#5A6E85] pl-1">
-                    Email address
-                  </Text>
-                  <View className="relative flex-row items-center h-12 bg-[#FFFFFF] border border-[#E2E8F0] rounded-xl px-4">
-                    <Ionicons
-                      name="mail-outline"
-                      size={18}
-                      color="#A0AEC0"
-                      className="mr-3"
-                    />
-                    <TextInput
-                      className="flex-1 h-full text-[#0F172A] text-sm"
-                      placeholder="researcher@university.edu"
-                      placeholderTextColor="#A0AEC0"
-                      value={email}
-                      onChangeText={setEmail}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!isLoading}
-                    />
-                  </View>
-                </View>
 
-                {/* Password Input */}
-                <View className="gap-2">
-                  <Text className="text-xs font-semibold text-[#5A6E85] pl-1">
-                    Password
-                  </Text>
-                  <View className="relative flex-row items-center h-12 bg-[#FFFFFF] border border-[#E2E8F0] rounded-xl px-4">
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color="#A0AEC0"
-                      className="mr-3"
-                    />
-                    <TextInput
-                      className="flex-1 h-full text-[#0F172A] text-sm"
-                      placeholder="••••••••••••"
-                      placeholderTextColor="#A0AEC0"
-                      secureTextEntry={!showPassword}
-                      value={password}
-                      onChangeText={setPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!isLoading}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      activeOpacity={0.7}
-                      className="p-1"
-                    >
-                      <Ionicons
-                        name={showPassword ? "eye-off-outline" : "eye-outline"}
-                        size={18}
-                        color="#A0AEC0"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Forgot Password Link */}
-                <View className="flex-row justify-end mt-[-8px]">
-                  <TouchableOpacity activeOpacity={0.7}>
-                    <Text className="text-xs font-semibold text-[#09258A]">
-                      Forgot password?
-                    </Text>
+              <View className="gap-2">
+                <Text className="text-xs font-semibold text-[#94A3B8] pl-1">Password</Text>
+                <View className="h-12 flex-row items-center rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] px-4">
+                  <Ionicons name="lock-closed-outline" size={18} color="#64748B" />
+                  <TextInput
+                    className="ml-3 flex-1 text-sm text-foreground dark:text-[#F8FAFC]"
+                    placeholder="••••••••"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} className="p-1">
+                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color="#94A3B8" />
                   </TouchableOpacity>
                 </View>
-
-                {/* Primary Sign In Button */}
-                <TouchableOpacity
-                  className={`w-full h-12 bg-[#09258A] rounded-xl flex-row items-center justify-center gap-2 shadow-lg shadow-[#09258A]/15 active:scale-[0.98] ${
-                    isLoading ? "opacity-75" : ""
-                  }`}
-                  onPress={handleLogin}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Text className="text-white text-sm font-bold">
-                        Sign in
-                      </Text>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={16}
-                        color="#FFFFFF"
-                      />
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {/* Divider */}
-                <View className="flex-row items-center gap-4 my-2">
-                  <View className="flex-1 h-[1px] bg-[#E2E8F0]" />
-                  <Text className="text-[10px] text-[#A0AEC0] font-bold uppercase tracking-wider">
-                    OR
-                  </Text>
-                  <View className="flex-1 h-[1px] bg-[#E2E8F0]" />
-                </View>
-
-                {/* Google Sign In */}
-                <TouchableOpacity
-                  className="w-full h-12 bg-white border border-[#E2E8F0] rounded-xl flex-row items-center justify-center gap-3 active:bg-slate-50"
-                  activeOpacity={0.8}
-                  disabled={isLoading}
-                >
-                  {/* Simulated Google circular G icon from mockup */}
-                  <View className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
-                    <Text
-                      className="text-white font-bold text-[10px]"
-                      style={{ fontFamily: "System" }}
-                    >
-                      G
-                    </Text>
-                  </View>
-                  <Text className="text-[#0F172A] text-sm font-semibold">
-                    Continue with Google
-                  </Text>
-                </TouchableOpacity>
               </View>
-            )}
+
+              {isRegisterTab && (
+                <View className="flex-row gap-2">
+                  {ROLES.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      className={`flex-1 rounded-full border px-2 py-2 ${
+                        role === item ? "border-[#06B6D4] bg-[#083344]" : "border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D]"
+                      }`}
+                      onPress={() => setRole(item)}
+                    >
+                      <Text className={`text-center text-[11px] font-semibold ${role === item ? "text-[#67E8F9]" : "text-[#94A3B8]"}`}>
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {!isRegisterTab && (
+                <TouchableOpacity className="self-end">
+                  <Text className="text-xs font-semibold text-[#06B6D4]">Forgot password?</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                className={`h-12 rounded-xl bg-[#1D4ED8] flex-row items-center justify-center gap-2 ${isLoading ? "opacity-75" : ""}`}
+                onPress={handleSubmit}
+                disabled={isLoading}
+                activeOpacity={0.85}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text className="text-sm font-bold text-white">{isRegisterTab ? "Create account" : "Sign in"}</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View className="flex-row items-center gap-4 py-1">
+                <View className="h-[1px] flex-1 bg-[#26334A]" />
+                <Text className="text-[10px] font-bold text-[#64748B]">OR</Text>
+                <View className="h-[1px] flex-1 bg-[#26334A]" />
+              </View>
+
+              <TouchableOpacity className="h-12 rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] flex-row items-center justify-center gap-3" disabled={isLoading}>
+                <View className="w-5 h-5 rounded-full bg-[#F8FAFC] items-center justify-center">
+                  <Text className="text-[10px] font-bold text-[#0F1B2D]">G</Text>
+                </View>
+                <Text className="text-sm font-semibold text-foreground dark:text-[#F8FAFC]">Continue with Google</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Footer Section */}
-          <View className="mt-12 items-center">
-            <Text className="text-[11px] text-[#5A6E85] text-center leading-relaxed px-6">
-              By continuing, you agree to our{" "}
-              <Text className="text-[#09258A] underline">Terms of Service</Text>{" "}
-              and{"\n"}
-              <Text className="text-[#09258A] underline">Privacy Policy</Text>.
-            </Text>
-            {/* Visual spacer bar to mimic mobile safe bottom area */}
-            <View className="w-20 h-1 bg-[#E2E8F0] rounded-full mt-6" />
-          </View>
+          <Text className="mt-10 text-center text-[11px] leading-relaxed text-[#94A3B8] px-5">
+            By continuing, you agree to our <Text className="text-[#06B6D4]">Terms of Service</Text> and{" "}
+            <Text className="text-[#06B6D4]">Privacy Policy</Text>.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

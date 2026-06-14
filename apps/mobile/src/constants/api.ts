@@ -9,6 +9,7 @@ export const API_ROUTES = {
     refresh: "/auth/refresh",
     logout: "/auth/logout",
     me: "/auth/me",
+    changePassword: "/auth/change-password",
   },
   papers: {
     list: "/papers",
@@ -16,6 +17,22 @@ export const API_ROUTES = {
   },
   search: {
     semantic: "/search", 
+  },
+  trends: {
+    overview: "/trends",
+    topic: (topic: string) => `/trends/${encodeURIComponent(topic)}`,
+  },
+  reports: {
+    list: "/reports",
+    detail: (id: string) => `/reports/${id}`,
+    create: "/reports",
+  },
+  bookmarks: {
+    list: "/bookmarks",
+    create: "/bookmarks",
+    delete: (id: string) => `/bookmarks/${id}`,
+    check: "/bookmarks/check",
+    updateNote: (id: string) => `/bookmarks/${id}`,
   },
   admin: {
     sync: "/admin/sync",

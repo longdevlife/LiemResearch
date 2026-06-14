@@ -1,2 +1,2 @@
-// TODO: implement bookmarks feature
-export {};
+export * from "./api/bookmarks.api";
+export * from "./hooks/use-bookmarks";

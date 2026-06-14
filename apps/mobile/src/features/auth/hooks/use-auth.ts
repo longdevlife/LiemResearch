@@ -1,7 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoginRequest, RegisterRequest } from "@trend/shared-types";
 import { useAuthStore } from "@/stores/auth-store";
-import { authApi } from "../api/auth.api";
+import { authApi, type ChangePasswordRequest, type UpdateProfileRequest } from "../api/auth.api";
 
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -32,9 +32,28 @@ export function useLogout() {
 
 export function useCurrentUser() {
   const tokens = useAuthStore((s) => s.tokens);
+  const user = useAuthStore((s) => s.user);
   return useQuery({
     queryKey: ["current-user"],
     queryFn: () => authApi.me(),
     enabled: !!tokens?.accessToken,
+    initialData: user ? { user } : undefined,
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateProfileRequest) => authApi.updateProfile(payload),
+    onSuccess: (data) => {
+      useAuthStore.setState({ user: data.user });
+      queryClient.setQueryData(["current-user"], data);
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (payload: ChangePasswordRequest) => authApi.changePassword(payload),
   });
 }

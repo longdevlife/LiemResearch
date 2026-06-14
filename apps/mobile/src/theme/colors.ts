@@ -3,11 +3,18 @@
  * NativeWind className (e.g., StatusBar, navigation theming) stays in sync.
  */
 export const colors = {
-  background: "#ffffff",
-  foreground: "#0a0a0a",
-  muted: "#f4f4f5",
-  mutedForeground: "#71717a",
-  primary: "#18181b",
-  primaryForeground: "#fafafa",
-  border: "#e4e4e7",
+  background: "#0F1B2D",
+  surface: "#111C2E",
+  card: "#1A2332",
+  cardElevated: "#202B3D",
+  foreground: "#F8FAFC",
+  muted: "#26334A",
+  mutedForeground: "#94A3B8",
+  primary: "#3B82F6",
+  primaryForeground: "#FFFFFF",
+  accent: "#06B6D4",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+  border: "#26334A",
 } as const;
