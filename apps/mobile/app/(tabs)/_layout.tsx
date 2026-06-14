@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Redirect, Tabs, type Href } from "expo-router";
-import { View, Text, TouchableOpacity, Animated, Dimensions, useColorScheme } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity, Animated, Dimensions } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useColorScheme } from "nativewind";
 
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -12,7 +13,7 @@ import { useAuthStore } from "@/stores/auth-store";
  */
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = Dimensions.get("window");
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   
   // Chiều rộng tổng thể của viên thuốc Tab Bar
@@ -41,7 +42,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         left: 24,
         right: 24,
         height: 64,
-        backgroundColor: isDark ? "#1A2332" : "#FFFFFF",
+        backgroundColor: isDark ? "#101A2B" : "#FFFFFF",
         borderRadius: 32,
         borderWidth: 1,
         borderColor: isDark ? "#26334A" : "#E2E8F0",
@@ -50,7 +51,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         paddingHorizontal: padding,
         shadowColor: "#000000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isDark ? 0.3 : 0.08,
+        shadowOpacity: isDark ? 0.35 : 0.1,
         shadowRadius: 12,
         elevation: 8,
       }}
@@ -61,7 +62,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           position: "absolute",
           height: 48,
           width: tabWidth,
-          backgroundColor: isDark ? "#1D4ED8" : "#09258A", // Active pill color
+          backgroundColor: isDark ? "#1D4ED8" : "#09258A",
           borderRadius: 24,
           left: padding,
           transform: [{ translateX: slideAnim }],
@@ -100,7 +101,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           iconName = "user";
         }
         
-        const inactiveColor = isDark ? "#94A3B8" : "#5A6E85";
+        const inactiveColor = isDark ? "#94A3B8" : "#64748B";
 
         return (
           <TouchableOpacity
