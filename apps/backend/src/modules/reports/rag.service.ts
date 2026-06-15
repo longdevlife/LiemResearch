@@ -4,7 +4,7 @@ import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { gapsService } from "../gaps/gaps.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
-import { generateJSON, generateWithTools } from "../llm/gemini.client.js";
+import { generateJSON, generateWithTools, LlmTruncationError } from "../llm/gemini.client.js";
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
 import { PaperModel } from "../papers/models/paper.model.js";
@@ -95,32 +95,53 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   const t2 = Date.now();
   if (!output) {
     if (report.deepAnalysis) {
-      // D2: Gemini actively calls tools to gather evidence
-      const rawJson = await generateWithTools(
-        `RESEARCH QUESTION:\n${report.query}\n\nUse the available tools to gather evidence, then produce the JSON report.`,
-        MCP_TOOL_DEFS,
-        (call) =>
-          executeMcpTool(call, {
-            reportId: String(report._id),
-            userId: String(report.userId),
-          }),
-        {
-          model,
-          system: DEEP_ANALYSIS_SYSTEM_PROMPT,
-          temperature: 0.3,
-          maxOutputTokens: env.DEEP_ANALYSIS_MAX_OUTPUT_TOKENS,
-          maxTurns: env.DEEP_ANALYSIS_MAX_TURNS,
-        },
-      );
-      // Fix 3: robust JSON fence stripping — handles preamble text before fences
-      const fenceMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-      const stripped = (fenceMatch?.[1] != null ? fenceMatch[1] : rawJson).trim();
-      output = JSON.parse(stripped) as ReportLlmOutput;
-      if (!output || typeof output.markdown !== "string" || output.markdown.length < 50) {
-        throw new Error("Deep analysis LLM returned malformed report JSON");
+      // D2: Gemini actively calls tools to gather evidence.
+      // If maxTurns is exceeded (LlmTruncationError), fall back to classic RAG
+      // so the report still completes rather than failing after 5 retries.
+      let deepOutput: ReportLlmOutput;
+      try {
+        const rawJson = await generateWithTools(
+          `RESEARCH QUESTION:\n${report.query}\n\nUse the available tools to gather evidence, then produce the JSON report.`,
+          MCP_TOOL_DEFS,
+          (call) =>
+            executeMcpTool(call, {
+              reportId: String(report._id),
+              userId: String(report.userId),
+            }),
+          {
+            model,
+            system: DEEP_ANALYSIS_SYSTEM_PROMPT,
+            temperature: 0.3,
+            maxOutputTokens: env.DEEP_ANALYSIS_MAX_OUTPUT_TOKENS,
+            maxTurns: env.DEEP_ANALYSIS_MAX_TURNS,
+          },
+        );
+        const fenceMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        const stripped = (fenceMatch?.[1] != null ? fenceMatch[1] : rawJson).trim();
+        const parsed = JSON.parse(stripped) as ReportLlmOutput;
+        if (!parsed || typeof parsed.markdown !== "string" || parsed.markdown.length < 50) {
+          throw new Error("Deep analysis LLM returned malformed report JSON");
+        }
+        await cache.set(deepCacheKey, parsed, LLM_CACHE_TTL_SECONDS);
+        deepOutput = parsed;
+      } catch (err) {
+        if (!(err instanceof LlmTruncationError)) throw err;
+        // maxTurns exceeded → fall back to classic RAG with pre-fetched evidence
+        logger.warn(
+          { reportId: String(report._id), maxTurns: env.DEEP_ANALYSIS_MAX_TURNS },
+          "deepAnalysis maxTurns exceeded — falling back to classic RAG",
+        );
+        const fallback = await generateJSON<ReportLlmOutput>(
+          buildReportPrompt(report.query, papers),
+          { model, system: REPORT_SYSTEM_PROMPT, temperature: 0.3, maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS },
+        );
+        if (!fallback || typeof fallback.markdown !== "string" || fallback.markdown.length < 50) {
+          throw new Error("Fallback classic RAG also returned malformed report JSON");
+        }
+        await cache.set(cacheKey, fallback, LLM_CACHE_TTL_SECONDS);
+        deepOutput = fallback;
       }
-      // Deep analysis: skip grounding guard (no fixed evidence list)
-      await cache.set(deepCacheKey, output, LLM_CACHE_TTL_SECONDS);
+      output = deepOutput;
     } else {
       // Classic path — existing generateJSON call:
       output = await generateJSON<ReportLlmOutput>(buildReportPrompt(report.query, papers), {
