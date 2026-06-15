@@ -2,6 +2,7 @@ import type { PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
+import { gapsService } from "../gaps/gaps.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
@@ -126,6 +127,33 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
   // ⑦ Audit trail.
   await auditRagRun(report, { embeddingMs, searchMs, llmMs, cacheHit, papers });
+
+  // ⑧ Fan-out gaps into research_gaps collection (non-fatal).
+  await gapsService
+    .fanOutGapsFromReport({
+      _id: report._id,
+      userId: report.userId,
+      query: report.query,
+      researchGaps: ((report.researchGaps ?? []) as unknown[]).map((raw) => {
+        const g = raw as {
+          title?: string;
+          description?: string;
+          rationale?: string;
+          supportingPaperIds?: unknown[];
+          confidence?: unknown;
+        };
+        return {
+          title: String(g.title ?? ""),
+          description: String(g.description ?? ""),
+          rationale: String(g.rationale ?? ""),
+          supportingPaperIds: g.supportingPaperIds ?? [],
+          confidence: Number(g.confidence ?? 0.5),
+        };
+      }),
+    })
+    .catch((err) =>
+      logger.warn({ err, reportId: String(report._id) }, "gap fan-out failed (non-fatal)"),
+    );
 
   logger.info(
     { reportId: String(report._id), papers: papers.length, embeddingMs, searchMs, llmMs, cacheHit },

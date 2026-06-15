@@ -6,6 +6,7 @@ import { searchRouter } from "../modules/search/search.routes.js";
 import { embeddingRouter } from "../modules/embeddings/embedding.routes.js";
 import { trendRouter } from "../modules/trends/trend.routes.js";
 import { reportRouter } from "../modules/reports/report.routes.js";
+import { gapsRouter } from "../modules/gaps/gaps.routes.js";
 import { bookmarkRouter } from "../modules/bookmarks/bookmark.routes.js";
 import { analyticsRouter } from "../modules/analytics/analytics.routes.js";
 
@@ -16,6 +17,7 @@ apiRouter.use("/papers", paperRouter);
 apiRouter.use("/search", searchRouter); // Phase B — semantic search
 apiRouter.use("/trends", trendRouter); // Phase B/C — publication trends
 apiRouter.use("/reports", reportRouter); // Phase C — RAG analytical reports
+apiRouter.use("/gaps", gapsRouter); // Phase D — research gaps
 apiRouter.use("/bookmarks", bookmarkRouter); // Sprint 3 — bookmarks
 apiRouter.use("/analytics", analyticsRouter); // Phase D — search analytics
 apiRouter.use("/admin", syncRouter); // /admin/sync

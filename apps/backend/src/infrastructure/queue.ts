@@ -25,6 +25,7 @@ export const QUEUE_NAMES = {
   apiSync: "api-sync",
   embedding: "embedding",
   report: "report",
+  gaps: "gaps", // Phase D
 } as const;
 
 export const apiSyncQueue = new Queue(QUEUE_NAMES.apiSync, {
@@ -38,6 +39,11 @@ export const embeddingQueue = new Queue(QUEUE_NAMES.embedding, {
 });
 
 export const reportQueue = new Queue(QUEUE_NAMES.report, {
+  connection: makeConnection(),
+  defaultJobOptions,
+});
+
+export const gapsQueue = new Queue(QUEUE_NAMES.gaps, {
   connection: makeConnection(),
   defaultJobOptions,
 });
