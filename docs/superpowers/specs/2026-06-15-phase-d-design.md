@@ -72,7 +72,9 @@ POST /reports { deepAnalysis: true }                                     │
 // modules/gaps/models/research-gap.model.ts
 {
   _id:              ObjectId
-  topic:            String, required, index         // "LLM in education"
+  topic:            String, required                // display name: "LLM in Education"
+  normalizedTopic:  String, required, index         // lowercase + trim: "llm in education"
+                                                    // dùng để group/dedup; index này thay vì topic
   title:            String, required, maxlength 200
   description:      String, required
   rationale:        String, required                // tại sao đây là gap
@@ -80,15 +82,17 @@ POST /reports { deepAnalysis: true }                                     │
   confidence:       Number, min 0, max 1            // 0..1 từ LLM
   source:           enum ["report", "standalone"]
   sourceReportId?:  ObjectId, ref "Report"          // nếu source = "report"
-  userId:           ObjectId, ref "User", index
+  userId:           ObjectId, ref "User", index     // creator (cho PATCH ownership)
   status:           enum ["active", "resolved", "dismissed"], default "active"
   timestamps:       true
 }
 
+// Helper (trong service): normalizeTopicStr(t) = t.trim().toLowerCase()
+
 // Indexes
-{ topic: 1, confidence: -1 }    // query by topic, sorted by relevance
-{ userId: 1, createdAt: -1 }    // user's gap history
-{ status: 1, createdAt: -1 }    // filter active gaps
+{ normalizedTopic: 1, confidence: -1 }  // query by topic, sorted by relevance
+{ userId: 1, createdAt: -1 }            // creator history
+{ status: 1, createdAt: -1 }            // filter active gaps
 ```
 
 **Collection: `gap_analyses`** (lightweight job tracker — tương tự report)
@@ -116,8 +120,10 @@ POST /reports { deepAnalysis: true }                                     │
 |---|---|---|---|
 | `POST /api/v1/gaps/analyze` | `{ topic, yearFrom?, yearTo? }` | requireAuth | Enqueue standalone analysis → 202 `{ analysisId }` |
 | `GET /api/v1/gaps/analyze/:id` | — | requireAuth | Poll job status + gapIds when ready |
-| `GET /api/v1/gaps` | `?topic=&minConfidence=&source=&status=active&page=&pageSize=` | requireAuth | List gaps (user's own + public) |
-| `PATCH /api/v1/gaps/:id` | `{ status: "resolved"\|"dismissed" }` | requireAuth (owner) | Update gap status |
+| `GET /api/v1/gaps` | `?topic=&minConfidence=&source=&status=active&page=&pageSize=` | requireAuth | List ALL gaps (shared knowledge — không filter theo userId). Query dùng `normalizedTopic` |
+| `PATCH /api/v1/gaps/:id` | `{ status: "resolved"\|"dismissed" }` | requireAuth (creator only) | Update gap status — service check `gap.userId === req.user.sub` |
+
+**Ownership model:** Gaps là **knowledge chung** — mọi authenticated user đều thấy tất cả gaps. Chỉ creator (`userId`) mới PATCH được status. Không có "private gap".
 
 ### 3.3. Standalone Gap Pipeline
 
@@ -125,11 +131,15 @@ POST /reports { deepAnalysis: true }                                     │
 
 ```
 ① Embed topic → queryVector (768d)
-② $vectorSearch top-6 papers (numCandidates 80, lighter than reports' 200)
-③ Cache lookup: key = hash(topic + filters + model + promptVer + paperIds[])
-④ On cache miss: generateJSON(GAPS_PROMPT, { gaps[] }) — no markdown section
-⑤ Validate: confidence clamp 0..1, supportingEvidence 1-based → paperId
-⑥ Persist to research_gaps (source: "standalone")
+② $vectorSearch → top-6 papers retrieved (numCandidates 80, lighter than reports' 200)
+   — paper IDs bây giờ mới biết, dùng cho ③
+③ Cache lookup: key = hash(normalizedTopic + filters + model + GAP_PROMPT_VERSION + paperIds[])
+   — PHẢI sau ② vì cache key phụ thuộc vào paper IDs từ vector search
+   — Giống đúng pattern rag.service.ts:64-71
+④ Cache hit → skip Gemini, dùng cached gaps[]
+   Cache miss → generateJSON(GAPS_PROMPT, papers) → { gaps[] }  (no markdown section)
+⑤ Validate: confidence clamp 0..1, supportingEvidence (1-based index) → paperId lookup
+⑥ normalizedTopic = topic.trim().toLowerCase() → persist to research_gaps (source: "standalone")
 ⑦ Update gap_analyses: status "ready", gapIds[]
 ```
 
@@ -285,6 +295,9 @@ export async function executeMcpTool(
       break;
     case "count_papers":
       output = await paperService.count(call.args);
+      // NOTE: paperService.count() chưa tồn tại — cần thêm vào paper.service.ts:
+      // count({ topic?, yearFrom?, yearTo?, keyword? }) → { count: number }
+      // Implementation: PaperModel.countDocuments(buildFilter(args))
       break;
     default:
       throw new Error(`Unknown MCP tool: ${call.name}`);
@@ -315,6 +328,11 @@ export async function generateWithTools(
   executor: (call: {name: string; args: Record<string, unknown>}) => Promise<unknown>,
   opts: GenerateOptions & { maxTurns?: number } = {},
 ): Promise<string>
+// Return type: MARKDOWN STRING (giống generateText) — KHÔNG phải JSON.
+// Gemini tự gọi tools cho đến khi tổng hợp đủ → trả text thuần.
+// Gaps trong deepAnalysis mode vẫn dùng classic prompt riêng (REPORT_SYSTEM_PROMPT
+// vẫn yêu cầu "gaps" JSON field) — generateWithTools chỉ thay thế evidence-gathering,
+// không thay thế output format. Output vẫn là ReportLlmOutput JSON cuối cùng.
 ```
 
 Multi-turn loop:
@@ -326,10 +344,10 @@ Multi-turn loop:
 
 ### 4.5. Tích hợp vào RAG Reports
 
-**Thêm `deepAnalysis?: boolean` vào `CreateReportRequest`:**
+**Thêm `deepAnalysis` vào 2 chỗ:**
 
 ```ts
-// shared-types/src/report.ts — thêm field
+// 1. shared-types/src/report.ts — CreateReportRequest
 export interface CreateReportRequest {
   query: string;
   topic?: string;
@@ -337,6 +355,12 @@ export interface CreateReportRequest {
   yearTo?: number;
   deepAnalysis?: boolean;  // NEW: opt-in function calling mode
 }
+
+// 2. modules/reports/models/report.model.ts — Mongoose schema
+// Thêm vào reportSchema:
+deepAnalysis: { type: Boolean, default: false }
+// Và vào AnalyticalReport shared-type:
+deepAnalysis: boolean
 ```
 
 **Trong `rag.service.ts`:**
@@ -407,6 +431,7 @@ SearchLogModel.create({ userId, query, mode, resultCount, durationMs, filters })
 
 | Method | Path | Auth | Response |
 |---|---|---|---|
+| `GET /api/v1/analytics/search/summary` | — | **public** | `{ totalSearches, totalPapers, uniqueUsers }` — dùng cho Home page stats ("12K papers, 500+ searches") |
 | `GET /api/v1/analytics/search` | `?days=7` | admin | `{ topQueries[{query,count}], volumeByDay[{date,count}] }` |
 | `GET /api/v1/analytics/search/me` | — | requireAuth | `{ history: SearchLog[] }` (last 50) |
 
@@ -432,7 +457,9 @@ $limit: 10
 ```ts
 // Phase D — Research Gaps
 GAPS_TOP_K:                  z.coerce.number().int().min(1).max(10).default(6)
-GAPS_MAX_PER_HOUR:           z.coerce.number().int().positive().default(20)
+GAPS_MAX_PER_HOUR:           z.coerce.number().int().positive().default(10)
+// Rationale: Gemini free tier ~125 RPD (Pro) / ~250 RPD (Flash). Gap analysis
+// + reports share quota. 10/giờ = max 240 calls/ngày — đủ margin cho cả 2 feature.
 GAPS_MAX_OUTPUT_TOKENS:      z.coerce.number().int().positive().default(2048)
 
 // Phase D — Function Calling
@@ -541,8 +568,11 @@ Step 1: D3 Search Analytics         (no LLM, warm up pattern)
 
 Step 2: D1 Research Gaps — BE       (core value, uses existing RAG)
   → models + prompt (với GAP_PROMPT_VERSION constant) + service + gaps.worker.ts + routes
+  → gaps.worker.ts CẦN có startup sweep: mark gap_analyses stuck "analyzing" > 5 phút
+    thành "failed" — giống pattern report.worker.ts:30-39
   → mount /gaps + /gaps/analyze trong routes/index.ts
-  → fan-out hook inline trong rag.service.ts
+  → fan-out hook inline trong rag.service.ts (non-fatal)
+  → MODIFY paper.service.ts: thêm count() method (PaperModel.countDocuments)
 
 Step 3: D1 Research Gaps — FE       (research-gaps.tsx full page + feature hooks)
 
