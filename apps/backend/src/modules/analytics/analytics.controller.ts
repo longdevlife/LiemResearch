@@ -1,0 +1,23 @@
+import type { NextFunction, Request, Response } from "express";
+import { analyticsService } from "./analytics.service.js";
+
+export const analyticsController = {
+  async summary(_req: Request, res: Response) {
+    const data = await analyticsService.getSummary();
+    res.json({ success: true, data });
+  },
+
+  async dashboard(req: Request, res: Response) {
+    const days = Math.min(Number(req.query.days ?? 7), 90);
+    const [topQueries, volumeByDay] = await Promise.all([
+      analyticsService.getTopQueries(days),
+      analyticsService.getVolumeByDay(days),
+    ]);
+    res.json({ success: true, data: { topQueries, volumeByDay, days } });
+  },
+
+  async me(req: Request, res: Response, _next: NextFunction) {
+    const history = await analyticsService.getUserHistory(req.user!.sub);
+    res.json({ success: true, data: history });
+  },
+};

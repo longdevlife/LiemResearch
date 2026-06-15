@@ -7,6 +7,7 @@ import { embeddingRouter } from "../modules/embeddings/embedding.routes.js";
 import { trendRouter } from "../modules/trends/trend.routes.js";
 import { reportRouter } from "../modules/reports/report.routes.js";
 import { bookmarkRouter } from "../modules/bookmarks/bookmark.routes.js";
+import { analyticsRouter } from "../modules/analytics/analytics.routes.js";
 
 export const apiRouter: Router = Router();
 
@@ -16,5 +17,6 @@ apiRouter.use("/search", searchRouter); // Phase B — semantic search
 apiRouter.use("/trends", trendRouter); // Phase B/C — publication trends
 apiRouter.use("/reports", reportRouter); // Phase C — RAG analytical reports
 apiRouter.use("/bookmarks", bookmarkRouter); // Sprint 3 — bookmarks
+apiRouter.use("/analytics", analyticsRouter); // Phase D — search analytics
 apiRouter.use("/admin", syncRouter); // /admin/sync
 apiRouter.use("/admin", embeddingRouter); // /admin/embed
