@@ -9,7 +9,7 @@ import { useCurrentUser } from "@/features/auth";
 import { PageHeader } from "@/components/page-header";
 import type { TopQuery, VolumeByDay } from "@trend/shared-types";
 
-function useDashboard(days: number) {
+function useDashboard(days: number, enabled: boolean) {
   return useQuery({
     queryKey: ["analytics", "dashboard", days],
     queryFn: async () => {
@@ -17,6 +17,7 @@ function useDashboard(days: number) {
       return res.data.data as { topQueries: TopQuery[]; volumeByDay: VolumeByDay[]; days: number };
     },
     staleTime: 60_000,
+    enabled,
   });
 }
 
@@ -32,16 +33,9 @@ function useMySearchHistory() {
 
 export function DashboardPage() {
   const { data: user } = useCurrentUser();
-  const { data: dash, isLoading } = useDashboard(7);
+  const isAdmin = user?.user?.role === "admin";
+  const { data: dash, isLoading: isDashLoading } = useDashboard(7, isAdmin);
   const { data: history } = useMySearchHistory();
-
-  if (isLoading) {
-    return (
-      <main className="container py-8">
-        <p className="text-muted-foreground">Loading analytics…</p>
-      </main>
-    );
-  }
 
   return (
     <main className="container py-8 space-y-8">
@@ -50,31 +44,43 @@ export function DashboardPage() {
         description={`Signed in as ${user?.user?.email ?? "…"}`}
       />
 
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Search volume — last 7 days</h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={dash?.volumeByDay ?? []}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Line type="monotone" dataKey="count" stroke="#6366f1" dot={false} strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </section>
+      {isAdmin ? (
+        <>
+          {isDashLoading ? (
+            <p className="text-muted-foreground">Loading analytics…</p>
+          ) : (
+            <>
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Search volume — last 7 days</h2>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={dash?.volumeByDay ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="#6366f1" dot={false} strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </section>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Top 10 queries — last 7 days</h2>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={dash?.topQueries ?? []} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" allowDecimals={false} />
-            <YAxis dataKey="query" type="category" width={180} tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </section>
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Top 10 queries — last 7 days</h2>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={dash?.topQueries ?? []} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis dataKey="query" type="category" width={180} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </section>
+            </>
+          )}
+        </>
+      ) : (
+        <p className="text-muted-foreground">Dashboard analytics require admin access.</p>
+      )}
 
       {history && history.length > 0 && (
         <section>

@@ -1,8 +1,10 @@
+import type { TopQuery, VolumeByDay, SearchSummary } from "@trend/shared-types";
 import { logger } from "../../infrastructure/logger.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { SearchLogModel, type SearchLogDoc } from "./models/search-log.model.js";
 
 export type { SearchLogDoc };
+export type { TopQuery, VolumeByDay, SearchSummary };
 
 export interface LogSearchParams {
   userId?: string;
@@ -12,10 +14,6 @@ export interface LogSearchParams {
   durationMs: number;
   filters: { yearFrom?: number; yearTo?: number };
 }
-
-export interface TopQuery { query: string; count: number; }
-export interface VolumeByDay { date: string; count: number; }
-export interface SearchSummary { totalSearches: number; totalPapers: number; uniqueUsers: number; }
 
 export const analyticsService = {
   logSearch(params: LogSearchParams): void {

@@ -2,7 +2,7 @@ import mongoose, { type InferSchemaType, Schema } from "mongoose";
 
 const searchLogSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
     query: { type: String, required: true },
     mode: { type: String, enum: ["semantic", "semantic+rerank"], required: true },
     resultCount: { type: Number, required: true },

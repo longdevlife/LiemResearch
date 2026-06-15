@@ -8,7 +8,8 @@ export const analyticsController = {
   },
 
   async dashboard(req: Request, res: Response) {
-    const days = Math.min(Number(req.query.days ?? 7), 90);
+    const rawDays = Number(req.query.days ?? 7);
+    const days = Number.isNaN(rawDays) || rawDays < 1 ? 7 : Math.min(Math.floor(rawDays), 90);
     const [topQueries, volumeByDay] = await Promise.all([
       analyticsService.getTopQueries(days),
       analyticsService.getVolumeByDay(days),
