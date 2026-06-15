@@ -2,6 +2,8 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { requireAuth } from "../../common/middleware/auth.js";
+import { validate } from "../../common/middleware/validate.js";
+import { AnalyzeGapSchema, ListGapsQuerySchema, PatchGapSchema } from "./dto/gaps.schema.js";
 import { gapsController } from "./gaps.controller.js";
 
 export const gapsRouter: Router = Router();
@@ -30,7 +32,7 @@ const analyzeGapLimiter = rateLimit({
     }),
 });
 
-gapsRouter.post("/analyze", analyzeGapLimiter, gapsController.analyze);
+gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);
-gapsRouter.get("/", gapsController.list);
-gapsRouter.patch("/:id", gapsController.patch);
+gapsRouter.get("/", validate(ListGapsQuerySchema, "query"), gapsController.list);
+gapsRouter.patch("/:id", validate(PatchGapSchema), gapsController.patch);

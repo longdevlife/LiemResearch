@@ -8,6 +8,7 @@ import { generateJSON } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ResearchGapModel } from "./models/research-gap.model.js";
 import { GapAnalysisModel } from "./models/gap-analysis.model.js";
+import { gapsQueue } from "../../infrastructure/queue.js";
 import {
   buildGapsCacheKey,
   buildGapsPrompt,
@@ -36,7 +37,7 @@ function clamp01(x: unknown): number {
 }
 
 export const gapsService = {
-  /** Create a queued analysis row and return its id (worker does the work). */
+  /** Create a queued analysis row, enqueue the BullMQ job, and return the id. */
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
     const analysis = await GapAnalysisModel.create({
       userId,
@@ -45,7 +46,9 @@ export const gapsService = {
       yearTo: dto.yearTo,
       status: "queued",
     });
-    return String(analysis._id);
+    const analysisId = String(analysis._id);
+    await gapsQueue.add("gap-analysis", { analysisId });
+    return analysisId;
   },
 
   /** Fetch one analysis the caller owns (poll target for the FE). */

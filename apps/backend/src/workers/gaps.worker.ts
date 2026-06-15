@@ -39,6 +39,20 @@ async function main() {
     logger.warn({ swept: swept.modifiedCount }, "swept stuck gap analyses");
   }
 
+  // Also sweep orphaned "queued" docs (no matching BullMQ job, stuck for > 30 min)
+  const orphaned = await GapAnalysisModel.updateMany(
+    { status: "queued", updatedAt: { $lt: new Date(Date.now() - 30 * 60_000) } },
+    {
+      $set: {
+        status: "failed",
+        errorMessage: "Gap analysis was stuck in queue (worker restarted). Please try again.",
+      },
+    },
+  );
+  if (orphaned.modifiedCount > 0) {
+    logger.warn({ swept: orphaned.modifiedCount }, "swept orphaned queued gap analyses");
+  }
+
   const worker = new Worker(
     QUEUE_NAMES.gaps,
     async (job) => {
