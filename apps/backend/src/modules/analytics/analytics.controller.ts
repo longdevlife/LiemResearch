@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+import type { Request, Response } from "express";
 import { analyticsService } from "./analytics.service.js";
 
 export const analyticsController = {
@@ -17,7 +17,7 @@ export const analyticsController = {
     res.json({ success: true, data: { topQueries, volumeByDay, days } });
   },
 
-  async me(req: Request, res: Response, _next: NextFunction) {
+  async me(req: Request, res: Response) {
     const history = await analyticsService.getUserHistory(req.user!.sub);
     res.json({ success: true, data: history });
   },
