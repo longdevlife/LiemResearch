@@ -42,4 +42,10 @@ export const API_ROUTES = {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",
   },
+  gaps: {
+    analyze: "/gaps/analyze",
+    analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
+    list: "/gaps",
+    patch: (id: string) => `/gaps/${id}`,
+  },
 } as const;
