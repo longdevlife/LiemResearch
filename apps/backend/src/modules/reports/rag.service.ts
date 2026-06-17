@@ -138,7 +138,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         if (!fallback || typeof fallback.markdown !== "string" || fallback.markdown.length < 50) {
           throw new Error("Fallback classic RAG also returned malformed report JSON");
         }
-        await cache.set(cacheKey, fallback, LLM_CACHE_TTL_SECONDS);
+        await cache.set(deepCacheKey, fallback, LLM_CACHE_TTL_SECONDS);
         deepOutput = fallback;
       }
       output = deepOutput;
