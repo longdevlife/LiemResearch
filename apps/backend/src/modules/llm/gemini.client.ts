@@ -91,4 +91,71 @@ function stripJsonFence(s: string): string {
     .replace(/\s*```$/, "");
 }
 
+/**
+ * Multi-turn function-calling loop.
+ * Returns final text from Gemini after it finishes calling tools.
+ * Throws LlmTruncationError (nonRetryable) if maxTurns exceeded.
+ */
+export async function generateWithTools(
+  prompt: string,
+  tools: ReadonlyArray<{ name: string; description: string; parameters: object }>,
+  executor: (call: { name: string; args: Record<string, unknown> }) => Promise<unknown>,
+  opts: GenerateOptions & { maxTurns?: number } = {},
+): Promise<string> {
+  const model = opts.model ?? env.GEMINI_MODEL_DEEP;
+  const maxOutputTokens = opts.maxOutputTokens ?? env.DEEP_ANALYSIS_MAX_OUTPUT_TOKENS;
+  const maxTurns = opts.maxTurns ?? env.DEEP_ANALYSIS_MAX_TURNS;
+
+  type Part = { text?: string; functionCall?: unknown; functionResponse?: unknown };
+  type Turn = { role: string; parts: Part[] };
+
+  const history: Turn[] = [{ role: "user", parts: [{ text: prompt }] }];
+
+  for (let turn = 0; turn < maxTurns; turn++) {
+    const result = await client.models.generateContent({
+      model,
+      contents: history as unknown as Parameters<typeof client.models.generateContent>[0]["contents"],
+      config: {
+        systemInstruction: opts.system,
+        temperature: opts.temperature ?? 0.3,
+        maxOutputTokens,
+        tools: [{ functionDeclarations: tools as unknown as object[] }],
+      },
+    });
+
+    const finishReason = String(result.candidates?.[0]?.finishReason ?? "");
+    if (finishReason === "MAX_TOKENS") {
+      logger.error({ model, maxOutputTokens, turn }, "gemini output truncated (deepAnalysis)");
+      throw new LlmTruncationError(model, maxOutputTokens);
+    }
+
+    const parts = (result.candidates?.[0]?.content?.parts ?? []) as Part[];
+    const fnCalls = parts.filter((p) => p.functionCall);
+    const textContent = parts.filter((p) => p.text).map((p) => p.text as string).join("");
+
+    history.push({ role: "model", parts });
+
+    if (fnCalls.length === 0) {
+      logger.debug({ model, turns: turn + 1, chars: textContent.length }, "gemini.tools done");
+      return textContent;
+    }
+
+    const toolResults = await Promise.all(
+      fnCalls.map(async (p) => {
+        const fc = p.functionCall as { name: string; args?: Record<string, unknown> };
+        const output = await executor({ name: fc.name, args: fc.args ?? {} });
+        return { name: fc.name, response: { output } };
+      }),
+    );
+
+    history.push({
+      role: "user",
+      parts: toolResults.map((r) => ({ functionResponse: r })),
+    });
+  }
+
+  logger.error({ model, maxTurns }, "generateWithTools: maxTurns exhausted");
+  throw new LlmTruncationError(model, maxOutputTokens);
+}
+
 export { client as geminiClient };

@@ -33,8 +33,19 @@ export const API_ROUTES = {
     check: "/bookmarks/check",
     updateNote: (id: string) => `/bookmarks/${id}`,
   },
+  analytics: {
+    summary: "/analytics/search/summary",
+    dashboard: "/analytics/search",
+    me: "/analytics/search/me",
+  },
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",
+  },
+  gaps: {
+    analyze: "/gaps/analyze",
+    analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
+    list: "/gaps",
+    patch: (id: string) => `/gaps/${id}`,
   },
 } as const;

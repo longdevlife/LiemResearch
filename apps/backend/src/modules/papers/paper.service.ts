@@ -12,6 +12,13 @@ export interface ListPapersResult {
   total: number;
 }
 
+export interface CountPapersParams {
+  topic?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  keyword?: string;
+}
+
 export const paperService = {
   /** Keyword search over title + abstract (Phase A). Paginated. */
   async list({ q, page, pageSize }: ListPapersParams): Promise<ListPapersResult> {
@@ -30,6 +37,21 @@ export const paperService = {
   async getById(id: string): Promise<Paper | null> {
     const doc = await PaperModel.findById(id).lean();
     return doc ? toPaperDto(doc) : null;
+  },
+
+  /** Count active papers matching topic/year/keyword filters (gap corpus check). */
+  async count({ topic, yearFrom, yearTo, keyword }: CountPapersParams): Promise<{ count: number }> {
+    const filter: Record<string, unknown> = { dataStatus: "active" };
+    if (topic) filter["topics.topicName"] = topic;
+    if (keyword) filter.$text = { $search: keyword };
+    if (yearFrom !== undefined || yearTo !== undefined) {
+      filter.publicationYear = {
+        ...(yearFrom !== undefined ? { $gte: yearFrom } : {}),
+        ...(yearTo !== undefined ? { $lte: yearTo } : {}),
+      };
+    }
+    const count = await PaperModel.countDocuments(filter);
+    return { count };
   },
 };
 

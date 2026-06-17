@@ -40,6 +40,7 @@ export const reportService = {
       topic: input.topic,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
+      deepAnalysis: input.deepAnalysis ?? false,
       status: "queued",
     });
 

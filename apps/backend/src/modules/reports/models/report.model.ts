@@ -38,6 +38,7 @@ const reportSchema = new Schema(
     cacheKey: { type: String, index: true },
     yearFrom: { type: Number },
     yearTo: { type: Number },
+    deepAnalysis: { type: Boolean, default: false },
     errorMessage: { type: String },
     completedAt: { type: Date },
   },
