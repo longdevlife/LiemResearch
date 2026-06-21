@@ -28,38 +28,15 @@ export const authService = {
   },
 
   async login(input: LoginInput): Promise<AuthResponse> {
-    if (input.email === "admin1@gmail.com") {
-      let adminUser = await UserModel.findOne({ email: "admin1@gmail.com" });
-      const passwordHash = await bcrypt.hash("admin123", BCRYPT_ROUNDS);
-      if (!adminUser) {
-        adminUser = await UserModel.create({
-          email: "admin1@gmail.com",
-          passwordHash,
-          fullName: "Admin One",
-          role: "admin",
-        });
-      } else {
-        let needsSave = false;
-        if (adminUser.role !== "admin") {
-          adminUser.role = "admin";
-          needsSave = true;
-        }
-        const isCorrectPassword = await bcrypt.compare(input.password, adminUser.passwordHash);
-        if (!isCorrectPassword && input.password === "admin123") {
-          adminUser.passwordHash = passwordHash;
-          needsSave = true;
-        }
-        if (needsSave) {
-          await adminUser.save();
-        }
-      }
-    }
-
     const user = await UserModel.findOne({ email: input.email });
     if (!user) throw AppError.unauthorized("Invalid credentials");
 
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) throw AppError.unauthorized("Invalid credentials");
+
+    if (user.isActive === false) {
+      throw AppError.forbidden("Account has been disabled");
+    }
 
     const tokens = await issueTokens(user);
     return { user: toUserDto(user), tokens };
@@ -81,6 +58,9 @@ export const authService = {
 
     const user = await UserModel.findById(payload.sub);
     if (!user) throw AppError.unauthorized();
+    if (user.isActive === false) {
+      throw AppError.forbidden("Account has been disabled");
+    }
 
     // Rotate: revoke old, issue new pair.
     stored.revokedAt = new Date();
@@ -165,6 +145,7 @@ function toUserDto(user: UserDoc): User {
     avatarUrl: user.avatarUrl ?? undefined,
     institution: user.institution ?? undefined,
     researchInterests: user.researchInterests,
+    isActive: user.isActive !== false,
     createdAt: (user as unknown as { createdAt: Date }).createdAt.toISOString(),
     updatedAt: (user as unknown as { updatedAt: Date }).updatedAt.toISOString(),
   };
