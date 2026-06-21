@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { AnyBulkWriteOperation } from "mongoose";
+import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { auditService } from "../audit/audit.service.js";
 import { PaperModel, type PaperHydrated } from "../papers/models/paper.model.js";
@@ -135,19 +136,35 @@ async function ingestPage(
 
   if (ingested.length === 0) return;
 
-  // ② Bulk-insert source records (always inserted — the provenance trail).
-  const sourceDocs = ingested.map(({ paper, work }) => ({
-    paperId: paper._id,
-    providerId,
-    externalRecordId: work.id,
-    rawMetadata: work,
-    metadataHash: crypto.createHash("sha256").update(JSON.stringify(work)).digest("hex"),
-    fetchedAt: new Date(),
-  }));
+  // ② Upsert source records, deduped by metadataHash — re-syncing the same paper
+  //    no longer piles up duplicate provider blobs (the cause of M0 filling up).
+  //    rawMetadata (the full provider JSON) is heavy and read by nothing, so it is
+  //    only stored when SYNC_STORE_RAW_METADATA is on.
+  const sourceOps: AnyBulkWriteOperation[] = ingested.map(({ paper, work }) => {
+    const metadataHash = crypto.createHash("sha256").update(JSON.stringify(work)).digest("hex");
+    return {
+      updateOne: {
+        filter: { metadataHash },
+        update: {
+          $setOnInsert: {
+            paperId: paper._id,
+            providerId,
+            externalRecordId: work.id,
+            metadataHash,
+            fetchedAt: new Date(),
+            ...(env.SYNC_STORE_RAW_METADATA ? { rawMetadata: work } : {}),
+          },
+        },
+        upsert: true,
+      },
+    };
+  });
   try {
-    await PaperSourceRecordModel.insertMany(sourceDocs, { ordered: false });
+    await PaperSourceRecordModel.bulkWrite(sourceOps as AnyBulkWriteOperation<never>[], {
+      ordered: false,
+    });
   } catch (err) {
-    logger.error({ err }, "source-record bulk insert partially failed (non-fatal)");
+    logger.error({ err }, "source-record bulk upsert partially failed (non-fatal)");
   }
 
   // ③ Bulk-write quality checks + denormalize quality onto the papers.
