@@ -41,6 +41,13 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       });
       const vec = res.embeddings?.[0]?.values;
       if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
+      // A wrong-length vector would corrupt the 768-dim Atlas index (vector search
+      // errors or silently drops the doc). Reject it rather than persist garbage.
+      if (vec.length !== this.dimensions) {
+        throw new Error(
+          `Embedding dimension mismatch: got ${vec.length}, expected ${this.dimensions}`,
+        );
+      }
       return vec;
     } catch (err) {
       const status = (err as { status?: number }).status;
