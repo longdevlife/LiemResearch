@@ -13,12 +13,13 @@ function isApiKeyError(err: unknown): boolean {
 /**
  * Gemini embedding provider. Uses `gemini-embedding-2` by default.
  *
- * NOTE: Gemini's `embedContent` collapses an array of strings into a SINGLE
- * content (one embedding), so `embedBatch` cannot be a single request — it
- * embeds each text individually with bounded concurrency. Be mindful of
- * requests-per-minute limits on the free tier.
+ * `embedContent` accepts an ARRAY of texts and returns one vector per text in a
+ * SINGLE request (same order). `embedBatch` uses this to embed up to
+ * MAX_BATCH_PER_REQUEST papers per request instead of one-call-per-paper — far
+ * fewer requests and much less likely to hit the free-tier RPM limit. The single
+ * `embed()` is kept for one-off query vectors (search / report / gaps).
  */
-const EMBED_CONCURRENCY = 3; // small waves to stay under free-tier RPM
+const MAX_BATCH_PER_REQUEST = 50; // texts per embedContent call (keeps payload/tokens safe)
 const MAX_RETRIES = 4;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -39,16 +40,7 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
         contents: text,
         config: { outputDimensionality: this.dimensions },
       });
-      const vec = res.embeddings?.[0]?.values;
-      if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
-      // A wrong-length vector would corrupt the 768-dim Atlas index (vector search
-      // errors or silently drops the doc). Reject it rather than persist garbage.
-      if (vec.length !== this.dimensions) {
-        throw new Error(
-          `Embedding dimension mismatch: got ${vec.length}, expected ${this.dimensions}`,
-        );
-      }
-      return vec;
+      return this.validateVec(res.embeddings?.[0]?.values);
     } catch (err) {
       const status = (err as { status?: number }).status;
       if ((status === 429 || status === 503) && attempt <= MAX_RETRIES) {
@@ -69,16 +61,75 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     }
   }
 
-  /** Embed each text individually (Gemini returns one vector per request),
-   *  in small waves to balance speed vs rate limits. */
+  /**
+   * Embed many texts using BATCHED requests — up to MAX_BATCH_PER_REQUEST texts
+   * per `embedContent` call (one vector per text, same order). On a batch-specific
+   * failure (e.g. payload/token too large) it falls back to per-item embedding for
+   * that chunk so one bad chunk never fails the whole run.
+   */
   async embedBatch(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
-    const out: number[][] = new Array(texts.length);
-    for (let i = 0; i < texts.length; i += EMBED_CONCURRENCY) {
-      const slice = texts.slice(i, i + EMBED_CONCURRENCY);
-      const vecs = await Promise.all(slice.map((t) => this.embed(t)));
-      vecs.forEach((v, j) => (out[i + j] = v));
+    const out: number[][] = [];
+    for (let i = 0; i < texts.length; i += MAX_BATCH_PER_REQUEST) {
+      const chunk = texts.slice(i, i + MAX_BATCH_PER_REQUEST);
+      out.push(...(await this.embedChunkWithRetry(chunk, 1)));
     }
     return out;
+  }
+
+  /** One batched embedContent call. Retries 429/503; for other batch errors
+   *  (e.g. payload too large) degrades to per-item so the run still progresses. */
+  private async embedChunkWithRetry(chunk: string[], attempt: number): Promise<number[][]> {
+    try {
+      const res = await geminiClient.models.embedContent({
+        model: this.modelName,
+        contents: chunk,
+        config: { outputDimensionality: this.dimensions },
+      });
+      const embeddings = res.embeddings ?? [];
+      if (embeddings.length !== chunk.length) {
+        throw new Error(
+          `Embedding count mismatch: got ${embeddings.length}, expected ${chunk.length}`,
+        );
+      }
+      return embeddings.map((e) => this.validateVec(e?.values));
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      const isRateLimit = status === 429 || status === 503;
+      if (isRateLimit && attempt <= MAX_RETRIES) {
+        const backoff = 3000 * 2 ** (attempt - 1); // 3s, 6s, 12s, 24s
+        logger.warn(
+          { status, attempt, backoffMs: backoff, chunk: chunk.length },
+          "gemini embedBatch rate-limited — retrying",
+        );
+        await sleep(backoff);
+        return this.embedChunkWithRetry(chunk, attempt + 1);
+      }
+      if (isApiKeyError(err)) {
+        logger.error({ err }, "gemini API key appears expired/invalid");
+        throw AppError.serviceUnavailable(
+          "AI service is unavailable (Gemini API key expired or invalid). Check GEMINI_API_KEY.",
+        );
+      }
+      // Non-rate-limit batch failure (likely payload/token limit) — fall back to
+      // per-item so one oversized chunk doesn't fail the whole embedding run.
+      if (!isRateLimit && chunk.length > 1) {
+        logger.warn({ err, chunk: chunk.length }, "embedBatch chunk failed — falling back to per-item");
+        const out: number[][] = [];
+        for (const t of chunk) out.push(await this.embed(t));
+        return out;
+      }
+      throw err;
+    }
+  }
+
+  /** Reject empty or wrong-dimension vectors before they reach the DB — a bad
+   *  vector would corrupt the 768-dim Atlas index (vector search errors / drops it). */
+  private validateVec(vec: number[] | undefined): number[] {
+    if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
+    if (vec.length !== this.dimensions) {
+      throw new Error(`Embedding dimension mismatch: got ${vec.length}, expected ${this.dimensions}`);
+    }
+    return vec;
   }
 }
