@@ -12,15 +12,17 @@ export function ReportsListPage() {
   
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
+  const [fast, setFast] = useState(true);
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
-    
+
     try {
-      await createReport.mutateAsync({ query: topic, topic });
+      await createReport.mutateAsync({ query: topic, topic, fast });
       setOpen(false);
       setTopic("");
+      setFast(true);
     } catch (error) {
       console.error("Failed to create report:", error);
     }
@@ -54,6 +56,25 @@ export function ReportsListPage() {
                     className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
                   />
                 </div>
+
+                <label
+                  htmlFor="fast-mode"
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 dark:border-slate-800 p-3"
+                >
+                  <input
+                    id="fast-mode"
+                    type="checkbox"
+                    checked={fast}
+                    onChange={(e) => setFast(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-[#001b69]"
+                  />
+                  <span className="text-sm">
+                    <span className="font-semibold text-slate-900 dark:text-white">⚡ Fast mode</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      Nhanh hơn (model Flash). Bỏ chọn để phân tích kỹ hơn bằng model Pro — chậm hơn ~2–4×.
+                    </span>
+                  </span>
+                </label>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={createReport.isPending}>Cancel</Button>

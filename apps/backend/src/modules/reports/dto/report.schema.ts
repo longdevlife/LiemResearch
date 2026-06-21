@@ -8,6 +8,7 @@ export const CreateReportSchema = z
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
     deepAnalysis: z.boolean().optional(), // Phase D — opt-in Gemini function-calling mode
+    fast: z.boolean().optional(), // Fast mode — Flash model (ignored when deepAnalysis is true)
   })
   .refine((b) => b.yearFrom === undefined || b.yearTo === undefined || b.yearFrom <= b.yearTo, {
     message: "yearFrom must be <= yearTo",
