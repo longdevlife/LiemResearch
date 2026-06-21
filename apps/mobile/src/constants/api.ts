@@ -34,6 +34,15 @@ export const API_ROUTES = {
     check: "/bookmarks/check",
     updateNote: (id: string) => `/bookmarks/${id}`,
   },
+  analytics: {
+    summary: "/analytics/search/summary",
+  },
+  gaps: {
+    analyze: "/gaps/analyze",
+    analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
+    list: "/gaps",
+    patch: (id: string) => `/gaps/${id}`,
+  },
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",

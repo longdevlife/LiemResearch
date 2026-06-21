@@ -51,6 +51,22 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
+            <Stack.Screen
+              name="gaps"
+              options={{
+                title: "Gaps",
+                presentation: "modal",
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="report/[id]"
+              options={{
+                title: "Report detail",
+                presentation: "modal",
+                headerShown: false,
+              }}
+            />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>
