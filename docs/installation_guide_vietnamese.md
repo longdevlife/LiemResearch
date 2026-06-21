@@ -30,24 +30,32 @@ Tạo file `.env` nằm trong thư mục `apps/backend/` và cấu hình các bi
 ```env
 PORT=4000
 NODE_ENV=development
+LOG_LEVEL=info
+CORS_ORIGIN=http://localhost:5173
 
 # Kết nối MongoDB (Atlas hoặc Local)
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/publication_trend?retryWrites=true&w=majority
 
 # Kết nối Redis (Dùng cho hàng đợi BullMQ và Cache)
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
+REDIS_URL=redis://127.0.0.1:6379
 
-# Google Gemini API Key (Bắt buộc để chạy Vector Embeddings & RAG Reports)
+# Google Gemini API Key & Model (Bắt buộc để chạy Vector Embeddings & RAG Reports)
 # Lấy key miễn phí tại: https://aistudio.google.com/
 GEMINI_API_KEY=AIzaSyD...
+GEMINI_MODEL_FAST=gemini-3.5-flash
+GEMINI_MODEL_DEEP=gemini-2.5-pro
+GEMINI_EMBEDDING_MODEL=gemini-embedding-2
+GEMINI_EMBEDDING_DIMENSIONS=768
 
 # Cấu hình bảo mật JWT
-JWT_SECRET=your_super_secret_jwt_access_key_minimum_32_characters
+JWT_ACCESS_SECRET=your_super_secret_jwt_access_key_minimum_32_characters
 JWT_REFRESH_SECRET=your_super_secret_jwt_refresh_key_minimum_32_characters
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
 
-# Giới hạn số lượng báo cáo tạo ra tối đa trong 1 giờ trên mỗi user
-REPORT_MAX_PER_HOUR=5
+# Giới hạn số lượng báo cáo tạo ra tối đa
+REPORT_MAX_PENDING_PER_USER=2
+REPORT_MAX_PER_HOUR=10
 ```
 
 ### 3.2 Cấu hình cho Frontend Web (`apps/web/.env`)

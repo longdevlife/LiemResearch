@@ -242,10 +242,20 @@ function KpiCard({
   isNeutral?: boolean; 
   onClick?: () => void; 
 }) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div 
       onClick={onClick}
-      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between ${
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 ${
         onClick ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" : ""
       }`}
     >

@@ -242,14 +242,14 @@ export function PaperDetailPage() {
                   {isReportCountLoading ? "..." : (reportCount ?? 0)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  báo cáo AI trích dẫn bài này
+                  {reportCount === 1 ? "AI report citing this paper" : "AI reports citing this paper"}
                 </p>
               </div>
               <Link
                 to="/reports"
                 className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 underline-offset-2 hover:underline"
               >
-                Xem báo cáo →
+                View reports →
               </Link>
             </div>
           </div>
