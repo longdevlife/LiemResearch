@@ -20,7 +20,8 @@
     "embed:once": "tsx scripts/run-embed-once.ts",
     "worker:sync": "tsx src/workers/sync.worker.ts",
     "worker:embedding": "tsx src/workers/embedding.worker.ts",
-    "worker:report": "tsx src/workers/report.worker.ts"
+    "worker:report": "tsx src/workers/report.worker.ts",
+    "worker:gaps": "tsx src/workers/gaps.worker.ts"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

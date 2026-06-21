@@ -1,0 +1,43 @@
+import mongoose, { type InferSchemaType, Schema } from "mongoose";
+
+/**
+ * research_gaps — one document per identified research gap. Gaps arrive from two
+ * sources (CLAUDE.md polymorphic-source pattern via the `source` discriminator):
+ *   - "report":     fanned out from a finished RAG report's `researchGaps`.
+ *   - "standalone": produced by the dedicated gap-analysis pipeline.
+ */
+
+const researchGapSchema = new Schema(
+  {
+    topic: { type: String, required: true },
+    normalizedTopic: { type: String, required: true },
+    title: { type: String, required: true, maxlength: 200 },
+    description: { type: String, required: true },
+    rationale: { type: String, required: true },
+    supportingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
+    confidence: { type: Number, min: 0, max: 1, default: 0.5 },
+    source: { type: String, enum: ["report", "standalone"], required: true },
+    sourceReportId: { type: Schema.Types.ObjectId, ref: "Report" },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    status: {
+      type: String,
+      enum: ["active", "resolved", "dismissed"],
+      default: "active",
+    },
+  },
+  { timestamps: true },
+);
+
+researchGapSchema.index({ normalizedTopic: 1, confidence: -1 });
+researchGapSchema.index({ userId: 1, createdAt: -1 });
+researchGapSchema.index({ status: 1, createdAt: -1 });
+
+export type ResearchGapDoc = InferSchemaType<typeof researchGapSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+
+export const ResearchGapModel = mongoose.model(
+  "ResearchGap",
+  researchGapSchema,
+  "research_gaps",
+);

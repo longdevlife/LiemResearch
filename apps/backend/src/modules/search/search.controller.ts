@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { analyticsService } from "../analytics/analytics.service.js";
 import { searchService } from "./search.service.js";
 import { SearchQuerySchema } from "./dto/search.schema.js";
 
@@ -17,6 +18,7 @@ export const searchController = {
     }
 
     const { q, page, pageSize, yearFrom, yearTo, rerank } = parsed.data;
+    const t0 = Date.now();
     const { papers, total, reranked } = await searchService.semantic({
       q,
       page,
@@ -24,6 +26,16 @@ export const searchController = {
       yearFrom,
       yearTo,
       rerank,
+    });
+
+    // Fire-and-forget: log the search for analytics (never awaited, never blocks response)
+    analyticsService.logSearch({
+      userId: req.user?.sub,
+      query: q,
+      mode: reranked ? "semantic+rerank" : "semantic",
+      resultCount: total,
+      durationMs: Date.now() - t0,
+      filters: { yearFrom, yearTo },
     });
 
     res.json({

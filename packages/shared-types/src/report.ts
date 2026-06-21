@@ -10,6 +10,7 @@ export interface CreateReportRequest {
   topic?: string;
   yearFrom?: number;
   yearTo?: number;
+  deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode
 }
 
 export interface ResearchGap {
@@ -37,6 +38,7 @@ export interface AnalyticalReport {
   researchGaps: ResearchGap[];
   modelVersion: string;
   promptVersion: string;
+  deepAnalysis: boolean; // NEW — Phase D
   errorMessage?: string;
   createdAt: ISODateString;
   completedAt?: ISODateString;

@@ -2,10 +2,13 @@ import type { PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
+import { gapsService } from "../gaps/gaps.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
-import { generateJSON } from "../llm/gemini.client.js";
+import { generateJSON, generateWithTools, LlmTruncationError } from "../llm/gemini.client.js";
+import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
+import { executeMcpTool } from "../mcp/mcp.executor.js";
 import { PaperModel } from "../papers/models/paper.model.js";
-import { ReportModel } from "./models/report.model.js";
+import { ReportModel, type ReportHydrated } from "./models/report.model.js";
 import { RagQueryModel } from "./models/rag-query.model.js";
 import {
   buildReportCacheKey,
@@ -15,6 +18,17 @@ import {
   type EvidencePaper,
   type ReportLlmOutput,
 } from "./report.prompt.js";
+
+const DEEP_ANALYSIS_SYSTEM_PROMPT = [
+  REPORT_SYSTEM_PROMPT,
+  "",
+  "ADDITIONAL RULES FOR TOOL-ASSISTED MODE:",
+  "- You have access to tools: search_papers, get_trends, count_papers.",
+  "- Call tools to gather evidence BEFORE writing the report.",
+  '- After gathering, return the SAME JSON format: { "markdown": "...", "gaps": [...] }',
+  "- Use [n] citations where n is the 1-based index of papers returned by search_papers.",
+  "- Return ONLY valid JSON. No markdown fences, no commentary.",
+].join("\n");
 
 /** Atlas Vector Search index — same one the /search endpoint uses. */
 const VECTOR_INDEX = "paper_vector_index";
@@ -28,7 +42,7 @@ export interface ReportJob {
  * report `failed` only when the job has exhausted its attempts (worker decides).
  */
 export async function runRagPipeline(job: ReportJob): Promise<void> {
-  const report = await ReportModel.findById(job.reportId);
+  const report: ReportHydrated | null = await ReportModel.findById(job.reportId);
   if (!report) {
     logger.warn({ reportId: job.reportId }, "report vanished before processing");
     return;
@@ -70,30 +84,85 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     retrievedPaperIds: papers.map((p) => p.id),
   });
 
-  let output = await cache.get<ReportLlmOutput>(cacheKey);
+  // Fix 1: deepAnalysis uses a separate cache key to avoid collision with classic.
+  const deepCacheKey = `deep:${cacheKey}`;
+  const effectiveCacheKey = report.deepAnalysis ? deepCacheKey : cacheKey;
+
+  let output = await cache.get<ReportLlmOutput>(effectiveCacheKey);
   const cacheHit = output !== null;
 
   // ⑤ Generate (only on cache miss).
   const t2 = Date.now();
   if (!output) {
-    output = await generateJSON<ReportLlmOutput>(buildReportPrompt(report.query, papers), {
-      model,
-      system: REPORT_SYSTEM_PROMPT,
-      temperature: 0.3,
-      maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS,
-    });
-    if (!output || typeof output.markdown !== "string" || output.markdown.length < 50) {
-      throw new Error("LLM returned malformed report JSON"); // → BullMQ retry
+    if (report.deepAnalysis) {
+      // D2: Gemini actively calls tools to gather evidence.
+      // If maxTurns is exceeded (LlmTruncationError), fall back to classic RAG
+      // so the report still completes rather than failing after 5 retries.
+      let deepOutput: ReportLlmOutput;
+      try {
+        const rawJson = await generateWithTools(
+          `RESEARCH QUESTION:\n${report.query}\n\nUse the available tools to gather evidence, then produce the JSON report.`,
+          MCP_TOOL_DEFS,
+          (call) =>
+            executeMcpTool(call, {
+              reportId: String(report._id),
+              userId: String(report.userId),
+            }),
+          {
+            model,
+            system: DEEP_ANALYSIS_SYSTEM_PROMPT,
+            temperature: 0.3,
+            maxOutputTokens: env.DEEP_ANALYSIS_MAX_OUTPUT_TOKENS,
+            maxTurns: env.DEEP_ANALYSIS_MAX_TURNS,
+          },
+        );
+        const fenceMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        const stripped = (fenceMatch?.[1] != null ? fenceMatch[1] : rawJson).trim();
+        const parsed = JSON.parse(stripped) as ReportLlmOutput;
+        if (!parsed || typeof parsed.markdown !== "string" || parsed.markdown.length < 50) {
+          throw new Error("Deep analysis LLM returned malformed report JSON");
+        }
+        await cache.set(deepCacheKey, parsed, LLM_CACHE_TTL_SECONDS);
+        deepOutput = parsed;
+      } catch (err) {
+        if (!(err instanceof LlmTruncationError)) throw err;
+        // maxTurns exceeded → fall back to classic RAG with pre-fetched evidence
+        logger.warn(
+          { reportId: String(report._id), maxTurns: env.DEEP_ANALYSIS_MAX_TURNS },
+          "deepAnalysis maxTurns exceeded — falling back to classic RAG",
+        );
+        const fallback = await generateJSON<ReportLlmOutput>(
+          buildReportPrompt(report.query, papers),
+          { model, system: REPORT_SYSTEM_PROMPT, temperature: 0.3, maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS },
+        );
+        if (!fallback || typeof fallback.markdown !== "string" || fallback.markdown.length < 50) {
+          throw new Error("Fallback classic RAG also returned malformed report JSON");
+        }
+        await cache.set(deepCacheKey, fallback, LLM_CACHE_TTL_SECONDS);
+        deepOutput = fallback;
+      }
+      output = deepOutput;
+    } else {
+      // Classic path — existing generateJSON call:
+      output = await generateJSON<ReportLlmOutput>(buildReportPrompt(report.query, papers), {
+        model,
+        system: REPORT_SYSTEM_PROMPT,
+        temperature: 0.3,
+        maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS,
+      });
+      if (!output || typeof output.markdown !== "string" || output.markdown.length < 50) {
+        throw new Error("LLM returned malformed report JSON"); // → BullMQ retry
+      }
+      // Grounding guard: every [n] cited in the markdown must point at a real
+      // evidence paper. An out-of-range citation (hallucinated or injected via a
+      // malicious abstract) fails the report rather than shipping fake grounding.
+      const cited = [...output.markdown.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
+      const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papers.length))];
+      if (outOfRange.length > 0) {
+        throw new Error(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);
+      }
+      await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
     }
-    // Grounding guard: every [n] cited in the markdown must point at a real
-    // evidence paper. An out-of-range citation (hallucinated or injected via a
-    // malicious abstract) fails the report rather than shipping fake grounding.
-    const cited = [...output.markdown.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
-    const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papers.length))];
-    if (outOfRange.length > 0) {
-      throw new Error(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);
-    }
-    await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
   }
   const llmMs = Date.now() - t2;
 
@@ -118,7 +187,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   );
   report.modelVersion = model;
   report.promptVersion = PROMPT_VERSION;
-  report.cacheKey = cacheKey;
+  report.cacheKey = effectiveCacheKey;
   report.status = "ready";
   report.completedAt = new Date();
   report.errorMessage = undefined;
@@ -126,6 +195,33 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
   // ⑦ Audit trail.
   await auditRagRun(report, { embeddingMs, searchMs, llmMs, cacheHit, papers });
+
+  // ⑧ Fan-out gaps into research_gaps collection (non-fatal).
+  await gapsService
+    .fanOutGapsFromReport({
+      _id: report._id,
+      userId: report.userId,
+      query: report.query,
+      researchGaps: ((report.researchGaps ?? []) as unknown[]).map((raw) => {
+        const g = raw as {
+          title?: string;
+          description?: string;
+          rationale?: string;
+          supportingPaperIds?: unknown[];
+          confidence?: unknown;
+        };
+        return {
+          title: String(g.title ?? ""),
+          description: String(g.description ?? ""),
+          rationale: String(g.rationale ?? ""),
+          supportingPaperIds: g.supportingPaperIds ?? [],
+          confidence: Number(g.confidence ?? 0.5),
+        };
+      }),
+    })
+    .catch((err) =>
+      logger.warn({ err, reportId: String(report._id) }, "gap fan-out failed (non-fatal)"),
+    );
 
   logger.info(
     { reportId: String(report._id), papers: papers.length, embeddingMs, searchMs, llmMs, cacheHit },
