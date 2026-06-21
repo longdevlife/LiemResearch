@@ -55,13 +55,27 @@ export function TrendsPage() {
       <div className="flex flex-col md:flex-row items-center gap-4 mb-8 bg-white dark:bg-[#121212] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         
         <div className="flex-1 w-full relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <button 
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 z-10"
+            onClick={(e) => {
+              const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+              const val = input.value.trim();
+              if (val) navigate(`/trends/${encodeURIComponent(val)}`);
+            }}
+          >
             <Search className="w-4 h-4" />
-          </div>
+          </button>
           <input 
             type="text" 
-            defaultValue="LLM in education" 
+            placeholder="Search for a topic trend..."
+            defaultValue="Topic Modeling"
             className="w-full h-10 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-shadow"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const val = e.currentTarget.value.trim();
+                if (val) navigate(`/trends/${encodeURIComponent(val)}`);
+              }
+            }}
           />
         </div>
         
