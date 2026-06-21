@@ -4,7 +4,7 @@ import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
-import { generateJSON } from "../llm/gemini.client.js";
+import { generateJSON, LlmContentError } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ResearchGapModel } from "./models/research-gap.model.js";
 import { GapAnalysisModel } from "./models/gap-analysis.model.js";
@@ -120,7 +120,8 @@ export const gapsService = {
       });
 
       if (!output || !Array.isArray(output.gaps) || output.gaps.length === 0) {
-        throw new Error("LLM returned empty gaps output"); // → BullMQ retry
+        // Empty/malformed output won't self-heal on retry → fail fast.
+        throw new LlmContentError("LLM returned empty gaps output");
       }
 
       await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);

@@ -4,7 +4,12 @@ import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { gapsService } from "../gaps/gaps.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
-import { generateJSON, generateWithTools, LlmTruncationError } from "../llm/gemini.client.js";
+import {
+  generateJSON,
+  generateWithTools,
+  LlmTruncationError,
+  LlmContentError,
+} from "../llm/gemini.client.js";
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
 import { PaperModel } from "../papers/models/paper.model.js";
@@ -23,10 +28,10 @@ const DEEP_ANALYSIS_SYSTEM_PROMPT = [
   REPORT_SYSTEM_PROMPT,
   "",
   "ADDITIONAL RULES FOR TOOL-ASSISTED MODE:",
-  "- You have access to tools: search_papers, get_trends, count_papers.",
-  "- Call tools to gather evidence BEFORE writing the report.",
-  '- After gathering, return the SAME JSON format: { "markdown": "...", "gaps": [...] }',
-  "- Use [n] citations where n is the 1-based index of papers returned by search_papers.",
+  "- You MAY call tools (search_papers, get_trends, count_papers) to gather ADDITIONAL context.",
+  "- BUT [n] citations ALWAYS refer to the numbered EVIDENCE PAPERS provided in the user message.",
+  "  Never cite or invent papers discovered via tools — use tool results only to inform analysis.",
+  '- Return the SAME JSON format: { "markdown": "...", "gaps": [...] }.',
   "- Return ONLY valid JSON. No markdown fences, no commentary.",
 ].join("\n");
 
@@ -95,13 +100,17 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   const t2 = Date.now();
   if (!output) {
     if (report.deepAnalysis) {
-      // D2: Gemini actively calls tools to gather evidence.
-      // If maxTurns is exceeded (LlmTruncationError), fall back to classic RAG
-      // so the report still completes rather than failing after 5 retries.
+      // D2: Gemini may call tools to gather extra context, but it cites from the
+      // SAME pre-fetched `papers[]` evidence list as classic mode — so citations,
+      // groundingPaperIds, and gap supportingEvidence all map to one paper set.
+      // On truncation OR malformed content, fall back to classic RAG so the report
+      // still completes rather than failing after 5 retries.
       let deepOutput: ReportLlmOutput;
       try {
         const rawJson = await generateWithTools(
-          `RESEARCH QUESTION:\n${report.query}\n\nUse the available tools to gather evidence, then produce the JSON report.`,
+          buildReportPrompt(report.query, papers) +
+            "\n\n---\n\nYou MAY call tools to gather additional context before writing, " +
+            "but cite ONLY from the numbered EVIDENCE PAPERS listed above.",
           MCP_TOOL_DEFS,
           (call) =>
             executeMcpTool(call, {
@@ -118,26 +127,33 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         );
         const fenceMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
         const stripped = (fenceMatch?.[1] != null ? fenceMatch[1] : rawJson).trim();
-        const parsed = JSON.parse(stripped) as ReportLlmOutput;
-        if (!parsed || typeof parsed.markdown !== "string" || parsed.markdown.length < 50) {
-          throw new Error("Deep analysis LLM returned malformed report JSON");
+        let parsed: ReportLlmOutput;
+        try {
+          parsed = JSON.parse(stripped) as ReportLlmOutput;
+        } catch {
+          throw new LlmContentError("Deep analysis returned non-JSON output");
         }
+        if (!parsed || typeof parsed.markdown !== "string" || parsed.markdown.length < 50) {
+          throw new LlmContentError("Deep analysis LLM returned malformed report JSON");
+        }
+        assertCitationsInRange(parsed.markdown, papers.length);
         await cache.set(deepCacheKey, parsed, LLM_CACHE_TTL_SECONDS);
         deepOutput = parsed;
       } catch (err) {
-        if (!(err instanceof LlmTruncationError)) throw err;
-        // maxTurns exceeded → fall back to classic RAG with pre-fetched evidence
+        // Only truncation / malformed content fall back; real errors propagate.
+        if (!(err instanceof LlmTruncationError || err instanceof LlmContentError)) throw err;
         logger.warn(
-          { reportId: String(report._id), maxTurns: env.DEEP_ANALYSIS_MAX_TURNS },
-          "deepAnalysis maxTurns exceeded — falling back to classic RAG",
+          { reportId: String(report._id), reason: err.name },
+          "deepAnalysis failed — falling back to classic RAG",
         );
         const fallback = await generateJSON<ReportLlmOutput>(
           buildReportPrompt(report.query, papers),
           { model, system: REPORT_SYSTEM_PROMPT, temperature: 0.3, maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS },
         );
         if (!fallback || typeof fallback.markdown !== "string" || fallback.markdown.length < 50) {
-          throw new Error("Fallback classic RAG also returned malformed report JSON");
+          throw new LlmContentError("Fallback classic RAG also returned malformed report JSON");
         }
+        assertCitationsInRange(fallback.markdown, papers.length);
         await cache.set(deepCacheKey, fallback, LLM_CACHE_TTL_SECONDS);
         deepOutput = fallback;
       }
@@ -151,16 +167,10 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS,
       });
       if (!output || typeof output.markdown !== "string" || output.markdown.length < 50) {
-        throw new Error("LLM returned malformed report JSON"); // → BullMQ retry
+        // Malformed JSON won't self-heal on retry → fail fast (LlmContentError).
+        throw new LlmContentError("LLM returned malformed report JSON");
       }
-      // Grounding guard: every [n] cited in the markdown must point at a real
-      // evidence paper. An out-of-range citation (hallucinated or injected via a
-      // malicious abstract) fails the report rather than shipping fake grounding.
-      const cited = [...output.markdown.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
-      const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papers.length))];
-      if (outOfRange.length > 0) {
-        throw new Error(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);
-      }
+      assertCitationsInRange(output.markdown, papers.length);
       await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
     }
   }
@@ -321,4 +331,18 @@ function clamp01(x: unknown): number {
   const n = Number(x);
   if (!Number.isFinite(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * Grounding guard: every [n] cited in the markdown must point at a real evidence
+ * paper. An out-of-range citation (hallucinated, or injected via a malicious
+ * abstract) fails the report rather than shipping fake grounding. Applied to BOTH
+ * classic and deepAnalysis output so deep mode is not the weaker path.
+ */
+function assertCitationsInRange(markdown: string, papersLength: number): void {
+  const cited = [...markdown.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
+  const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papersLength))];
+  if (outOfRange.length > 0) {
+    throw new LlmContentError(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);
+  }
 }
