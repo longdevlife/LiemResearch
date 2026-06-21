@@ -1,8 +1,9 @@
-import { useParams } from "react-router-dom";
-import { ExternalLink, Bookmark, Quote, Link2, ChevronRight, UserPlus, FileText } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { ExternalLink, Bookmark, Quote, Link2, ChevronRight, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePaper } from "@/features/papers";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
+import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-count";
 import { toast } from "sonner";
 
 export function PaperDetailPage() {
@@ -11,6 +12,7 @@ export function PaperDetailPage() {
   const { data: bookmarkStatus } = useBookmarkStatus("paper", id);
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
+  const { data: reportCount, isLoading: isReportCountLoading } = usePaperReportCount(id);
 
   if (isLoading) {
     return <div className="container py-8 text-center text-slate-500 mt-20">Loading paper details...</div>;
@@ -227,7 +229,31 @@ export function PaperDetailPage() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full lg:w-[320px] shrink-0">
+        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4">
+          {/* AI Reports Citation Card */}
+          <div className="bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200 dark:border-violet-800/50 rounded-xl p-5 shadow-sm">
+            <div className="text-[10px] font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" />
+              AI Reports
+            </div>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-3xl font-extrabold text-violet-700 dark:text-violet-300 leading-none">
+                  {isReportCountLoading ? "..." : (reportCount ?? 0)}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  báo cáo AI trích dẫn bài này
+                </p>
+              </div>
+              <Link
+                to="/reports"
+                className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 underline-offset-2 hover:underline"
+              >
+                Xem báo cáo →
+              </Link>
+            </div>
+          </div>
+
           {/* Lead Author Card */}
           {paper.authors[0] && (
             <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm sticky top-24">

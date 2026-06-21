@@ -75,6 +75,14 @@ export const reportService = {
     if (!doc) throw AppError.notFound("Report not found");
     return toReportDto(doc);
   },
+
+  /** Count completed reports that ground on a given paper. Public — no auth. */
+  async countByPaper(paperId: string): Promise<number> {
+    return ReportModel.countDocuments({
+      groundingPaperIds: paperId,
+      status: "done",
+    });
+  },
 };
 
 /**

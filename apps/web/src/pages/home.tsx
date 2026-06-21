@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/features/auth";
 import { usePapers } from "@/features/papers";
 import { useTrendsOverview } from "@/features/trends";
 import { useBookmarks } from "@/features/bookmarks";
+import { useAnalyticsSummary } from "@/features/analytics/hooks/use-analytics-summary";
 import { Link, useNavigate } from "react-router-dom";
 import { PaperCard } from "@/components/paper-card";
 
@@ -18,6 +19,7 @@ const mockVelocityData = [
 ];
 
 export function HomePage() {
+  const navigate = useNavigate();
   const { data } = useCurrentUser();
   const userName = data?.user?.fullName || data?.user?.email || "Researcher";
   const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
@@ -25,6 +27,7 @@ export function HomePage() {
 
   const { data: trendsData, isLoading: isTrendsLoading } = useTrendsOverview({ limit: 10 });
   const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks();
+  const { data: summaryData, isLoading: isSummaryLoading } = useAnalyticsSummary();
 
   // Sum up counts per year from all topics (approximate trend representation)
   const realVelocityData = useMemo(() => {
@@ -71,12 +74,18 @@ export function HomePage() {
               trend="-- 0" 
               isNeutral 
             />
-            <KpiCard label="REPORTS GEN." value="0" trend="" isNeutral />
+            <KpiCard 
+              label="SEARCHES" 
+              value={isSummaryLoading ? "..." : (summaryData?.totalSearches?.toLocaleString() ?? "0")} 
+              trend="" 
+              isNeutral 
+            />
             <KpiCard 
               label="SAVED PAPERS" 
               value={isBookmarksLoading ? "..." : (bookmarksData?.length?.toString() || "0")} 
               trend="" 
               isNeutral 
+              onClick={() => navigate("/bookmarks")}
             />
           </div>
 

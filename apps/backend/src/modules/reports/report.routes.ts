@@ -6,6 +6,9 @@ import { reportController } from "./report.controller.js";
 
 export const reportRouter: Router = Router();
 
+/** Public: count AI reports that cite a specific paper. No auth needed. */
+reportRouter.get("/paper/:paperId/count", reportController.countByPaper);
+
 // Every report belongs to a user — auth is mandatory on the whole router.
 reportRouter.use(requireAuth);
 

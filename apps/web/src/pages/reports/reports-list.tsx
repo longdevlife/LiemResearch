@@ -12,15 +12,17 @@ export function ReportsListPage() {
   
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
+  const [deepAnalysis, setDeepAnalysis] = useState(false);
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     
     try {
-      await createReport.mutateAsync({ query: topic, topic });
+      await createReport.mutateAsync({ query: topic, topic, deepAnalysis });
       setOpen(false);
       setTopic("");
+      setDeepAnalysis(false);
     } catch (error) {
       console.error("Failed to create report:", error);
     }
@@ -53,6 +55,24 @@ export function ReportsListPage() {
                     placeholder="e.g. LLM in Education"
                     className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
                   />
+                </div>
+                {/* Deep Analysis toggle */}
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                  <input
+                    id="deep-analysis"
+                    type="checkbox"
+                    checked={deepAnalysis}
+                    onChange={(e) => setDeepAnalysis(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#001b69] focus:ring-[#001b69] cursor-pointer"
+                  />
+                  <div className="flex flex-col gap-0.5">
+                    <label htmlFor="deep-analysis" className="text-sm font-semibold text-slate-900 dark:text-white cursor-pointer">
+                      ✨ Deep Analysis
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Gemini tự tìm thêm bằng chứng từ web — chậm hơn ~60s nhưng kết quả sâu hơn.
+                    </p>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
