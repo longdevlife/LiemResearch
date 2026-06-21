@@ -139,28 +139,37 @@ export function ReportViewerPage() {
               </div>
             </div>
 
-            <h2 id="research-gaps" className="text-[22px] font-semibold text-slate-900 dark:text-white mb-4">Identified Research Gaps</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-              
-              <div className="bg-white dark:bg-[#1c1f26] border-2 border-cyan-200 dark:border-cyan-900/50 rounded-xl p-5 shadow-sm">
-                <h4 className="font-semibold text-slate-900 dark:text-white text-[16px] flex items-center gap-2 m-0 mb-3">
-                  <Sparkles className="w-5 h-5 text-cyan-600 dark:text-cyan-400" /> Long-term Cognitive Impact
-                </h4>
-                <p className="text-[13px] text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
-                  Limited empirical studies exist on how reliance on LLMs affects student critical thinking over multi-year periods.
-                </p>
-              </div>
-              
-              <div className="bg-white dark:bg-[#1c1f26] border-2 border-purple-200 dark:border-purple-900/50 rounded-xl p-5 shadow-sm">
-                <h4 className="font-semibold text-slate-900 dark:text-white text-[16px] flex items-center gap-2 m-0 mb-3">
-                  <Sparkles className="w-5 h-5 text-purple-500 dark:text-purple-400" /> Equity in Access
-                </h4>
-                <p className="text-[13px] text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
-                  Significant literature gap regarding the digital divide created by premium LLM subscription models in public schools.
-                </p>
-              </div>
-
+            <div className="flex items-center justify-between mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3">
+              <h2 id="research-gaps" className="text-[22px] font-semibold text-slate-900 dark:text-white m-0 border-none pb-0">Identified Research Gaps</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate("/research-gaps?source=report")} className="h-8 text-xs font-semibold gap-1">
+                View in Research Gaps <ChevronRight className="w-3 h-3" />
+              </Button>
             </div>
+            
+            {report?.researchGaps && report.researchGaps.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                {report.researchGaps.map((gap, index) => (
+                  <div key={index} className="bg-white dark:bg-[#1c1f26] border-2 border-cyan-200 dark:border-cyan-900/50 rounded-xl p-5 shadow-sm flex flex-col h-full hover:border-cyan-400 dark:hover:border-cyan-700 transition-colors">
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-[16px] flex items-start gap-2 m-0 mb-2 leading-tight">
+                      <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-400" /> 
+                      {gap.title}
+                    </h4>
+                    <p className="text-[13px] text-slate-600 dark:text-slate-400 m-0 mb-3 leading-relaxed flex-1">
+                      {gap.description}
+                    </p>
+                    {gap.rationale && (
+                      <p className="text-[12px] text-slate-500 dark:text-slate-500 m-0 leading-relaxed italic border-t border-slate-100 dark:border-slate-800 pt-3 mt-auto">
+                        {gap.rationale}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-6 text-center border border-slate-100 dark:border-slate-800">
+                <p className="text-slate-500 text-sm m-0">No research gaps were explicitly identified in this analysis.</p>
+              </div>
+            )}
           </div>
         </div>
 

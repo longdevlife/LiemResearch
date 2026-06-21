@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,8 @@ export function ResearchGapsPage() {
   const [topic, setTopic] = useState("");
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [filterSource, setFilterSource] = useState<GapSource | undefined>();
+  const [searchTopic, setSearchTopic] = useState("");
+  const [minConfidence, setMinConfidence] = useState(0);
 
   const {
     data: gapsData,
@@ -60,6 +63,8 @@ export function ResearchGapsPage() {
     source: filterSource,
     status: "active",
     pageSize: 20,
+    minConfidence,
+    topic: searchTopic || undefined,
   });
   const { mutate: analyze, isPending } = useAnalyzeGap();
   const { mutate: patchStatus } = usePatchGapStatus();
@@ -109,28 +114,54 @@ export function ResearchGapsPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          size="sm"
-          variant={filterSource === undefined ? "default" : "outline"}
-          onClick={() => setFilterSource(undefined)}
-        >
-          All sources
-        </Button>
-        <Button
-          size="sm"
-          variant={filterSource === "standalone" ? "default" : "outline"}
-          onClick={() => setFilterSource("standalone")}
-        >
-          Standalone
-        </Button>
-        <Button
-          size="sm"
-          variant={filterSource === "report" ? "default" : "outline"}
-          onClick={() => setFilterSource("report")}
-        >
-          From reports
-        </Button>
+      <div className="flex gap-6 flex-wrap items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Source:</span>
+          <Button
+            size="sm"
+            variant={filterSource === undefined ? "default" : "outline"}
+            onClick={() => setFilterSource(undefined)}
+          >
+            All sources
+          </Button>
+          <Button
+            size="sm"
+            variant={filterSource === "standalone" ? "default" : "outline"}
+            onClick={() => setFilterSource("standalone")}
+          >
+            Standalone
+          </Button>
+          <Button
+            size="sm"
+            variant={filterSource === "report" ? "default" : "outline"}
+            onClick={() => setFilterSource("report")}
+          >
+            From reports
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Topic:</span>
+           <Input 
+             placeholder="Filter gaps..." 
+             className="h-8 w-48 text-sm"
+             value={searchTopic}
+             onChange={(e) => setSearchTopic(e.target.value)}
+           />
+        </div>
+        
+        <div className="flex items-center gap-3">
+           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Min Confidence: {Math.round(minConfidence * 100)}%</span>
+           <input 
+             type="range" 
+             min="0" 
+             max="1" 
+             step="0.1" 
+             value={minConfidence}
+             onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+             className="w-24 accent-primary"
+           />
+        </div>
       </div>
 
       {/* Gap cards */}
@@ -151,6 +182,18 @@ export function ResearchGapsPage() {
             </div>
             <p className="text-sm text-muted-foreground">{gap.description}</p>
             <p className="text-xs text-muted-foreground italic">{gap.rationale}</p>
+            
+            {gap.supportingPaperIds && gap.supportingPaperIds.length > 0 && (
+               <div className="flex flex-wrap gap-1 mt-1">
+                 {gap.supportingPaperIds.map((id) => (
+                   <Link key={id} to={`/papers/${id}`}>
+                     <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800">
+                       Paper #{id.slice(-6)}
+                     </Badge>
+                   </Link>
+                 ))}
+               </div>
+            )}
             <div className="flex items-center justify-between pt-1">
               <ConfidenceBar value={gap.confidence} />
               <div className="flex gap-1">
