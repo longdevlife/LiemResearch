@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/features/auth";
 import { usePapers } from "@/features/papers";
 import { useTrendsOverview } from "@/features/trends";
 import { useBookmarks } from "@/features/bookmarks";
+import { useAuthStore } from "@/stores/auth-store";
 import { useAnalyticsSummary } from "@/features/analytics/hooks/use-analytics-summary";
 import { Link, useNavigate } from "react-router-dom";
 import { PaperCard } from "@/components/paper-card";
@@ -20,13 +21,14 @@ const mockVelocityData = [
 
 export function HomePage() {
   const navigate = useNavigate();
+  const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const { data } = useCurrentUser();
   const userName = data?.user?.fullName || data?.user?.email || "Researcher";
   const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
   const recentPapers = papersData?.papers || [];
 
   const { data: trendsData, isLoading: isTrendsLoading } = useTrendsOverview({ limit: 10 });
-  const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks();
+  const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks({ enabled: isAuthed });
   const { data: summaryData, isLoading: isSummaryLoading } = useAnalyticsSummary();
 
   // Sum up counts per year from all topics (approximate trend representation)
@@ -65,14 +67,8 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <KpiCard 
               label="PAPERS INDEXED" 
-              value={isLoading ? "..." : (papersData?.meta?.total?.toLocaleString() || "0")} 
+              value={isSummaryLoading ? "..." : (summaryData?.totalPapers?.toLocaleString() ?? papersData?.meta?.total?.toLocaleString() ?? "0")} 
               trend="+12%" 
-            />
-            <KpiCard 
-              label="TOPICS FOLLOWED" 
-              value={isTrendsLoading ? "..." : (trendsData?.topics?.length?.toString() || "0")} 
-              trend="-- 0" 
-              isNeutral 
             />
             <KpiCard 
               label="SEARCHES" 
@@ -81,11 +77,17 @@ export function HomePage() {
               isNeutral 
             />
             <KpiCard 
+              label="USERS" 
+              value={isSummaryLoading ? "..." : (summaryData?.uniqueUsers?.toLocaleString() ?? "0")} 
+              trend="" 
+              isNeutral 
+            />
+            <KpiCard 
               label="SAVED PAPERS" 
               value={isBookmarksLoading ? "..." : (bookmarksData?.length?.toString() || "0")} 
               trend="" 
               isNeutral 
-              onClick={() => navigate("/bookmarks")}
+              onClick={isAuthed ? () => navigate("/bookmarks") : undefined}
             />
           </div>
 

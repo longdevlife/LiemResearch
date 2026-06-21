@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
+import { toast } from "sonner";
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
@@ -25,6 +26,7 @@ export function ReportsListPage() {
       setDeepAnalysis(false);
     } catch (error) {
       console.error("Failed to create report:", error);
+      toast.error("Failed to create report. Please try again.");
     }
   };
 
@@ -70,7 +72,7 @@ export function ReportsListPage() {
                       ✨ Deep Analysis
                     </label>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Gemini tự tìm thêm bằng chứng từ web — chậm hơn ~60s nhưng kết quả sâu hơn.
+                      Gemini searches for additional evidence from the web — slower (~60s) but delivers deeper insights.
                     </p>
                   </div>
                 </div>

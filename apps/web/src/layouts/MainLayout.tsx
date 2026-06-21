@@ -83,7 +83,7 @@ export function MainLayout() {
                 <Link to="/bookmarks" aria-label="Bookmarks">
                   <Bookmark className="h-5 w-5" />
                   {bookmarks && bookmarks.length > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 min-w-[18px] items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
                       {bookmarks.length}
                     </span>
                   )}

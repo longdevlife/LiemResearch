@@ -80,7 +80,7 @@ export const reportService = {
   async countByPaper(paperId: string): Promise<number> {
     return ReportModel.countDocuments({
       groundingPaperIds: paperId,
-      status: "done",
+      status: "ready",
     });
   },
 };
