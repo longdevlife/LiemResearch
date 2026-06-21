@@ -32,7 +32,7 @@ const EnvSchema = z.object({
 
   // Phase B — embedding worker.
   EMBED_CRON: z.string().default("0 3 * * *"),
-  EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(50),
+  EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
 
   // Phase C — RAG analytical reports.
