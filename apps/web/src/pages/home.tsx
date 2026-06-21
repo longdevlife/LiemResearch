@@ -229,9 +229,26 @@ export function HomePage() {
 
 // Sub-components
 
-function KpiCard({ label, value, trend, isNeutral = false }: { label: string, value: string, trend: string, isNeutral?: boolean }) {
+function KpiCard({ 
+  label, 
+  value, 
+  trend, 
+  isNeutral = false, 
+  onClick 
+}: { 
+  label: string; 
+  value: string; 
+  trend: string; 
+  isNeutral?: boolean; 
+  onClick?: () => void; 
+}) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between">
+    <div 
+      onClick={onClick}
+      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between ${
+        onClick ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" : ""
+      }`}
+    >
       <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-2 uppercase">
         {label}
       </div>
