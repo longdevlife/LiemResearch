@@ -25,6 +25,7 @@ export const API_ROUTES = {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
+    paperCount: (paperId: string) => `/reports/paper/${paperId}/count`,
   },
   bookmarks: {
     list: "/bookmarks",

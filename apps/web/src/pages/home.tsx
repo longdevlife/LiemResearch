@@ -6,6 +6,8 @@ import { useCurrentUser } from "@/features/auth";
 import { usePapers } from "@/features/papers";
 import { useTrendsOverview } from "@/features/trends";
 import { useBookmarks } from "@/features/bookmarks";
+import { useAuthStore } from "@/stores/auth-store";
+import { useAnalyticsSummary } from "@/features/analytics/hooks/use-analytics-summary";
 import { Link, useNavigate } from "react-router-dom";
 import { PaperCard } from "@/components/paper-card";
 
@@ -18,13 +20,16 @@ const mockVelocityData = [
 ];
 
 export function HomePage() {
+  const navigate = useNavigate();
+  const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const { data } = useCurrentUser();
   const userName = data?.user?.fullName || data?.user?.email || "Researcher";
   const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
   const recentPapers = papersData?.papers || [];
 
   const { data: trendsData, isLoading: isTrendsLoading } = useTrendsOverview({ limit: 10 });
-  const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks();
+  const { data: bookmarksData, isLoading: isBookmarksLoading } = useBookmarks({ enabled: isAuthed });
+  const { data: summaryData, isLoading: isSummaryLoading } = useAnalyticsSummary();
 
   // Sum up counts per year from all topics (approximate trend representation)
   const realVelocityData = useMemo(() => {
@@ -62,21 +67,27 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <KpiCard 
               label="PAPERS INDEXED" 
-              value={isLoading ? "..." : (papersData?.meta?.total?.toLocaleString() || "0")} 
+              value={isSummaryLoading ? "..." : (summaryData?.totalPapers?.toLocaleString() ?? papersData?.meta?.total?.toLocaleString() ?? "0")} 
               trend="+12%" 
             />
             <KpiCard 
-              label="TOPICS FOLLOWED" 
-              value={isTrendsLoading ? "..." : (trendsData?.topics?.length?.toString() || "0")} 
-              trend="-- 0" 
+              label="SEARCHES" 
+              value={isSummaryLoading ? "..." : (summaryData?.totalSearches?.toLocaleString() ?? "0")} 
+              trend="" 
               isNeutral 
             />
-            <KpiCard label="REPORTS GEN." value="0" trend="" isNeutral />
+            <KpiCard 
+              label="USERS" 
+              value={isSummaryLoading ? "..." : (summaryData?.uniqueUsers?.toLocaleString() ?? "0")} 
+              trend="" 
+              isNeutral 
+            />
             <KpiCard 
               label="SAVED PAPERS" 
               value={isBookmarksLoading ? "..." : (bookmarksData?.length?.toString() || "0")} 
               trend="" 
               isNeutral 
+              onClick={isAuthed ? () => navigate("/bookmarks") : undefined}
             />
           </div>
 
@@ -220,9 +231,36 @@ export function HomePage() {
 
 // Sub-components
 
-function KpiCard({ label, value, trend, isNeutral = false }: { label: string, value: string, trend: string, isNeutral?: boolean }) {
+function KpiCard({ 
+  label, 
+  value, 
+  trend, 
+  isNeutral = false, 
+  onClick 
+}: { 
+  label: string; 
+  value: string; 
+  trend: string; 
+  isNeutral?: boolean; 
+  onClick?: () => void; 
+}) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between">
+    <div 
+      onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-4 shadow-sm flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        onClick ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" : ""
+      }`}
+    >
       <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-2 uppercase">
         {label}
       </div>

@@ -2,9 +2,18 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { requireAuth } from "../../common/middleware/auth.js";
+import { validate } from "../../common/middleware/validate.js";
 import { reportController } from "./report.controller.js";
+import { PaperIdParamSchema } from "./dto/report.schema.js";
 
 export const reportRouter: Router = Router();
+
+/** Public: count AI reports that cite a specific paper. No auth needed. */
+reportRouter.get(
+  "/paper/:paperId/count",
+  validate(PaperIdParamSchema, "params"),
+  reportController.countByPaper
+);
 
 // Every report belongs to a user — auth is mandatory on the whole router.
 reportRouter.use(requireAuth);

@@ -41,4 +41,10 @@ export const reportController = {
     const data = await reportService.getById(req.user!.sub, req.params.id as string);
     res.json({ success: true, data });
   },
+
+  /** GET /api/v1/reports/paper/:paperId/count — public, no auth. */
+  async countByPaper(req: Request, res: Response) {
+    const count = await reportService.countByPaper(req.params.paperId as string);
+    res.json({ success: true, data: { count } });
+  },
 };

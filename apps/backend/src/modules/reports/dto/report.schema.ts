@@ -23,3 +23,9 @@ export const ListReportsQuerySchema = z.object({
 });
 
 export type ListReportsQuery = z.infer<typeof ListReportsQuerySchema>;
+
+export const PaperIdParamSchema = z.object({
+  paperId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid paper ID format"),
+});
+
+export type PaperIdParam = z.infer<typeof PaperIdParamSchema>;
