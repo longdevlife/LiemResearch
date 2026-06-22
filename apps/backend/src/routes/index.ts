@@ -9,6 +9,7 @@ import { reportRouter } from "../modules/reports/report.routes.js";
 import { gapsRouter } from "../modules/gaps/gaps.routes.js";
 import { bookmarkRouter } from "../modules/bookmarks/bookmark.routes.js";
 import { analyticsRouter } from "../modules/analytics/analytics.routes.js";
+import { qualityRouter } from "../modules/quality/quality.routes.js";
 
 export const apiRouter: Router = Router();
 
@@ -20,5 +21,6 @@ apiRouter.use("/reports", reportRouter); // Phase C — RAG analytical reports
 apiRouter.use("/gaps", gapsRouter); // Phase D — research gaps
 apiRouter.use("/bookmarks", bookmarkRouter); // Sprint 3 — bookmarks
 apiRouter.use("/analytics", analyticsRouter); // Phase D — search analytics
+apiRouter.use("/quality", qualityRouter); // Quality & Feedback — LLM-judge + user ratings
 apiRouter.use("/admin", syncRouter); // /admin/sync
 apiRouter.use("/admin", embeddingRouter); // /admin/embed
