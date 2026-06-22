@@ -94,4 +94,17 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.openAccessStatus).toBe("unknown");
     expect(n.paperKind).toBe("other");
   });
+
+  it("maps referenced_works, stripping the OpenAlex URL prefix", () => {
+    const n = normalizeOpenAlexWork({
+      ...base,
+      referenced_works: ["https://openalex.org/W111", "https://openalex.org/W222"],
+    });
+    expect(n.referencedWorks).toEqual(["W111", "W222"]);
+  });
+
+  it("defaults referenced_works to [] when missing", () => {
+    expect(normalizeOpenAlexWork({ ...base, referenced_works: null }).referencedWorks).toEqual([]);
+    expect(normalizeOpenAlexWork({ id: "https://openalex.org/W999" }).referencedWorks).toEqual([]);
+  });
 });

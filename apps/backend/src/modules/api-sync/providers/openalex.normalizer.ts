@@ -32,6 +32,7 @@ export interface NormalizedPaper {
   citationCount: number;
   keywords: { keywordName: string; detectedBy: DetectedBy; confidence?: number }[];
   topics: { topicName: string; detectedBy: DetectedBy; confidence?: number }[];
+  referencedWorks: string[];
   primaryProvider: "openalex";
 }
 
@@ -77,6 +78,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
         detectedBy: "openalex" as const,
         confidence: t.score,
       })),
+    referencedWorks: (w.referenced_works ?? []).map((r) => stripPrefix(r, "https://openalex.org/")!),
     primaryProvider: "openalex",
   };
 }
