@@ -1,4 +1,5 @@
 import type { ISODateString } from "./common.js";
+import type { PaperRef } from "./paper.js";
 
 export type ReportStatus = "queued" | "generating" | "ready" | "failed";
 
@@ -36,6 +37,9 @@ export interface AnalyticalReport {
    *  ORDER-SIGNIFICANT: citation [n] in `markdown` maps to
    *  groundingPaperIds[n-1]. Do NOT sort or dedupe — it breaks citations. */
   groundingPaperIds: string[];
+  /** Resolved grounding papers in RETRIEVAL ORDER: citation [n] → groundingPapers[n-1].
+   *  Populated by GET /reports/:id. */
+  groundingPapers?: PaperRef[];
   researchGaps: ResearchGap[];
   modelVersion: string;
   promptVersion: string;
