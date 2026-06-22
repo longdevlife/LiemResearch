@@ -9,11 +9,22 @@ import { useBookmarks, useCreateBookmark, useDeleteBookmark } from "@/features/b
 import { toast } from "sonner";
 import { PaperCard } from "@/components/paper-card";
 
+/** Backend caps both /papers and /search at pageSize=50, so 50 is the most we
+ *  can pull in one request. We fetch this whole pool ONCE, then filter, sort and
+ *  paginate entirely on the client — that way the result count, the active
+ *  filters and the pager always agree with each other. For the current demo
+ *  corpus, 50 candidates is plenty; if the corpus grows we move filters + paging
+ *  server-side (see docs/AG-search-page-handoff.md). */
+const POOL_SIZE = 50;
+const RESULTS_PER_PAGE = 10;
+
+type SortKey = "relevance" | "date" | "citations";
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
-  
+
   // Filter States
   const [searchMode, setSearchMode] = useState<"semantic" | "keyword">("semantic");
   const [yearFrom, setYearFrom] = useState<string>("2020");
@@ -21,7 +32,10 @@ export function SearchPage() {
   const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(false);
   const [journalTypes, setJournalTypes] = useState<string[]>(["article", "proceedings"]);
   const [primaryProvider, setPrimaryProvider] = useState<string>("all");
-  const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0.8);
+  // Default 0 — a non-zero floor silently hides most semantic hits (cosine
+  // scores cluster around 0.5–0.75), which reads as "search is broken".
+  const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0);
+  const [sortBy, setSortBy] = useState<SortKey>("relevance");
 
   const parsedYearFrom = yearFrom ? parseInt(yearFrom, 10) : undefined;
   const parsedYearTo = yearTo ? parseInt(yearTo, 10) : undefined;
@@ -30,23 +44,24 @@ export function SearchPage() {
   // No query or keyword mode → browse papers. Otherwise → semantic search.
   const isSemanticSearchActive = searchMode === "semantic" && hasQuery;
 
-  const browse = usePapers({ 
-    page, 
-    pageSize: 20, 
-    q: searchMode === "keyword" ? q : undefined 
+  // Pull the candidate POOL (page 1, max size). The client owns pagination,
+  // so server `page`/`meta` are intentionally not used for navigation.
+  const browse = usePapers({
+    page: 1,
+    pageSize: POOL_SIZE,
+    q: searchMode === "keyword" ? q : undefined,
   });
-  const search = useSearch({ 
-    q, 
-    page, 
-    pageSize: 20, 
-    yearFrom: parsedYearFrom, 
-    yearTo: parsedYearTo 
+  const search = useSearch({
+    q,
+    page: 1,
+    pageSize: POOL_SIZE,
+    yearFrom: parsedYearFrom,
+    yearTo: parsedYearTo,
   });
 
   const data = isSemanticSearchActive ? search.data : browse.data;
   const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
   const rawPapers = (data?.papers ?? []) as (Paper & { score?: number })[];
-  const meta = data?.meta;
 
   const { data: bookmarks } = useBookmarks();
 
@@ -95,6 +110,30 @@ export function SearchPage() {
       return true;
     });
   }, [rawPapers, searchMode, yearFrom, yearTo, openAccessOnly, journalTypes, primaryProvider, aiScoreThreshold, q, hasQuery]);
+
+  // Sort the filtered pool client-side (the whole pool is already in memory).
+  const sortedPapers = useMemo(() => {
+    const arr = [...filteredPapers];
+    if (sortBy === "date") {
+      arr.sort((a, b) => (b.publicationYear ?? 0) - (a.publicationYear ?? 0));
+    } else if (sortBy === "citations") {
+      arr.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
+    } else {
+      // relevance: semantic score desc; keyword has no score so order is kept.
+      arr.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    }
+    return arr;
+  }, [filteredPapers, sortBy]);
+
+  // Client-side pagination over the filtered+sorted pool — count, filters and
+  // pager now always agree. `safePage` clamps so changing filters can't strand
+  // the user on a now-empty page.
+  const totalPages = Math.max(1, Math.ceil(sortedPapers.length / RESULTS_PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagePapers = sortedPapers.slice(
+    (safePage - 1) * RESULTS_PER_PAGE,
+    safePage * RESULTS_PER_PAGE,
+  );
 
   const handlePageChange = (newPage: number) => {
     setSearchParams(prev => {
@@ -267,7 +306,7 @@ export function SearchPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {isLoading ? "Searching..." : `${filteredPapers.length} papers found`}
+              {isLoading ? "Searching..." : hasQuery ? `Results for "${q}"` : "Browse papers"}
             </h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <span className="text-xs font-medium text-slate-500">Active:</span>
@@ -320,7 +359,8 @@ export function SearchPage() {
                   setOpenAccessOnly(false);
                   setJournalTypes(["article", "proceedings"]);
                   setPrimaryProvider("all");
-                  setAiScoreThreshold(0.8);
+                  setAiScoreThreshold(0);
+                  setSortBy("relevance");
                 }}
               >
                 Clear all
@@ -331,10 +371,14 @@ export function SearchPage() {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs font-medium text-slate-500">Sort by:</span>
             <div className="relative z-0">
-              <select className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                <option>Relevance (AI Score)</option>
-                <option>Date (Newest)</option>
-                <option>Citations</option>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="relevance">Relevance (AI Score)</option>
+                <option value="date">Date (Newest)</option>
+                <option value="citations">Citations</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
             </div>
@@ -345,10 +389,10 @@ export function SearchPage() {
         <div className="space-y-4">
           {isLoading ? (
             <div className="py-8 text-center text-slate-500">Loading papers...</div>
-          ) : filteredPapers.length === 0 ? (
+          ) : sortedPapers.length === 0 ? (
             <div className="py-8 text-center text-slate-500">No papers found matching the filters.</div>
           ) : (
-            filteredPapers.map(paper => (
+            pagePapers.map(paper => (
               <PaperCard 
                 key={paper.id}
                 id={paper.id}
@@ -371,27 +415,27 @@ export function SearchPage() {
           )}
         </div>
 
-        {/* Pagination */}
-        {meta && meta.totalPages > 1 && (
+        {/* Pagination — client-side over the filtered+sorted pool */}
+        {totalPages > 1 && (
           <div className="flex items-center justify-center gap-1 mt-10 mb-8">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800" 
-              disabled={page <= 1}
-              onClick={() => handlePageChange(page - 1)}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800"
+              disabled={safePage <= 1}
+              onClick={() => handlePageChange(safePage - 1)}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm text-slate-600 dark:text-slate-400 mx-4">
-              Page {page} of {meta.totalPages}
+              Page {safePage} of {totalPages}
             </span>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="h-8 w-8 text-slate-500 rounded-md border-slate-200 dark:border-slate-800"
-              disabled={page >= meta.totalPages}
-              onClick={() => handlePageChange(page + 1)}
+              disabled={safePage >= totalPages}
+              onClick={() => handlePageChange(safePage + 1)}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
