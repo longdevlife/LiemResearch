@@ -2,28 +2,67 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Loader2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
+import { useReports, useCreateReport, useDeleteReport, useDeleteBatchReports } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
   const createReport = useCreateReport();
+  const deleteReport = useDeleteReport();
+  const deleteBatchReports = useDeleteBatchReports();
   
   const [open, setOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
   const [topic, setTopic] = useState("");
+  const [query, setQuery] = useState("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
   const navigate = useNavigate();
 
+  const handleDeleteAll = () => {
+    if (!reports || reports.length === 0) return;
+    setItemToDelete('ALL');
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteSingle = (id: string) => {
+    setItemToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    try {
+      if (itemToDelete === 'ALL') {
+        if (!reports) return;
+        await deleteBatchReports.mutateAsync(reports.map(r => r.id));
+        toast.success("All reports deleted successfully");
+      } else {
+        await deleteReport.mutateAsync(itemToDelete);
+        toast.success("Report deleted successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to delete report(s)");
+    } finally {
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!topic.trim()) return;
+    if (!query.trim()) {
+      toast.error("Please enter a question for the AI to analyze");
+      return;
+    }
 
     try {
-      await createReport.mutateAsync({ query: topic, topic, deepAnalysis, fast });
+      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, deepAnalysis, fast });
       setOpen(false);
       setTopic("");
+      setQuery("");
       setDeepAnalysis(false);
       setFast(true);
     } catch (error) {
@@ -38,10 +77,17 @@ export function ReportsListPage() {
         title="AI Reports"
         description="Analytical reports grounded in retrieved papers."
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#001b69] hover:bg-[#001040] text-white">New report</Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            {reports && reports.length > 0 && (
+              <Button variant="destructive" onClick={handleDeleteAll} disabled={deleteBatchReports.isPending}>
+                {deleteBatchReports.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Delete All
+              </Button>
+            )}
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#001b69] hover:bg-[#001040] text-white">New report</Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Generate AI Report</DialogTitle>
@@ -58,6 +104,18 @@ export function ReportsListPage() {
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="e.g. LLM in Education"
                     className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="query" className="text-sm font-semibold text-slate-900 dark:text-white">Question</label>
+                  <textarea
+                    id="query"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="What should AI analyze?"
+                    rows={4}
+                    className="flex w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2 resize-none"
                   />
                 </div>
 
@@ -110,6 +168,7 @@ export function ReportsListPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
@@ -127,6 +186,7 @@ export function ReportsListPage() {
                 <th className="px-6 py-4 hidden md:table-cell">Query</th>
                 <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Date</th>
+                <th className="px-6 py-4 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -166,11 +226,22 @@ export function ReportsListPage() {
                   <td className="px-6 py-4 text-right text-slate-500 font-medium whitespace-nowrap">
                     {new Date(report.createdAt).toLocaleDateString()}
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={() => handleDeleteSingle(report.id)}
+                      disabled={deleteReport.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {(!reports || reports.length === 0) && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     No reports generated yet. Click "New report" to get started.
                   </td>
                 </tr>
@@ -179,6 +250,28 @@ export function ReportsListPage() {
           </table>
         )}
       </div>
+
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Confirm Deletion
+            </DialogTitle>
+            <DialogDescription className="pt-3 text-slate-600 dark:text-slate-400">
+              Are you absolutely sure? This action cannot be undone. This will permanently delete 
+              {itemToDelete === 'ALL' ? ` all ${reports?.length} reports` : ' this report'} from our servers.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deleteReport.isPending || deleteBatchReports.isPending}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteReport.isPending || deleteBatchReports.isPending}>
+              {(deleteReport.isPending || deleteBatchReports.isPending) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Yes, delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

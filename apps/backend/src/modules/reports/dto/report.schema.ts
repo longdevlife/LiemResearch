@@ -24,6 +24,13 @@ export const ListReportsQuerySchema = z.object({
 
 export type ListReportsQuery = z.infer<typeof ListReportsQuerySchema>;
 
+/** Body of DELETE /api/v1/reports (batch delete) */
+export const BatchDeleteSchema = z.object({
+  ids: z.array(z.string()).min(1, "must provide at least one id to delete"),
+});
+
+export type BatchDeleteInput = z.infer<typeof BatchDeleteSchema>;
+
 export const PaperIdParamSchema = z.object({
   paperId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid paper ID format"),
 });

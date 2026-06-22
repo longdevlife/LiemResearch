@@ -16,4 +16,12 @@ export const reportsApi = {
   async create(payload: CreateReportRequest): Promise<void> {
     await api.post(API_ROUTES.reports.create, payload);
   },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(API_ROUTES.reports.detail(id));
+  },
+
+  async deleteBatch(ids: string[]): Promise<void> {
+    await api.delete(API_ROUTES.reports.list, { data: { ids } });
+  },
 };

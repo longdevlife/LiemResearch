@@ -12,10 +12,11 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
+      size="icon"
       aria-label={label}
       title={label}
-      className="rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white px-4 py-2 font-bold flex gap-2 items-center shadow-lg"
+      className="rounded-full text-slate-500 dark:text-slate-400"
       onClick={() => setTheme(next)}
     >
       {theme === "dark" ? (
