@@ -21,6 +21,7 @@ const navItems = [
   { to: "/search", label: "Search" },
   { to: "/trends", label: "Trends" },
   { to: "/reports", label: "Reports" },
+  { to: "/research-gaps", label: "Research Gaps" },
   { to: "/projects", label: "Projects" },
   { to: "/rankings", label: "Rankings" },
 ] as const;
