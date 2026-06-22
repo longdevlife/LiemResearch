@@ -152,69 +152,62 @@ export function PaperDetailPage() {
             </div>
           </div>
 
-          {/* AI Analysis Summary */}
-          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 flex items-center justify-center">
-                  <SparklesIcon />
-                </div>
-                AI Analysis Summary
-              </h2>
-              <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">!</div>
-                Confidence: High
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {/* Metric 1 */}
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Relevance</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
-                    {paper.aiScore ? paper.aiScore.relevanceScore.toFixed(2) : "0.95"}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
-                    style={{ width: `${(paper.aiScore ? paper.aiScore.relevanceScore : 0.95) * 100}%` }}
-                  ></div>
-                </div>
+          {/* AI Analysis Summary — render ONLY when a real aiScore exists
+              (Phase B). No hardcoded fallbacks: we must not show invented
+              relevance/semantic numbers (or a fake "Confidence: High") for a
+              paper that was never AI-scored. Real data quality stays in the
+              sidebar (Data Quality). */}
+          {paper.aiScore && (
+            <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 flex items-center justify-center">
+                    <SparklesIcon />
+                  </div>
+                  AI Analysis Summary
+                </h2>
               </div>
-              {/* Metric 2 */}
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Semantic Fit</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
-                    {paper.aiScore ? paper.aiScore.semanticSimilarityScore.toFixed(2) : "0.88"}
-                  </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                {/* Relevance */}
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Relevance</span>
+                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {paper.aiScore.relevanceScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.relevanceScore * 100}%` }}></div>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
-                    style={{ width: `${(paper.aiScore ? paper.aiScore.semanticSimilarityScore : 0.88) * 100}%` }}
-                  ></div>
+                {/* Semantic Fit */}
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Semantic Fit</span>
+                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {paper.aiScore.semanticSimilarityScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.semanticSimilarityScore * 100}%` }}></div>
+                  </div>
                 </div>
-              </div>
-              {/* Metric 3 */}
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metadata Quality</span>
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
-                    {paper.aiScore ? paper.aiScore.metadataQualityScore.toFixed(2) : paper.dataQualityScore.toFixed(2)}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" 
-                    style={{ width: `${(paper.aiScore ? paper.aiScore.metadataQualityScore : paper.dataQualityScore) * 100}%` }}
-                  ></div>
+                {/* Metadata Quality */}
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metadata Quality</span>
+                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {paper.aiScore.metadataQualityScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.metadataQualityScore * 100}%` }}></div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Abstract */}
           <div>
