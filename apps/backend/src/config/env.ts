@@ -17,8 +17,14 @@ const EnvSchema = z.object({
   JWT_REFRESH_TTL: z.string().default("7d"),
 
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
-  GEMINI_MODEL_FAST: z.string().default("gemini-3.5-flash"),
-  GEMINI_MODEL_DEEP: z.string().default("gemini-2.5-pro"),
+  // Cost-saving: standardize ALL generative calls (rerank, research gaps, RAG
+  // reports, quality-judge) on Gemini 3.1 Flash-Lite — the cheapest GA tier with
+  // a generous free quota. If deep reports/gaps need higher quality later, raise
+  // GEMINI_MODEL_DEEP in .env (e.g. a Pro model) without touching code.
+  // NOTE: embeddings use a SEPARATE model below — Flash-Lite is a text model,
+  // not an embedding model — so this change does NOT affect embedding coverage.
+  GEMINI_MODEL_FAST: z.string().default("gemini-3.1-flash-lite"),
+  GEMINI_MODEL_DEEP: z.string().default("gemini-3.1-flash-lite"),
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
