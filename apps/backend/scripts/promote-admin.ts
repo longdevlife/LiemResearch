@@ -44,6 +44,7 @@ async function main(): Promise<void> {
     } else {
       const previousRole = existing.role;
       existing.role = "admin";
+      existing.isActive = true;
       await existing.save();
       logger.info({ email, previousRole }, "✅ user promoted to admin");
     }

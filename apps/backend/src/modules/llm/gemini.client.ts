@@ -37,6 +37,20 @@ export class LlmTruncationError extends Error {
   }
 }
 
+/**
+ * Thrown when the model returns content that is structurally invalid and will
+ * not self-heal on retry — unparseable JSON, malformed report shape, or an
+ * out-of-range citation. Marked non-retryable so BullMQ workers fail fast
+ * instead of burning 5× the (paid, rate-limited) Gemini quota on a hopeless retry.
+ */
+export class LlmContentError extends Error {
+  readonly nonRetryable = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "LlmContentError";
+  }
+}
+
 export async function generateText(prompt: string, opts: GenerateOptions = {}): Promise<string> {
   const model = opts.model ?? env.GEMINI_MODEL_FAST;
   const maxOutputTokens = opts.maxOutputTokens ?? 1024;
@@ -81,7 +95,12 @@ export async function generateJSON<T = unknown>(
       .filter(Boolean)
       .join("\n"),
   });
-  return JSON.parse(stripJsonFence(raw)) as T;
+  try {
+    return JSON.parse(stripJsonFence(raw)) as T;
+  } catch {
+    // Non-JSON output won't become valid by retrying the same call — fail fast.
+    throw new LlmContentError("LLM returned non-JSON output");
+  }
 }
 
 function stripJsonFence(s: string): string {

@@ -156,6 +156,10 @@ function UserMenu() {
         {role === "admin" && (
           <>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => navigate("/dashboard")}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Dashboard
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate("/admin/sync")}>
               <Sparkles className="mr-2 h-4 w-4" />
               Admin

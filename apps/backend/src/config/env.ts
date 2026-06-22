@@ -29,10 +29,16 @@ const EnvSchema = z.object({
   SYNC_CRON: z.string().default("0 2 * * *"),
   SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(200),
   SYNC_MAX_PAGES_PER_RUN: z.coerce.number().int().positive().default(10),
+  // Store the full provider JSON (rawMetadata) on each source record. It is HEAVY
+  // (50-300 KB/paper) and read by nothing — default OFF to protect Atlas M0 (512 MB).
+  SYNC_STORE_RAW_METADATA: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Phase B — embedding worker.
   EMBED_CRON: z.string().default("0 3 * * *"),
-  EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(50),
+  EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
 
   // Phase C — RAG analytical reports.
@@ -55,6 +61,9 @@ const EnvSchema = z.object({
   // Per-IP cap on rerank=true (the LLM path) — /search is public, so this
   // throttle stops an unauthenticated loop from draining the Gemini quota.
   RERANK_MAX_PER_HOUR: z.coerce.number().int().positive().default(30),
+
+  // Quality & Feedback — per-user/hour cap on the on-demand LLM-judge (a generate call).
+  QUALITY_EVAL_MAX_PER_HOUR: z.coerce.number().int().positive().default(20),
 
   // DEV ONLY: when "true", the /api/v1/admin/sync endpoints skip auth so the
   // team can demo before an admin user is seeded. Never enable in production.

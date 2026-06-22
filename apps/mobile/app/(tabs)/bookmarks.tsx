@@ -24,7 +24,11 @@ function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
       : `${report?.status ?? "report"} · ${report?.createdAt ? new Date(report.createdAt).toLocaleDateString() : "AI report"}`;
 
   const openItem = () => {
-    if (bookmark.targetKind === "paper") router.push(`/paper/${bookmark.targetId}` as any);
+    if (bookmark.targetKind === "paper") {
+      router.push(`/paper/${bookmark.targetId}` as any);
+    } else if (bookmark.targetKind === "report") {
+      router.push(`/report/${bookmark.targetId}` as any);
+    }
   };
 
   const confirmDelete = () => {

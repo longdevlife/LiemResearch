@@ -1,6 +1,7 @@
 import { Route, Routes, Navigate } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
+import { AdminLayout } from "@/layouts/AdminLayout";
 import { ProtectedRoute } from "@/components/protected-route";
 
 import { HomePage } from "@/pages/home";
@@ -21,6 +22,7 @@ import { ProjectDetailPage } from "@/pages/projects/project-detail";
 import { ResearchGapsPage } from "@/pages/research-gaps";
 import { AdminSyncPage } from "@/pages/admin/sync";
 import { AdminUsersPage } from "@/pages/admin/users";
+import { AdminHomePage } from "@/pages/admin";
 import { NotFoundPage } from "@/pages/not-found";
 import { RankingsPage } from "@/pages/rankings";
 
@@ -52,9 +54,12 @@ export function AppRoutes() {
           <Route path="/research-gaps" element={<ResearchGapsPage />} />
           <Route path="/rankings" element={<RankingsPage />} />
 
-          {/* Admin (additional role check inside each page) */}
-          <Route path="/admin/sync" element={<AdminSyncPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
+          {/* Admin — nested under AdminLayout (sidebar + role gate) */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminHomePage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="sync" element={<AdminSyncPage />} />
+          </Route>
         </Route>
 
         {/* 404 catch-all */}

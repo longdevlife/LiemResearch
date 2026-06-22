@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -47,6 +47,7 @@ export default function ReportsScreen() {
   const reports = reportsQuery.data?.reports ?? [];
   const [query, setQuery] = useState("Analyze research trends in large language models for education");
   const [topic, setTopic] = useState("LLM in education");
+  const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const detailQuery = useReport(selectedId);
 
@@ -57,7 +58,7 @@ export default function ReportsScreen() {
     }
 
     createReport.mutate(
-      { query: query.trim(), topic: topic.trim() || undefined, yearFrom: 2020, yearTo: 2026 },
+      { query: query.trim(), topic: topic.trim() || undefined, yearFrom: 2020, yearTo: 2026, deepAnalysis },
       {
         onSuccess: (data) => {
           setSelectedId(data.id);
@@ -96,9 +97,10 @@ export default function ReportsScreen() {
             value={topic}
             onChangeText={setTopic}
           />
+          
           <Text className="mb-2 text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Question</Text>
           <TextInput
-            className="min-h-24 rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] px-4 py-3 text-foreground dark:text-[#F8FAFC]"
+            className="min-h-24 rounded-xl border border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D] px-4 py-3 text-foreground dark:text-[#F8FAFC] mb-4"
             placeholder="What should AI analyze?"
             placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
             value={query}
@@ -106,7 +108,24 @@ export default function ReportsScreen() {
             multiline
             textAlignVertical="top"
           />
-          <TouchableOpacity className="mt-4 rounded-xl bg-[#1D4ED8] py-3 items-center" onPress={submit} disabled={createReport.isPending}>
+
+          {/* Deep Analysis Switch */}
+          <View className="flex-row items-center justify-between mb-4 bg-muted/40 dark:bg-[#1E293B]/40 p-3 rounded-xl border border-border/50 dark:border-[#26334A]/50">
+            <View className="flex-1 pr-4">
+              <Text className="text-sm font-bold text-foreground dark:text-[#F8FAFC]">Deep Analysis</Text>
+              <Text className="text-[11px] text-muted-foreground dark:text-[#94A3B8] mt-0.5 leading-4">
+                Let Gemini autonomously run searches and trends analysis to write a highly detailed report.
+              </Text>
+            </View>
+            <Switch
+              value={deepAnalysis}
+              onValueChange={setDeepAnalysis}
+              trackColor={{ false: "#94A3B8", true: "#06B6D4" }}
+              thumbColor={deepAnalysis ? "#ffffff" : "#f4f3f4"}
+            />
+          </View>
+
+          <TouchableOpacity className="rounded-xl bg-[#1D4ED8] py-3 items-center" onPress={submit} disabled={createReport.isPending}>
             {createReport.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-bold text-white">Create report</Text>}
           </TouchableOpacity>
         </View>
@@ -117,7 +136,16 @@ export default function ReportsScreen() {
             <Text className={`mt-1 text-xs font-bold uppercase ${statusColor(detailQuery.data.status)}`}>{detailQuery.data.status}</Text>
             {detailQuery.data.errorMessage ? <Text className="mt-3 text-sm text-red-500">{detailQuery.data.errorMessage}</Text> : null}
             {detailQuery.data.markdown ? (
-              <Text className="mt-3 text-sm leading-6 text-foreground dark:text-[#CFFAFE]" numberOfLines={10}>{detailQuery.data.markdown}</Text>
+              <View className="mt-3">
+                <Text className="text-sm leading-6 text-foreground dark:text-[#CFFAFE]" numberOfLines={4}>{detailQuery.data.markdown}</Text>
+                <TouchableOpacity
+                  onPress={() => router.push(`/report/${detailQuery.data?.id}` as any)}
+                  className="mt-3 py-2.5 items-center rounded-xl bg-[#06B6D4] flex-row justify-center gap-1.5"
+                >
+                  <Ionicons name="eye-outline" size={16} color="#FFFFFF" />
+                  <Text className="text-xs font-bold text-white">View Full Report</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <Text className="mt-3 text-sm text-muted-foreground dark:text-[#CFFAFE]">No markdown yet. Keep the report worker running and pull to refresh.</Text>
             )}
@@ -129,7 +157,18 @@ export default function ReportsScreen() {
           <View className="py-16"><ActivityIndicator color="#06B6D4" /></View>
         ) : reports.length > 0 ? (
           reports.map((report) => (
-            <ReportRow key={report.id} report={report} selected={selectedId === report.id} onPress={() => setSelectedId(report.id)} />
+            <ReportRow
+              key={report.id}
+              report={report}
+              selected={selectedId === report.id}
+              onPress={() => {
+                if (report.status === "ready") {
+                  router.push(`/report/${report.id}` as any);
+                } else {
+                  setSelectedId(report.id);
+                }
+              }}
+            />
           ))
         ) : (
           <View className="rounded-2xl border border-dashed border-border dark:border-[#26334A] bg-card dark:bg-[#111C2E] p-8">

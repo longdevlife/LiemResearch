@@ -10,6 +10,7 @@ export interface User {
   avatarUrl?: string;
   institution?: string;
   researchInterests?: string[];
+  isActive?: boolean;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
+import { useQuery } from "@tanstack/react-query";
 import type { Paper, ScoredPaper, TrendingTopic } from "@trend/shared-types";
 
 import { useCreateBookmark, useDeleteBookmark, useBookmarkStatus } from "@/features/bookmarks";
@@ -11,6 +12,8 @@ import { usePapers } from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useTrendsOverview } from "@/features/trends";
 import { useAuthStore } from "@/stores/auth-store";
+import { api } from "@/services/api-client";
+import { API_ROUTES } from "@/constants";
 
 function Sparkline({ points }: { points: { year: number; count: number }[] }) {
   const max = Math.max(...points.map((p) => p.count), 1);
@@ -105,6 +108,14 @@ export default function HomeScreen() {
   const searchResults = useSearch({ q: debouncedQuery, page: 1, pageSize: 5, rerank: false });
   const trendsQuery = useTrendsOverview({ limit: 4, minPapers: 1, sortBy: "momentum" });
 
+  const statsQuery = useQuery({
+    queryKey: ["analyticsSummary"],
+    queryFn: async () => {
+      const res = await api.get(API_ROUTES.analytics.summary);
+      return res.data.data as { totalSearches: number; totalPapers: number; uniqueUsers: number };
+    },
+  });
+
   const papers = (hasQuery ? searchResults.data?.papers : papersQuery.data?.papers) ?? [];
   const papersLoading = hasQuery ? searchResults.isLoading : papersQuery.isLoading;
   const topics = trendsQuery.data?.topics ?? [];
@@ -112,7 +123,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 112 }}>
-        <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-row justify-between items-center mb-5">
           <View className="flex-1 pr-4">
             <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">Hi, {user?.fullName?.split(" ")[0] || "Researcher"}</Text>
             <Text className="text-sm text-muted-foreground dark:text-[#94A3B8] mt-1">What are you researching today?</Text>
@@ -120,6 +131,30 @@ export default function HomeScreen() {
           <View className="w-11 h-11 rounded-full bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] items-center justify-center">
             <Text className="text-foreground dark:text-[#F8FAFC] font-bold">{user?.fullName?.slice(0, 1).toUpperCase() || "R"}</Text>
           </View>
+        </View>
+
+        {/* System Stats AI Widget */}
+        <View className="mb-5 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl p-4 flex-row items-center justify-between">
+          <View className="flex-row items-center gap-3">
+            <View className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center">
+              <Ionicons name="stats-chart" color="#06B6D4" size={16} />
+            </View>
+            <View>
+              <Text className="text-xs font-bold text-foreground dark:text-[#F8FAFC]">Database Status</Text>
+              <Text className="text-[11px] text-muted-foreground dark:text-[#94A3B8] mt-0.5">
+                {statsQuery.isLoading
+                  ? "Loading metrics..."
+                  : `${statsQuery.data?.totalPapers || 0} papers · ${statsQuery.data?.totalSearches || 0} searches · ${statsQuery.data?.uniqueUsers || 0} users`}
+              </Text>
+            </View>
+          </View>
+          {statsQuery.isLoading ? (
+            <ActivityIndicator size="small" color="#06B6D4" />
+          ) : (
+            <View className="rounded-full bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 border border-emerald-200 dark:border-emerald-900">
+              <Text className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Live</Text>
+            </View>
+          )}
         </View>
 
         <View className="flex-row items-center bg-card dark:bg-[#1A2332] rounded-full px-4 h-12 mb-7 border border-border dark:border-[#26334A]">
@@ -176,24 +211,35 @@ export default function HomeScreen() {
 
         <View>
           <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC] mb-3">Quick actions</Text>
-          <View className="flex-row gap-3">
+          <View className="flex-row gap-2">
             <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-4 items-center border border-border dark:border-[#26334A]"
+              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
               onPress={() => router.push("/trends" as any)}
             >
-              <View className="w-11 h-11 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
-                <Feather name="trending-up" color="#06B6D4" size={21} />
+              <View className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
+                <Feather name="trending-up" color="#06B6D4" size={18} />
               </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-sm font-semibold">Browse trends</Text>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Trends</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-4 items-center border border-border dark:border-[#26334A]"
+              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
               onPress={() => router.push("/reports" as any)}
             >
-              <View className="w-11 h-11 rounded-full bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center mb-2">
-                <Ionicons name="sparkles" color="#A78BFA" size={21} />
+              <View className="w-10 h-10 rounded-full bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center mb-2">
+                <Ionicons name="sparkles" color="#A78BFA" size={18} />
               </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-sm font-semibold">AI reports</Text>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>AI Reports</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+              onPress={() => router.push("/gaps" as any)}
+            >
+              <View className="w-10 h-10 rounded-full bg-[#1E1B4B] items-center justify-center mb-2">
+                <Feather name="target" color="#A5B4FC" size={18} />
+              </View>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Gaps</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -41,6 +41,7 @@ export const reportService = {
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
       deepAnalysis: input.deepAnalysis ?? false,
+      fast: input.fast ?? false,
       status: "queued",
     });
 

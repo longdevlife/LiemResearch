@@ -14,16 +14,18 @@ export function ReportsListPage() {
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
+  const [fast, setFast] = useState(true);
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
-    
+
     try {
-      await createReport.mutateAsync({ query: topic, topic, deepAnalysis });
+      await createReport.mutateAsync({ query: topic, topic, deepAnalysis, fast });
       setOpen(false);
       setTopic("");
       setDeepAnalysis(false);
+      setFast(true);
     } catch (error) {
       console.error("Failed to create report:", error);
       toast.error("Failed to create report. Please try again.");
@@ -58,24 +60,46 @@ export function ReportsListPage() {
                     className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
                   />
                 </div>
+
+                {/* Fast mode toggle */}
+                <label
+                  htmlFor="fast-mode"
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 dark:border-slate-800 p-3 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+                >
+                  <input
+                    id="fast-mode"
+                    type="checkbox"
+                    checked={fast}
+                    onChange={(e) => setFast(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#001b69] focus:ring-[#001b69]"
+                  />
+                  <span className="text-sm">
+                    <span className="font-semibold text-slate-900 dark:text-white">⚡ Fast mode</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      Nhanh hơn (model Flash). Bỏ chọn để phân tích kỹ hơn bằng model Pro — chậm hơn ~2–4×.
+                    </span>
+                  </span>
+                </label>
+
                 {/* Deep Analysis toggle */}
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                <label
+                  htmlFor="deep-analysis"
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 dark:border-slate-800 p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100/70 dark:hover:bg-slate-900 transition-colors"
+                >
                   <input
                     id="deep-analysis"
                     type="checkbox"
                     checked={deepAnalysis}
                     onChange={(e) => setDeepAnalysis(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#001b69] focus:ring-[#001b69] cursor-pointer"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#001b69] focus:ring-[#001b69]"
                   />
-                  <div className="flex flex-col gap-0.5">
-                    <label htmlFor="deep-analysis" className="text-sm font-semibold text-slate-900 dark:text-white cursor-pointer">
-                      ✨ Deep Analysis
-                    </label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-sm">
+                    <span className="font-semibold text-slate-900 dark:text-white">✨ Deep Analysis</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
                       Gemini searches for additional evidence from the web — slower (~60s) but delivers deeper insights.
-                    </p>
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                </label>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={createReport.isPending}>Cancel</Button>
