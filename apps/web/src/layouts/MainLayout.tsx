@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Bookmark } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,18 +14,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { useBookmarks } from "@/features/bookmarks";
 import { cn } from "@/utils/cn";
 
 const navItems = [
   { to: "/search", label: "Search" },
   { to: "/trends", label: "Trends" },
   { to: "/reports", label: "Reports" },
+  { to: "/research-gaps", label: "Research Gaps" },
   { to: "/projects", label: "Projects" },
   { to: "/rankings", label: "Rankings" },
 ] as const;
 
 export function MainLayout() {
   const navigate = useNavigate();
+  const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
+  const { data: bookmarks } = useBookmarks({ enabled: isAuthed });
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
@@ -75,6 +79,18 @@ export function MainLayout() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            {isAuthed && (
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+                <Link to="/bookmarks" aria-label="Bookmarks">
+                  <Bookmark className="h-5 w-5" />
+                  {bookmarks && bookmarks.length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
+                      {bookmarks.length}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
               <Link to="/notifications">
                 <Bell className="h-5 w-5" />

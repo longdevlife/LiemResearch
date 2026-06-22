@@ -17,8 +17,14 @@ const EnvSchema = z.object({
   JWT_REFRESH_TTL: z.string().default("7d"),
 
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
-  GEMINI_MODEL_FAST: z.string().default("gemini-3.5-flash"),
-  GEMINI_MODEL_DEEP: z.string().default("gemini-2.5-pro"),
+  // Cost-saving: standardize ALL generative calls (rerank, research gaps, RAG
+  // reports, quality-judge) on Gemini 3.1 Flash-Lite — the cheapest GA tier with
+  // a generous free quota. If deep reports/gaps need higher quality later, raise
+  // GEMINI_MODEL_DEEP in .env (e.g. a Pro model) without touching code.
+  // NOTE: embeddings use a SEPARATE model below — Flash-Lite is a text model,
+  // not an embedding model — so this change does NOT affect embedding coverage.
+  GEMINI_MODEL_FAST: z.string().default("gemini-3.1-flash-lite"),
+  GEMINI_MODEL_DEEP: z.string().default("gemini-3.1-flash-lite"),
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
@@ -54,6 +60,13 @@ const EnvSchema = z.object({
   // Phase D — Function Calling
   DEEP_ANALYSIS_MAX_TURNS: z.coerce.number().int().min(1).max(10).default(5),
   DEEP_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
+
+  // Cách 2 — server-side search filters. When post-vector filters (paperKind,
+  // openAccess, provider, minScore) are applied to a semantic search, we pull a
+  // larger candidate POOL from $vectorSearch first, then filter/sort/paginate
+  // over it. Bounded on purpose: $vectorSearch is top-K by similarity, so this
+  // is the honest ceiling of results for a single query.
+  SEARCH_FILTER_POOL: z.coerce.number().int().min(50).max(1000).default(200),
 
   // Phase B/C — LLM re-rank of semantic search. Size of the candidate pool the
   // LLM re-scores (bounded — re-ranking refines the head of the results).

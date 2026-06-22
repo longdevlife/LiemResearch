@@ -89,6 +89,14 @@ export const reportService = {
   async deleteBatch(userId: string, ids: string[]): Promise<void> {
     await ReportModel.deleteMany({ _id: { $in: ids }, userId });
   },
+
+  /** Count completed reports that ground on a given paper. Public — no auth. */
+  async countByPaper(paperId: string): Promise<number> {
+    return ReportModel.countDocuments({
+      groundingPaperIds: paperId,
+      status: "ready",
+    });
+  },
 };
 
 /**

@@ -31,7 +31,7 @@ export function useAnalyzeGap() {
 export function usePatchGapStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "resolved" | "dismissed" }) =>
+    mutationFn: ({ id, status }: { id: string; status: "active" | "resolved" | "dismissed" }) =>
       gapsApi.patchStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gaps"] });

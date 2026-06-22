@@ -30,3 +30,9 @@ export const BatchDeleteSchema = z.object({
 });
 
 export type BatchDeleteInput = z.infer<typeof BatchDeleteSchema>;
+
+export const PaperIdParamSchema = z.object({
+  paperId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid paper ID format"),
+});
+
+export type PaperIdParam = z.infer<typeof PaperIdParamSchema>;

@@ -17,7 +17,8 @@ export const searchController = {
       return;
     }
 
-    const { q, page, pageSize, yearFrom, yearTo, rerank } = parsed.data;
+    const { q, page, pageSize, yearFrom, yearTo, paperKind, openAccess, provider, minScore, sort, rerank } =
+      parsed.data;
     const t0 = Date.now();
     const { papers, total, reranked } = await searchService.semantic({
       q,
@@ -25,6 +26,11 @@ export const searchController = {
       pageSize,
       yearFrom,
       yearTo,
+      paperKinds: paperKind,
+      openAccess,
+      provider,
+      minScore,
+      sort,
       rerank,
     });
 

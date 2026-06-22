@@ -59,4 +59,10 @@ export const reportController = {
     await reportService.deleteBatch(req.user!.sub, parsed.data.ids);
     res.json({ success: true, message: "Reports deleted successfully" });
   },
+
+  /** GET /api/v1/reports/paper/:paperId/count — public, no auth. */
+  async countByPaper(req: Request, res: Response) {
+    const count = await reportService.countByPaper(req.params.paperId as string);
+    res.json({ success: true, data: { count } });
+  },
 };

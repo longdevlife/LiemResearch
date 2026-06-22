@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi } from "../api/bookmarks.api";
 import type { CreateBookmarkRequest } from "@trend/shared-types";
 
-export function useBookmarks() {
+export function useBookmarks(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["bookmarks"],
     queryFn: () => bookmarksApi.list(),
+    ...options,
   });
 }
 

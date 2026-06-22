@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paperFilterShape } from "../../papers/dto/paper-filters.schema.js";
 
 /**
  * Single source of truth for "is the LLM rerank requested?". Used by BOTH the
@@ -12,13 +13,18 @@ export function isRerankRequested(v: unknown): boolean {
   return ["true", "1", "on", "yes", ""].includes(String(v).toLowerCase());
 }
 
-/** Query params for GET /api/v1/search (semantic search). */
+/**
+ * Query params for GET /api/v1/search (semantic search).
+ * Shares `paperFilterShape` (yearFrom/yearTo/paperKind/openAccess/provider/sort)
+ * with GET /papers so both endpoints filter identically. `minScore` is a
+ * semantic-only cosine-similarity floor.
+ */
 export const SearchQuerySchema = z.object({
   q: z.string().min(1, "q (search query) is required"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
-  yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
-  yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+  ...paperFilterShape,
+  minScore: z.coerce.number().min(0).max(1).default(0),
   /**
    * Opt-in LLM re-ranking of the top candidate pool (explicit AI analysis).
    * Tolerant of common flag spellings so a bare `?rerank` or `?rerank=1` from a

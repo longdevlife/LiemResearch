@@ -1,10 +1,17 @@
 import type { Paper } from "@trend/shared-types";
 import { PaperModel, type PaperDoc } from "./models/paper.model.js";
+import type { SearchSortKey } from "./dto/paper-filters.schema.js";
 
 export interface ListPapersParams {
   q?: string;
   page: number;
   pageSize: number;
+  yearFrom?: number;
+  yearTo?: number;
+  paperKinds?: string[];
+  openAccess?: boolean;
+  provider?: string;
+  sort?: SearchSortKey;
 }
 
 export interface ListPapersResult {
@@ -20,12 +27,51 @@ export interface CountPapersParams {
 }
 
 export const paperService = {
-  /** Keyword search over title + abstract (Phase A). Paginated. */
-  async list({ q, page, pageSize }: ListPapersParams): Promise<ListPapersResult> {
-    const filter = q ? { $text: { $search: q } } : {};
+  /**
+   * Keyword search over title + abstract with server-side filters + sort.
+   * `total` is a true `countDocuments` over the same filter, so the count and
+   * the pager always agree (Cách 2). `relevance` sort uses Mongo's text score
+   * when a query is present, otherwise falls back to recency.
+   */
+  async list({
+    q,
+    page,
+    pageSize,
+    yearFrom,
+    yearTo,
+    paperKinds,
+    openAccess,
+    provider,
+    sort = "relevance",
+  }: ListPapersParams): Promise<ListPapersResult> {
+    const filter: Record<string, unknown> = {};
+    if (q) filter.$text = { $search: q };
+    if (paperKinds && paperKinds.length) filter.paperKind = { $in: paperKinds };
+    if (openAccess) filter.openAccessUrl = { $type: "string", $ne: "" };
+    if (provider) filter.primaryProvider = provider;
+    if (yearFrom !== undefined || yearTo !== undefined) {
+      filter.publicationYear = {
+        ...(yearFrom !== undefined ? { $gte: yearFrom } : {}),
+        ...(yearTo !== undefined ? { $lte: yearTo } : {}),
+      };
+    }
+
+    const useTextScore = sort === "relevance" && !!q;
+    const sortSpec: Record<string, 1 | -1 | { $meta: "textScore" }> =
+      sort === "year"
+        ? { publicationYear: -1, citationCount: -1 }
+        : sort === "citations"
+          ? { citationCount: -1, publicationYear: -1 }
+          : useTextScore
+            ? { score: { $meta: "textScore" } }
+            : { publicationYear: -1, citationCount: -1 };
+
+    let query = PaperModel.find(filter);
+    if (useTextScore) query = query.select({ score: { $meta: "textScore" } });
+
     const [docs, total] = await Promise.all([
-      PaperModel.find(filter)
-        .sort({ publicationYear: -1, citationCount: -1 })
+      query
+        .sort(sortSpec)
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean(),

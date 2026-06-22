@@ -29,7 +29,7 @@ export const gapsApi = {
     return { data: res.data.data, meta: res.data.meta };
   },
 
-  async patchStatus(id: string, status: "resolved" | "dismissed"): Promise<void> {
+  async patchStatus(id: string, status: "active" | "resolved" | "dismissed"): Promise<void> {
     await api.patch(API_ROUTES.gaps.patch(id), { status });
   },
 };
