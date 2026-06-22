@@ -10,7 +10,8 @@ export interface CreateReportRequest {
   topic?: string;
   yearFrom?: number;
   yearTo?: number;
-  deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode
+  deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode (Pro + tools, slowest)
+  fast?: boolean; // Fast mode — use the Flash model (faster, lighter). Ignored if deepAnalysis.
 }
 
 export interface ResearchGap {
@@ -39,6 +40,7 @@ export interface AnalyticalReport {
   modelVersion: string;
   promptVersion: string;
   deepAnalysis: boolean; // NEW — Phase D
+  fast?: boolean; // Fast mode — generated with the Flash model
   errorMessage?: string;
   createdAt: ISODateString;
   completedAt?: ISODateString;

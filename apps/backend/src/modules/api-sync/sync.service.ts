@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import type { AnyBulkWriteOperation } from "mongoose";
+import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { auditService } from "../audit/audit.service.js";
 import { PaperModel, type PaperHydrated } from "../papers/models/paper.model.js";
@@ -19,6 +21,9 @@ export interface RunSyncJob {
   maxPages: number;
   syncConfigId?: string;
 }
+
+/** How many paper upserts to run concurrently within a page (M0-friendly). */
+const UPSERT_CONCURRENCY = 8;
 
 /** Run a full OpenAlex sync. Returns the completed api_sync_runs document. */
 export async function runSync(job: RunSyncJob): Promise<ApiSyncRunDoc> {
@@ -58,13 +63,7 @@ export async function runSync(job: RunSyncJob): Promise<ApiSyncRunDoc> {
         "openalex page fetched",
       );
 
-      for (const work of results) {
-        try {
-          await ingestOne(work, provider._id, run);
-        } catch (err) {
-          logger.error({ err, workId: work.id }, "paper ingest failed — skipped");
-        }
-      }
+      await ingestPage(results, provider._id, run);
 
       await run.save(); // persist running stats after each page
       if (!nextCursor || results.length === 0) break;
@@ -107,31 +106,111 @@ export async function runSync(job: RunSyncJob): Promise<ApiSyncRunDoc> {
   return run;
 }
 
-/** Normalize → upsert → record source → quality check → counters. */
-async function ingestOne(
-  work: OpenAlexWork,
+/**
+ * Ingest one page of works. The per-paper upsert (dedup + conditional merge) runs
+ * with bounded concurrency; the always-insert source records and the quality
+ * writes are then flushed in BULK — so a 200-paper page does ~3 bulk DB ops
+ * instead of ~1200 sequential round-trips (the old hot path on Atlas M0).
+ */
+async function ingestPage(
+  works: OpenAlexWork[],
   providerId: ApiSyncRunDoc["providerId"],
   run: ApiSyncRunDoc,
 ): Promise<void> {
-  const normalized = normalizeOpenAlexWork(work);
-  const { action, paper } = await upsertPaper(normalized);
-
-  await recordSource(paper._id, work, providerId);
-  await computeAndStoreQuality(paper);
-
-  run.totalFetched += 1;
-  if (action === "insert") {
-    run.totalInserted += 1;
-  } else {
-    run.totalUpdated += 1;
-    run.totalDuplicates += 1;
+  // ① Upsert papers concurrently (keeps the conditional merge semantics intact).
+  const ingested: Array<{ paper: PaperHydrated; work: OpenAlexWork; action: "insert" | "update" }> = [];
+  for (let i = 0; i < works.length; i += UPSERT_CONCURRENCY) {
+    const slice = works.slice(i, i + UPSERT_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      slice.map(async (work) => {
+        const normalized = normalizeOpenAlexWork(work);
+        const { action, paper } = await upsertPaper(normalized);
+        return { paper, work, action } as const;
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled") ingested.push(r.value);
+      else logger.error({ err: r.reason }, "paper ingest failed — skipped");
+    }
   }
 
-  await auditService.log("paper.upserted", {
-    targetTableName: "research_papers",
-    targetRecordId: paper._id.toString(),
-    details: { action, doi: normalized.externalIds.doi },
+  if (ingested.length === 0) return;
+
+  // ② Upsert source records, deduped by metadataHash — re-syncing the same paper
+  //    no longer piles up duplicate provider blobs (the cause of M0 filling up).
+  //    rawMetadata (the full provider JSON) is heavy and read by nothing, so it is
+  //    only stored when SYNC_STORE_RAW_METADATA is on.
+  const sourceOps: AnyBulkWriteOperation[] = ingested.map(({ paper, work }) => {
+    const metadataHash = crypto.createHash("sha256").update(JSON.stringify(work)).digest("hex");
+    return {
+      updateOne: {
+        filter: { metadataHash },
+        update: {
+          $setOnInsert: {
+            paperId: paper._id,
+            providerId,
+            externalRecordId: work.id,
+            metadataHash,
+            fetchedAt: new Date(),
+            ...(env.SYNC_STORE_RAW_METADATA ? { rawMetadata: work } : {}),
+          },
+        },
+        upsert: true,
+      },
+    };
   });
+  try {
+    await PaperSourceRecordModel.bulkWrite(sourceOps as AnyBulkWriteOperation<never>[], {
+      ordered: false,
+    });
+  } catch (err) {
+    logger.error({ err }, "source-record bulk upsert partially failed (non-fatal)");
+  }
+
+  // ③ Bulk-write quality checks + denormalize quality onto the papers.
+  const qualityOps: AnyBulkWriteOperation[] = [];
+  const paperOps: AnyBulkWriteOperation[] = [];
+  for (const { paper } of ingested) {
+    const { checks, qualityScore, checkStatus } = computeQuality(paper);
+    qualityOps.push({
+      updateOne: {
+        filter: { paperId: paper._id },
+        update: {
+          $set: { ...checks, paperId: paper._id, qualityScore, checkStatus, checkedAt: new Date() },
+        },
+        upsert: true,
+      },
+    });
+    paperOps.push({
+      updateOne: {
+        filter: { _id: paper._id },
+        update: {
+          $set: {
+            dataQualityScore: qualityScore,
+            isAiAnalyzable: qualityScore >= 0.7,
+            dataStatus: checkStatus === "fail" ? "low-quality" : "active",
+          },
+        },
+      },
+    });
+  }
+  try {
+    await PaperQualityCheckModel.bulkWrite(qualityOps as AnyBulkWriteOperation<never>[], { ordered: false });
+    await PaperModel.bulkWrite(paperOps as AnyBulkWriteOperation<never>[], { ordered: false });
+  } catch (err) {
+    logger.error({ err }, "quality bulk write partially failed (non-fatal)");
+  }
+
+  // ④ Counters.
+  for (const { action } of ingested) {
+    run.totalFetched += 1;
+    if (action === "insert") {
+      run.totalInserted += 1;
+    } else {
+      run.totalUpdated += 1;
+      run.totalDuplicates += 1;
+    }
+  }
 }
 
 /** Dedup by DOI, fallback OpenAlex ID; insert new or merge into existing. */
@@ -171,30 +250,14 @@ async function findExisting(n: NormalizedPaper): Promise<PaperHydrated | null> {
   return null;
 }
 
-/** Always insert a source record — the audit trail of where this paper came from. */
-async function recordSource(
-  paperId: PaperHydrated["_id"],
-  work: OpenAlexWork,
-  providerId: ApiSyncRunDoc["providerId"],
-): Promise<void> {
-  const metadataHash = crypto
-    .createHash("sha256")
-    .update(JSON.stringify(work))
-    .digest("hex");
-  await PaperSourceRecordModel.create({
-    paperId,
-    providerId,
-    externalRecordId: work.id,
-    rawMetadata: work,
-    metadataHash,
-    fetchedAt: new Date(),
-  });
-}
-
 const QUALITY_FIELDS = 7;
 
-/** Compute the 7 field-presence checks, upsert the quality doc, denormalize onto the paper. */
-async function computeAndStoreQuality(paper: PaperHydrated): Promise<void> {
+/** Pure 7-field presence check → score + status. No I/O (caller flushes in bulk). */
+function computeQuality(paper: PaperHydrated): {
+  checks: Record<string, boolean>;
+  qualityScore: number;
+  checkStatus: "pass" | "warn" | "fail";
+} {
   const checks = {
     hasTitle: !!paper.title,
     hasAbstract: !!paper.abstractText,
@@ -207,21 +270,5 @@ async function computeAndStoreQuality(paper: PaperHydrated): Promise<void> {
   const passed = Object.values(checks).filter(Boolean).length;
   const qualityScore = passed / QUALITY_FIELDS;
   const checkStatus = qualityScore >= 0.7 ? "pass" : qualityScore >= 0.4 ? "warn" : "fail";
-
-  await PaperQualityCheckModel.updateOne(
-    { paperId: paper._id },
-    { $set: { ...checks, paperId: paper._id, qualityScore, checkStatus, checkedAt: new Date() } },
-    { upsert: true },
-  );
-
-  await PaperModel.updateOne(
-    { _id: paper._id },
-    {
-      $set: {
-        dataQualityScore: qualityScore,
-        isAiAnalyzable: qualityScore >= 0.7,
-        dataStatus: checkStatus === "fail" ? "low-quality" : "active",
-      },
-    },
-  );
+  return { checks, qualityScore, checkStatus };
 }

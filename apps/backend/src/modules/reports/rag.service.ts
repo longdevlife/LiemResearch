@@ -80,7 +80,11 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   }
 
   // ④ Cache lookup (§6 formula). Hit → skip Gemini entirely.
-  const model = env.GEMINI_MODEL_DEEP;
+  // Model tier: deepAnalysis → Pro + tools (slowest); fast → Flash (fastest);
+  // otherwise Pro classic (default). Cache key includes `model`, so fast (Flash)
+  // and standard (Pro) outputs never collide.
+  const model =
+    !report.deepAnalysis && report.fast ? env.GEMINI_MODEL_FAST : env.GEMINI_MODEL_DEEP;
   const cacheKey = buildReportCacheKey({
     query: report.query,
     yearFrom: report.yearFrom ?? undefined,
