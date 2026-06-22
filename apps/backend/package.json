@@ -20,6 +20,7 @@
     "seed:providers": "tsx scripts/seed-providers.ts",
     "db:purge-sources": "tsx scripts/purge-source-records.ts",
     "quality:recompute": "tsx scripts/recompute-quality.ts",
+    "score:recompute": "tsx scripts/recompute-scores.ts",
     "promote-admin": "tsx scripts/promote-admin.ts",
     "sync:once": "tsx scripts/run-sync-once.ts",
     "embed:once": "tsx scripts/run-embed-once.ts",
