@@ -90,7 +90,7 @@ export const paperService = {
   async getReferences(
     id: string,
   ): Promise<{ references: PaperRef[]; totalReferenced: number; inCorpus: number }> {
-    const paper = await PaperModel.findById(id).select("referencedWorks").lean();
+    const paper = await PaperModel.findById(id).select("+referencedWorks").lean();
     if (!paper) throw AppError.notFound("Paper not found");
     const refs = (paper as { referencedWorks?: string[] }).referencedWorks ?? [];
     if (refs.length === 0) return { references: [], totalReferenced: 0, inCorpus: 0 };
@@ -103,11 +103,14 @@ export const paperService = {
 
   /** Resolve paper ids to PaperRefs in the SAME order as `ids` (RETRIEVAL ORDER). */
   async getSummariesByIds(ids: string[]): Promise<PaperRef[]> {
-    if (ids.length === 0) return [];
-    const docs = await PaperModel.find({ _id: { $in: ids } })
+    // groundingPaperIds from a .lean() report are ObjectId[]; stringify so the
+    // Map lookup in orderByIds (keyed by String(_id)) matches.
+    const strIds = ids.map((x) => String(x));
+    if (strIds.length === 0) return [];
+    const docs = await PaperModel.find({ _id: { $in: strIds } })
       .select("title publicationYear authors externalIds")
       .lean();
-    return orderByIds(docs.map(toPaperRef), ids);
+    return orderByIds(docs.map(toPaperRef), strIds);
   },
 
   /** Count active papers matching topic/year/keyword filters (gap corpus check). */

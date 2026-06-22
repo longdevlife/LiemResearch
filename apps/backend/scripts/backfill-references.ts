@@ -13,7 +13,11 @@ const BATCH = 50;
 async function main(): Promise<void> {
   await connectMongo();
   const docs = await PaperModel.find(
-    { "externalIds.openalexId": { $exists: true, $ne: null }, referencedWorks: { $size: 0 } },
+    {
+      "externalIds.openalexId": { $exists: true, $ne: null },
+      // Match both empty arrays AND papers synced before the field existed.
+      $or: [{ referencedWorks: { $size: 0 } }, { referencedWorks: { $exists: false } }],
+    },
     "externalIds.openalexId",
   )
     .lean()
