@@ -46,6 +46,10 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
 
   while (totalEmbedded + totalFailed < maxPapers) {
     const candidates = await PaperModel.find(filter)
+      // Embed the most valuable papers FIRST. Under the daily embed quota we may
+      // not clear the backlog for days, so prioritize high-citation, recent
+      // papers (the ones users actually search) over arbitrary insertion order.
+      .sort({ citationCount: -1, publicationYear: -1 })
       .select("_id title abstractText")
       .limit(batchSize)
       .lean();
