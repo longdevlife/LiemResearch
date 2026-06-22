@@ -2,6 +2,7 @@ import type { AnalyticalReport, ReportListItem } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import { reportQueue } from "../../infrastructure/queue.js";
+import { paperService } from "../papers/paper.service.js";
 import { ReportModel, type ReportDoc } from "./models/report.model.js";
 import type { CreateReportInput, ListReportsQuery } from "./dto/report.schema.js";
 
@@ -74,7 +75,9 @@ export const reportService = {
   async getById(userId: string, id: string): Promise<AnalyticalReport> {
     const doc = await ReportModel.findOne({ _id: id, userId }).lean().catch(() => null);
     if (!doc) throw AppError.notFound("Report not found");
-    return toReportDto(doc);
+    const report = toReportDto(doc);
+    report.groundingPapers = await paperService.getSummariesByIds(report.groundingPaperIds ?? []);
+    return report;
   },
 
   /** Delete a single report by ID. */

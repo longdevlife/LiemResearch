@@ -101,6 +101,15 @@ export const paperService = {
     return { references, totalReferenced: refs.length, inCorpus: references.length };
   },
 
+  /** Resolve paper ids to PaperRefs in the SAME order as `ids` (RETRIEVAL ORDER). */
+  async getSummariesByIds(ids: string[]): Promise<PaperRef[]> {
+    if (ids.length === 0) return [];
+    const docs = await PaperModel.find({ _id: { $in: ids } })
+      .select("title publicationYear authors externalIds")
+      .lean();
+    return orderByIds(docs.map(toPaperRef), ids);
+  },
+
   /** Count active papers matching topic/year/keyword filters (gap corpus check). */
   async count({ topic, yearFrom, yearTo, keyword }: CountPapersParams): Promise<{ count: number }> {
     const filter: Record<string, unknown> = { dataStatus: "active" };
@@ -116,6 +125,12 @@ export const paperService = {
     return { count };
   },
 };
+
+/** Reorder resolved refs to match the requested id order; drop ids not found. */
+export function orderByIds(refs: PaperRef[], ids: string[]): PaperRef[] {
+  const byId = new Map(refs.map((r) => [r.id, r]));
+  return ids.map((id) => byId.get(id)).filter((r): r is PaperRef => !!r);
+}
 
 /** Map a lean paper doc (any projection incl. _id/title/year/authors/doi) to a PaperRef. */
 export function toPaperRef(doc: Record<string, unknown>): PaperRef {
