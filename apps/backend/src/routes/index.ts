@@ -10,6 +10,7 @@ import { gapsRouter } from "../modules/gaps/gaps.routes.js";
 import { bookmarkRouter } from "../modules/bookmarks/bookmark.routes.js";
 import { analyticsRouter } from "../modules/analytics/analytics.routes.js";
 import { qualityRouter } from "../modules/quality/quality.routes.js";
+import { adminRouter } from "../modules/admin/admin.routes.js";
 
 export const apiRouter: Router = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use("/analytics", analyticsRouter); // Phase D — search analytics
 apiRouter.use("/quality", qualityRouter); // Quality & Feedback — LLM-judge + user ratings
 apiRouter.use("/admin", syncRouter); // /admin/sync
 apiRouter.use("/admin", embeddingRouter); // /admin/embed
+apiRouter.use("/admin", adminRouter); // /admin/users, /admin/stats — user management

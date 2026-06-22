@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, LineChart, Line,
@@ -7,6 +8,8 @@ import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants/api";
 import { useCurrentUser } from "@/features/auth";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { TopQuery, VolumeByDay } from "@trend/shared-types";
 
 function useDashboard(days: number, enabled: boolean) {
@@ -34,7 +37,8 @@ function useMySearchHistory() {
 export function DashboardPage() {
   const { data: user } = useCurrentUser();
   const isAdmin = user?.user?.role === "admin";
-  const { data: dash, isLoading: isDashLoading } = useDashboard(7, isAdmin);
+  const [days, setDays] = useState<7 | 14 | 30>(7);
+  const { data: dash, isLoading: isDashLoading } = useDashboard(days, isAdmin);
   const { data: history } = useMySearchHistory();
 
   return (
@@ -45,13 +49,33 @@ export function DashboardPage() {
       />
 
       {isAdmin ? (
-        <>
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground mr-2">Time range:</span>
+            <Button variant={days === 7 ? "default" : "outline"} size="sm" onClick={() => setDays(7)}>7 Days</Button>
+            <Button variant={days === 14 ? "default" : "outline"} size="sm" onClick={() => setDays(14)}>14 Days</Button>
+            <Button variant={days === 30 ? "default" : "outline"} size="sm" onClick={() => setDays(30)}>30 Days</Button>
+          </div>
+
           {isDashLoading ? (
-            <p className="text-muted-foreground">Loading analytics…</p>
+            <div className="space-y-8">
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Search volume — last {days} days</h2>
+                <Skeleton className="w-full h-[200px] rounded-xl" />
+              </section>
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Top 10 queries — last {days} days</h2>
+                <Skeleton className="w-full h-[220px] rounded-xl" />
+              </section>
+            </div>
+          ) : dash?.volumeByDay?.length === 0 && dash?.topQueries?.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground border rounded-xl border-dashed">
+              No data available for the selected {days}-day period.
+            </div>
           ) : (
             <>
               <section>
-                <h2 className="text-lg font-semibold mb-3">Search volume — last 7 days</h2>
+                <h2 className="text-lg font-semibold mb-3">Search volume — last {days} days</h2>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={dash?.volumeByDay ?? []}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -64,7 +88,7 @@ export function DashboardPage() {
               </section>
 
               <section>
-                <h2 className="text-lg font-semibold mb-3">Top 10 queries — last 7 days</h2>
+                <h2 className="text-lg font-semibold mb-3">Top 10 queries — last {days} days</h2>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dash?.topQueries ?? []} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
@@ -77,7 +101,7 @@ export function DashboardPage() {
               </section>
             </>
           )}
-        </>
+        </div>
       ) : (
         <p className="text-muted-foreground">Dashboard analytics require admin access.</p>
       )}

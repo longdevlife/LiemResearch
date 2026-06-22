@@ -13,10 +13,11 @@ function isApiKeyError(err: unknown): boolean {
 /**
  * Gemini embedding provider. Uses `gemini-embedding-2` by default.
  *
- * NOTE: Gemini's `embedContent` collapses an array of strings into a SINGLE
- * content (one embedding), so `embedBatch` cannot be a single request — it
- * embeds each text individually with bounded concurrency. Be mindful of
- * requests-per-minute limits on the free tier.
+ * NOTE: this model's `embedContent` collapses an array of texts into a SINGLE
+ * content (one embedding) — true request batching does NOT work here, confirmed
+ * in practice ("count mismatch: got 1, expected N"). So `embedBatch` embeds each
+ * text individually in small concurrent waves. The real throughput limit is the
+ * Gemini free-tier RPM, not the request count — handled by retry/backoff below.
  */
 const EMBED_CONCURRENCY = 3; // small waves to stay under free-tier RPM
 const MAX_RETRIES = 4;
@@ -39,9 +40,7 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
         contents: text,
         config: { outputDimensionality: this.dimensions },
       });
-      const vec = res.embeddings?.[0]?.values;
-      if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
-      return vec;
+      return this.validateVec(res.embeddings?.[0]?.values);
     } catch (err) {
       const status = (err as { status?: number }).status;
       if ((status === 429 || status === 503) && attempt <= MAX_RETRIES) {
@@ -62,8 +61,8 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     }
   }
 
-  /** Embed each text individually (Gemini returns one vector per request),
-   *  in small waves to balance speed vs rate limits. */
+  /** Embed each text individually (this model returns one vector per request),
+   *  in small concurrent waves to balance speed against the free-tier RPM. */
   async embedBatch(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
     const out: number[][] = new Array(texts.length);
@@ -73,5 +72,15 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       vecs.forEach((v, j) => (out[i + j] = v));
     }
     return out;
+  }
+
+  /** Reject empty or wrong-dimension vectors before they reach the DB — a bad
+   *  vector would corrupt the 768-dim Atlas index (vector search errors / drops it). */
+  private validateVec(vec: number[] | undefined): number[] {
+    if (!vec || vec.length === 0) throw new Error("Empty embedding response from Gemini");
+    if (vec.length !== this.dimensions) {
+      throw new Error(`Embedding dimension mismatch: got ${vec.length}, expected ${this.dimensions}`);
+    }
+    return vec;
   }
 }

@@ -14,11 +14,13 @@ const userSchema = new Schema(
     avatarUrl: { type: String },
     institution: { type: String },
     researchInterests: { type: [String], default: [] },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true },
 );
 
 export type UserDoc = InferSchemaType<typeof userSchema> & { _id: mongoose.Types.ObjectId };
+export type UserHydrated = mongoose.HydratedDocument<InferSchemaType<typeof userSchema>>;
 export const UserModel = mongoose.model("User", userSchema);
 
 /** Refresh tokens are stored hashed so a DB leak does not grant valid sessions. */

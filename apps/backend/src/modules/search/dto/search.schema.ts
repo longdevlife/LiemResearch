@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+/**
+ * Single source of truth for "is the LLM rerank requested?". Used by BOTH the
+ * Zod schema (to enable rerank) and the route's rate-limiter (to decide whether
+ * to throttle) — they MUST agree, or a spelling like `?rerank` (→ "") could
+ * enable rerank while escaping the limiter and draining Gemini quota.
+ */
+export function isRerankRequested(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (v === undefined) return false;
+  return ["true", "1", "on", "yes", ""].includes(String(v).toLowerCase());
+}
+
 /** Query params for GET /api/v1/search (semantic search). */
 export const SearchQuerySchema = z.object({
   q: z.string().min(1, "q (search query) is required"),
@@ -12,14 +24,7 @@ export const SearchQuerySchema = z.object({
    * Tolerant of common flag spellings so a bare `?rerank` or `?rerank=1` from a
    * checkbox doesn't 400 the WHOLE search — only an explicit truthy enables it.
    */
-  rerank: z
-    .preprocess((v) => {
-      if (v === true || v === false) return v;
-      const s = String(v ?? "").toLowerCase();
-      if (["true", "1", "on", "yes", ""].includes(s) && v !== undefined) return true;
-      return false;
-    }, z.boolean())
-    .default(false),
+  rerank: z.preprocess((v) => isRerankRequested(v), z.boolean()).default(false),
 });
 
 export type SearchQueryInput = z.infer<typeof SearchQuerySchema>;

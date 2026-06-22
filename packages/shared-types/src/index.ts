@@ -13,3 +13,4 @@ export * from "./bookmark.js";
 export * from "./analytics.js";
 export * from "./gaps.js";
 export * from "./quality.js";
+export * from "./admin.js";

@@ -39,6 +39,7 @@ const reportSchema = new Schema(
     yearFrom: { type: Number },
     yearTo: { type: Number },
     deepAnalysis: { type: Boolean, default: false },
+    fast: { type: Boolean, default: false },
     errorMessage: { type: String },
     completedAt: { type: Date },
   },

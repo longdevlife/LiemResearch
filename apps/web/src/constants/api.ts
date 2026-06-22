@@ -41,6 +41,10 @@ export const API_ROUTES = {
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",
+    users: "/admin/users",
+    userRole: (id: string) => `/admin/users/${id}/role`,
+    userStatus: (id: string) => `/admin/users/${id}/status`,
+    stats: "/admin/stats",
   },
   gaps: {
     analyze: "/gaps/analyze",
