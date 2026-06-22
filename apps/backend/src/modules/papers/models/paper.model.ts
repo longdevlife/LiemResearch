@@ -87,6 +87,8 @@ const paperSchema = new Schema(
     /** Vector embedding for Atlas Vector Search. 768 dim from gemini-embedding-2.
      *  Populated in Phase B; select:false so list queries don't carry vectors. */
     embedding: { type: [Number], default: undefined, select: false },
+    /** OpenAlex IDs this paper cites (referenced_works). select:false — heavy. */
+    referencedWorks: { type: [String], default: [], select: false },
     aiScore: {
       type: new Schema(
         {

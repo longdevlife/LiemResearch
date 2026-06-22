@@ -251,6 +251,9 @@ async function upsertPaper(
   // `.set()` so TypeScript accepts plain arrays into Mongoose DocumentArray paths.
   if (n.topics.length > (existing.topics?.length ?? 0)) existing.set("topics", n.topics);
   if (n.keywords.length > (existing.keywords?.length ?? 0)) existing.set("keywords", n.keywords);
+  if ((n.referencedWorks?.length ?? 0) > 0 && (existing.referencedWorks?.length ?? 0) === 0) {
+    existing.referencedWorks = n.referencedWorks;
+  }
 
   await existing.save();
   return { action: "update", paper: existing };
