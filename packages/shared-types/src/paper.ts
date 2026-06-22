@@ -71,16 +71,23 @@ export interface Paper {
   updatedAt: ISODateString;
 }
 
+/** Paper-INTRINSIC AI score — deterministic, query-independent. */
 export interface PaperAiScore {
-  relevanceScore: number; // 0..1 — vs the user's query
-  semanticSimilarityScore: number; // 0..1 — vector similarity
-  trendAlignmentScore: number; // 0..1 — does it match a rising topic
-  metadataQualityScore: number; // 0..1 — completeness
   recencyScore: number; // 0..1 — newer = higher
-  researchGapScore: number; // 0..1 — does it expose a gap
+  citationImpactScore: number; // 0..1 — normalized log(citationCount)
+  metadataQualityScore: number; // 0..1 — = dataQualityScore
   finalScore: number; // 0..1 — weighted blend
   modelVersion: string;
   computedAt: ISODateString;
+}
+
+/** Lightweight paper reference — used for references + report grounding lists. */
+export interface PaperRef {
+  id: string;
+  title: string;
+  publicationYear: number;
+  authors: PaperAuthorRef[];
+  doi?: string;
 }
 
 export type PaperSummary = Pick<

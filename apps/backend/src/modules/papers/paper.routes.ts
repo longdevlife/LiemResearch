@@ -37,6 +37,12 @@ paperRouter.get("/", async (req: Request, res: Response, next: NextFunction) => 
   });
 });
 
+/** GET /papers/:id/references — references resolved to in-corpus papers. */
+paperRouter.get("/:id/references", async (req, res) => {
+  const data = await paperService.getReferences(req.params.id);
+  res.json({ success: true, data });
+});
+
 /** GET /papers/:id — single paper detail. */
 paperRouter.get("/:id", async (req, res) => {
   const paper = await paperService.getById(req.params.id);

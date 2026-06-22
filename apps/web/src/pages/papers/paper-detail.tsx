@@ -152,11 +152,9 @@ export function PaperDetailPage() {
             </div>
           </div>
 
-          {/* AI Analysis Summary — render ONLY when a real aiScore exists
-              (Phase B). No hardcoded fallbacks: we must not show invented
-              relevance/semantic numbers (or a fake "Confidence: High") for a
-              paper that was never AI-scored. Real data quality stays in the
-              sidebar (Data Quality). */}
+          {/* AI Analysis Summary — intrinsic, real scores only (no fabricated
+              fallbacks). Renders only when paper.aiScore exists. Visual polish
+              is AG's (handoff §1). */}
           {paper.aiScore && (
             <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10">
               <div className="flex items-center justify-between mb-8">
@@ -166,31 +164,32 @@ export function PaperDetailPage() {
                   </div>
                   AI Analysis Summary
                 </h2>
+                <span className="text-xs font-medium text-slate-500">Overall {paper.aiScore.finalScore.toFixed(2)}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                {/* Relevance */}
+                {/* Impact */}
                 <div>
                   <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Relevance</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Impact</span>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
-                      {paper.aiScore.relevanceScore.toFixed(2)}
+                      {paper.aiScore.citationImpactScore.toFixed(2)}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.relevanceScore * 100}%` }}></div>
+                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.citationImpactScore * 100}%` }}></div>
                   </div>
                 </div>
-                {/* Semantic Fit */}
+                {/* Recency */}
                 <div>
                   <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Semantic Fit</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recency</span>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
-                      {paper.aiScore.semanticSimilarityScore.toFixed(2)}
+                      {paper.aiScore.recencyScore.toFixed(2)}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.semanticSimilarityScore * 100}%` }}></div>
+                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.recencyScore * 100}%` }}></div>
                   </div>
                 </div>
                 {/* Metadata Quality */}

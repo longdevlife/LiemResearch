@@ -15,6 +15,7 @@ export interface OpenAlexWork {
   type?: string | null; // "article", "review", "preprint", ...
   cited_by_count?: number | null;
   abstract_inverted_index?: Record<string, number[]> | null;
+  referenced_works?: string[] | null; // ["https://openalex.org/W123", ...]
   authorships?: OpenAlexAuthorship[];
   primary_location?: OpenAlexLocation | null;
   best_oa_location?: OpenAlexLocation | null;

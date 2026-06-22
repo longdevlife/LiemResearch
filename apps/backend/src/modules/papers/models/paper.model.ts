@@ -87,6 +87,22 @@ const paperSchema = new Schema(
     /** Vector embedding for Atlas Vector Search. 768 dim from gemini-embedding-2.
      *  Populated in Phase B; select:false so list queries don't carry vectors. */
     embedding: { type: [Number], default: undefined, select: false },
+    /** OpenAlex IDs this paper cites (referenced_works). select:false — heavy. */
+    referencedWorks: { type: [String], default: [], select: false },
+    aiScore: {
+      type: new Schema(
+        {
+          recencyScore: Number,
+          citationImpactScore: Number,
+          metadataQualityScore: Number,
+          finalScore: Number,
+          modelVersion: String,
+          computedAt: Date,
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true },
 );
@@ -94,6 +110,7 @@ const paperSchema = new Schema(
 // Compound indexes for the main "topic + year" and "year + citations" queries.
 paperSchema.index({ "topics.topicName": 1, publicationYear: -1 });
 paperSchema.index({ publicationYear: -1, citationCount: -1 });
+paperSchema.index({ "aiScore.finalScore": -1 });
 
 /** Lean (plain-object) type — use for `.lean()` reads. */
 export type PaperDoc = InferSchemaType<typeof paperSchema> & { _id: mongoose.Types.ObjectId };

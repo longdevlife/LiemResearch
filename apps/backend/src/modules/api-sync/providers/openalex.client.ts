@@ -40,6 +40,28 @@ export async function fetchOpenAlexPage(params: FetchPageParams): Promise<{
   };
 }
 
+/**
+ * Fetch `referenced_works` for up to 50 works by OpenAlex ID in ONE request
+ * (filter=openalex_id:W1|W2..., select trims the payload). Returns the stripped
+ * id + its referenced_works (also stripped of the URL prefix).
+ */
+export async function fetchWorksByIds(
+  ids: string[],
+): Promise<Array<{ id: string; referenced_works: string[] }>> {
+  if (ids.length === 0) return [];
+  const url = new URL(BASE_URL);
+  url.searchParams.set("filter", `openalex_id:${ids.join("|")}`);
+  url.searchParams.set("select", "id,referenced_works");
+  url.searchParams.set("per-page", String(ids.length));
+  if (env.OPENALEX_MAILTO) url.searchParams.set("mailto", env.OPENALEX_MAILTO);
+
+  const json = await fetchWithRetry(url.toString());
+  return (json.results ?? []).map((w) => ({
+    id: (w.id ?? "").replace("https://openalex.org/", ""),
+    referenced_works: (w.referenced_works ?? []).map((r) => r.replace("https://openalex.org/", "")),
+  }));
+}
+
 async function fetchWithRetry(url: string, attempt = 1): Promise<OpenAlexPage> {
   await sleep(RATE_LIMIT_DELAY_MS);
   const t0 = Date.now();

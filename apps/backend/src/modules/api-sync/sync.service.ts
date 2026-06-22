@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { AnyBulkWriteOperation } from "mongoose";
 import { env } from "../../config/env.js";
+import { computePaperScore } from "../scoring/paper-score.js";
 import { logger } from "../../infrastructure/logger.js";
 import { auditService } from "../audit/audit.service.js";
 import { PaperModel, type PaperHydrated } from "../papers/models/paper.model.js";
@@ -170,8 +171,19 @@ async function ingestPage(
   // ③ Bulk-write quality checks + denormalize quality onto the papers.
   const qualityOps: AnyBulkWriteOperation[] = [];
   const paperOps: AnyBulkWriteOperation[] = [];
+  const currentYear = new Date().getFullYear();
+  const computedAt = new Date().toISOString();
   for (const { paper } of ingested) {
     const { checks, qualityScore, checkStatus } = computeQuality(paper);
+    const aiScore = computePaperScore(
+      {
+        publicationYear: paper.publicationYear,
+        citationCount: paper.citationCount,
+        dataQualityScore: qualityScore,
+      },
+      currentYear,
+      computedAt,
+    );
     qualityOps.push({
       updateOne: {
         filter: { paperId: paper._id },
@@ -193,6 +205,7 @@ async function ingestPage(
             // other fields.
             isAiAnalyzable: qualityScore >= 0.7 && checks.hasAbstract,
             dataStatus: checkStatus === "fail" ? "low-quality" : "active",
+            aiScore,
           },
         },
       },
@@ -238,6 +251,9 @@ async function upsertPaper(
   // `.set()` so TypeScript accepts plain arrays into Mongoose DocumentArray paths.
   if (n.topics.length > (existing.topics?.length ?? 0)) existing.set("topics", n.topics);
   if (n.keywords.length > (existing.keywords?.length ?? 0)) existing.set("keywords", n.keywords);
+  if ((n.referencedWorks?.length ?? 0) > 0 && (existing.referencedWorks?.length ?? 0) === 0) {
+    existing.referencedWorks = n.referencedWorks;
+  }
 
   await existing.save();
   return { action: "update", paper: existing };
