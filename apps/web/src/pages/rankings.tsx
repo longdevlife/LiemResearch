@@ -29,6 +29,10 @@ export function RankingsPage() {
   const top3 = mockRankings.slice(0, 3);
   const rest = mockRankings.slice(3);
   const myRank = mockRankings.find(r => r.isMe);
+  // slice()/index access is typed as possibly-undefined under
+  // noUncheckedIndexedAccess — name the three podium spots and render the
+  // podium only when all three exist.
+  const [gold, silver, bronze] = top3;
 
   return (
     <div className="w-full">
@@ -48,22 +52,23 @@ export function RankingsPage() {
               <Crown className="w-5 h-5 text-yellow-500" /> Bục Vinh Quang
             </h3>
             
+            {gold && silver && bronze && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8">
-              
+
               {/* Rank 2 (Silver) */}
               <div className="bg-gradient-to-b from-slate-50 to-white dark:from-[#1a1c23] dark:to-[#121212] border-2 border-slate-300 dark:border-slate-700 rounded-2xl p-6 relative flex flex-col items-center text-center shadow-lg transform transition-transform hover:-translate-y-2 order-2 md:order-1 h-[280px] justify-between">
                 <div className="absolute -top-6 w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full border-4 border-white dark:border-[#121212] flex items-center justify-center font-bold text-slate-700 dark:text-slate-300 shadow-md">
                   #2
                 </div>
                 <div className="w-24 h-24 mb-4 mt-2">
-                  <img src={avatars[top3[1].level]} alt={`Level ${top3[1].level}`} className="w-full h-full object-contain filter drop-shadow-md" />
+                  <img src={avatars[silver.level]} alt={`Level ${silver.level}`} className="w-full h-full object-contain filter drop-shadow-md" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{top3[1].name}</h4>
-                  <p className="text-sm font-medium text-slate-500 mb-2">Lv. {top3[1].level} • {top3[1].university}</p>
+                  <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{silver.name}</h4>
+                  <p className="text-sm font-medium text-slate-500 mb-2">Lv. {silver.level} • {silver.university}</p>
                 </div>
                 <div className="w-full py-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                  <span className="font-black text-xl text-slate-800 dark:text-slate-200">{top3[1].points.toLocaleString()}</span> <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">pts</span>
+                  <span className="font-black text-xl text-slate-800 dark:text-slate-200">{silver.points.toLocaleString()}</span> <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">pts</span>
                 </div>
               </div>
 
@@ -76,14 +81,14 @@ export function RankingsPage() {
                   </div>
                 </div>
                 <div className="w-32 h-32 mb-4 mt-8">
-                  <img src={avatars[top3[0].level]} alt={`Level ${top3[0].level}`} className="w-full h-full object-contain filter drop-shadow-lg" />
+                  <img src={avatars[gold.level]} alt={`Level ${gold.level}`} className="w-full h-full object-contain filter drop-shadow-lg" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-xl text-slate-900 dark:text-white truncate w-full">{top3[0].name}</h4>
-                  <p className="text-sm font-medium text-slate-500 mb-3">Lv. {top3[0].level} • {top3[0].university}</p>
+                  <h4 className="font-bold text-xl text-slate-900 dark:text-white truncate w-full">{gold.name}</h4>
+                  <p className="text-sm font-medium text-slate-500 mb-3">Lv. {gold.level} • {gold.university}</p>
                 </div>
                 <div className="w-full py-3 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
-                  <span className="font-black text-2xl text-yellow-700 dark:text-yellow-500">{top3[0].points.toLocaleString()}</span> <span className="text-xs text-yellow-600 dark:text-yellow-600 uppercase tracking-wider font-bold">pts</span>
+                  <span className="font-black text-2xl text-yellow-700 dark:text-yellow-500">{gold.points.toLocaleString()}</span> <span className="text-xs text-yellow-600 dark:text-yellow-600 uppercase tracking-wider font-bold">pts</span>
                 </div>
               </div>
 
@@ -93,18 +98,19 @@ export function RankingsPage() {
                   #3
                 </div>
                 <div className="w-20 h-20 mb-4 mt-2">
-                  <img src={avatars[top3[2].level]} alt={`Level ${top3[2].level}`} className="w-full h-full object-contain filter drop-shadow-md" />
+                  <img src={avatars[bronze.level]} alt={`Level ${bronze.level}`} className="w-full h-full object-contain filter drop-shadow-md" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{top3[2].name}</h4>
-                  <p className="text-sm font-medium text-slate-500 mb-2">Lv. {top3[2].level} • {top3[2].university}</p>
+                  <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{bronze.name}</h4>
+                  <p className="text-sm font-medium text-slate-500 mb-2">Lv. {bronze.level} • {bronze.university}</p>
                 </div>
                 <div className="w-full py-2 bg-orange-100/50 dark:bg-orange-900/20 rounded-lg">
-                  <span className="font-black text-xl text-orange-800 dark:text-orange-500">{top3[2].points.toLocaleString()}</span> <span className="text-xs text-orange-600 dark:text-orange-700 uppercase tracking-wider font-bold">pts</span>
+                  <span className="font-black text-xl text-orange-800 dark:text-orange-500">{bronze.points.toLocaleString()}</span> <span className="text-xs text-orange-600 dark:text-orange-700 uppercase tracking-wider font-bold">pts</span>
                 </div>
               </div>
 
             </div>
+            )}
           </div>
 
           {/* Leaderboard Table */}

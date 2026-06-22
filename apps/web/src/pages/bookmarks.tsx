@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBookmarks, useDeleteBookmark, useUpdateBookmarkNote } from "@/features/bookmarks";
-import { Bookmark, Search, FileText, Sparkles, Pencil, Trash2, Calendar, FileDown, Quote } from "lucide-react";
+import { Bookmark, Search, FileText, Sparkles, Pencil, Trash2, FileDown, Quote } from "lucide-react";
 import { toast } from "sonner";
 
 export function BookmarksPage() {
@@ -270,8 +270,7 @@ export function BookmarksPage() {
                       <Link to={`/reports/${report.id}`}>{report.topic || "AI Research Analysis"}</Link>
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Year range: {report.yearFrom || "N/A"} - {report.yearTo || "N/A"}</span>
+                      <span>{report.topic || "Analytical report"}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pb-3 flex-grow">
