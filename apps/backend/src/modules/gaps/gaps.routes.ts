@@ -34,5 +34,5 @@ const analyzeGapLimiter = rateLimit({
 
 gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);
-gapsRouter.get("/", validate(ListGapsQuerySchema, "query"), gapsController.list);
+gapsRouter.get("/", gapsController.list);
 gapsRouter.patch("/:id", validate(PatchGapSchema), gapsController.patch);

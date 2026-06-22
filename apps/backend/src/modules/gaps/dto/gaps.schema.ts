@@ -19,7 +19,7 @@ export const ListGapsQuerySchema = z.object({
 
 /** Body of PATCH /api/v1/gaps/:id. */
 export const PatchGapSchema = z.object({
-  status: z.enum(["resolved", "dismissed"]),
+  status: z.enum(["active", "resolved", "dismissed"]),
 });
 
 export type AnalyzeGapDto = z.infer<typeof AnalyzeGapSchema>;

@@ -76,6 +76,19 @@ export const reportService = {
     if (!doc) throw AppError.notFound("Report not found");
     return toReportDto(doc);
   },
+
+  /** Delete a single report by ID. */
+  async deleteById(userId: string, id: string): Promise<void> {
+    const result = await ReportModel.deleteOne({ _id: id, userId });
+    if (result.deletedCount === 0) {
+      throw AppError.notFound("Report not found or not owned by you");
+    }
+  },
+
+  /** Delete multiple reports by IDs. */
+  async deleteBatch(userId: string, ids: string[]): Promise<void> {
+    await ReportModel.deleteMany({ _id: { $in: ids }, userId });
+  },
 };
 
 /**

@@ -4,6 +4,9 @@ import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRig
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
 import { useReport } from "@/features/reports/hooks/use-reports";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import robotImg from "@/assets/robot.png";
 
 const growthData = [
   { year: "2020", volume: 10 },
@@ -12,6 +15,49 @@ const growthData = [
   { year: "2023", volume: 80 },
   { year: "2024", volume: 100 },
 ];
+
+const RosePetals = () => {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden" aria-hidden="true">
+      <style>{`
+        @keyframes fall {
+          0% { transform: translateY(-10vh) rotate(0deg) rotateX(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(360deg) rotateX(360deg); opacity: 0; }
+        }
+        .petal {
+          position: absolute;
+          animation: fall linear infinite;
+        }
+      `}</style>
+      {[...Array(30)].map((_, i) => {
+        const left = Math.random() * 100 + 'vw';
+        const animationDuration = 6 + Math.random() * 10 + 's';
+        const animationDelay = -Math.random() * 15 + 's';
+        const width = 12 + Math.random() * 18 + 'px';
+        const opacity = 0.5 + Math.random() * 0.5;
+        const fill = Math.random() > 0.5 ? 'rgba(236, 72, 153, 0.6)' : 'rgba(244, 114, 182, 0.7)'; 
+
+        return (
+          <svg
+            key={i}
+            className="petal"
+            style={{
+              left,
+              animationDuration,
+              animationDelay,
+              width,
+              opacity,
+              fill
+            }}
+            viewBox="0 0 512 512"
+          >
+            <path d="M256,0 C350,0 420,100 420,200 C420,350 256,512 256,512 C256,512 92,350 92,200 C92,100 162,0 256,0 Z" />
+          </svg>
+        );
+      })}
+    </div>
+  );
+};
 
 export function ReportViewerPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,31 +94,44 @@ export function ReportViewerPage() {
   const title = report?.topic || report?.query || "AI Analytical Report";
 
   return (
-    <main className="container py-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0f1115] min-h-screen">
+    <main className="container py-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0f1115] min-h-screen relative overflow-hidden">
+      <RosePetals />
       
-      <div className="flex flex-col lg:flex-row gap-12 relative items-start">
-        
-        {/* Left Column (TOC) */}
-        <aside className="w-full lg:w-48 shrink-0 hidden lg:block sticky top-24">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 text-[15px]">Contents</h3>
-          <nav className="space-y-3 relative border-l border-slate-200 dark:border-slate-800">
-            <div className="absolute top-0 -left-[1.5px] w-[3px] h-5 bg-[#001b69] rounded-full"></div>
-            <a href="#executive-summary" className="block pl-4 text-[13px] font-semibold text-[#001b69] dark:text-blue-400">Executive Summary</a>
-            <a href="#publication-growth" className="block pl-4 text-[13px] text-slate-500 hover:text-slate-900 dark:hover:text-white">Publication Growth</a>
-            <a href="#emerging-topics" className="block pl-4 text-[13px] text-slate-500 hover:text-slate-900 dark:hover:text-white">Emerging Topics</a>
-            <a href="#key-journals" className="block pl-4 text-[13px] text-slate-500 hover:text-slate-900 dark:hover:text-white">Key Journals</a>
-            <a href="#research-gaps" className="block pl-4 text-[13px] text-slate-500 hover:text-slate-900 dark:hover:text-white">Research Gaps</a>
-            <a href="#methodology" className="block pl-4 text-[13px] text-slate-500 hover:text-slate-900 dark:hover:text-white">Methodology</a>
-          </nav>
-        </aside>
+      {/* Left side network decoration */}
+      <div className="hidden xl:block absolute left-0 top-0 bottom-0 w-[200px] pointer-events-none opacity-50 dark:opacity-20">
+        <svg className="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          {/* Vertical data streams */}
+          <path d="M 40 50 L 40 2000" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 6" className="opacity-30" />
+          <path d="M 120 150 L 120 2000" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="2 8" className="opacity-20" />
+          <path d="M 80 0 L 80 2000" fill="none" stroke="#0ea5e9" strokeWidth="0.5" className="opacity-10" />
+          
+          {/* Connecting diagonal lines */}
+          <path d="M 40 400 L 120 500" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="2 4" className="opacity-30" />
+          <path d="M 120 800 L 40 900" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="2 4" className="opacity-30" />
+          
+          {/* Nodes */}
+          <circle cx="40" cy="200" r="3" fill="#3b82f6" className="animate-pulse" />
+          <circle cx="40" cy="400" r="4" fill="#3b82f6" className="animate-ping" style={{ animationDuration: '3s' }} />
+          <circle cx="40" cy="900" r="3" fill="#3b82f6" className="animate-pulse" style={{ animationDelay: '1s' }} />
+          
+          <circle cx="120" cy="150" r="2" fill="#60a5fa" className="animate-pulse" style={{ animationDelay: '500ms' }} />
+          <circle cx="120" cy="500" r="4" fill="#60a5fa" className="animate-ping" style={{ animationDuration: '4s' }} />
+          <circle cx="120" cy="800" r="3" fill="#60a5fa" className="animate-pulse" style={{ animationDelay: '1.5s' }} />
+        </svg>
 
+        {/* Floating particles */}
+        <div className="absolute top-[10%] left-[50%] w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping opacity-60" style={{ animationDuration: '2.5s' }} />
+        <div className="absolute top-[30%] left-[20%] w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-40" style={{ animationDelay: '1s', animationDuration: '3.5s' }} />
+        <div className="absolute top-[60%] left-[80%] w-1.5 h-1.5 bg-blue-400 rounded-full animate-ping opacity-50" style={{ animationDelay: '0.5s', animationDuration: '2s' }} />
+        <div className="absolute top-[80%] left-[40%] w-2 h-2 bg-cyan-500 rounded-full animate-ping opacity-30" style={{ animationDelay: '2s', animationDuration: '4s' }} />
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-12 relative items-start justify-center print:block print:w-full z-10">
         {/* Center Column (Main Content) */}
-        <div className="flex-1 min-w-0 max-w-[800px]">
+        <div className="flex-1 min-w-0 max-w-[800px] print:max-w-none print:w-full">
           {/* Breadcrumb */}
-          <div className="flex items-center text-[11px] font-semibold text-slate-500 mb-6 uppercase tracking-wider">
-            <span className="hover:text-slate-900 cursor-pointer">Reports</span>
-            <ChevronRight className="w-3 h-3 mx-1" />
-            <span className="hover:text-slate-900 cursor-pointer">Education</span>
+          <div className="flex items-center text-[11px] font-semibold text-slate-500 mb-6 uppercase tracking-wider print:hidden">
+            <span onClick={() => navigate("/reports")} className="hover:text-slate-900 cursor-pointer transition-colors">Reports</span>
             <ChevronRight className="w-3 h-3 mx-1" />
             <span className="text-slate-900 dark:text-white">{title}</span>
           </div>
@@ -81,11 +140,11 @@ export function ReportViewerPage() {
             {title}
           </h1>
 
-          <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-8 print:hidden">
             <Button variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
               <Share className="w-4 h-4" /> Share
             </Button>
-            <Button className="h-9 px-4 bg-[#001b69] hover:bg-[#001040] text-white font-semibold gap-2 rounded-md shadow-sm">
+            <Button onClick={() => window.print()} className="h-9 px-4 bg-[#001b69] hover:bg-[#001040] text-white font-semibold gap-2 rounded-md shadow-sm">
               <Download className="w-4 h-4" /> PDF
             </Button>
           </div>
@@ -99,10 +158,20 @@ export function ReportViewerPage() {
 
           <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-blue-600 dark:prose-a:text-blue-400">
             
-            <h2 id="executive-summary" className="text-[22px] font-semibold text-slate-900 dark:text-white mb-4 mt-0">Executive Summary</h2>
-            <div className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-10 whitespace-pre-wrap">
-              {report?.markdown ? report.markdown : `The integration of Large Language Models (LLMs) into educational frameworks has seen an exponential rise between 2020 and 2024. Early adoption focused heavily on automated grading and basic tutoring systems [1]. However, current literature indicates a paradigm shift towards personalized learning pathways and cognitive scaffolding tools.`}
-            </div>
+            {report?.markdown ? (
+              <div className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-10 prose-h2:text-[22px] prose-h2:font-semibold prose-h2:text-slate-900 dark:prose-h2:text-white prose-h2:mb-4 prose-h2:mt-8 prose-h3:text-[18px] prose-h3:font-semibold prose-h3:text-slate-900 dark:prose-h3:text-white prose-h3:mt-6 prose-p:mb-4 prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:mb-2 prose-strong:font-bold prose-strong:text-slate-900 dark:prose-strong:text-white">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {report.markdown}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <>
+                <h2 id="executive-summary" className="text-[22px] font-semibold text-slate-900 dark:text-white mb-4 mt-0">Executive Summary</h2>
+                <div className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-10 whitespace-pre-wrap">
+                  The integration of Large Language Models (LLMs) into educational frameworks has seen an exponential rise between 2020 and 2024. Early adoption focused heavily on automated grading and basic tutoring systems [1]. However, current literature indicates a paradigm shift towards personalized learning pathways and cognitive scaffolding tools.
+                </div>
+              </>
+            )}
 
             <h2 id="publication-growth" className="text-[22px] font-semibold text-slate-900 dark:text-white mb-4">Publication Volume Growth</h2>
             <p className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-8">
@@ -139,10 +208,10 @@ export function ReportViewerPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3">
+            <div className="flex items-center justify-between mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3 print:border-none print:pb-0">
               <h2 id="research-gaps" className="text-[22px] font-semibold text-slate-900 dark:text-white m-0 border-none pb-0">Identified Research Gaps</h2>
-              <Button variant="outline" size="sm" onClick={() => navigate("/research-gaps?source=report")} className="h-8 text-xs font-semibold gap-1">
-                View in Research Gaps <ChevronRight className="w-3 h-3" />
+              <Button onClick={() => navigate(`/research-gaps?source=report&topic=${encodeURIComponent(report?.topic || report?.query || "")}`)} className="h-8 px-4 text-xs font-bold gap-1 print:hidden bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md rounded-full transition-all hover:shadow-lg hover:-translate-y-0.5 border-0">
+                View in Research Gaps <ChevronRight className="w-3 h-3 ml-1" />
               </Button>
             </div>
             
@@ -173,65 +242,84 @@ export function ReportViewerPage() {
           </div>
         </div>
 
-        {/* Right Column (Metadata) */}
-        <div className="w-full lg:w-[280px] shrink-0 space-y-6">
+
+        {/* Right Sidebar */}
+        <div className="hidden lg:block w-[320px] shrink-0 sticky top-6 -mt-4 print:hidden">
+          {/* Illustration Card */}
+          <div className="bg-white/80 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] mb-6 flex flex-col items-center text-center">
+            <div className="w-full aspect-square mb-4 relative rounded-xl overflow-hidden bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-900/10 dark:to-transparent flex items-center justify-center p-4">
+              {/* Data / Network Pattern Background */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50 dark:opacity-30">
+                
+                {/* Animated Nodes and Lines */}
+                <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M40 40 L100 120 L200 80 L260 180" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 4" className="opacity-50" />
+                  <path d="M20 160 L120 200 L180 140" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="2 4" className="opacity-40" />
+                  
+                  <circle cx="100" cy="120" r="3" fill="#3b82f6" className="animate-pulse" />
+                  <circle cx="200" cy="80" r="4" fill="#60a5fa" className="animate-ping" style={{ animationDuration: '3s' }} />
+                  <circle cx="120" cy="200" r="3" fill="#3b82f6" className="animate-pulse" style={{ animationDelay: '500ms' }} />
+                  <circle cx="180" cy="140" r="2" fill="#60a5fa" className="animate-pulse" style={{ animationDelay: '1s' }} />
+                </svg>
+
+                {/* Floating data particles */}
+                <div className="absolute top-[20%] left-[20%] w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping opacity-75" style={{ animationDuration: '2s' }} />
+                <div className="absolute top-[70%] left-[80%] w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-60" style={{ animationDelay: '1s', animationDuration: '3s' }} />
+                <div className="absolute top-[40%] left-[85%] w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-80" style={{ animationDelay: '0.5s', animationDuration: '2.5s' }} />
+              </div>
+
+              {/* AI Core Animation */}
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                {/* Outer rotating dashed ring */}
+                <div className="absolute inset-0 rounded-full border-2 border-dashed border-blue-400/40 dark:border-blue-500/30 animate-[spin_10s_linear_infinite]" />
+                
+                {/* Inner fast rotating ring */}
+                <div className="absolute inset-3 rounded-full border-t-2 border-l-2 border-cyan-400 dark:border-cyan-300 animate-[spin_3s_linear_infinite_reverse] opacity-80" />
+                
+                {/* Middle pulse ring */}
+                <div className="absolute inset-6 rounded-full border-2 border-blue-300 dark:border-blue-500 animate-ping opacity-30" style={{ animationDuration: '2.5s' }} />
+                
+                {/* Central Core */}
+                <div className="absolute w-[72px] h-[72px] bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full shadow-[0_0_30px_rgba(56,189,248,0.5)] dark:shadow-[0_0_40px_rgba(56,189,248,0.4)] flex items-center justify-center z-10">
+                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                </div>
+
+                {/* Orbiting node */}
+                <div className="absolute inset-0 animate-[spin_4s_linear_infinite]">
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">AI Analysis Complete</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Our AI has synthesized insights from thousands of papers to bring you this comprehensive report.
+            </p>
+            <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-4" />
+            <div className="flex flex-col gap-3 w-full text-sm text-slate-600 dark:text-slate-400 text-left font-medium">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Facts verified
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Grounded in literature
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Data synthesized
+              </div>
+            </div>
+          </div>
           
-          <div className="bg-white dark:bg-[#1c1f26] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-            <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 text-[15px]">
-              <Info className="w-4 h-4 text-[#001b69] dark:text-blue-500" /> Report Metadata
-            </h4>
-            <div className="space-y-4 text-[13px]">
-              <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-800/50 pb-3">
-                <span className="text-slate-500 font-medium">Analysis Engine</span>
-                <span className="font-semibold text-slate-900 dark:text-white">Gemini 2.5 Pro</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-800/50 pb-3">
-                <span className="text-slate-500 font-medium">Sources Analyzed</span>
-                <span className="font-semibold text-slate-900 dark:text-white">12,405 papers</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-800/50 pb-3">
-                <span className="text-slate-500 font-medium">Processing Time</span>
-                <span className="font-semibold text-slate-900 dark:text-white">45s</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Token Cost</span>
-                <span className="font-semibold text-slate-900 dark:text-white">~$0.42</span>
-              </div>
-            </div>
+          {/* Quick Actions */}
+          <div className="bg-gradient-to-br from-[#e0e7ff] to-[#dbeafe] dark:from-[#1e3a8a]/30 dark:to-[#172554]/30 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-6 shadow-sm">
+            <h3 className="text-base font-bold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Explore Further
+            </h3>
+            <p className="text-sm text-blue-800/80 dark:text-blue-200/80 mb-4 font-medium leading-relaxed">
+              Found something interesting? Dive deeper into the research gaps or explore related topics.
+            </p>
+            <Button onClick={() => navigate(`/research-gaps?source=report&topic=${encodeURIComponent(report?.topic || report?.query || "")}`)} className="w-full bg-[#001b69] hover:bg-[#001040] text-white rounded-xl shadow-sm h-10">
+              View Research Gaps
+            </Button>
           </div>
-
-          <div className="bg-slate-50/50 dark:bg-[#1c1f26] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-            <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 text-[15px]">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Verification Steps
-            </h4>
-            <div className="space-y-4 text-[13px]">
-              <div className="flex items-start gap-3">
-                <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                   <Check className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
-                </div>
-                <span className="text-slate-700 dark:text-slate-300 leading-relaxed">Cross-referenced against Scopus DB</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                   <Check className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
-                </div>
-                <span className="text-slate-700 dark:text-slate-300 leading-relaxed">Hallucination check passed <span className="text-slate-500">(Score: 99%)</span></span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                   <Check className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
-                </div>
-                <span className="text-slate-700 dark:text-slate-300 leading-relaxed">Citation formatting validated</span>
-              </div>
-              <div className="flex items-start gap-3 opacity-60 pt-1">
-                <div className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center shrink-0 mt-0.5">
-                   <Clock className="w-2.5 h-2.5 text-slate-500" />
-                </div>
-                <span className="text-slate-500 leading-relaxed">Human expert review <span className="italic">(Pending)</span></span>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </main>

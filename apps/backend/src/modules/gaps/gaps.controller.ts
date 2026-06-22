@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { gapsService } from "./gaps.service.js";
-import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
+import type { AnalyzeGapDto, PatchGapDto } from "./dto/gaps.schema.js";
+import { ListGapsQuerySchema } from "./dto/gaps.schema.js";
 
 /**
  * Research gaps endpoints. All routes sit behind requireAuth, so req.user is
@@ -22,7 +23,12 @@ export const gapsController = {
 
   /** GET /api/v1/gaps — paginated, filterable list of gaps. */
   async list(req: Request, res: Response) {
-    const query = req.query as unknown as ListGapsQuery;
+    const parsed = ListGapsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: parsed.error });
+      return;
+    }
+    const query = parsed.data;
     const { gaps, total } = await gapsService.list(query);
     const { page, pageSize } = query;
     res.json({

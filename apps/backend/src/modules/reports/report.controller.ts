@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { reportService } from "./report.service.js";
-import { CreateReportSchema, ListReportsQuerySchema } from "./dto/report.schema.js";
+import { CreateReportSchema, ListReportsQuerySchema, BatchDeleteSchema } from "./dto/report.schema.js";
 
 /**
  * Reports endpoints. All routes sit behind requireAuth, so req.user is set.
@@ -40,5 +40,23 @@ export const reportController = {
   async getById(req: Request, res: Response) {
     const data = await reportService.getById(req.user!.sub, req.params.id as string);
     res.json({ success: true, data });
+  },
+
+  /** DELETE /api/v1/reports/:id — delete a single report. */
+  async deleteById(req: Request, res: Response) {
+    await reportService.deleteById(req.user!.sub, req.params.id as string);
+    res.json({ success: true, message: "Report deleted successfully" });
+  },
+
+  /** DELETE /api/v1/reports — batch delete reports. */
+  async deleteBatch(req: Request, res: Response, next: NextFunction) {
+    const parsed = BatchDeleteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    await reportService.deleteBatch(req.user!.sub, parsed.data.ids);
+    res.json({ success: true, message: "Reports deleted successfully" });
   },
 };
