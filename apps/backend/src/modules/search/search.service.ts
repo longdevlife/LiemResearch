@@ -6,6 +6,7 @@ import { logger } from "../../infrastructure/logger.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON } from "../llm/gemini.client.js";
+import type { SearchSortKey } from "../papers/dto/paper-filters.schema.js";
 import {
   buildRerankCacheKey,
   buildRerankPrompt,
@@ -23,6 +24,12 @@ export interface SemanticSearchParams {
   pageSize: number;
   yearFrom?: number;
   yearTo?: number;
+  // Cách 2 — server-side filters applied AFTER the vector search.
+  paperKinds?: string[];
+  openAccess?: boolean;
+  provider?: string;
+  minScore?: number;
+  sort?: SearchSortKey;
   /** Opt-in LLM re-ranking of the top candidate pool. */
   rerank?: boolean;
 }
@@ -42,51 +49,55 @@ export const searchService = {
   /**
    * Semantic search: embed the query into a 768-dim vector, then find the
    * nearest paper vectors via Atlas $vectorSearch (cosine similarity).
-   * Unlike Phase A keyword search, this matches MEANING, not exact words.
    *
-   * With `rerank`, the top candidate pool is additionally re-scored by an LLM
-   * for true query relevance and re-ordered before pagination.
+   * Filters that the vector index can apply (year, dataStatus) go INTO the
+   * $vectorSearch filter. Filters it cannot (paperKind, openAccess, provider,
+   * minScore) are applied as a $match over a bounded candidate POOL, then the
+   * survivors are sorted + paginated. `total` therefore reflects the FILTERED
+   * pool, so the count, the filters and the pager all agree.
+   *
+   * With `rerank`, that pool is additionally re-scored by an LLM for true query
+   * relevance and re-ordered before pagination.
    */
   async semantic(params: SemanticSearchParams): Promise<SemanticSearchResult> {
-    const { q, page, pageSize, yearFrom, yearTo, rerank } = params;
+    const { q, page, pageSize, sort = "relevance", rerank } = params;
     const queryVector = await getEmbeddingProvider().embed(q);
-    const filter = buildVectorFilter({ yearFrom, yearTo });
+    const vectorFilter = buildVectorFilter(params);
+    const postMatch = buildPostMatch(params);
 
     if (rerank) {
-      return rerankedSearch({ q, page, pageSize, yearFrom, yearTo, queryVector, filter });
+      return rerankedSearch({ q, page, pageSize, params, queryVector, vectorFilter, postMatch });
     }
 
-    // Plain semantic path: paginate inside the vector pipeline.
-    const limit = page * pageSize;
-    const docs = await runVectorSearch(queryVector, filter, limit, (page - 1) * pageSize);
-    const papers = docs.map(toScoredPaper);
-    const total = (page - 1) * pageSize + papers.length;
-    return { papers, total, reranked: false };
+    // Plain semantic path: pull a filtered pool, sort, paginate in memory.
+    const poolSize = Math.max(env.SEARCH_FILTER_POOL, page * pageSize);
+    const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
+    const sorted = sortPapers(pool, sort);
+    const start = (page - 1) * pageSize;
+    return { papers: sorted.slice(start, start + pageSize), total: sorted.length, reranked: false };
   },
 };
 
 /**
- * Re-ranked path: pull a fixed candidate POOL (not a page), LLM-score it,
- * re-order by relevance, then paginate in memory. The pool is bounded
- * (RERANK_CANDIDATES) — re-ranking refines the head of the results, which is
- * exactly where relevance matters.
+ * Re-ranked path: pull a fixed candidate POOL (filtered), LLM-score it, re-order
+ * by relevance, then paginate in memory. The pool is bounded (RERANK_CANDIDATES)
+ * — re-ranking refines the head of the results, which is where relevance matters.
  */
 async function rerankedSearch(args: {
   q: string;
   page: number;
   pageSize: number;
-  yearFrom?: number;
-  yearTo?: number;
+  params: SemanticSearchParams;
   queryVector: number[];
-  filter: Record<string, unknown>;
+  vectorFilter: Record<string, unknown>;
+  postMatch: Record<string, unknown> | null;
 }): Promise<SemanticSearchResult> {
-  const { q, page, pageSize, yearFrom, yearTo, queryVector, filter } = args;
+  const { q, page, pageSize, params, queryVector, vectorFilter, postMatch } = args;
 
   // Pool must cover at least the requested page, else page 1 of a large
   // pageSize would be truncated below the configured head size.
   const poolSize = Math.max(env.RERANK_CANDIDATES, page * pageSize);
-  const poolDocs = await runVectorSearch(queryVector, filter, poolSize, 0);
-  const pool = poolDocs.map(toScoredPaper);
+  const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
   const candidates: RerankCandidate[] = pool.map((p) => ({
@@ -96,10 +107,12 @@ async function rerankedSearch(args: {
   }));
 
   const model = env.GEMINI_MODEL_FAST;
+  // candidateIds already encode the active filters (the pool is post-filtered),
+  // so the cache key differentiates filtered vs unfiltered runs automatically.
   const cacheKey = buildRerankCacheKey({
     query: q,
-    yearFrom,
-    yearTo,
+    yearFrom: params.yearFrom,
+    yearTo: params.yearTo,
     model,
     candidateIds: candidates.map((c) => c.id),
   });
@@ -164,20 +177,52 @@ function buildVectorFilter(f: { yearFrom?: number; yearTo?: number }): Record<st
   return filter;
 }
 
-async function runVectorSearch(
+/**
+ * Post-vector $match for filters the vector index can't apply. Runs AFTER
+ * $addFields adds `score`, so `minScore` can filter on cosine similarity.
+ * Returns null when there is nothing to filter (skips the stage).
+ */
+function buildPostMatch(f: {
+  paperKinds?: string[];
+  openAccess?: boolean;
+  provider?: string;
+  minScore?: number;
+}): Record<string, unknown> | null {
+  const m: Record<string, unknown> = {};
+  if (f.paperKinds && f.paperKinds.length) m.paperKind = { $in: f.paperKinds };
+  if (f.openAccess) m.openAccessUrl = { $type: "string", $ne: "" };
+  if (f.provider) m.primaryProvider = f.provider;
+  if (f.minScore && f.minScore > 0) m.score = { $gte: f.minScore };
+  return Object.keys(m).length ? m : null;
+}
+
+function sortPapers(papers: ScoredPaper[], sort: SearchSortKey): ScoredPaper[] {
+  const arr = [...papers];
+  if (sort === "year") {
+    arr.sort((a, b) => (b.publicationYear ?? 0) - (a.publicationYear ?? 0));
+  } else if (sort === "citations") {
+    arr.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
+  } else {
+    arr.sort((a, b) => b.score - a.score); // relevance (cosine)
+  }
+  return arr;
+}
+
+async function fetchScoredPool(
   queryVector: number[],
-  filter: Record<string, unknown>,
-  limit: number,
-  skip: number,
-): Promise<Array<Record<string, unknown>>> {
-  const numCandidates = Math.min(1000, Math.max(100, limit * 10));
+  vectorFilter: Record<string, unknown>,
+  postMatch: Record<string, unknown> | null,
+  poolSize: number,
+): Promise<ScoredPaper[]> {
+  const numCandidates = Math.min(1000, Math.max(100, poolSize * 10));
   const pipeline = [
-    { $vectorSearch: { index: VECTOR_INDEX, path: "embedding", queryVector, numCandidates, limit, filter } },
+    { $vectorSearch: { index: VECTOR_INDEX, path: "embedding", queryVector, numCandidates, limit: poolSize, filter: vectorFilter } },
     { $addFields: { score: { $meta: "vectorSearchScore" } } },
-    ...(skip > 0 ? [{ $skip: skip }] : []),
+    ...(postMatch ? [{ $match: postMatch }] : []),
     { $project: { embedding: 0, __v: 0 } },
   ];
-  return PaperModel.aggregate(pipeline as unknown as PipelineStage[]);
+  const docs = await PaperModel.aggregate(pipeline as unknown as PipelineStage[]);
+  return docs.map(toScoredPaper);
 }
 
 function toScoredPaper(d: Record<string, unknown>): ScoredPaper {
