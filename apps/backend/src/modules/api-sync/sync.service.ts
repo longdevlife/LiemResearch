@@ -187,7 +187,11 @@ async function ingestPage(
         update: {
           $set: {
             dataQualityScore: qualityScore,
-            isAiAnalyzable: qualityScore >= 0.7,
+            // A real abstract is MANDATORY for AI: embeddings, RAG and semantic
+            // search all run on title+abstract. Without one (or with a citation
+            // stub), the paper must not enter the AI pipeline regardless of its
+            // other fields.
+            isAiAnalyzable: qualityScore >= 0.7 && checks.hasAbstract,
             dataStatus: checkStatus === "fail" ? "low-quality" : "active",
           },
         },
@@ -251,16 +255,23 @@ async function findExisting(n: NormalizedPaper): Promise<PaperHydrated | null> {
 }
 
 const QUALITY_FIELDS = 7;
+/**
+ * Minimum abstract length to count as a REAL abstract. OpenAlex often stores a
+ * citation/front-matter line (~150-230 chars) in the abstract field for papers
+ * with no true abstract (common for ACL/proceedings). A real abstract is almost
+ * always far longer, so this floor filters out those stubs. Heuristic.
+ */
+const MIN_ABSTRACT_CHARS = 250;
 
 /** Pure 7-field presence check → score + status. No I/O (caller flushes in bulk). */
-function computeQuality(paper: PaperHydrated): {
+export function computeQuality(paper: PaperHydrated): {
   checks: Record<string, boolean>;
   qualityScore: number;
   checkStatus: "pass" | "warn" | "fail";
 } {
   const checks = {
     hasTitle: !!paper.title,
-    hasAbstract: !!paper.abstractText,
+    hasAbstract: (paper.abstractText?.trim().length ?? 0) >= MIN_ABSTRACT_CHARS,
     hasDoi: !!paper.externalIds?.doi,
     hasJournal: !!paper.journalName,
     hasPublicationYear: !!paper.publicationYear,
