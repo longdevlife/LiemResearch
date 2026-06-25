@@ -7,6 +7,7 @@ import { useReport } from "@/features/reports/hooks/use-reports";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import robotImg from "@/assets/robot.png";
+import holographicBookImg from "@/assets/holographic_book.png";
 
 const growthData = [
   { year: "2020", volume: 10 },
@@ -18,7 +19,7 @@ const growthData = [
 
 const RosePetals = () => {
   return (
-    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden" aria-hidden="true">
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden print:hidden" aria-hidden="true">
       <style>{`
         @keyframes fall {
           0% { transform: translateY(-10vh) rotate(0deg) rotateX(0deg); opacity: 1; }
@@ -98,7 +99,7 @@ export function ReportViewerPage() {
       <RosePetals />
       
       {/* Left side network decoration */}
-      <div className="hidden xl:block absolute left-0 top-0 bottom-0 w-[200px] pointer-events-none opacity-50 dark:opacity-20">
+      <div className="hidden xl:block absolute left-0 top-0 bottom-0 w-[200px] pointer-events-none opacity-50 dark:opacity-20 print:hidden">
         <svg className="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg">
           {/* Vertical data streams */}
           <path d="M 40 50 L 40 2000" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 6" className="opacity-30" />
@@ -246,64 +247,72 @@ export function ReportViewerPage() {
         {/* Right Sidebar */}
         <div className="hidden lg:block w-[320px] shrink-0 sticky top-6 -mt-4 print:hidden">
           {/* Illustration Card */}
-          <div className="bg-white/80 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] mb-6 flex flex-col items-center text-center">
-            <div className="w-full aspect-square mb-4 relative rounded-xl overflow-hidden bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-900/10 dark:to-transparent flex items-center justify-center p-4">
-              {/* Data / Network Pattern Background */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50 dark:opacity-30">
-                
-                {/* Animated Nodes and Lines */}
-                <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M40 40 L100 120 L200 80 L260 180" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 4" className="opacity-50" />
-                  <path d="M20 160 L120 200 L180 140" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="2 4" className="opacity-40" />
-                  
-                  <circle cx="100" cy="120" r="3" fill="#3b82f6" className="animate-pulse" />
-                  <circle cx="200" cy="80" r="4" fill="#60a5fa" className="animate-ping" style={{ animationDuration: '3s' }} />
-                  <circle cx="120" cy="200" r="3" fill="#3b82f6" className="animate-pulse" style={{ animationDelay: '500ms' }} />
-                  <circle cx="180" cy="140" r="2" fill="#60a5fa" className="animate-pulse" style={{ animationDelay: '1s' }} />
-                </svg>
+          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-[2rem] p-2 shadow-xl mb-6 flex flex-col relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:shadow-cyan-500/10">
+            {/* The WOW Illustration Container */}
+            <div className="w-full aspect-square relative rounded-[1.75rem] overflow-hidden bg-[#050b14] flex items-center justify-center z-10 border border-slate-800/80 shadow-inner">
+              
+              {/* Animated subtle grid background */}
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] opacity-70" />
+              
+              {/* Ambient glowing orbs in the background */}
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-900/40 via-transparent to-blue-900/40 opacity-50" />
+              <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cyan-500/30 rounded-full blur-[40px] animate-pulse" style={{ animationDuration: '4s' }} />
+              <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-blue-500/30 rounded-full blur-[40px] animate-pulse" style={{ animationDuration: '6s', animationDelay: '1s' }} />
 
-                {/* Floating data particles */}
-                <div className="absolute top-[20%] left-[20%] w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping opacity-75" style={{ animationDuration: '2s' }} />
-                <div className="absolute top-[70%] left-[80%] w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-60" style={{ animationDelay: '1s', animationDuration: '3s' }} />
-                <div className="absolute top-[40%] left-[85%] w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-80" style={{ animationDelay: '0.5s', animationDuration: '2.5s' }} />
+              {/* The Book Image */}
+              <img 
+                src={holographicBookImg} 
+                alt="AI Analysis Holographic Book" 
+                className="w-full h-full object-cover mix-blend-screen animate-[float_5s_ease-in-out_infinite] scale-110 brightness-110 contrast-125 relative z-10" 
+                style={{ filter: 'drop-shadow(0 0 15px rgba(6,182,212,0.3))' }}
+              />
+
+              {/* Floating interactive particles */}
+              <div className="absolute inset-0 pointer-events-none z-20">
+                <div className="absolute top-[30%] left-[30%] w-1 h-1 bg-cyan-300 rounded-full shadow-[0_0_8px_2px_rgba(103,232,249,0.8)] animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute top-[45%] right-[25%] w-1.5 h-1.5 bg-blue-300 rounded-full shadow-[0_0_10px_3px_rgba(147,197,253,0.8)] animate-pulse" style={{ animationDuration: '3s' }} />
+                <div className="absolute bottom-[40%] left-[40%] w-1 h-1 bg-white rounded-full shadow-[0_0_10px_2px_rgba(255,255,255,0.9)] animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.5s' }} />
               </div>
-
-              {/* AI Core Animation */}
-              <div className="relative w-40 h-40 flex items-center justify-center">
-                {/* Outer rotating dashed ring */}
-                <div className="absolute inset-0 rounded-full border-2 border-dashed border-blue-400/40 dark:border-blue-500/30 animate-[spin_10s_linear_infinite]" />
-                
-                {/* Inner fast rotating ring */}
-                <div className="absolute inset-3 rounded-full border-t-2 border-l-2 border-cyan-400 dark:border-cyan-300 animate-[spin_3s_linear_infinite_reverse] opacity-80" />
-                
-                {/* Middle pulse ring */}
-                <div className="absolute inset-6 rounded-full border-2 border-blue-300 dark:border-blue-500 animate-ping opacity-30" style={{ animationDuration: '2.5s' }} />
-                
-                {/* Central Core */}
-                <div className="absolute w-[72px] h-[72px] bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full shadow-[0_0_30px_rgba(56,189,248,0.5)] dark:shadow-[0_0_40px_rgba(56,189,248,0.4)] flex items-center justify-center z-10">
-                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
-                </div>
-
-                {/* Orbiting node */}
-                <div className="absolute inset-0 animate-[spin_4s_linear_infinite]">
-                  <div className="w-3 h-3 bg-cyan-400 rounded-full absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-                </div>
-              </div>
+              
+              {/* Bottom gradient overlay to blend with the card below */}
+              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#050b14] to-transparent pointer-events-none z-30" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">AI Analysis Complete</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Our AI has synthesized insights from thousands of papers to bring you this comprehensive report.
-            </p>
-            <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-4" />
-            <div className="flex flex-col gap-3 w-full text-sm text-slate-600 dark:text-slate-400 text-left font-medium">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Facts verified
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Grounded in literature
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Data synthesized
+
+            <style>{`
+              @keyframes float {
+                0% { transform: translateY(0px) scale(1.1); }
+                50% { transform: translateY(-8px) scale(1.1); }
+                100% { transform: translateY(0px) scale(1.1); }
+              }
+            `}</style>
+            
+            <div className="px-5 pb-5 pt-6 text-center flex flex-col items-center">
+              <h3 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 mb-3 tracking-tight">AI Analysis Complete</h3>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                Our AI has synthesized insights from thousands of papers to bring you this comprehensive report.
+              </p>
+              
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent mb-5" />
+              
+              <div className="flex flex-col gap-3.5 w-full text-[13px] text-slate-600 dark:text-slate-300 text-left font-medium">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  Facts verified
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  Grounded in literature
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  Data synthesized
+                </div>
               </div>
             </div>
           </div>
