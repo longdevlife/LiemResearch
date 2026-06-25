@@ -199,7 +199,9 @@ export const gapsService = {
   /** Paginated, filterable list of gaps (the FE gaps page). */
   async list(query: ListGapsQuery) {
     const filter: Record<string, unknown> = { status: query.status };
-    if (query.topic) filter.normalizedTopic = normalizeTopicStr(query.topic);
+    if (query.topic) {
+      filter.normalizedTopic = { $regex: normalizeTopicStr(query.topic), $options: "i" };
+    }
     if (query.source) filter.source = query.source;
     if (query.minConfidence !== undefined) filter.confidence = { $gte: query.minConfidence };
 
