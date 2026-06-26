@@ -344,7 +344,13 @@ function clamp01(x: unknown): number {
  * classic and deepAnalysis output so deep mode is not the weaker path.
  */
 function assertCitationsInRange(markdown: string, papersLength: number): void {
-  const cited = [...markdown.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
+  // Match single [n] AND grouped [1, 3] / [1,2,3] — the old /\[(\d+)\]/ silently
+  // skipped grouped citations, so an out-of-range number inside a group slipped
+  // past the guard. The pattern requires digits (won't false-match "[ ]"/"[x]").
+  const cited: number[] = [];
+  for (const m of markdown.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)) {
+    for (const part of m[1]!.split(",")) cited.push(Number(part.trim()));
+  }
   const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papersLength))];
   if (outOfRange.length > 0) {
     throw new LlmContentError(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);

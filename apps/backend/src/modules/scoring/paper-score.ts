@@ -29,7 +29,10 @@ export function computePaperScore(
   computedAt: string,
 ): PaperAiScore {
   const year = input.publicationYear || 0;
-  const recencyScore = year > 0 ? clamp01(1 - (currentYear - year) / RECENCY_WINDOW) : 0;
+  // `Math.max(0, …)` clamps the age floor at 0 so a future-dated paper (OpenAlex
+  // often tags next year for in-press works) scores recency 1, not >1 — explicit
+  // rather than relying on the outer clamp01 to absorb a negative age.
+  const recencyScore = year > 0 ? clamp01(1 - Math.max(0, currentYear - year) / RECENCY_WINDOW) : 0;
   const citationImpactScore = clamp01(
     Math.log10((input.citationCount ?? 0) + 1) / Math.log10(CITATION_CAP + 1),
   );
