@@ -18,6 +18,8 @@ import { markReportFailed, runRagPipeline, type ReportJob } from "../modules/rep
 
 /** Reports stuck in "generating" longer than this are orphans of a dead worker. */
 const STUCK_GENERATING_MS = 5 * 60_000;
+/** Reports stuck in "queued" longer than this had their job lost (never picked up). */
+const STUCK_QUEUED_MS = 30 * 60_000;
 
 /** Generic user-facing failure text — raw error internals stay in server logs. */
 const USER_FACING_FAILURE = "Report generation failed. Please try again later.";
@@ -25,10 +27,18 @@ const USER_FACING_FAILURE = "Report generation failed. Please try again later.";
 async function main() {
   await connectMongo();
 
-  // Startup sweep: a hard-killed worker leaves reports frozen in "generating",
-  // which would also brick the user's pending-quota forever. Fail them cleanly.
+  // Startup sweep: a hard-killed worker leaves reports frozen in "generating", and
+  // a lost job (Redis flush / enqueue failure) leaves one stuck in "queued" forever.
+  // Both keep counting against the user's pending-report quota until cleared, so fail
+  // them cleanly. (Mirrors gaps.worker, which already sweeps orphaned queued jobs.)
+  const now = Date.now();
   const swept = await ReportModel.updateMany(
-    { status: "generating", updatedAt: { $lt: new Date(Date.now() - STUCK_GENERATING_MS) } },
+    {
+      $or: [
+        { status: "generating", updatedAt: { $lt: new Date(now - STUCK_GENERATING_MS) } },
+        { status: "queued", updatedAt: { $lt: new Date(now - STUCK_QUEUED_MS) } },
+      ],
+    },
     {
       $set: {
         status: "failed",
