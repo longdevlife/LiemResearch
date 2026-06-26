@@ -14,6 +14,12 @@ import { openapiSpec } from "./openapi.js";
 export function createApp(): Express {
   const app = express();
 
+  // Trust the first proxy (Render/Vercel/Nginx) so `req.ip` is the real client IP
+  // from X-Forwarded-For — without this the rerank rate-limiter (keyed on req.ip)
+  // sees every request as one upstream socket IP and its per-user throttle, which
+  // guards Gemini quota, is useless.
+  app.set("trust proxy", 1);
+
   app.disable("x-powered-by");
   app.use(helmet());
   app.use(

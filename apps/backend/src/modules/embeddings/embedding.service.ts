@@ -64,12 +64,18 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
     try {
       vectors = await provider.embedBatch(texts);
     } catch (err) {
-      // Batch failed (rate limit / network). Stop this run — BullMQ retries the
-      // whole job with backoff. We MUST break, not continue: the same candidates
-      // would match the filter again and loop forever.
-      logger.error({ err, batch: batches, size: candidates.length }, "embedding batch failed");
+      // Batch failed (rate limit / network). Papers from earlier batches in this
+      // run are already persisted (we store per batch). RETHROW — do not `break`
+      // and return — so the worker's job actually FAILS and BullMQ retries it with
+      // exponential backoff (a transient blip recovers in minutes instead of
+      // waiting for the next daily cron). Returning normally marks the job COMPLETED
+      // and no retry ever happens. Throwing also can't loop: it exits runEmbedding.
       totalFailed += candidates.length;
-      break;
+      logger.error(
+        { err, batch: batches, size: candidates.length, totalEmbedded, totalFailed },
+        "embedding batch failed — rethrowing for BullMQ retry",
+      );
+      throw err;
     }
 
     await Promise.all(

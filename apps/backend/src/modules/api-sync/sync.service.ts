@@ -137,24 +137,26 @@ async function ingestPage(
 
   if (ingested.length === 0) return;
 
-  // ② Upsert source records, deduped by metadataHash — re-syncing the same paper
-  //    no longer piles up duplicate provider blobs (the cause of M0 filling up).
+  // ② Upsert ONE source record per (paper, provider). Keyed by (paperId, providerId)
+  //    — re-syncing the same paper UPDATES that record (refresh fetchedAt/hash)
+  //    instead of inserting a new doc every time cited_by_count changes. Keying by
+  //    metadataHash (which covers the whole work incl. citation count) made every
+  //    re-sync insert a fresh row → unbounded growth on the 512MB M0 tier.
   //    rawMetadata (the full provider JSON) is heavy and read by nothing, so it is
   //    only stored when SYNC_STORE_RAW_METADATA is on.
   const sourceOps: AnyBulkWriteOperation[] = ingested.map(({ paper, work }) => {
     const metadataHash = crypto.createHash("sha256").update(JSON.stringify(work)).digest("hex");
     return {
       updateOne: {
-        filter: { metadataHash },
+        filter: { paperId: paper._id, providerId },
         update: {
-          $setOnInsert: {
-            paperId: paper._id,
-            providerId,
+          $set: {
             externalRecordId: work.id,
             metadataHash,
             fetchedAt: new Date(),
             ...(env.SYNC_STORE_RAW_METADATA ? { rawMetadata: work } : {}),
           },
+          $setOnInsert: { paperId: paper._id, providerId },
         },
         upsert: true,
       },
@@ -248,6 +250,14 @@ async function upsertPaper(
   }
   if (!existing.journalName && n.journalName) existing.journalName = n.journalName;
   if (!existing.openAccessUrl && n.openAccessUrl) existing.openAccessUrl = n.openAccessUrl;
+  // Backfill identifiers/year the FIRST sync may have lacked. Without this, a paper
+  // first seen with no DOI (later matched via openalexId) never gains one — so
+  // `hasDoi` stays false forever and keeps qualityScore below the 0.7 AI gate.
+  if (!existing.externalIds?.doi && n.externalIds.doi) existing.set("externalIds.doi", n.externalIds.doi);
+  if (!existing.externalIds?.openalexId && n.externalIds.openalexId)
+    existing.set("externalIds.openalexId", n.externalIds.openalexId);
+  if ((!existing.publicationYear || existing.publicationYear === 0) && n.publicationYear)
+    existing.publicationYear = n.publicationYear;
   // `.set()` so TypeScript accepts plain arrays into Mongoose DocumentArray paths.
   if (n.topics.length > (existing.topics?.length ?? 0)) existing.set("topics", n.topics);
   if (n.keywords.length > (existing.keywords?.length ?? 0)) existing.set("keywords", n.keywords);
