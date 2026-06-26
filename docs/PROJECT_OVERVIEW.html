@@ -318,6 +318,86 @@
     <tr><td>Cơ sở Dữ liệu</td><td>MongoDB Atlas (Vector Search), Redis</td></tr>
   </table>
 
+  <!-- 12 -->
+  <h2><span class="n">12.</span> Kiến trúc 2 tầng — "Không dồn mọi thứ vào Gemini"</h2>
+  <p class="lead">Nguyên tắc cốt lõi giúp hệ thống tiết kiệm token và vẫn minh bạch: <b>cái gì tính được bằng máy thì tính bằng máy</b>, mô hình ngôn ngữ chỉ đảm nhận phần diễn giải.</p>
+  <div class="grid c2">
+    <div class="card" style="border-left:4px solid #047857">
+      <span class="pill" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0">Tầng tính toán · KHÔNG LLM · 0 token</span>
+      <h3>Deterministic Compute</h3>
+      <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
+        <li><b>Trend</b> → MongoDB Aggregation + công thức toán (YoY, CAGR, Momentum)</li>
+        <li><b>Điểm bài báo</b> → công thức <code>computePaperScore</code> (impact / recency / metadata)</li>
+        <li><b>Xếp hạng search</b> → vector cosine similarity</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:4px solid #6d28d9">
+      <span class="pill" style="background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe">Tầng diễn giải · LLM · tốn token</span>
+      <h3>Generative (chỉ khi user yêu cầu)</h3>
+      <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
+        <li><b>Báo cáo narrative</b> + <b>research gap</b> bằng RAG</li>
+        <li>Mọi luận điểm có trích dẫn <code>[n]</code> trỏ về bài thật</li>
+        <li>Chỉ nhận <b>vài bài đã lọc sẵn</b> từ tầng dưới, không nhận cả corpus</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout ok">
+    <b>Câu chốt:</b> Con số <i>"chủ đề tăng 300%"</i> hay <i>"bài này điểm 0.85"</i> được tính bằng công thức toán trên MongoDB,
+    KHÔNG hỏi Gemini. LLM chỉ viết lời giải thích "tại sao" dựa trên vài bài đã lọc — nên token chỉ tốn ở một chỗ nhỏ nhất,
+    và mọi con số đều <b>tái lập được bằng tay</b>, không phải số đen từ AI.
+  </div>
+  <h3>Năm cơ chế tiết kiệm token</h3>
+  <table>
+    <tr><th>Cơ chế</th><th>Tiết kiệm</th></tr>
+    <tr><td>Cache mọi report trong Redis — key = <code>hash(query+năm+model+prompt_version+ID bài)</code>, TTL 7 ngày</td><td>Câu giống hệt → <b>0 token</b> (demo lại miễn phí)</td></tr>
+    <tr><td>Search chỉ dùng vector cosine, KHÔNG gọi LLM</td><td>Search bao nhiêu lần cũng 0 token LLM</td></tr>
+    <tr><td>RAG chỉ gửi top-K bài liên quan nhất vào prompt, không gửi cả 15k bài</td><td>Prompt nhỏ → ít token mỗi lần</td></tr>
+    <tr><td>Embed bài giá trị trước (sort theo citationCount giảm dần)</td><td>Quota embed phủ bài tốt nhất trước</td></tr>
+    <tr><td>Model rẻ <code>gemini-3.1-flash-lite</code> thay vì Pro</td><td>~10× rẻ hơn mỗi lượt</td></tr>
+  </table>
+
+  <!-- 13 -->
+  <h2><span class="n">13.</span> Cơ chế chấm điểm bài báo</h2>
+  <p class="lead">Điểm bài báo là <b>điểm nội tại, tính bằng công thức cố định</b> — công khai, tái lập được, không phải số do AI sinh ra.</p>
+  <div class="callout">
+    <b>finalScore = 0.40 × Impact + 0.35 × Recency + 0.25 × Metadata</b>
+  </div>
+  <table>
+    <tr><th>Tiêu chí</th><th>Trọng số</th><th>Công thức</th><th>Ý nghĩa</th></tr>
+    <tr><td><b>Impact</b></td><td>40%</td><td><code>log10(citations+1) / log10(1001)</code></td><td>Mức ảnh hưởng — log scale để 10→100 trích dẫn không nuốt hết thang</td></tr>
+    <tr><td><b>Recency</b></td><td>35%</td><td><code>1 − (năm nay − năm XB)/10</code></td><td>Độ mới — bài &gt; 10 năm = 0</td></tr>
+    <tr><td><b>Metadata</b></td><td>25%</td><td>7 trường đủ</td><td>title, abstract ≥ 250 ký tự, DOI, journal, năm, tác giả, open-access</td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:14px">Ví dụ: bài <i>"A Survey of Large Language Models"</i> (2026, 1405 trích dẫn) → finalScore <b>1.0</b> — kiểm chứng được bằng tay.</p>
+
+  <!-- 14 -->
+  <h2><span class="n">14.</span> Làm sao biết một xu hướng là THẬT?</h2>
+  <p class="lead">Một chủ đề/keyword chỉ được xem là "đang lên" khi vượt qua <b>3 cổng chống trend giả</b> — tránh một cú nhảy ngẫu nhiên bị hiểu nhầm thành xu hướng.</p>
+  <table>
+    <tr><th>Cổng lọc</th><th>Chặn cái gì</th></tr>
+    <tr><td><b>Base ≥ 2 bài năm trước</b> <span class="mono">(MIN_RISING_PREV_BASE)</span></td><td>Chặn <code>1 → 9 bài</code> = "+800%" giả, vô nghĩa</td></tr>
+    <tr><td><b>Bỏ năm hiện tại đang chạy dở</b> <span class="mono">(truncateToCompleteYears)</span></td><td>Năm chưa hết → chưa đủ dữ liệu → không lấy làm chuẩn tăng/giảm</td></tr>
+    <tr><td><b>3 chỉ số độc lập</b> (YoY + CAGR + Momentum)</td><td>Trend thật phải đẹp ở cả 3, không chỉ spike 1 năm</td></tr>
+  </table>
+  <div class="callout ok">
+    Trend thật = <b>tăng bền vững nhiều năm</b> (CAGR &amp; độ dốc hồi quy đều dương) + <b>base đủ lớn</b> + <b>chỉ tính năm đã hoàn chỉnh</b>.
+    Một cú spike ngẫu nhiên 1 năm sẽ bị 3 cổng này loại.
+  </div>
+
+  <!-- 15 -->
+  <h2><span class="n">15.</span> Giá trị so với OpenAlex</h2>
+  <p class="lead">OpenAlex là <b>kho dữ liệu thô</b>. Hệ thống này là <b>người trợ lý nghiên cứu</b> đứng trên kho đó — làm hộ người dùng những việc OpenAlex bắt tự làm thủ công.</p>
+  <table>
+    <tr><th></th><th>OpenAlex</th><th>LiemResearch</th></tr>
+    <tr><td><b>Search</b></td><td>Keyword + filter (khớp chữ)</td><td>Semantic — theo nghĩa (vector)</td></tr>
+    <tr><td><b>Trend</b></td><td>Trả count thô — tự tính</td><td>Tính sẵn growth + CAGR + momentum, đã lọc trend giả</td></tr>
+    <tr><td><b>Giải thích</b></td><td>Không có</td><td>Báo cáo AI grounded, có trích dẫn [n] về bài thật</td></tr>
+    <tr><td><b>Research gap</b></td><td>Không có</td><td>Tự phát hiện khoảng trống nghiên cứu</td></tr>
+    <tr><td><b>Xếp hạng</b></td><td>Sort theo citation thô</td><td>Điểm tổng hợp impact + recency + metadata</td></tr>
+    <tr><td><b>Chất lượng</b></td><td>Cả rác lẫn vàng</td><td>Đã lọc — chỉ bài đủ abstract, AI-analyzable</td></tr>
+    <tr><td><b>Trải nghiệm</b></td><td>API thô, tự ghép</td><td>1 luồng: search → trend → report → gap</td></tr>
+  </table>
+
   <div class="callout ok" style="margin-top:40px">
     <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành dữ liệu không gian ngữ nghĩa thông qua mô hình Embedding. Hệ thống tận dụng công nghệ RAG và Vector Search để cung cấp khả năng tìm kiếm nâng cao, phân tích xu hướng chuyên sâu và báo cáo tự động có đối chiếu trực tiếp từ nguồn dữ liệu thật, mang lại độ tin cậy và tốc độ xử lý ưu việt.
   </div>

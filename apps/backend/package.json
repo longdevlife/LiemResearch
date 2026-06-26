@@ -28,7 +28,9 @@
     "worker:sync": "tsx src/workers/sync.worker.ts",
     "worker:embedding": "tsx src/workers/embedding.worker.ts",
     "worker:report": "tsx src/workers/report.worker.ts",
-    "worker:gaps": "tsx src/workers/gaps.worker.ts"
+    "worker:gaps": "tsx src/workers/gaps.worker.ts",
+    "dev:all": "concurrently -n api,report,gaps -c blue,magenta,yellow \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\"",
+    "dev:all+sync": "concurrently -n api,report,gaps,sync -c blue,magenta,yellow,cyan \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:sync\""
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "concurrently": "^9.1.0",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
