@@ -44,6 +44,14 @@ export interface SemanticSearchResult {
 const VECTOR_INDEX = "paper_vector_index";
 /** Negative-cache TTL for a deterministically-failing rerank (truncation/parse). */
 const RERANK_FAIL_TTL_SECONDS = 600;
+/**
+ * Hard ceiling on the in-memory result horizon. The pool size is FIXED (never
+ * grows with the requested page) so `total` is deterministic for a given
+ * query+filters, and `limit` can never exceed `$vectorSearch` numCandidates
+ * (≤1000) — which otherwise makes Atlas throw on deep pagination. Semantic
+ * relevance past the top few hundred hits is noise, so capping here is correct.
+ */
+const MAX_POOL = 500;
 
 export const searchService = {
   /**
@@ -69,12 +77,14 @@ export const searchService = {
       return rerankedSearch({ q, page, pageSize, params, queryVector, vectorFilter, postMatch });
     }
 
-    // Plain semantic path: pull a filtered pool, sort, paginate in memory.
-    const poolSize = Math.max(env.SEARCH_FILTER_POOL, page * pageSize);
+    // Plain semantic path: pull a FIXED-size filtered pool, sort, paginate in
+    // memory. Pool size does NOT grow with `page` — so `total` is stable and a
+    // deep `page` can't push $vectorSearch limit past numCandidates (Atlas 500).
+    const poolSize = Math.min(MAX_POOL, env.SEARCH_FILTER_POOL);
     const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
     const sorted = sortPapers(pool, sort);
-    const start = (page - 1) * pageSize;
-    return { papers: sorted.slice(start, start + pageSize), total: sorted.length, reranked: false };
+    const { items, total } = slicePage(sorted, page, pageSize);
+    return { papers: items, total, reranked: false };
   },
 };
 
@@ -94,9 +104,11 @@ async function rerankedSearch(args: {
 }): Promise<SemanticSearchResult> {
   const { q, page, pageSize, params, queryVector, vectorFilter, postMatch } = args;
 
-  // Pool must cover at least the requested page, else page 1 of a large
-  // pageSize would be truncated below the configured head size.
-  const poolSize = Math.max(env.RERANK_CANDIDATES, page * pageSize);
+  // FIXED candidate pool (covers a full first page of any pageSize, but does NOT
+  // grow with `page`) — so a deep `page` can't inflate the Gemini prompt / token
+  // cost, and `total` stays deterministic. Rerank refines the head; paginating
+  // past the head is meaningless and is clamped in paginatePool.
+  const poolSize = Math.min(MAX_POOL, Math.max(env.RERANK_CANDIDATES, pageSize));
   const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
@@ -160,8 +172,21 @@ function paginatePool(
   pageSize: number,
   reranked: boolean,
 ): SemanticSearchResult {
-  const start = (page - 1) * pageSize;
-  return { papers: pool.slice(start, start + pageSize), total: pool.length, reranked };
+  const { items, total } = slicePage(pool, page, pageSize);
+  return { papers: items, total, reranked };
+}
+
+/**
+ * Clamp `page` into the valid range for a fixed-size pool and slice it. An
+ * out-of-range page returns the last page (never an Atlas error, never a lying
+ * total). `total` is the pool survivor count — stable for a given query+filters.
+ */
+function slicePage<T>(items: T[], page: number, pageSize: number): { items: T[]; total: number } {
+  const total = items.length;
+  const maxPage = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, page), maxPage);
+  const start = (safePage - 1) * pageSize;
+  return { items: items.slice(start, start + pageSize), total };
 }
 
 function buildVectorFilter(f: { yearFrom?: number; yearTo?: number }): Record<string, unknown> {
