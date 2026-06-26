@@ -44,10 +44,6 @@ export const authService = {
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const tokenHash = hashToken(refreshToken);
-    const stored = await RefreshTokenModel.findOne({ tokenHash });
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw AppError.unauthorized("Invalid refresh token");
-    }
 
     let payload: AuthClaims;
     try {
@@ -56,15 +52,22 @@ export const authService = {
       throw AppError.unauthorized("Invalid refresh token");
     }
 
+    // Atomically claim-and-revoke the stored token. The filter matches ONLY a
+    // not-yet-revoked, unexpired record, so two concurrent refreshes with the same
+    // token can't both succeed — the second finds it already revoked and is rejected
+    // (closes the token-reuse double-mint window that check-then-save left open).
+    const stored = await RefreshTokenModel.findOneAndUpdate(
+      { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+      { $set: { revokedAt: new Date() } },
+    );
+    if (!stored) throw AppError.unauthorized("Invalid refresh token");
+
     const user = await UserModel.findById(payload.sub);
     if (!user) throw AppError.unauthorized();
     if (user.isActive === false) {
       throw AppError.forbidden("Account has been disabled");
     }
 
-    // Rotate: revoke old, issue new pair.
-    stored.revokedAt = new Date();
-    await stored.save();
     return issueTokens(user);
   },
 

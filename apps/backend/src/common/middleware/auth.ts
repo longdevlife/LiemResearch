@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import type { UserRole } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../exceptions/app-error.js";
+import { UserModel } from "../../modules/auth/models/user.model.js";
 
 export interface AuthClaims {
   sub: string;          // user id
@@ -19,19 +20,33 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     return next(AppError.unauthorized("Missing or malformed Authorization header"));
   }
 
   const token = header.slice("Bearer ".length);
+  let claims: AuthClaims;
   try {
-    const claims = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthClaims;
-    req.user = claims;
-    next();
+    claims = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthClaims;
   } catch {
-    next(AppError.unauthorized("Invalid or expired access token"));
+    return next(AppError.unauthorized("Invalid or expired access token"));
+  }
+
+  // Stateless JWT can't reflect a mid-session disable/delete. Re-check against the
+  // DB (one indexed _id lookup) so a disabled account loses access immediately
+  // rather than staying valid until the 15-min access token expires. Also refresh
+  // the role from the DB so requireRole sees the current value.
+  try {
+    const user = await UserModel.findById(claims.sub).select("isActive role").lean();
+    if (!user || user.isActive === false) {
+      return next(AppError.unauthorized("Account is disabled or no longer exists"));
+    }
+    req.user = { ...claims, role: user.role };
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 
