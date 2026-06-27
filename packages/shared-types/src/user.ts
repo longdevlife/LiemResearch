@@ -11,6 +11,9 @@ export interface User {
   institution?: string;
   researchInterests?: string[];
   isActive?: boolean;
+  points?: number;
+  credits?: number;
+  penaltyPoints?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

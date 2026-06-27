@@ -94,7 +94,7 @@ export function HomePage() {
               ) : trendsData?.topics && trendsData.topics.length > 0 ? (
                 trendsData.topics.slice(0, 4).map((topic, index) => {
                   const colors = ["blue", "emerald", "purple", "slate"];
-                  const color = colors[index % colors.length];
+                  const color = colors[index % colors.length] || "slate";
                   let trend: "up" | "down" | "neutral" = "neutral";
                   if (topic.momentum > 0.05) trend = "up";
                   else if (topic.momentum < -0.05) trend = "down";

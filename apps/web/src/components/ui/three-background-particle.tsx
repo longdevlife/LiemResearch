@@ -169,7 +169,7 @@ export function ThreeBackgroundParticle() {
                     p.glow.visible = p.glowStrength > 0.02;
                 }
                 if ((p.mesh.material as THREE.ShaderMaterial).uniforms['uGlowStrength']) {
-                    (p.mesh.material as THREE.ShaderMaterial).uniforms['uGlowStrength'].value = p.glowStrength;
+                    (p.mesh.material as THREE.ShaderMaterial).uniforms['uGlowStrength']!.value = p.glowStrength;
                 }
             }
 

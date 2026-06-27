@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { useBookmarks } from "@/features/bookmarks";
+import { useNotifications } from "@/features/notifications";
 import { cn } from "@/utils/cn";
 
 const navItems = [
@@ -24,8 +26,24 @@ const navItems = [
   { to: "/rankings", label: "Rankings" },
 ] as const;
 
+
 export function MainLayout() {
   const navigate = useNavigate();
+  const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const { data: bookmarks } = useBookmarks({ enabled: isAuthed });
+  const { data: notifications } = useNotifications({ enabled: isAuthed });
+
+  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
+
+  const validBookmarksCount = bookmarks?.filter((b) => {
+    if (b.targetKind === "paper") return !!b.paperDetail;
+    if (b.targetKind === "report") return !!b.reportDetail;
+    return false;
+  }).length || 0;
+
+  const filteredNavItems = navItems;
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
@@ -36,7 +54,7 @@ export function MainLayout() {
             </Link>
             
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -75,10 +93,26 @@ export function MainLayout() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            {isAuthed && (
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+                <Link to="/bookmarks" aria-label="Bookmarks">
+                  <Bookmark className="h-5 w-5" />
+                  {validBookmarksCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
+                      {validBookmarksCount}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
-              <Link to="/notifications">
+              <Link to="/notifications" aria-label="Notifications">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border border-white dark:border-[#0f0f11]"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             </Button>
             <UserMenu />

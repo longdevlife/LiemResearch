@@ -33,6 +33,11 @@ export const API_ROUTES = {
     check: "/bookmarks/check",
     updateNote: (id: string) => `/bookmarks/${id}`,
   },
+  notifications: {
+    list: "/notifications",
+    read: (id: string) => `/notifications/${id}/read`,
+    readAll: "/notifications/read-all",
+  },
   analytics: {
     summary: "/analytics/search/summary",
     dashboard: "/analytics/search",

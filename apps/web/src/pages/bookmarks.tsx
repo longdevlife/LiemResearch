@@ -59,8 +59,15 @@ export function BookmarksPage() {
     }
   };
 
+  // Filter out orphaned bookmarks (where paper or report details are missing)
+  const validBookmarks = bookmarks?.filter((b) => {
+    if (b.targetKind === "paper") return !!b.paperDetail;
+    if (b.targetKind === "report") return !!b.reportDetail;
+    return false;
+  }) || [];
+
   // Filter and Search logic
-  const filteredBookmarks = bookmarks?.filter((b) => {
+  const filteredBookmarks = validBookmarks.filter((b) => {
     // 1. Tab filter
     if (activeTab !== "all" && b.targetKind !== activeTab) return false;
 
@@ -107,7 +114,7 @@ export function BookmarksPage() {
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
-            All Items ({bookmarks?.length || 0})
+            All Items ({validBookmarks.length})
           </button>
           <button
             onClick={() => setActiveTab("paper")}
@@ -117,7 +124,7 @@ export function BookmarksPage() {
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
-            Papers ({bookmarks?.filter((b) => b.targetKind === "paper").length || 0})
+            Papers ({validBookmarks.filter((b) => b.targetKind === "paper").length})
           </button>
           <button
             onClick={() => setActiveTab("report")}
@@ -127,7 +134,7 @@ export function BookmarksPage() {
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
-            Reports ({bookmarks?.filter((b) => b.targetKind === "report").length || 0})
+            Reports ({validBookmarks.filter((b) => b.targetKind === "report").length})
           </button>
         </div>
 

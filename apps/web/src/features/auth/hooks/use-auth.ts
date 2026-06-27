@@ -5,9 +5,14 @@ import { authApi, type UpdateProfileRequest, type ChangePasswordRequest } from "
 
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: LoginRequest) => authApi.login(payload),
-    onSuccess: (data) => setAuth(data),
+    onSuccess: (data) => {
+      setAuth(data);
+      queryClient.clear();
+      queryClient.setQueryData(["current-user"], { user: data.user });
+    },
   });
 }
 
@@ -19,12 +24,16 @@ export function useRegister() {
 
 export function useLogout() {
   const clear = useAuthStore((s) => s.clear);
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const refreshToken = useAuthStore.getState().tokens?.refreshToken;
       if (refreshToken) await authApi.logout(refreshToken);
     },
-    onSettled: () => clear(),
+    onSettled: () => {
+      clear();
+      queryClient.clear();
+    },
   });
 }
 
