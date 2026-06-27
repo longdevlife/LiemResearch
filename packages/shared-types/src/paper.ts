@@ -67,6 +67,39 @@ export interface Paper {
   dataQualityScore: number; // 0..1 — field-presence quality
   isAiAnalyzable: boolean; // true when quality is high enough for AI analysis
   aiScore?: PaperAiScore; // Phase B
+  metadataScore?: number;
+  sourceScore?: number;
+  duplicateScore?: number;
+  relevanceScore?: number;
+  prestigeScore?: number;
+  utilityScore?: number;
+  qualityScore?: number;
+  qualityTier?: number;
+  qualityTierName?: string;
+  downloadCost?: number | null;
+  uploadCreditReward?: number;
+  pdfPath?: string;
+  paperLink?: string;
+  rejectionReason?: string;
+  paperStatus?: "pending" | "not-downloaded" | "downloaded" | "rejected" | "pending-requester-acceptance";
+  requestedBy?: {
+    _id: string;
+    fullName: string;
+    email?: string;
+    university?: string;
+    role?: string;
+    avatarUrl?: string | null;
+  };
+  uploadedBy?: {
+    _id: string;
+    fullName: string;
+    email?: string;
+    university?: string;
+    role?: string;
+    avatarUrl?: string | null;
+  };
+  uploadedAt?: ISODateString;
+  uploadRewardedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

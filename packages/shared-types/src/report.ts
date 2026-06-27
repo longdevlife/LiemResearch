@@ -30,6 +30,8 @@ export interface AnalyticalReport {
   topic?: string;
   query: string;
   status: ReportStatus;
+  yearFrom?: number;
+  yearTo?: number;
   /** Markdown body. Inline citations are [n] where n is 1-based into
    *  `groundingPaperIds`: [n] → groundingPaperIds[n-1]. */
   markdown?: string;

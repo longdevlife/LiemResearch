@@ -15,6 +15,9 @@ const userSchema = new Schema(
     institution: { type: String },
     researchInterests: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
+    points: { type: Number, default: 0 },
+    credits: { type: Number, default: 0 },
+    penaltyPoints: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },
 );

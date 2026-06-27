@@ -1,19 +1,24 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail } from "lucide-react";
+import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail, FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrentUser, useUpdateProfile, useChangePassword } from "@/features/auth";
 import { Badge } from "@/components/ui/badge";
+import { SubmitPaperPage } from "./papers/submit-paper";
+import { MyPapersPage } from "./papers/my-papers";
 
-type SettingsSection = "profile" | "security" | "preferences";
+type SettingsSection = "profile" | "security" | "preferences" | "submit-paper" | "my-papers";
 
 export function ProfilePage() {
   const { section } = useParams<{ section?: string }>();
   const { data: userData, isLoading: isUserLoading } = useCurrentUser();
   const updateProfileMutation = useUpdateProfile();
   const changePasswordMutation = useChangePassword();
+
+  const user = userData?.user;
+  const isAdmin = user?.role === "admin";
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("profile");
 
@@ -23,10 +28,14 @@ export function ProfilePage() {
       setActiveSection("security");
     } else if (section === "preferences" || section === "customization" || section === "notifications") {
       setActiveSection("preferences");
+    } else if ((section === "submit-paper" || section === "submit") && !isAdmin) {
+      setActiveSection("submit-paper");
+    } else if ((section === "my-papers" || section === "submissions") && !isAdmin) {
+      setActiveSection("my-papers");
     } else {
       setActiveSection("profile");
     }
-  }, [section]);
+  }, [section, isAdmin]);
 
   // Profile Form State
   const [fullName, setFullName] = useState("");
@@ -158,6 +167,34 @@ export function ProfilePage() {
             <User className="w-4 h-4" />
             My Profile
           </button>
+
+          {!isAdmin && (
+            <>
+              <button
+                onClick={() => { setActiveSection("submit-paper"); setSuccessMessage(""); setErrorMessage(""); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all ${
+                  activeSection === "submit-paper"
+                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                Submit Paper
+              </button>
+              <button
+                onClick={() => { setActiveSection("my-papers"); setSuccessMessage(""); setErrorMessage(""); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all ${
+                  activeSection === "my-papers"
+                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                My Papers
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => { setActiveSection("security"); setSuccessMessage(""); setErrorMessage(""); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all ${
@@ -396,6 +433,16 @@ export function ProfilePage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Section 4: Submit Paper */}
+          {activeSection === "submit-paper" && !isAdmin && (
+            <SubmitPaperPage isEmbedded={true} />
+          )}
+
+          {/* Section 5: My Papers */}
+          {activeSection === "my-papers" && !isAdmin && (
+            <MyPapersPage isEmbedded={true} />
           )}
 
         </section>

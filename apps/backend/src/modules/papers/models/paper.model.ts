@@ -67,15 +67,32 @@ const paperSchema = new Schema(
       default: "unknown",
     },
     openAccessUrl: { type: String },
+    paperLink: { type: String }, // Direct link to source paper (required for requests)
     licenseName: { type: String },
     citationCount: { type: Number, default: 0, index: true },
     keywords: { type: [paperKeywordSchema], default: [] },
     topics: { type: [paperTopicSchema], default: [] },
     primaryProvider: {
       type: String,
-      enum: ["openalex", "semanticscholar", "crossref", "arxiv"],
+      enum: ["openalex", "semanticscholar", "crossref", "arxiv", "user"],
       required: true,
     },
+    pdfPath: { type: String },
+    // --- User submission / request fields (Legacy-compatible) ---
+    requestedBy: { type: Schema.Types.ObjectId, ref: "User", index: true }, // Who created the request
+    uploadedBy: { type: Schema.Types.ObjectId, ref: "User", index: true },  // Who uploaded the PDF
+    uploadedAt: { type: Date },
+    uploadRewardedAt: { type: Date }, // When the upload credit reward was granted
+    rejectionReason: { type: String, trim: true, maxlength: 500 },
+    /** paperStatus: the user-facing workflow state (mirrors Legacy status field).
+     *  dataStatus is kept separately for AI/Search pipeline compatibility. */
+    paperStatus: {
+      type: String,
+      enum: ["pending", "not-downloaded", "downloaded", "rejected", "pending-requester-acceptance"],
+      default: "pending",
+      index: true,
+    },
+    // --- AI/Sync pipeline status ---
     dataStatus: {
       type: String,
       enum: ["draft", "active", "low-quality", "archived"],
@@ -84,6 +101,23 @@ const paperSchema = new Schema(
     },
     dataQualityScore: { type: Number, min: 0, max: 1, default: 0 },
     isAiAnalyzable: { type: Boolean, default: false, index: true },
+    // --- Quality scoring ---
+    metadataScore: { type: Number, default: 0 },
+    sourceScore: { type: Number, default: 0 },
+    duplicateScore: { type: Number, default: 0 },
+    relevanceScore: { type: Number, default: 0 },
+    prestigeScore: { type: Number, default: 0 },
+    utilityScore: { type: Number, default: 0 },
+    qualityScore: { type: Number, default: 0 },
+    qualityTier: { type: Number, default: 0 },
+    qualityTierName: { type: String, default: "Không hợp lệ" },
+    downloadCost: { type: Number, default: null },
+    uploadCreditReward: { type: Number, default: 0 },
+    // --- Stats ---
+    averageRating: { type: Number, default: 0 },
+    totalRatings: { type: Number, default: 0 },
+    downloadCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
     /** Vector embedding for Atlas Vector Search. 768 dim from gemini-embedding-2.
      *  Populated in Phase B; select:false so list queries don't carry vectors. */
     embedding: { type: [Number], default: undefined, select: false },
