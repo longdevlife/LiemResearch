@@ -5,6 +5,7 @@ import compression from "compression";
 import { pinoHttp } from "pino-http";
 import swaggerUi from "swagger-ui-express";
 import passport from "./modules/auth/passport.js";
+import path from "path";
 
 import { env } from "./config/env.js";
 import { logger } from "./infrastructure/logger.js";
@@ -50,6 +51,7 @@ export function createApp(): Express {
     }),
   );
 
+  app.use("/uploads", express.static(path.resolve("uploads")));
   app.use("/api/v1", apiRouter);
 
   app.use(notFoundHandler);

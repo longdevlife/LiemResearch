@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Award } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ export function MainLayout() {
   const user = useAuthStore((s) => s.user);
   const { data: bookmarks } = useBookmarks({ enabled: isAuthed });
   const { data: notifications } = useNotifications({ enabled: isAuthed });
+  const { data: currentUserData } = useCurrentUser();
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
 
@@ -159,6 +160,8 @@ function UserMenu() {
   const email = data?.user?.email ?? "Account";
   const fullName = data?.user?.fullName || email;
   const role = data?.user?.role;
+  const credits = data?.user?.credits ?? 0;
+  const points = data?.user?.points ?? 0;
 
   return (
     <DropdownMenu>
@@ -169,6 +172,27 @@ function UserMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 z-[9999]">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none text-slate-900 dark:text-white truncate">{fullName}</p>
+            <p className="text-xs leading-none text-slate-500 truncate">{email}</p>
+          </div>
+        </DropdownMenuLabel>
+        {role !== "admin" && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-2 text-xs font-semibold text-slate-500 space-y-1.5 bg-slate-50/50 dark:bg-zinc-900/30 rounded-md animate-fadeIn">
+              <div className="flex justify-between items-center">
+                <span>Balance:</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{credits.toLocaleString()} credits</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Points:</span>
+                <span className="text-amber-600 dark:text-amber-500 font-bold">{points.toLocaleString()} pts</span>
+              </div>
+            </div>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/profile")}>
           Profile

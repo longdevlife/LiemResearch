@@ -11,11 +11,13 @@ import {
   Download,
   Upload,
   Check,
+  Info,
   Loader2,
   Trash2,
   X,
   Edit,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePaper } from "@/features/papers";
@@ -24,6 +26,8 @@ import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-c
 import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/services/api-client";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,21 +36,45 @@ export function PaperDetailPage() {
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
   const { data: reportCount, isLoading: isReportCountLoading } = usePaperReportCount(id);
+  const queryClient = useQueryClient();
 
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === "admin";
+  const [ratingView, setRatingView] = useState<any>(null);
+  const [ratingLoading, setRatingLoading] = useState(true);
 
+  const fetchRatingView = async () => {
+    try {
+      const res = await api.get(`/quality/paper/${id}`);
+      if (res.data.success) {
+        setRatingView(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch paper rating view:", err);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchRatingView();
+    }
+  }, [id]);
+
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === "admin";
 
   const handleUploadPdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      if (file && file.type === "application/pdf") {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === "application/pdf") {
+        setUploadingPdf(true);
+        toast.loading("Uploading PDF...", { id: "pdf-upload" });
         try {
-          toast.loading("Uploading PDF...", { id: "pdf-upload" });
           const formData = new FormData();
           formData.append("pdf", file);
           await api.post(`/papers/${id}/upload-pdf`, formData, {
@@ -57,6 +85,8 @@ export function PaperDetailPage() {
         } catch (error: any) {
           console.error(error);
           toast.error(error.response?.data?.error?.message || "Failed to upload PDF", { id: "pdf-upload" });
+        } finally {
+          setUploadingPdf(false);
         }
       } else {
         toast.error("Only PDF files are allowed");
@@ -72,6 +102,16 @@ export function PaperDetailPage() {
       window.open(downloadUrl, "_blank");
       if (cost > 0) {
         toast.success(`PDF downloaded. ${cost} credits deducted.`);
+        // Instant credit update on UI!
+        try {
+          const resMe = await api.get("/auth/me");
+          if (resMe.data.success) {
+            useAuthStore.setState({ user: resMe.data.data.user });
+            queryClient.setQueryData(["current-user"], resMe.data.data);
+          }
+        } catch (e) {
+          queryClient.invalidateQueries({ queryKey: ["current-user"] });
+        }
       } else {
         toast.success("PDF download started.");
       }
@@ -138,6 +178,7 @@ export function PaperDetailPage() {
 
   const isRequester = paper.requestedBy?._id === currentUser?.id;
   const isUploader = paper.uploadedBy?._id === currentUser?.id;
+  const isOwner = isRequester || isUploader;
   const isPdfAvailable = paper.pdfPath && paper.paperStatus === "downloaded";
   
   const isWaitingRequesterAccept =
@@ -274,11 +315,22 @@ export function PaperDetailPage() {
             {/* Action Bar */}
             <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6 gap-4">
               <div className="flex items-center gap-3">
-                {paper.openAccessUrl && (
-                  <Button className="bg-blue-800 hover:bg-blue-900 text-white font-bold h-10 px-5 gap-2 rounded-lg" onClick={() => window.open(paper.openAccessUrl, '_blank')}>
-                    <FileText className="w-4 h-4" /> Read PDF
+                {(paper.pdfPath && canDownloadPdf) || paper.openAccessUrl ? (
+                  <Button
+                    className="bg-blue-800 hover:bg-blue-900 text-white font-bold h-10 px-5 gap-2 rounded-lg"
+                    onClick={() => {
+                      if (paper.pdfPath && canDownloadPdf) {
+                        handleDownloadPdf();
+                      } else if (paper.openAccessUrl) {
+                        window.open(paper.openAccessUrl, '_blank');
+                      }
+                    }}
+                    disabled={downloading}
+                  >
+                    {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    Read PDF
                   </Button>
-                )}
+                ) : null}
                 <Button 
                   variant={isBookmarked ? "default" : "outline"} 
                   className={`h-10 px-4 gap-2 font-bold rounded-lg ${
@@ -482,7 +534,7 @@ export function PaperDetailPage() {
           )}
 
           {/* Abstract */}
-          <div>
+          <div className="mb-8">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Abstract</h3>
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed text-justify">
               <p>
@@ -490,6 +542,17 @@ export function PaperDetailPage() {
               </p>
             </div>
           </div>
+
+          {/* Rating Section */}
+          {!isAdmin && !isOwner && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-8 mb-8">
+              <PaperRatingWidget
+                paperId={id || ""}
+                loading={ratingLoading}
+                onSuccess={fetchRatingView}
+              />
+            </div>
+          )}
 
         </div>
 
@@ -519,34 +582,45 @@ export function PaperDetailPage() {
             </div>
           </div>
 
-          {/* Lead Author Card */}
-          {paper.authors[0] && (
-            <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm sticky top-24">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-4">Lead Author</div>
-              
-              <div className="flex gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-lg font-bold text-blue-700 dark:text-blue-400">
-                  {paper.authors[0].displayName.charAt(0)}
+          {/* Sticky Sidebar elements */}
+          <div className="sticky top-24 flex flex-col gap-4">
+            {/* Lead Author Card */}
+            {paper.authors[0] && (
+              <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-4">Lead Author</div>
+                
+                <div className="flex gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-lg font-bold text-blue-700 dark:text-blue-400">
+                    {paper.authors[0].displayName.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{paper.authors[0].displayName}</h4>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">{paper.authors[0].displayName}</h4>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <div className="text-xs text-slate-500 font-medium mb-1">Citations (Paper)</div>
-                  <div className="text-base font-bold text-slate-900 dark:text-white">{paper.citationCount}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 font-medium mb-1">Data Quality</div>
-                  <div className="text-base font-bold text-slate-900 dark:text-white">
-                    {paper.dataQualityScore ? paper.dataQualityScore.toFixed(2) : "N/A"}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-slate-500 font-medium mb-1">Citations (Paper)</div>
+                    <div className="text-base font-bold text-slate-900 dark:text-white">{paper.citationCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-medium mb-1">Data Quality</div>
+                    <div className="text-base font-bold text-slate-900 dark:text-white">
+                      {paper.dataQualityScore ? paper.dataQualityScore.toFixed(2) : "N/A"}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Other Users' Ratings List */}
+            <PaperReviewsList
+              ratingView={ratingView}
+              loading={ratingLoading}
+              currentUser={currentUser}
+              onSuccess={fetchRatingView}
+            />
+          </div>
         </div>
       </div>
     </main>
@@ -558,5 +632,260 @@ function SparklesIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
       <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
     </svg>
+  );
+}
+
+function PaperRatingWidget({
+  paperId,
+  loading,
+  onSuccess,
+}: {
+  paperId: string;
+  loading: boolean;
+  onSuccess: () => void;
+}) {
+  const [rating, setRating] = useState<number>(0);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const queryClient = useQueryClient();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      toast.error("Please select a star rating");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api.post("/quality/rate", {
+        targetKind: "paper",
+        targetId: paperId,
+        stars: rating,
+        comment: comment.trim() || undefined,
+      });
+      if (res.data.success) {
+        toast.success("Rating submitted! +5 contribution points earned.");
+        setRating(0);
+        setComment("");
+        
+        // Instant points/credits update on UI!
+        try {
+          const resMe = await api.get("/auth/me");
+          if (resMe.data.success) {
+            useAuthStore.setState({ user: resMe.data.data.user });
+            queryClient.setQueryData(["current-user"], resMe.data.data);
+          }
+        } catch (e) {
+          queryClient.invalidateQueries({ queryKey: ["current-user"] });
+        }
+
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error("Failed to save rating:", err);
+      toast.error(err.response?.data?.error?.message || "Failed to submit rating");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400 mx-auto" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 max-w-2xl">
+      <div>
+        <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+          <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+          Rate this Research Paper
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Help the community gauge document quality! Earn +5 contribution points for your feedback.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center gap-2 py-1">
+          {[1, 2, 3, 4, 5].map((star) => {
+            const active = hoverRating ? star <= hoverRating : star <= rating;
+            return (
+              <button
+                key={star}
+                type="button"
+                className="transition-transform active:scale-95 duration-100"
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => setRating(star)}
+              >
+                <Star
+                  className={`w-9 h-9 cursor-pointer transition-colors ${
+                    active 
+                      ? "text-amber-400 fill-amber-400 filter drop-shadow-[0_0_4px_rgba(250,204,21,0.35)]" 
+                      : "text-slate-200 dark:text-slate-800"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-1.5">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Write an optional comment about the methodology, data quality, or general feedback..."
+            className="w-full text-sm bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 h-24 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-white resize-none"
+            maxLength={1000}
+          />
+        </div>
+
+        <div className="flex gap-3 flex-wrap">
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-11 px-6 gap-2 rounded-xl"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            Submit Feedback (+5 pts)
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function PaperReviewsList({
+  ratingView,
+  loading,
+  currentUser,
+  onSuccess,
+}: {
+  ratingView: any;
+  loading: boolean;
+  currentUser: any;
+  onSuccess: () => void;
+}) {
+  const queryClient = useQueryClient();
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 text-center shadow-sm">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400 mx-auto" />
+      </div>
+    );
+  }
+
+  const allRatings = ratingView?.allRatings || [];
+  const averageRating = ratingView?.ratingSummary?.averageRating ?? ratingView?.ratingSummary?.avg ?? 0;
+  const totalRatings = ratingView?.ratingSummary?.totalRatings ?? ratingView?.ratingSummary?.count ?? 0;
+
+  const handleDeleteReview = async (ratingId: string) => {
+    if (!confirm("Are you sure you want to delete your review?")) return;
+    try {
+      const res = await api.delete(`/quality/rate/${ratingId}`);
+      if (res.data.success) {
+        toast.success("Review deleted successfully.");
+        
+        // Instant points/credits update on UI!
+        try {
+          const resMe = await api.get("/auth/me");
+          if (resMe.data.success) {
+            useAuthStore.setState({ user: resMe.data.data.user });
+            queryClient.setQueryData(["current-user"], resMe.data.data);
+          }
+        } catch (e) {
+          queryClient.invalidateQueries({ queryKey: ["current-user"] });
+        }
+
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error("Failed to delete review:", err);
+      toast.error(err.response?.data?.error?.message || "Failed to delete review");
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="flex flex-col gap-2">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
+          User Ratings & Reviews
+        </h3>
+        
+        {totalRatings > 0 ? (
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-zinc-800 w-fit">
+            <span className="text-amber-500 flex items-center gap-0.5">
+              ★ {averageRating.toFixed(1)}
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">|</span>
+            <span>{totalRatings} user {totalRatings === 1 ? "rating" : "ratings"}</span>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            No ratings yet. Be the first to review this research paper!
+          </p>
+        )}
+      </div>
+
+      {allRatings.length > 0 && (
+        <div className="divide-y divide-slate-100 dark:divide-zinc-800 max-h-[350px] overflow-y-auto pr-1 space-y-3">
+          {allRatings.map((rating: any, index: number) => {
+            const userInit = rating.user?.fullName?.charAt(0) || "?";
+            const userName = rating.user?.fullName || "Anonymous";
+            const isMyReview = rating.user?.id === currentUser?.id;
+            return (
+              <div key={rating.id || index} className="pt-3 first:pt-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                      {userInit}
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[100px]" title={userName}>
+                      {userName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3 h-3 ${
+                            star <= rating.stars ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-slate-800"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {isMyReview && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReview(rating.id)}
+                        className="text-red-500 hover:text-red-700 transition-colors p-1"
+                        title="Delete review"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {rating.comment && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 italic bg-slate-50/50 dark:bg-zinc-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-zinc-800/50 break-words leading-relaxed">
+                    "{rating.comment}"
+                  </p>
+                )}
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 block mt-1 text-right">
+                  {new Date(rating.updatedAt).toLocaleDateString()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

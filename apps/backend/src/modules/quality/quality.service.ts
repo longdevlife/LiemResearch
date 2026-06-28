@@ -15,6 +15,8 @@ import { ReportModel } from "../reports/models/report.model.js";
 import { ResearchGapModel } from "../gaps/models/research-gap.model.js";
 import { QualityEvaluationModel, type QualityEvaluationDoc } from "./models/quality-evaluation.model.js";
 import { UserRatingModel } from "./models/user-rating.model.js";
+import { syncUserPoints } from "../auth/points.service.js";
+import { UserModel } from "../auth/models/user.model.js";
 import {
   QUALITY_JUDGE_SYSTEM_PROMPT,
   QUALITY_PROMPT_VERSION,
@@ -89,21 +91,26 @@ async function buildPromptForTarget(
   );
 }
 
-/** Access check for rate/view (reports owner-only; gaps readable by any authed user). */
 async function assertCanAccess(userId: string, kind: QualityTargetKind, id: string): Promise<void> {
   if (kind === "report") {
     const exists = await ReportModel.exists({ _id: id, userId });
     if (!exists) throw AppError.notFound("Report not found");
-  } else {
+  } else if (kind === "gap") {
     const exists = await ResearchGapModel.exists({ _id: id });
     if (!exists) throw AppError.notFound("Research gap not found");
+  } else {
+    const exists = await PaperModel.exists({ _id: id });
+    if (!exists) throw AppError.notFound("Paper not found");
   }
 }
 
 async function summarize(kind: QualityTargetKind, id: string): Promise<RatingSummary> {
   const agg = await UserRatingModel.aggregate<{ avg: number; count: number }>([
     { $match: { targetKind: kind, targetId: new mongoose.Types.ObjectId(id) } },
-    { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+    // Group by userId first to isolate unique users
+    { $group: { _id: "$userId", userAvg: { $avg: "$stars" } } },
+    // Compute average of user avgs and sum of unique users
+    { $group: { _id: null, avg: { $avg: "$userAvg" }, count: { $sum: 1 } } },
   ]);
   const r = agg[0];
   return { avg: r ? Math.round(r.avg * 10) / 10 : 0, count: r?.count ?? 0 };
@@ -157,34 +164,88 @@ export const qualityService = {
     return toEvaluationDto(doc as QualityEvaluationDoc);
   },
 
-  /** Upsert the caller's 1-5 rating; return the new summary. */
+  /** Create a new 1-5 rating; return the new summary. */
   async rate(
     userId: string,
     input: RateInput,
   ): Promise<{ ratingSummary: RatingSummary; myRating: { stars: number; comment?: string } }> {
     const { targetKind, targetId, stars, comment } = input;
+    const user = await UserModel.findById(userId);
+    if (user?.role === "admin") {
+      throw AppError.forbidden("Administrators are not allowed to rate papers/reports/gaps");
+    }
+    if (targetKind === "paper") {
+      const paper = await PaperModel.findById(targetId).lean();
+      if (!paper) {
+        throw AppError.notFound("Paper not found");
+      }
+      if (
+        paper.uploadedBy?.toString() === userId ||
+        paper.requestedBy?.toString() === userId
+      ) {
+        throw AppError.forbidden("You cannot review a paper that you uploaded or requested");
+      }
+    }
     await assertCanAccess(userId, targetKind, targetId);
-    await UserRatingModel.updateOne(
-      { userId, targetKind, targetId },
-      { $set: { stars, comment: comment ?? undefined } },
-      { upsert: true },
-    );
+    await UserRatingModel.create({
+      userId,
+      targetKind,
+      targetId,
+      stars,
+      comment: comment ?? undefined,
+    });
     const ratingSummary = await summarize(targetKind, targetId);
+    await syncUserPoints(userId);
     return { ratingSummary, myRating: { stars, comment } };
+  },
+
+  /** Delete a specific user's rating by ratingId. */
+  async deleteRate(
+    userId: string,
+    ratingId: string,
+  ): Promise<{ ratingSummary: RatingSummary }> {
+    const rating = await UserRatingModel.findById(ratingId);
+    if (!rating) {
+      throw AppError.notFound("Rating not found");
+    }
+    if (rating.userId.toString() !== userId) {
+      throw AppError.forbidden("You are only allowed to delete your own rating");
+    }
+    const { targetKind, targetId } = rating;
+    await UserRatingModel.deleteOne({ _id: ratingId });
+    const ratingSummary = await summarize(targetKind, targetId.toString());
+    await syncUserPoints(userId);
+    return { ratingSummary };
   },
 
   /** Everything the FE needs for one target. */
   async view(userId: string, kind: QualityTargetKind, id: string): Promise<QualityView> {
     await assertCanAccess(userId, kind, id);
-    const [evalDoc, ratingSummary, mine] = await Promise.all([
+    const [evalDoc, ratingSummary, mine, allRatings] = await Promise.all([
       QualityEvaluationModel.findOne({ targetKind: kind, targetId: id }),
       summarize(kind, id),
       UserRatingModel.findOne({ userId, targetKind: kind, targetId: id }).lean(),
+      UserRatingModel.find({ targetKind: kind, targetId: id })
+        .populate("userId", "fullName email avatarUrl")
+        .sort({ updatedAt: -1 })
+        .lean(),
     ]);
     return {
       evaluation: evalDoc ? toEvaluationDto(evalDoc) : undefined,
       ratingSummary,
       myRating: mine ? { stars: mine.stars, comment: mine.comment ?? undefined } : undefined,
+      allRatings: allRatings.map((r: any) => ({
+        id: r._id.toString(),
+        user: r.userId ? {
+          id: r.userId._id?.toString() || r.userId.id || String(r.userId),
+          fullName: r.userId.fullName || "User",
+          email: r.userId.email || "",
+          avatarUrl: r.userId.avatarUrl ?? undefined,
+        } : null,
+        stars: r.stars,
+        comment: r.comment ?? undefined,
+        updatedAt: r.updatedAt.toISOString(),
+      })),
     };
   },
 

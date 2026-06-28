@@ -316,9 +316,19 @@ export function RankingsPage() {
   const second = top3[1];
   const third = top3[2];
 
-  const myLevel = myRanking ? getLevel(myRanking.stats.points) : 1;
-  const myProgress = myRanking ? getLevelProgress(myRanking.stats.points, myLevel) : 0;
-  const myNextLevel = myRanking ? getNextLevelPoints(myLevel) : 25;
+  const userPoints = currentUser?.points ?? 0;
+  const myLevel = getLevel(userPoints);
+  const myProgress = getLevelProgress(userPoints, myLevel);
+  const myNextLevel = getNextLevelPoints(myLevel);
+
+  function getTierLabel(pts: number) {
+    if (pts >= 3000) return 'Legendary';
+    if (pts >= 1000) return 'Expert';
+    if (pts >= 300) return 'Advanced';
+    if (pts >= 75) return 'Scholar';
+    return 'Novice';
+  }
+  const activeTier = getTierLabel(userPoints);
 
   return (
     <>
@@ -639,12 +649,6 @@ export function RankingsPage() {
                   </div>
                 </div>
               </div>
-            ) : currentUser ? (
-              <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-[#1c1f26] dark:to-[#161820] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 text-center">
-                <Trophy className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-700" />
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-500">Start contributing to see your rank!</p>
-                <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Upload PDFs and rate papers to earn points.</p>
-              </div>
             ) : null}
 
             {/* ── Trending ── */}
@@ -658,7 +662,6 @@ export function RankingsPage() {
                   { icon: <Upload className="w-4 h-4" />, color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', label: 'Successful PDF Upload', value: '+100–300 pts' },
                   { icon: <Star className="w-4 h-4" />, color: 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400', label: 'Rate a Paper / Report', value: '+5 pts each' },
                   { icon: <Award className="w-4 h-4" />, color: 'bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400', label: 'Download a Paper', value: 'Credits used' },
-                  { icon: <Info className="w-4 h-4" />, color: 'bg-red-100 dark:bg-red-500/15 text-red-500 dark:text-red-400', label: 'Admin Penalty', value: '−pts' },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3 group">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.color} transition-transform group-hover:scale-110`}>
@@ -686,16 +689,30 @@ export function RankingsPage() {
                   { lv: 5, label: 'Advanced', pts: '300+', img: lv5, color: 'text-blue-500' },
                   { lv: 3, label: 'Scholar', pts: '75+', img: lv3, color: 'text-emerald-500' },
                   { lv: 1, label: 'Novice', pts: '0+', img: lv1, color: 'text-slate-400' },
-                ] as const).map((tier) => (
-                  <div key={tier.lv} className={`flex items-center gap-2.5 p-2 rounded-lg transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] ${myLevel === tier.lv ? 'bg-indigo-50 dark:bg-indigo-500/10 ring-1 ring-indigo-200 dark:ring-indigo-500/20' : ''}`}>
-                    <img src={tier.img} alt={`Lv${tier.lv}`} className="w-7 h-7 object-contain shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-xs font-black ${tier.color}`}>{tier.label}</div>
-                      <div className="text-[10px] text-slate-400 font-medium">{tier.pts} pts</div>
+                ] as const).map((tier) => {
+                  const isCurrentTier = activeTier === tier.label;
+                  return (
+                    <div
+                      key={tier.lv}
+                      className={`flex items-center gap-2.5 p-2 rounded-lg transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
+                        isCurrentTier
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10 ring-1 ring-indigo-200 dark:ring-indigo-500/20'
+                          : ''
+                      }`}
+                    >
+                      <img src={tier.img} alt={`Lv${tier.lv}`} className="w-7 h-7 object-contain shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs font-black ${tier.color}`}>{tier.label}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{tier.pts} pts</div>
+                      </div>
+                      {isCurrentTier && (
+                        <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">
+                          YOU
+                        </span>
+                      )}
                     </div>
-                    {myLevel === tier.lv && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black">YOU</span>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

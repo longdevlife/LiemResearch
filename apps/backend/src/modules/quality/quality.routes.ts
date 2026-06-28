@@ -31,3 +31,4 @@ qualityRouter.get("/agreement", requireRole("admin"), qualityController.agreemen
 qualityRouter.post("/evaluate", evalLimiter, validate(EvaluateSchema), qualityController.evaluate);
 qualityRouter.post("/rate", validate(RateSchema), qualityController.rate);
 qualityRouter.get("/:targetKind/:targetId", validate(TargetParamsSchema, "params"), qualityController.view);
+qualityRouter.delete("/rate/:ratingId", qualityController.deleteRate);

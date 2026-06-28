@@ -1,7 +1,7 @@
 // packages/shared-types/src/quality.ts
 import type { ISODateString } from "./common.js";
 
-export type QualityTargetKind = "report" | "gap";
+export type QualityTargetKind = "report" | "gap" | "paper";
 
 /** LLM-as-a-judge result for one AI artifact. */
 export interface QualityEvaluation {
@@ -26,11 +26,25 @@ export interface MyRating {
   comment?: string;
 }
 
+export interface UserRatingDetail {
+  id: string;
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    avatarUrl?: string;
+  } | null;
+  stars: number;
+  comment?: string;
+  updatedAt: ISODateString;
+}
+
 /** GET /quality/:kind/:id */
 export interface QualityView {
   evaluation?: QualityEvaluation;
   ratingSummary: RatingSummary;
   myRating?: MyRating;
+  allRatings?: UserRatingDetail[];
 }
 
 /** POST /quality/evaluate */

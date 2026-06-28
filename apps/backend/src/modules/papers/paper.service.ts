@@ -5,6 +5,7 @@ import path from "node:path";
 import { PaperModel, type PaperDoc } from "./models/paper.model.js";
 import { PaperDownloadModel } from "./models/paper-download.model.js";
 import { AppError } from "../../common/exceptions/app-error.js";
+import { env } from "../../config/env.js";
 import type { SearchSortKey } from "./dto/paper-filters.schema.js";
 import type { CreatePaperInput } from "./dto/create-paper.schema.js";
 import { calculatePaperQuality, getQualityTier, QUALITY_TIERS } from "./paper-quality.js";
@@ -73,8 +74,8 @@ function isSameId(
 }
 
 async function resolveLocalPdfPath(pdfPath: string): Promise<string> {
-  // For now we serve local files; in production swap for S3 presigned URL
-  return pdfPath;
+  // Serve local files via backend absolute URL
+  return `http://localhost:${env.PORT}${pdfPath}`;
 }
 
 async function deleteLocalPdf(pdfPath: string): Promise<void> {

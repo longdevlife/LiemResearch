@@ -23,6 +23,14 @@ export const qualityController = {
     res.json({ success: true, data });
   },
 
+  async deleteRate(req: Request<{ ratingId: string }>, res: Response) {
+    const data = await qualityService.deleteRate(
+      req.user!.sub,
+      req.params.ratingId,
+    );
+    res.json({ success: true, data });
+  },
+
   async agreement(_req: Request, res: Response) {
     const data = await qualityService.agreement();
     res.json({ success: true, data });
