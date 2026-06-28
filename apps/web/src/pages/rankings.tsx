@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useState } from 'react';
-import { Crown, Trophy, Medal, Award, ChevronDown, Info, ShieldCheck, FileText, Upload, Star, Loader2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Crown, Trophy, Medal, Award, Info, ShieldCheck, FileText, Upload, Star, Loader2, ChevronLeft, ChevronRight, Sparkles, TrendingUp, Users } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { api } from '@/services/api-client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -30,6 +30,28 @@ interface RankingUser {
   isMe?: boolean;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface MyRankingStats {
+  points: number;
+  uploadCreditReward: number;
+  uploadedPdfs: number;
+  requestedPapers: number;
+  ratingsGiven: number;
+  penaltyPoints: number;
+}
+
+interface MyRanking {
+  rank: number;
+  user: { id: string; name: string; university: string; role: string; avatarUrl: string | null };
+  stats: MyRankingStats;
+}
+
 function getLevel(points: number): number {
   if (points >= 3000) return 10;
   if (points >= 2000) return 9;
@@ -43,293 +65,654 @@ function getLevel(points: number): number {
   return 1;
 }
 
+const LEVEL_THRESHOLDS = [0, 25, 75, 150, 300, 600, 1000, 1500, 2000, 3000, Infinity];
+
+function getLevelProgress(points: number, level: number): number {
+  const currentThreshold = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const nextThreshold = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[10]!;
+  if (nextThreshold === Infinity) return 100;
+  return Math.min(100, Math.round(((points - currentThreshold) / (nextThreshold - currentThreshold)) * 100));
+}
+
+function getNextLevelPoints(level: number): number {
+  return LEVEL_THRESHOLDS[level] === Infinity ? LEVEL_THRESHOLDS[9]! : (LEVEL_THRESHOLDS[level] ?? 9999);
+}
+
+// ────────────────────────── Particle Background ──────────────────────────────
+function FloatingParticle({ delay, x, size }: { delay: number; x: number; size: number }) {
+  return (
+    <div
+      className="ranking-particle"
+      style={{ left: `${x}%`, width: size, height: size, animationDelay: `${delay}s`, animationDuration: `${6 + Math.random() * 4}s` }}
+    />
+  );
+}
+
+// ────────────────────────── Podium Card ──────────────────────────────────────
+interface PodiumCardProps {
+  user: RankingUser;
+  place: 1 | 2 | 3;
+  delay: number;
+}
+
+function PodiumCard({ user, place, delay }: PodiumCardProps) {
+  const isFirst = place === 1;
+  const isSecond = place === 2;
+
+  const config = {
+    1: {
+      border: 'border-yellow-400 dark:border-yellow-500',
+      bg: 'from-yellow-50 via-amber-50/30 to-white dark:from-[#2a2410] dark:via-[#1e1a0e] dark:to-[#0f0e0a]',
+      shadow: 'shadow-[0_20px_60px_rgba(250,204,21,0.25)] dark:shadow-[0_20px_60px_rgba(250,204,21,0.10)]',
+      glow: 'before:bg-yellow-400/20 dark:before:bg-yellow-400/10',
+      rankBg: 'bg-gradient-to-br from-yellow-400 to-amber-500',
+      rankText: 'text-white',
+      pointColor: 'text-yellow-700 dark:text-yellow-400',
+      pointBg: 'bg-yellow-100/60 dark:bg-yellow-900/25 border-yellow-200 dark:border-yellow-700/30',
+      height: 'h-[340px]',
+      avatarSize: 'w-32 h-32',
+      nameSize: 'text-xl',
+      icon: <Crown className="w-8 h-8 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]" fill="currentColor" />,
+    },
+    2: {
+      border: 'border-slate-300 dark:border-slate-600',
+      bg: 'from-slate-50 via-gray-50/30 to-white dark:from-[#1e2030] dark:via-[#181a28] dark:to-[#0f1018]',
+      shadow: 'shadow-[0_10px_40px_rgba(148,163,184,0.2)] dark:shadow-[0_10px_40px_rgba(100,116,139,0.10)]',
+      glow: 'before:bg-slate-300/20 dark:before:bg-slate-500/10',
+      rankBg: 'bg-gradient-to-br from-slate-300 to-slate-500',
+      rankText: 'text-white',
+      pointColor: 'text-slate-700 dark:text-slate-300',
+      pointBg: 'bg-slate-100/60 dark:bg-slate-800/50',
+      height: 'h-[290px]',
+      avatarSize: 'w-24 h-24',
+      nameSize: 'text-lg',
+      icon: <Medal className="w-6 h-6 text-slate-400" />,
+    },
+    3: {
+      border: 'border-orange-300 dark:border-orange-700',
+      bg: 'from-orange-50 via-amber-50/20 to-white dark:from-[#231a10] dark:via-[#1c1408] dark:to-[#0f0c06]',
+      shadow: 'shadow-[0_10px_40px_rgba(249,115,22,0.15)] dark:shadow-[0_10px_40px_rgba(234,88,12,0.08)]',
+      glow: 'before:bg-orange-300/20 dark:before:bg-orange-500/10',
+      rankBg: 'bg-gradient-to-br from-orange-300 to-amber-600',
+      rankText: 'text-white',
+      pointColor: 'text-orange-700 dark:text-orange-400',
+      pointBg: 'bg-orange-100/50 dark:bg-orange-900/20',
+      height: 'h-[265px]',
+      avatarSize: 'w-20 h-20',
+      nameSize: 'text-base',
+      icon: <Award className="w-6 h-6 text-orange-400" />,
+    },
+  }[place];
+
+  return (
+    <div
+      className={`relative bg-gradient-to-b ${config.bg} border-2 ${config.border} rounded-2xl flex flex-col items-center text-center
+        ${config.shadow} ${config.height} justify-between p-6 overflow-hidden
+        before:absolute before:inset-0 before:rounded-2xl ${config.glow} before:opacity-0 hover:before:opacity-100 before:transition-opacity
+        ranking-podium-card`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {/* Rank badge */}
+      <div className={`absolute -top-${isFirst ? 10 : 6} flex flex-col items-center gap-1 z-10`}>
+        {isFirst && config.icon}
+        <div className={`${isFirst ? 'w-14 h-14 text-xl' : 'w-12 h-12 text-base'} ${config.rankBg} ${config.rankText} rounded-full border-4 border-white dark:border-[#0f0e0a] flex items-center justify-center font-black shadow-lg ranking-bounce`}
+          style={{ animationDelay: `${delay + 200}ms` }}>
+          #{place}
+        </div>
+        {!isFirst && config.icon}
+      </div>
+
+      {/* Avatar */}
+      <div className={`${config.avatarSize} mt-6 ranking-avatar-float`} style={{ animationDelay: `${delay + 400}ms` }}>
+        <img src={avatars[user.level ?? 1]!} alt={`Level ${user.level}`} className="w-full h-full object-contain filter drop-shadow-xl" />
+      </div>
+
+      {/* Name + Level */}
+      <div className="w-full">
+        <h4 className={`font-black ${config.nameSize} text-slate-900 dark:text-white truncate`}>{user.name}</h4>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+          Lv.{user.level} · {user.university || 'N/A'}
+        </p>
+      </div>
+
+      {/* Points */}
+      <div className={`w-full py-2.5 ${config.pointBg} rounded-xl border border-transparent`}>
+        <span className={`font-black text-xl ${config.pointColor}`}>{user.points.toLocaleString()}</span>
+        <span className="text-xs text-slate-400 uppercase tracking-wider font-bold ml-1">pts</span>
+      </div>
+
+      {/* Shimmer sweep */}
+      <div className="absolute inset-0 pointer-events-none ranking-shimmer rounded-2xl" />
+    </div>
+  );
+}
+
+// ────────────────────────── Table Row ────────────────────────────────────────
+function TableRow({ user, index }: { user: RankingUser; index: number }) {
+  return (
+    <tr
+      className={`group transition-all duration-200 ranking-table-row ${
+        user.isMe
+          ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50 dark:hover:bg-blue-950/50'
+          : 'hover:bg-slate-50/80 dark:hover:bg-white/[0.03]'
+      }`}
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
+      <td className="px-6 py-4 text-center w-16">
+        <span className="font-black text-slate-300 dark:text-slate-700 text-sm">#{user.rank}</span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 shrink-0 relative">
+            <img src={avatars[user.level ?? 1]!} alt={`Lv ${user.level}`} className="w-full h-full object-contain" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-slate-800 dark:bg-[#1c1f26] rounded-full flex items-center justify-center">
+              <span className="text-[7px] font-black text-slate-400">{user.level}</span>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`font-bold text-sm truncate ${user.isMe ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
+                {user.name}
+              </span>
+              {user.isMe && (
+                <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0">You</span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 dark:text-slate-600 mt-0.5 truncate font-medium">
+              {user.university || '—'}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-center hidden sm:table-cell">
+        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-600 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md">
+          {user.role}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-center hidden md:table-cell">
+        <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg text-slate-500 dark:text-slate-500 font-semibold text-xs">
+          <FileText className="w-3 h-3" /> {user.credits}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <span className={`font-black text-base ${user.isMe ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
+          {user.points.toLocaleString()}
+        </span>
+        <span className="text-[10px] text-slate-400 ml-0.5 font-semibold">pts</span>
+      </td>
+    </tr>
+  );
+}
+
+// ────────────────────────── Main Component ───────────────────────────────────
 export function RankingsPage() {
   const [rankings, setRankings] = useState<RankingUser[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [myRanking, setMyRanking] = useState<MyRanking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
+  const particles = useRef(Array.from({ length: 15 }, (_, i) => ({ id: i, delay: i * 0.4, x: (i * 7) % 100, size: 4 + (i % 4) * 2 }))).current;
 
-  useEffect(() => {
-    api.get("/auth/rankings?limit=20").then((res) => {
-      const data: RankingUser[] = (res.data.data ?? []).map((u: any) => ({
+  const fetchRankings = async (page: number) => {
+    setPageLoading(true);
+    try {
+      const res = await api.get(`/auth/rankings/top?page=${page}&limit=20`);
+      const raw: RankingUser[] = (res.data.rankings ?? []).map((u: any) => ({
         ...u,
         level: getLevel(u.points),
         isMe: u.id === currentUser?.id,
       }));
-      setRankings(data);
-    }).catch(() => {}).finally(() => setLoading(false));
+      setRankings(raw);
+      setPagination(res.data.pagination ?? { page, limit: 20, total: raw.length, totalPages: 1 });
+    } catch {
+      // silent
+    } finally {
+      setPageLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const fetchMyRanking = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await api.get('/auth/rankings/me');
+      if (res.data.success) setMyRanking(res.data as MyRanking);
+    } catch {
+      // not ranked or not logged in
+    }
+  };
+
+  useEffect(() => {
+    fetchRankings(1);
+    fetchMyRanking();
   }, [currentUser?.id]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    setPagination((p) => ({ ...p, page: newPage }));
+    fetchRankings(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="relative">
+          <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+          <div className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping" />
+        </div>
+        <p className="text-slate-400 text-sm font-medium animate-pulse">Loading leaderboard…</p>
       </div>
     );
   }
 
-  const top3 = rankings.slice(0, 3);
-  const rest = rankings.slice(3);
-  const myRank = rankings.find((u) => u.isMe);
-
+  const isFirstPage = pagination.page === 1;
+  const top3 = isFirstPage ? rankings.slice(0, 3) : [];
+  const tableRows = isFirstPage ? rankings.slice(3) : rankings;
   const first = top3[0];
   const second = top3[1];
   const third = top3[2];
 
-  const hasPodium = rankings.length > 0;
+  const myLevel = myRanking ? getLevel(myRanking.stats.points) : 1;
+  const myProgress = myRanking ? getLevelProgress(myRanking.stats.points, myLevel) : 0;
+  const myNextLevel = myRanking ? getNextLevelPoints(myLevel) : 25;
 
   return (
-    <div className="w-full">
-      <PageHeader
-        title="Leaderboard"
-        description="Top contributors by approved papers, accepted PDFs, and useful ratings."
-      />
+    <>
+      {/* ───── Inline Keyframe Styles ───── */}
+      <style>{`
+        @keyframes rankingFadeUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rankingBounce {
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-6px); }
+        }
+        @keyframes rankingFloat {
+          0%,100% { transform: translateY(0) rotate(-1deg); }
+          50%      { transform: translateY(-8px) rotate(1deg); }
+        }
+        @keyframes rankingParticle {
+          0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+          10%  { opacity: 0.6; }
+          90%  { opacity: 0.4; }
+          100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+        }
+        @keyframes rankingShimmer {
+          0%   { transform: translateX(-100%) rotate(25deg); opacity: 0; }
+          40%  { opacity: 0.08; }
+          100% { transform: translateX(200%) rotate(25deg); opacity: 0; }
+        }
+        @keyframes rankingPulseGlow {
+          0%,100% { box-shadow: 0 0 20px rgba(99,102,241,0.15); }
+          50%      { box-shadow: 0 0 40px rgba(99,102,241,0.35); }
+        }
+        @keyframes rankingRowSlide {
+          from { opacity: 0; transform: translateX(-16px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes rankingCrownSpin {
+          0%   { transform: rotate(-10deg) scale(1); }
+          50%  { transform: rotate(10deg) scale(1.15); }
+          100% { transform: rotate(-10deg) scale(1); }
+        }
+        @keyframes rankingStarPop {
+          0%,100% { transform: scale(1); opacity: 0.7; }
+          50%      { transform: scale(1.4); opacity: 1; }
+        }
 
-      <div className="mt-8 flex flex-col xl:flex-row gap-8">
-        
-        {/* Main Content (Podium + Table) */}
-        <div className="flex-1 min-w-0 space-y-12">
-          
-          {/* Podium (Top 3) */}
-          <div className="relative">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-8 flex items-center gap-2">
-              <Crown className="w-5 h-5 text-yellow-500" /> Leaderboard Podium
-            </h3>
-            
-            {!hasPodium ? (
-              <div className="text-center py-16 text-slate-400 dark:text-zinc-600">
-                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No ranking data yet.</p>
-                <p className="text-sm mt-1">Be the first to submit papers and earn points!</p>
-              </div>
-            ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8">
-              
-              {/* Rank 2 (Silver) */}
-              {second ? (
-                <div className="bg-gradient-to-b from-slate-50 to-white dark:from-[#1a1c23] dark:to-[#121212] border-2 border-slate-300 dark:border-slate-700 rounded-2xl p-6 relative flex flex-col items-center text-center shadow-lg transform transition-transform hover:-translate-y-2 order-2 md:order-1 h-[280px] justify-between">
-                  <div className="absolute -top-6 w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full border-4 border-white dark:border-[#121212] flex items-center justify-center font-bold text-slate-700 dark:text-slate-300 shadow-md">
-                    #2
-                  </div>
-                  <div className="w-24 h-24 mb-4 mt-2">
-                    <img src={avatars[second.level ?? 1]!} alt={`Level ${second.level}`} className="w-full h-full object-contain filter drop-shadow-md" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{second.name}</h4>
-                    <p className="text-sm font-medium text-slate-500 mb-2">Lv. {second.level} ΓÇó {second.university}</p>
-                  </div>
-                  <div className="w-full py-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                    <span className="font-black text-xl text-slate-800 dark:text-slate-200">{second.points.toLocaleString()}</span> <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">pts</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative flex flex-col items-center text-center order-2 md:order-1 h-[280px] justify-center opacity-40">
-                  <Medal className="w-10 h-10 text-slate-300 mb-2" />
-                  <p className="text-xs font-bold text-slate-400">Rank #2 is currently empty</p>
-                </div>
-              )}
+        .ranking-podium-card {
+          animation: rankingFadeUp 0.7s ease both;
+          transform-style: preserve-3d;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .ranking-podium-card:hover { transform: translateY(-8px); }
 
-              {/* Rank 1 (Gold) */}
-              {first ? (
-                <div className="bg-gradient-to-b from-yellow-50 to-white dark:from-[#2a2410] dark:to-[#121212] border-2 border-yellow-400 dark:border-yellow-600 rounded-2xl p-6 relative flex flex-col items-center text-center shadow-[0_10px_40px_rgba(250,204,21,0.15)] dark:shadow-[0_10px_40px_rgba(250,204,21,0.05)] transform transition-transform hover:-translate-y-2 order-1 md:order-2 h-[320px] justify-between z-10">
-                  <div className="absolute -top-8 flex flex-col items-center">
-                    <Crown className="w-8 h-8 text-yellow-500 mb-1 drop-shadow-sm" fill="currentColor" />
-                    <div className="w-14 h-14 bg-yellow-400 dark:bg-yellow-500 rounded-full border-4 border-white dark:border-[#121212] flex items-center justify-center font-black text-white shadow-md text-xl">
-                      #1
-                    </div>
-                  </div>
-                  <div className="w-32 h-32 mb-4 mt-8">
-                    <img src={avatars[first.level ?? 1]!} alt={`Level ${first.level}`} className="w-full h-full object-contain filter drop-shadow-lg" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xl text-slate-900 dark:text-white truncate w-full">{first.name}</h4>
-                    <p className="text-sm font-medium text-slate-500 mb-3">Lv. {first.level} ΓÇó {first.university}</p>
-                  </div>
-                  <div className="w-full py-3 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
-                    <span className="font-black text-2xl text-yellow-700 dark:text-yellow-500">{first.points.toLocaleString()}</span> <span className="text-xs text-yellow-600 dark:text-yellow-600 uppercase tracking-wider font-bold">pts</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-yellow-200 dark:border-yellow-800/50 rounded-2xl p-6 relative flex flex-col items-center text-center order-1 md:order-2 h-[320px] justify-center opacity-40">
-                  <Crown className="w-10 h-10 text-yellow-300/60 mb-2 animate-pulse" />
-                  <p className="text-xs font-bold text-yellow-500/80">Rank #1 is currently empty</p>
-                </div>
-              )}
+        .ranking-bounce {
+          animation: rankingBounce 2.5s ease-in-out infinite;
+        }
+        .ranking-avatar-float {
+          animation: rankingFloat 3.5s ease-in-out infinite;
+        }
+        .ranking-shimmer::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%);
+          animation: rankingShimmer 3.5s ease-in-out infinite;
+        }
+        .ranking-particle {
+          position: absolute;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%);
+          animation: rankingParticle ease-in-out infinite;
+          pointer-events: none;
+        }
+        .ranking-table-row {
+          animation: rankingRowSlide 0.5s ease both;
+        }
+        .ranking-crown-anim {
+          animation: rankingCrownSpin 3s ease-in-out infinite;
+        }
+        .ranking-star-pop {
+          animation: rankingStarPop 1.5s ease-in-out infinite;
+        }
+        .ranking-glow-card {
+          animation: rankingPulseGlow 3s ease-in-out infinite;
+        }
+        .ranking-header-gradient {
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 40%, #ec4899 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      `}</style>
 
-              {/* Rank 3 (Bronze) */}
-              {third ? (
-                <div className="bg-gradient-to-b from-orange-50 to-white dark:from-[#231a15] dark:to-[#121212] border-2 border-orange-300 dark:border-orange-800 rounded-2xl p-6 relative flex flex-col items-center text-center shadow-lg transform transition-transform hover:-translate-y-2 order-3 md:order-3 h-[260px] justify-between">
-                  <div className="absolute -top-6 w-12 h-12 bg-orange-200 dark:bg-orange-900/50 rounded-full border-4 border-white dark:border-[#121212] flex items-center justify-center font-bold text-orange-800 dark:text-orange-400 shadow-md">
-                    #3
-                  </div>
-                  <div className="w-20 h-20 mb-4 mt-2">
-                    <img src={avatars[third.level ?? 1]!} alt={`Level ${third.level}`} className="w-full h-full object-contain filter drop-shadow-md" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate w-full">{third.name}</h4>
-                    <p className="text-sm font-medium text-slate-500 mb-2">Lv. {third.level} ΓÇó {third.university}</p>
-                  </div>
-                  <div className="w-full py-2 bg-orange-100/50 dark:bg-orange-900/20 rounded-lg">
-                    <span className="font-black text-xl text-orange-800 dark:text-orange-500">{third.points.toLocaleString()}</span> <span className="text-xs text-orange-600 dark:text-orange-700 uppercase tracking-wider font-bold">pts</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-orange-200 dark:border-orange-900/30 rounded-2xl p-6 relative flex flex-col items-center text-center order-3 md:order-3 h-[260px] justify-center opacity-40">
-                  <Medal className="w-10 h-10 text-orange-300 mb-2" />
-                  <p className="text-xs font-bold text-orange-400">Rank #3 is currently empty</p>
-                </div>
-              )}
+      <div className="w-full relative">
 
-            </div>
-          )}
-          </div>
-
-          {/* Leaderboard Table */}
-          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Leaderboard</h3>
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1 rounded-full text-xs font-semibold">
-                {rankings.length} Users
-              </span>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50/50 dark:bg-[#181818] text-slate-500 text-xs uppercase font-bold tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4 w-20 text-center">Rank</th>
-                    <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4 text-center hidden sm:table-cell">Role</th>
-                    <th className="px-6 py-4 text-center hidden md:table-cell">Credits</th>
-                    <th className="px-6 py-4 text-right">Total Points</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                  {rest.map((user) => (
-                    <tr 
-                      key={user.rank} 
-                      className={`group transition-colors ${
-                        user.isMe 
-                          ? 'bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20' 
-                          : 'hover:bg-slate-50/80 dark:hover:bg-[#1c1f26]'
-                      }`}
-                    >
-                      <td className="px-6 py-5 text-center">
-                        <span className="font-bold text-slate-400 dark:text-slate-600">#{user.rank}</span>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 shrink-0">
-                            <img src={avatars[user.level ?? 1]!} alt={`Lv ${user.level}`} className="w-full h-full object-contain" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-bold ${user.isMe ? 'text-[#001b69] dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
-                                {user.name}
-                              </span>
-                              {user.isMe && (
-                                <span className="bg-[#001b69] text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">You</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-0.5 font-medium">Lv. {user.level} ΓÇó {user.university}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center hidden sm:table-cell uppercase text-xs font-semibold text-slate-500">
-                        {user.role}
-                      </td>
-                      <td className="px-6 py-5 text-center hidden md:table-cell">
-                        <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 font-semibold text-xs">
-                          <FileText className="w-3.5 h-3.5" /> {user.credits}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <span className={`font-black text-lg ${user.isMe ? 'text-[#001b69] dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>
-                          {user.points.toLocaleString()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* ── Floating Particles (decorative background) ── */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
+          {particles.map((p) => (
+            <FloatingParticle key={p.id} delay={p.delay} x={p.x} size={p.size} />
+          ))}
         </div>
 
-        {/* Sidebar */}
-        <aside className="w-full xl:w-[320px] shrink-0 space-y-6">
-          
-          {/* Your Position Card */}
-          {myRank && (
-            <div className="bg-gradient-to-br from-[#001b69] to-[#001040] dark:from-[#0f172a] dark:to-[#020617] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6 opacity-90">
-                  <ShieldCheck className="w-5 h-5 text-blue-300" />
-                  <h3 className="font-bold tracking-wide">Your Position</h3>
-                </div>
-                
-                <div className="flex items-center gap-5 mb-6">
-                  <div className="w-16 h-16 bg-white/10 rounded-full p-2 border border-white/20">
-                    <img src={avatars[myRank.level ?? 1]!} alt="My Level" className="w-full h-full object-contain filter drop-shadow-md" />
+        {/* ── Page Header ── */}
+        <PageHeader
+          title="Leaderboard"
+          description="Top contributors by approved PDFs, useful ratings, and academic impact."
+        />
+
+        <div className="mt-8 flex flex-col xl:flex-row gap-8 relative z-10">
+
+          {/* ══════════════ MAIN COLUMN ══════════════ */}
+          <div className="flex-1 min-w-0 space-y-10">
+
+            {/* ── Podium (first page only) ── */}
+            {isFirstPage && (
+              <section>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-8 flex items-center gap-2">
+                  <span className="ranking-crown-anim inline-block">
+                    <Crown className="w-6 h-6 text-yellow-400" fill="currentColor" />
+                  </span>
+                  <span className="ranking-header-gradient">Top Leaderboard</span>
+                </h3>
+
+                {rankings.length === 0 ? (
+                  <div className="text-center py-20 text-slate-400 dark:text-zinc-600 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-bold">No ranking data yet.</p>
+                    <p className="text-sm mt-1">Be the first to contribute and earn points!</p>
                   </div>
-                  <div>
-                    <div className="text-3xl font-black mb-1">#{myRank.rank}</div>
-                    <div className="text-sm text-blue-200 font-medium">Lv. {myRank.level} ΓÇó {myRank.points.toLocaleString()} pts</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-10">
+                    {/* Silver (2nd) */}
+                    <div className="order-2 md:order-1">
+                      {second
+                        ? <PodiumCard user={second} place={2} delay={200} />
+                        : <EmptyPodium place={2} />}
+                    </div>
+                    {/* Gold (1st) — center/tallest */}
+                    <div className="order-1 md:order-2">
+                      {first
+                        ? <PodiumCard user={first} place={1} delay={0} />
+                        : <EmptyPodium place={1} />}
+                    </div>
+                    {/* Bronze (3rd) */}
+                    <div className="order-3">
+                      {third
+                        ? <PodiumCard user={third} place={3} delay={400} />
+                        : <EmptyPodium place={3} />}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ── Leaderboard Table ── */}
+            <section>
+              <div className="bg-white dark:bg-[#0f1014] border border-slate-200 dark:border-white/[0.06] rounded-2xl shadow-sm overflow-hidden">
+
+                {/* Table header bar */}
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Users className="w-5 h-5 text-indigo-500" />
+                    <h3 className="font-black text-slate-900 dark:text-white text-lg">Rankings</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-xs font-black border border-indigo-100 dark:border-indigo-500/20">
+                      {pagination.total} Users
+                    </span>
+                    {pageLoading && <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />}
                   </div>
                 </div>
 
-                <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                  <div className="bg-blue-400 h-2 rounded-full" style={{ width: '68%' }}></div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50/70 dark:bg-white/[0.02] text-slate-400 dark:text-slate-600 text-[11px] uppercase font-black tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 w-16 text-center">Rank</th>
+                        <th className="px-6 py-3">User</th>
+                        <th className="px-6 py-3 text-center hidden sm:table-cell">Role</th>
+                        <th className="px-6 py-3 text-center hidden md:table-cell">Credits</th>
+                        <th className="px-6 py-3 text-right">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                      {tableRows.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="text-center py-12 text-slate-400 dark:text-slate-600 font-medium text-sm">
+                            No users on this page.
+                          </td>
+                        </tr>
+                      )}
+                      {tableRows.map((user, i) => (
+                        <TableRow key={user.id} user={user} index={i} />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="text-xs text-blue-200 font-medium flex justify-between">
-                  <span>Current: {myRank.points}</span>
-                  <span>Next Lv: 7500</span>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Point Rules */}
-          <div className="bg-white dark:bg-[#1c1f26] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2 text-[15px]">
-              <Info className="w-4 h-4 text-[#001b69] dark:text-blue-500" /> Points Guide
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="bg-emerald-100 dark:bg-emerald-500/20 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                  <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Successful PDF Upload</h4>
-                  <p className="text-xs text-slate-500 mt-1 font-medium"><span className="text-emerald-600 dark:text-emerald-400 font-bold">+100</span> to <span className="text-emerald-600 dark:text-emerald-400 font-bold">+300</span> points depending on quality.</p>
-                </div>
-              </div>
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">
+                      Page {pagination.page} of {pagination.totalPages} · {pagination.total} total
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={pagination.page <= 1 || pageLoading}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400
+                          hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
 
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 dark:bg-blue-500/20 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                  <Star className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Ratings & Feedback</h4>
-                  <p className="text-xs text-slate-500 mt-1 font-medium"><span className="text-blue-600 dark:text-blue-400 font-bold">+5</span> points for each helpful review.</p>
-                </div>
-              </div>
+                      {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                        const p = Math.max(1, pagination.page - 2) + i;
+                        if (p > pagination.totalPages) return null;
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => handlePageChange(p)}
+                            disabled={pageLoading}
+                            className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+                              p === pagination.page
+                                ? 'bg-indigo-600 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                                : 'border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
 
-              <div className="flex items-start gap-3">
-                <div className="bg-amber-100 dark:bg-amber-500/20 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Download PDF Document</h4>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Credits deducted based on the document's Quality Tier.</p>
-                </div>
+                      <button
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={pagination.page >= pagination.totalPages || pageLoading}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400
+                          hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
           </div>
 
-        </aside>
+          {/* ══════════════ SIDEBAR ══════════════ */}
+          <aside className="w-full xl:w-[320px] shrink-0 space-y-5">
+
+            {/* ── Your Position Card ── */}
+            {myRanking ? (
+              <div className="relative bg-gradient-to-br from-[#3730a3] via-[#4f46e5] to-[#7c3aed] rounded-2xl p-6 text-white shadow-[0_20px_60px_rgba(79,70,229,0.35)] overflow-hidden ranking-glow-card">
+                {/* BG decoration */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none" />
+
+                {/* Stars decoration */}
+                {[0, 1, 2].map((i) => (
+                  <Sparkles
+                    key={i}
+                    className={`absolute w-3 h-3 text-yellow-300/60 ranking-star-pop`}
+                    style={{ top: `${20 + i * 25}%`, right: `${15 + i * 10}%`, animationDelay: `${i * 0.5}s` }}
+                  />
+                ))}
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-5">
+                    <ShieldCheck className="w-4 h-4 text-indigo-200" />
+                    <h3 className="font-black text-sm tracking-wide text-indigo-100">Your Position</h3>
+                  </div>
+
+                  {/* Rank + Avatar */}
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-16 h-16 bg-white/15 rounded-2xl p-2 border border-white/20 backdrop-blur-sm">
+                      <img src={avatars[myLevel]!} alt="My Level" className="w-full h-full object-contain drop-shadow-lg" />
+                    </div>
+                    <div>
+                      <div className="text-4xl font-black leading-none mb-1">#{myRanking.rank}</div>
+                      <div className="text-xs text-indigo-200 font-semibold">
+                        Level {myLevel} · {myRanking.stats.points.toLocaleString()} pts
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress bar to next level */}
+                  <div className="mb-5">
+                    <div className="flex justify-between text-[11px] text-indigo-200 font-semibold mb-1.5">
+                      <span>Lv.{myLevel}</span>
+                      <span>Lv.{Math.min(myLevel + 1, 10)}</span>
+                    </div>
+                    <div className="w-full bg-white/15 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] transition-all duration-1000"
+                        style={{ width: `${myProgress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-indigo-300/70 mt-1 font-medium">
+                      <span>{myRanking.stats.points} pts</span>
+                      {myLevel < 10 && <span>Next: {myNextLevel} pts</span>}
+                    </div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Uploads', value: myRanking.stats.uploadedPdfs, icon: <Upload className="w-3 h-3" />, color: 'bg-emerald-400/20' },
+                      { label: 'Ratings', value: myRanking.stats.ratingsGiven, icon: <Star className="w-3 h-3" />, color: 'bg-yellow-400/20' },
+                      { label: 'Papers', value: myRanking.stats.requestedPapers, icon: <FileText className="w-3 h-3" />, color: 'bg-blue-400/20' },
+                    ].map((s) => (
+                      <div key={s.label} className={`${s.color} rounded-xl p-2.5 flex flex-col items-center gap-1 border border-white/10`}>
+                        <div className="text-indigo-200">{s.icon}</div>
+                        <div className="font-black text-lg leading-none">{s.value}</div>
+                        <div className="text-[9px] text-indigo-300/70 font-semibold uppercase tracking-wider">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : currentUser ? (
+              <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-[#1c1f26] dark:to-[#161820] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 text-center">
+                <Trophy className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-700" />
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-500">Start contributing to see your rank!</p>
+                <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Upload PDFs and rate papers to earn points.</p>
+              </div>
+            ) : null}
+
+            {/* ── Trending ── */}
+            <div className="bg-white dark:bg-[#0f1014] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-5 shadow-sm">
+              <h3 className="font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2 text-sm">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                How Points Are Earned
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { icon: <Upload className="w-4 h-4" />, color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', label: 'Successful PDF Upload', value: '+100–300 pts' },
+                  { icon: <Star className="w-4 h-4" />, color: 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400', label: 'Rate a Paper / Report', value: '+5 pts each' },
+                  { icon: <Award className="w-4 h-4" />, color: 'bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400', label: 'Download a Paper', value: 'Credits used' },
+                  { icon: <Info className="w-4 h-4" />, color: 'bg-red-100 dark:bg-red-500/15 text-red-500 dark:text-red-400', label: 'Admin Penalty', value: '−pts' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3 group">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.color} transition-transform group-hover:scale-110`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{item.label}</div>
+                      <div className="text-[11px] text-slate-400 dark:text-slate-600 font-semibold">{item.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Level Guide ── */}
+            <div className="bg-white dark:bg-[#0f1014] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-5 shadow-sm">
+              <h3 className="font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2 text-sm">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                Level Tiers
+              </h3>
+              <div className="space-y-2">
+                {([
+                  { lv: 10, label: 'Legendary', pts: '3000+', img: lv10, color: 'text-yellow-500' },
+                  { lv: 7, label: 'Expert', pts: '1000+', img: lv7, color: 'text-purple-500' },
+                  { lv: 5, label: 'Advanced', pts: '300+', img: lv5, color: 'text-blue-500' },
+                  { lv: 3, label: 'Scholar', pts: '75+', img: lv3, color: 'text-emerald-500' },
+                  { lv: 1, label: 'Novice', pts: '0+', img: lv1, color: 'text-slate-400' },
+                ] as const).map((tier) => (
+                  <div key={tier.lv} className={`flex items-center gap-2.5 p-2 rounded-lg transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] ${myLevel === tier.lv ? 'bg-indigo-50 dark:bg-indigo-500/10 ring-1 ring-indigo-200 dark:ring-indigo-500/20' : ''}`}>
+                    <img src={tier.img} alt={`Lv${tier.lv}`} className="w-7 h-7 object-contain shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-black ${tier.color}`}>{tier.label}</div>
+                      <div className="text-[10px] text-slate-400 font-medium">{tier.pts} pts</div>
+                    </div>
+                    {myLevel === tier.lv && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black">YOU</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </aside>
+        </div>
       </div>
+    </>
+  );
+}
+
+// ── Empty Podium Slot ──────────────────────────────────────────────────────
+function EmptyPodium({ place }: { place: 1 | 2 | 3 }) {
+  const icons = { 1: <Crown className="w-8 h-8 text-yellow-300/40 animate-pulse" />, 2: <Medal className="w-7 h-7 text-slate-300/40" />, 3: <Award className="w-7 h-7 text-orange-300/40" /> };
+  const borders = { 1: 'border-yellow-200 dark:border-yellow-800/30', 2: 'border-slate-200 dark:border-slate-800', 3: 'border-orange-200 dark:border-orange-900/30' };
+  const heights = { 1: 'h-[340px]', 2: 'h-[290px]', 3: 'h-[265px]' };
+  return (
+    <div className={`border-2 border-dashed ${borders[place]} ${heights[place]} rounded-2xl flex flex-col items-center justify-center gap-2 opacity-40`}>
+      {icons[place]}
+      <p className="text-xs font-bold text-slate-400">Rank #{place} is empty</p>
     </div>
   );
 }
