@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../../common/middleware/auth.js";
 import { validate } from "../../common/middleware/validate.js";
 import { authController } from "./auth.controller.js";
-import { LoginSchema, RefreshSchema, RegisterSchema, UpdateProfileSchema, ChangePasswordSchema } from "./dto/auth.schema.js";
+import { LoginSchema, RefreshSchema, RegisterSchema, UpdateProfileSchema, ChangePasswordSchema, RankingsQuerySchema, type RankingsQueryInput } from "./dto/auth.schema.js";
 import { UserModel } from "./models/user.model.js";
 import { calculateUserRankingStats } from "./points.service.js";
 import passport from "./passport.js";
@@ -28,9 +28,8 @@ authRouter.get(
  * GET /auth/rankings/top?page=1&limit=20 — Paginated public leaderboard by points.
  * Returns { rankings, pagination } matching the legacy ranking.controller shape.
  */
-authRouter.get("/rankings/top", async (req: Request, res: Response) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (req: Request, res: Response) => {
+  const { page, limit } = req.query as unknown as RankingsQueryInput;
 
   const total = await UserModel.countDocuments({ isActive: { $ne: false } });
   const totalPages = Math.max(1, Math.ceil(total / limit));
