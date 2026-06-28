@@ -14,6 +14,7 @@ export const API_ROUTES = {
   papers: {
     list: "/papers",
     detail: (id: string) => `/papers/${id}`,
+    compare: "/papers/compare",
   },
   search: {
     semantic: "/search", 

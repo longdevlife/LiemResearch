@@ -9,6 +9,7 @@ import { env } from "../../config/env.js";
 import type { SearchSortKey } from "./dto/paper-filters.schema.js";
 import type { CreatePaperInput } from "./dto/create-paper.schema.js";
 import { calculatePaperQuality, getQualityTier, QUALITY_TIERS } from "./paper-quality.js";
+import { computePaperScore } from "../scoring/paper-score.js";
 import {
   chargePaperRequestCredit,
   refundPaperRequestCredit,
@@ -250,7 +251,15 @@ export const paperService = {
       paperStatus = "pending";
     }
 
-    // 4. Persist
+    // 4. Persist — also stamp an intrinsic aiScore so a freshly-uploaded paper
+    //    shows its AI score immediately (citations 0 until/if enriched; recency-driven),
+    //    instead of waiting for the next batch score:recompute. isAiAnalyzable is already
+    //    true, so the embedding worker picks it up for semantic search/RAG/compare.
+    const aiScore = computePaperScore(
+      { publicationYear: input.publicationYear, citationCount: 0, dataQualityScore: 0 },
+      new Date().getFullYear(),
+      new Date().toISOString(),
+    );
     const paperDoc = await PaperModel.create({
       title: input.title.trim(),
       abstractText: input.abstractText.trim(),
@@ -265,6 +274,7 @@ export const paperService = {
       primaryProvider: "user",
       dataStatus: isAdmin ? "active" : "draft",
       isAiAnalyzable: true,
+      aiScore,
       pdfPath,
       requestedBy: new mongoose.Types.ObjectId(userId),
       uploadedBy: pdfPath ? new mongoose.Types.ObjectId(userId) : undefined,
