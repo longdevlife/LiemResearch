@@ -190,8 +190,7 @@ export function ResearchGapsPage() {
           <div>
             <h3 className="text-red-800 dark:text-red-400 font-bold mb-1">Failed to fetch research gaps</h3>
             <p className="text-red-600 dark:text-red-500 text-sm">
-              The backend API returned an error (likely the Express 5 500 Internal Server Error we discussed). 
-              <br/>Error details: {error instanceof Error ? error.message : "Unknown error"}
+              Không tải được danh sách research gaps. Vui lòng thử lại sau.
             </p>
           </div>
         </div>
@@ -242,7 +241,7 @@ export function ResearchGapsPage() {
                   <span className="font-bold text-emerald-950 dark:text-emerald-300 block mb-1 flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Bằng chứng thực tế (Evidence):
                   </span>
-                  Chỉ có <strong className="text-emerald-950 dark:text-emerald-200">{gap.intersectionCount ?? 0}</strong> bài báo ở giao điểm <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicA}"</code> × <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicB}"</code> — trong khi <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.parentTrend.topic}"</code> có <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> bài, đang tăng trưởng <strong className="text-emerald-950 dark:text-emerald-200">+{gap.parentTrend.growthRatePct}%/năm</strong>.
+                  Chỉ có <strong className="text-emerald-950 dark:text-emerald-200">{gap.intersectionCount ?? 0}</strong> bài báo ở giao điểm <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicA}"</code> × <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicB}"</code> — trong khi <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.parentTrend.topic}"</code> có <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> bài, đang tăng trưởng <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.growthRatePct >= 0 ? "+" : ""}{Math.round(gap.parentTrend.growthRatePct)}%/năm</strong>.
                 </div>
               </div>
             )}

@@ -152,6 +152,8 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                         </p>
                       </div>
                       <button
+                        type="button"
+                        aria-label="Bỏ bài khỏi danh sách so sánh"
                         onClick={() => handleRemovePaper(paper.id)}
                         className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                       >
@@ -281,6 +283,7 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Đóng"
                 className="h-9 w-9 rounded-lg text-slate-400 hover:text-slate-600"
                 onClick={() => onOpenChange(false)}
               >
