@@ -16,6 +16,7 @@ import {
   X,
   Edit,
   Sparkles,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePaper } from "@/features/papers";
@@ -24,6 +25,7 @@ import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-c
 import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/services/api-client";
 import { toast } from "sonner";
+import { CompareDialog } from "@/features/compare";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +42,7 @@ export function PaperDetailPage() {
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const handleUploadPdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -299,6 +302,13 @@ export function PaperDetailPage() {
                 >
                   <Quote className="w-4 h-4" /> Cite
                 </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-10 px-4 gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold rounded-lg"
+                  onClick={() => setCompareOpen(true)}
+                >
+                  <Scale className="w-4 h-4" /> So sánh với...
+                </Button>
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
                 <Link2 className="w-4 h-4" /> {paper.citationCount.toLocaleString()} Citations
@@ -430,21 +440,29 @@ export function PaperDetailPage() {
               is AG's (handoff §1). */}
           {paper.aiScore && (
             <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10">
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-6">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <div className="w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 flex items-center justify-center">
                     <SparklesIcon />
                   </div>
                   AI Analysis Summary
                 </h2>
-                <span className="text-xs font-medium text-slate-500">Overall {paper.aiScore.finalScore.toFixed(2)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-semibold">Điểm giá trị (Academic Value):</span>
+                  <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 px-2 py-0.5 rounded">
+                    Overall {paper.aiScore.finalScore.toFixed(2)}
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Impact */}
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Impact</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Ảnh hưởng theo tuổi</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">Citations per year (normalized)</span>
+                    </div>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
                       {paper.aiScore.citationImpactScore.toFixed(2)}
                     </span>
@@ -453,10 +471,14 @@ export function PaperDetailPage() {
                     <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.citationImpactScore * 100}%` }}></div>
                   </div>
                 </div>
+
                 {/* Recency */}
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recency</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Độ mới</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">Recency score</span>
+                    </div>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
                       {paper.aiScore.recencyScore.toFixed(2)}
                     </span>
@@ -465,16 +487,20 @@ export function PaperDetailPage() {
                     <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.recencyScore * 100}%` }}></div>
                   </div>
                 </div>
-                {/* Metadata Quality */}
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metadata Quality</span>
-                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+
+                {/* Metadata Quality - Tách biệt riêng ra */}
+                <div className="space-y-2 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800/80 pt-4 md:pt-0 md:pl-8">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider block">Độ đầy đủ dữ liệu</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">Data completeness</span>
+                    </div>
+                    <span className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 leading-none">
                       {paper.aiScore.metadataQualityScore.toFixed(2)}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-600 dark:bg-cyan-500 rounded-full" style={{ width: `${paper.aiScore.metadataQualityScore * 100}%` }}></div>
+                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${paper.aiScore.metadataQualityScore * 100}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -549,6 +575,7 @@ export function PaperDetailPage() {
           )}
         </div>
       </div>
+      <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} currentPaper={paper} />
     </main>
   );
 }
