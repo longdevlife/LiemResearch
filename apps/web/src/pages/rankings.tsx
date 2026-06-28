@@ -117,13 +117,13 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
     2: {
       border: 'border-slate-300 dark:border-slate-600',
       bg: 'from-slate-50 via-gray-50/30 to-white dark:from-[#1e2030] dark:via-[#181a28] dark:to-[#0f1018]',
-      shadow: 'shadow-[0_10px_40px_rgba(148,163,184,0.2)] dark:shadow-[0_10px_40px_rgba(100,116,139,0.10)]',
+      shadow: 'shadow-[0_10px_40px_rgba(148,163,184,0.15)] dark:shadow-[0_10px_40px_rgba(100,116,139,0.06)]',
       glow: 'before:bg-slate-300/20 dark:before:bg-slate-500/10',
       rankBg: 'bg-gradient-to-br from-slate-300 to-slate-500',
       rankText: 'text-white',
       pointColor: 'text-slate-700 dark:text-slate-300',
       pointBg: 'bg-slate-100/60 dark:bg-slate-800/50',
-      height: 'h-[280px]',
+      height: 'h-[210px]',
       avatarSize: 'w-24 h-24',
       nameSize: 'text-lg',
       icon: <Medal className="w-6 h-6 text-slate-400" />,
@@ -131,13 +131,13 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
     3: {
       border: 'border-orange-300 dark:border-orange-700',
       bg: 'from-orange-50 via-amber-50/20 to-white dark:from-[#231a10] dark:via-[#1c1408] dark:to-[#0f0c06]',
-      shadow: 'shadow-[0_10px_40px_rgba(249,115,22,0.15)] dark:shadow-[0_10px_40px_rgba(234,88,12,0.08)]',
+      shadow: 'shadow-[0_10px_40px_rgba(249,115,22,0.12)] dark:shadow-[0_10px_40px_rgba(234,88,12,0.05)]',
       glow: 'before:bg-orange-300/20 dark:before:bg-orange-500/10',
       rankBg: 'bg-gradient-to-br from-orange-300 to-amber-600',
       rankText: 'text-white',
       pointColor: 'text-orange-700 dark:text-orange-400',
       pointBg: 'bg-orange-100/50 dark:bg-orange-900/20',
-      height: 'h-[240px]',
+      height: 'h-[185px]',
       avatarSize: 'w-20 h-20',
       nameSize: 'text-base',
       icon: <Award className="w-6 h-6 text-orange-400" />,
@@ -146,14 +146,14 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
 
   return (
     <div
-      className={`relative bg-gradient-to-b ${config.bg} border-2 ${config.border} rounded-2xl flex flex-col items-center text-center
-        ${config.shadow} ${config.height} justify-between p-6
-        before:absolute before:inset-0 before:rounded-2xl ${config.glow} before:opacity-0 hover:before:opacity-100 before:transition-opacity
+      className={`relative w-full bg-gradient-to-b ${config.bg} border-2 ${config.border} border-b-0 rounded-t-2xl rounded-b-none flex flex-col items-center text-center
+        ${config.shadow} ${config.height} justify-between p-6 pb-2
+        before:absolute before:inset-0 before:rounded-t-2xl ${config.glow} before:opacity-0 hover:before:opacity-100 before:transition-opacity
         ranking-podium-card`}
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Clipped container for shimmer effect */}
-      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
+      <div className="absolute inset-0 rounded-t-2xl overflow-hidden pointer-events-none z-0">
         <div className="absolute inset-0 pointer-events-none ranking-shimmer" />
       </div>
 
@@ -173,7 +173,7 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       </div>
 
       {/* Name + Level */}
-      <div className="w-full z-10">
+      <div className="w-full z-10 mt-1">
         <h4 className={`font-black ${config.nameSize} text-slate-900 dark:text-white truncate`}>{user.name}</h4>
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
           Lv.{user.level} · {user.university || 'N/A'}
@@ -181,7 +181,7 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       </div>
 
       {/* Points */}
-      <div className={`w-full py-2.5 ${config.pointBg} rounded-xl border border-transparent z-10`}>
+      <div className={`w-full py-2 ${config.pointBg} rounded-xl border border-transparent z-10 mb-1`}>
         <span className={`font-black text-xl ${config.pointColor}`}>{user.points.toLocaleString()}</span>
         <span className="text-xs text-slate-400 uppercase tracking-wider font-bold ml-1">pts</span>
       </div>
@@ -449,24 +449,38 @@ export function RankingsPage() {
                     <p className="text-sm mt-1">Be the first to contribute and earn points!</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-12">
                     {/* Silver (2nd) */}
-                    <div className="order-2 md:order-1">
+                    <div className="order-2 md:order-1 flex flex-col items-center w-full">
                       {second
                         ? <PodiumCard user={second} place={2} delay={200} />
                         : <EmptyPodium place={2} />}
+                      <div className="w-full h-20 bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 rounded-b-2xl shadow-md flex items-center justify-center border-t border-slate-300 dark:border-slate-700 relative overflow-hidden select-none">
+                        <div className="absolute inset-0 bg-white/5 opacity-20 transform -skew-x-12 translate-x-1" />
+                        <span className="text-slate-400 dark:text-slate-600 text-4xl font-black opacity-30 select-none">2</span>
+                      </div>
                     </div>
+
                     {/* Gold (1st) — center/tallest */}
-                    <div className="order-1 md:order-2">
+                    <div className="order-1 md:order-2 flex flex-col items-center w-full">
                       {first
                         ? <PodiumCard user={first} place={1} delay={0} />
                         : <EmptyPodium place={1} />}
+                      <div className="w-full h-28 bg-gradient-to-b from-yellow-400 to-amber-500 rounded-b-2xl shadow-lg flex items-center justify-center border-t border-yellow-300 relative overflow-hidden select-none">
+                        <div className="absolute inset-0 bg-white/10 opacity-30 transform -skew-x-12 translate-x-2" />
+                        <span className="text-white text-5xl font-black opacity-45 select-none">1</span>
+                      </div>
                     </div>
+
                     {/* Bronze (3rd) */}
-                    <div className="order-3">
+                    <div className="order-3 flex flex-col items-center w-full">
                       {third
                         ? <PodiumCard user={third} place={3} delay={400} />
                         : <EmptyPodium place={3} />}
+                      <div className="w-full h-14 bg-gradient-to-b from-orange-300 to-orange-450 dark:from-[#3a2818] dark:to-[#22160d] rounded-b-2xl shadow-md flex items-center justify-center border-t border-orange-200 dark:border-[#523820] relative overflow-hidden select-none">
+                        <div className="absolute inset-0 bg-white/5 opacity-20 transform -skew-x-12" />
+                        <span className="text-white dark:text-orange-500/40 text-3xl font-black opacity-30 select-none">3</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -710,9 +724,9 @@ export function RankingsPage() {
 function EmptyPodium({ place }: { place: 1 | 2 | 3 }) {
   const icons = { 1: <Crown className="w-8 h-8 text-yellow-300/40 animate-pulse" />, 2: <Medal className="w-7 h-7 text-slate-300/40" />, 3: <Award className="w-7 h-7 text-orange-300/40" /> };
   const borders = { 1: 'border-yellow-200 dark:border-yellow-800/30', 2: 'border-slate-200 dark:border-slate-800', 3: 'border-orange-200 dark:border-orange-900/30' };
-  const heights = { 1: 'h-[340px]', 2: 'h-[280px]', 3: 'h-[240px]' };
+  const heights = { 1: 'h-[260px]', 2: 'h-[210px]', 3: 'h-[185px]' };
   return (
-    <div className={`border-2 border-dashed ${borders[place]} ${heights[place]} rounded-2xl flex flex-col items-center justify-center gap-2 opacity-40`}>
+    <div className={`border-2 border-dashed ${borders[place]} ${heights[place]} rounded-t-2xl rounded-b-none border-b-0 w-full flex flex-col items-center justify-center gap-2 opacity-40`}>
       {icons[place]}
       <p className="text-xs font-bold text-slate-400">Rank #{place} is empty</p>
     </div>
