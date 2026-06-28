@@ -226,7 +226,7 @@ export const qualityService = {
       summarize(kind, id),
       UserRatingModel.findOne({ userId, targetKind: kind, targetId: id }).lean(),
       UserRatingModel.find({ targetKind: kind, targetId: id })
-        .populate("userId", "fullName email avatarUrl")
+        .populate("userId", "fullName avatarUrl")
         .sort({ updatedAt: -1 })
         .lean(),
     ]);
@@ -239,7 +239,6 @@ export const qualityService = {
         user: r.userId ? {
           id: r.userId._id?.toString() || r.userId.id || String(r.userId),
           fullName: r.userId.fullName || "User",
-          email: r.userId.email || "",
           avatarUrl: r.userId.avatarUrl ?? undefined,
         } : null,
         stars: r.stars,

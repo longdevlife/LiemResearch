@@ -31,7 +31,6 @@ export interface UserRatingDetail {
   user: {
     id: string;
     fullName: string;
-    email: string;
     avatarUrl?: string;
   } | null;
   stars: number;
