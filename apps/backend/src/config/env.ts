@@ -16,6 +16,10 @@ const EnvSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
 
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALLBACK_URL: z.string().default("http://localhost:4000/api/auth/google/callback"),
+
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
   // Cost-saving: standardize ALL generative calls (rerank, research gaps, RAG
   // reports, quality-judge) on Gemini 3.1 Flash-Lite — the cheapest GA tier with

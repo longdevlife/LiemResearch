@@ -294,8 +294,8 @@ export const gapsService = {
   },
 
   /** Paginated, filterable list of gaps (the FE gaps page). */
-  async list(query: ListGapsQuery) {
-    const filter: Record<string, unknown> = { status: query.status };
+  async list(userId: string, query: ListGapsQuery) {
+    const filter: Record<string, unknown> = { userId, status: query.status };
     if (query.topic) {
       filter.normalizedTopic = { $regex: normalizeTopicStr(query.topic), $options: "i" };
     }

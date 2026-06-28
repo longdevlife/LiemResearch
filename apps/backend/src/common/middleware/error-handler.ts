@@ -32,6 +32,17 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
 
+  // Mongoose CastError = a malformed value reached a typed field, almost always a
+  // non-ObjectId in a `:id` path param (e.g. GET /papers/not-an-id). That's a client
+  // error → 400, not a 500. One guard here fixes every bad-id route at once.
+  if (err instanceof Error && err.name === "CastError") {
+    res.status(400).json({
+      success: false,
+      error: { code: "BAD_REQUEST", message: "Invalid identifier in request" },
+    });
+    return;
+  }
+
   logger.error({ err }, "unhandled error");
   res.status(500).json({
     success: false,

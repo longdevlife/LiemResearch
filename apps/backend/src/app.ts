@@ -4,6 +4,7 @@ import helmet from "helmet";
 import compression from "compression";
 import { pinoHttp } from "pino-http";
 import swaggerUi from "swagger-ui-express";
+import passport from "./modules/auth/passport.js";
 
 import { env } from "./config/env.js";
 import { logger } from "./infrastructure/logger.js";
@@ -13,6 +14,12 @@ import { openapiSpec } from "./openapi.js";
 
 export function createApp(): Express {
   const app = express();
+
+  // Trust the first proxy (Render/Vercel/Nginx) so `req.ip` is the real client IP
+  // from X-Forwarded-For — without this the rerank rate-limiter (keyed on req.ip)
+  // sees every request as one upstream socket IP and its per-user throttle, which
+  // guards Gemini quota, is useless.
+  app.set("trust proxy", 1);
 
   app.disable("x-powered-by");
   app.use(helmet());
@@ -26,6 +33,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(pinoHttp({ logger }));
+  app.use(passport.initialize());
 
   app.get("/health", (_req, res) => {
     res.json({ success: true, data: { status: "ok", ts: new Date().toISOString() } });

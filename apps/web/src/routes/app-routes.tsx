@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { HomePage } from "@/pages/home";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
+import { OAuthCallbackPage } from "@/pages/oauth-callback";
 import { DashboardPage } from "@/pages/dashboard";
 import { SearchPage } from "@/pages/search";
 import { TrendsPage } from "@/pages/trends";
@@ -15,12 +16,15 @@ import { BookmarksPage } from "@/pages/bookmarks";
 import { NotificationsPage } from "@/pages/notifications";
 import { ProfilePage } from "@/pages/profile";
 import { PaperDetailPage } from "@/pages/papers/paper-detail";
+import { SubmitPaperPage } from "@/pages/papers/submit-paper";
+import { MyPapersPage } from "@/pages/papers/my-papers";
 import { ReportsListPage } from "@/pages/reports/reports-list";
 import { ReportViewerPage } from "@/pages/reports/report-viewer";
 import { ProjectsListPage } from "@/pages/projects/projects-list";
 import { ProjectDetailPage } from "@/pages/projects/project-detail";
 import { ResearchGapsPage } from "@/pages/research-gaps";
 import { AdminSyncPage } from "@/pages/admin/sync";
+import { AdminPapersPage } from "@/pages/admin/papers";
 import { AdminUsersPage } from "@/pages/admin/users";
 import { AdminHomePage } from "@/pages/admin";
 import { NotFoundPage } from "@/pages/not-found";
@@ -45,6 +49,8 @@ export function AppRoutes() {
           <Route path="/bookmarks" element={<BookmarksPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/papers/submit" element={<Navigate to="/settings/submit-paper" replace />} />
+          <Route path="/my-papers" element={<Navigate to="/settings/my-papers" replace />} />
           <Route path="/settings" element={<Navigate to="/profile" replace />} />
           <Route path="/settings/:section" element={<ProfilePage />} />
           <Route path="/reports" element={<ReportsListPage />} />
@@ -58,6 +64,7 @@ export function AppRoutes() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminHomePage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="papers" element={<AdminPapersPage />} />
             <Route path="sync" element={<AdminSyncPage />} />
           </Route>
         </Route>
@@ -69,6 +76,7 @@ export function AppRoutes() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/oauth-callback" element={<OAuthCallbackPage />} />
       </Route>
     </Routes>
   );

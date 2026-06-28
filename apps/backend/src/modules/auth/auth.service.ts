@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
+import type { Profile } from "passport-google-oauth20";
 import type { AuthResponse, AuthTokens, User } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
@@ -31,6 +32,10 @@ export const authService = {
     const user = await UserModel.findOne({ email: input.email });
     if (!user) throw AppError.unauthorized("Invalid credentials");
 
+    if (!user.passwordHash) {
+      throw AppError.unauthorized("This account uses Google Login. Please sign in with Google.");
+    }
+
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) throw AppError.unauthorized("Invalid credentials");
 
@@ -42,12 +47,42 @@ export const authService = {
     return { user: toUserDto(user), tokens };
   },
 
+  async googleLogin(profile: Profile): Promise<AuthResponse> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) throw AppError.badRequest("Google profile missing email");
+
+    let user = await UserModel.findOne({ googleId: profile.id });
+    
+    if (!user) {
+      user = await UserModel.findOne({ email });
+      if (user) {
+        user.googleId = profile.id;
+        if (!user.avatarUrl && profile.photos?.[0]?.value) {
+          user.avatarUrl = profile.photos[0].value;
+        }
+        await user.save();
+      } else {
+        user = await UserModel.create({
+          email,
+          googleId: profile.id,
+          fullName: profile.displayName || "Google User",
+          avatarUrl: profile.photos?.[0]?.value,
+          role: "student",
+          passwordHash: "",
+        });
+      }
+    }
+
+    if (user.isActive === false) {
+      throw AppError.forbidden("Account has been disabled");
+    }
+
+    const tokens = await issueTokens(user);
+    return { user: toUserDto(user), tokens };
+  },
+
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const tokenHash = hashToken(refreshToken);
-    const stored = await RefreshTokenModel.findOne({ tokenHash });
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw AppError.unauthorized("Invalid refresh token");
-    }
 
     let payload: AuthClaims;
     try {
@@ -56,15 +91,22 @@ export const authService = {
       throw AppError.unauthorized("Invalid refresh token");
     }
 
+    // Atomically claim-and-revoke the stored token. The filter matches ONLY a
+    // not-yet-revoked, unexpired record, so two concurrent refreshes with the same
+    // token can't both succeed — the second finds it already revoked and is rejected
+    // (closes the token-reuse double-mint window that check-then-save left open).
+    const stored = await RefreshTokenModel.findOneAndUpdate(
+      { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+      { $set: { revokedAt: new Date() } },
+    );
+    if (!stored) throw AppError.unauthorized("Invalid refresh token");
+
     const user = await UserModel.findById(payload.sub);
     if (!user) throw AppError.unauthorized();
     if (user.isActive === false) {
       throw AppError.forbidden("Account has been disabled");
     }
 
-    // Rotate: revoke old, issue new pair.
-    stored.revokedAt = new Date();
-    await stored.save();
     return issueTokens(user);
   },
 
@@ -94,6 +136,10 @@ export const authService = {
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
     const user = await UserModel.findById(userId);
     if (!user) throw AppError.unauthorized();
+
+    if (!user.passwordHash) {
+      throw AppError.badRequest("Cannot change password for OAuth-only accounts");
+    }
 
     const ok = await bcrypt.compare(input.currentPassword, user.passwordHash);
     if (!ok) throw AppError.badRequest("Invalid current password");

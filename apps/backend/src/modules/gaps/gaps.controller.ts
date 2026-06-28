@@ -29,7 +29,7 @@ export const gapsController = {
       return;
     }
     const query = parsed.data;
-    const { gaps, total } = await gapsService.list(query);
+    const { gaps, total } = await gapsService.list(req.user!.sub, query);
     const { page, pageSize } = query;
     res.json({
       success: true,

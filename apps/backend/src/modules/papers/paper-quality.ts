@@ -1,0 +1,146 @@
+const DOI_PATTERN = /^10\.\d{4,9}\/\S+$/i;
+
+export interface QualityResult {
+  metadataScore: number;
+  sourceScore: number;
+  duplicateScore: number;
+  relevanceScore: number;
+  prestigeScore: number;
+  utilityScore: number;
+  qualityScore: number;
+  qualityTier: number;
+  qualityTierName: string;
+  downloadCost: number | null;
+  uploadCreditReward: number;
+}
+
+
+export const QUALITY_TIERS = [
+  { tier: 0, name: "Không hợp lệ", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
+  { tier: 1, name: "Cơ Bản", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 100 },
+  { tier: 2, name: "Chuẩn Học Thuật", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 150 },
+  { tier: 3, name: "Giá Trị Cao", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 200 },
+  { tier: 4, name: "Tinh Hoa", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 300 },
+];
+
+function hasValue(value: string | undefined | null): boolean {
+  return !!value && value.trim().length > 0;
+}
+
+function countWords(value: string | undefined | null): number {
+  if (!value) return 0;
+  return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length;
+}
+
+function scoreMetadata(paper: any): number {
+  const hasTitle = hasValue(paper.title);
+  const hasAuthors = Array.isArray(paper.authors) && paper.authors.length > 0;
+  const hasYear = !!paper.publicationYear;
+  const hasAbstract = hasValue(paper.abstractText);
+  const hasKeywordsOrTopics = (Array.isArray(paper.keywords) && paper.keywords.length > 0) || 
+                              (Array.isArray(paper.topics) && paper.topics.length > 0);
+
+  return (
+    (hasTitle ? 3 : 0) +
+    (hasAuthors ? 3 : 0) +
+    (hasYear ? 2 : 0) +
+    (hasAbstract ? 4 : 0) +
+    (hasKeywordsOrTopics ? 3 : 0)
+  );
+}
+
+function scoreSource(paper: any): number {
+  const doi = paper.externalIds?.doi || paper.doi;
+  if (hasValue(doi) && DOI_PATTERN.test(doi.trim())) {
+    return 15;
+  }
+  const link = paper.openAccessUrl || paper.paperLink;
+  if (hasValue(link) && /arxiv|hal|zenodo|repository|repo/i.test(link)) {
+    return 8;
+  }
+  if (hasValue(link)) {
+    return 10;
+  }
+  if (hasValue(paper.pdfPath)) {
+    return 2;
+  }
+  return 0;
+}
+
+function scoreDuplicate(paper: any): number {
+  // Duplicate points: Unique (+20), Needs Review (+10), Duplicate (0)
+  if (paper.isDuplicate) return 0;
+  if (paper.needsDuplicateReview) return 10;
+  return 20;
+}
+
+function scoreRelevance(paper: any): number {
+  // Check relevance based on: Topics, Keywords, and Abstract existence
+  const hasTopics = Array.isArray(paper.topics) && paper.topics.length > 0;
+  const hasKeywords = Array.isArray(paper.keywords) && paper.keywords.length > 0;
+  const hasAbstract = hasValue(paper.abstractText) && countWords(paper.abstractText) >= 20;
+
+  const count = (hasTopics ? 1 : 0) + (hasKeywords ? 1 : 0) + (hasAbstract ? 1 : 0);
+  if (count === 3) return 15;
+  if (count === 2) return 10;
+  if (count === 1) return 5;
+  return 0;
+}
+
+function scorePrestige(paper: any): number {
+  const kind = String(paper.paperKind || "").toLowerCase();
+  if (kind === "article" || kind === "proceedings") return 15;
+  if (kind === "review" || kind === "book-chapter") return 10;
+  if (kind === "preprint") return 8;
+  return 3;
+}
+
+function scoreUtility(paper: any): number {
+  const kind = String(paper.paperKind || "").toLowerCase();
+  const abstract = String(paper.abstractText || "").toLowerCase();
+
+  if (kind.includes("data") || kind.includes("software") || /dataset|benchmark|code/i.test(abstract)) {
+    return 15;
+  }
+  if (/method|experiment|result/i.test(abstract)) {
+    return 12;
+  }
+  if (kind === "review") {
+    return 12;
+  }
+  if (kind.includes("case") || /case study/i.test(abstract)) {
+    return 8;
+  }
+  return hasValue(paper.abstractText) ? 3 : 0;
+}
+
+export function getQualityTier(score: number): typeof QUALITY_TIERS[number] {
+  const found = QUALITY_TIERS.find((t) => score >= t.minScore && score <= t.maxScore);
+  return found || QUALITY_TIERS[0]!;
+}
+
+export function calculatePaperQuality(paper: any): QualityResult {
+  const meta = scoreMetadata(paper);
+  const src = scoreSource(paper);
+  const dup = scoreDuplicate(paper);
+  const rel = scoreRelevance(paper);
+  const prestige = scorePrestige(paper);
+  const util = scoreUtility(paper);
+
+  const qualityScore = meta + src + dup + rel + prestige + util;
+  const tier = getQualityTier(qualityScore);
+
+  return {
+    metadataScore: meta,
+    sourceScore: src,
+    duplicateScore: dup,
+    relevanceScore: rel,
+    prestigeScore: prestige,
+    utilityScore: util,
+    qualityScore,
+    qualityTier: tier.tier,
+    qualityTierName: tier.name,
+    downloadCost: tier.downloadCost,
+    uploadCreditReward: tier.uploadCreditReward,
+  };
+}
