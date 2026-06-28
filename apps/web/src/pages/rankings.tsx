@@ -123,7 +123,7 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       rankText: 'text-white',
       pointColor: 'text-slate-700 dark:text-slate-300',
       pointBg: 'bg-slate-100/60 dark:bg-slate-800/50',
-      height: 'h-[290px]',
+      height: 'h-[280px]',
       avatarSize: 'w-24 h-24',
       nameSize: 'text-lg',
       icon: <Medal className="w-6 h-6 text-slate-400" />,
@@ -137,7 +137,7 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       rankText: 'text-white',
       pointColor: 'text-orange-700 dark:text-orange-400',
       pointBg: 'bg-orange-100/50 dark:bg-orange-900/20',
-      height: 'h-[265px]',
+      height: 'h-[240px]',
       avatarSize: 'w-20 h-20',
       nameSize: 'text-base',
       icon: <Award className="w-6 h-6 text-orange-400" />,
@@ -147,13 +147,18 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
   return (
     <div
       className={`relative bg-gradient-to-b ${config.bg} border-2 ${config.border} rounded-2xl flex flex-col items-center text-center
-        ${config.shadow} ${config.height} justify-between p-6 overflow-hidden
+        ${config.shadow} ${config.height} justify-between p-6
         before:absolute before:inset-0 before:rounded-2xl ${config.glow} before:opacity-0 hover:before:opacity-100 before:transition-opacity
         ranking-podium-card`}
       style={{ animationDelay: `${delay}ms` }}
     >
+      {/* Clipped container for shimmer effect */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
+        <div className="absolute inset-0 pointer-events-none ranking-shimmer" />
+      </div>
+
       {/* Rank badge */}
-      <div className={`absolute -top-${isFirst ? 10 : 6} flex flex-col items-center gap-1 z-10`}>
+      <div className={`absolute ${isFirst ? '-top-10' : '-top-6'} flex flex-col items-center gap-1 z-10`}>
         {isFirst && config.icon}
         <div className={`${isFirst ? 'w-14 h-14 text-xl' : 'w-12 h-12 text-base'} ${config.rankBg} ${config.rankText} rounded-full border-4 border-white dark:border-[#0f0e0a] flex items-center justify-center font-black shadow-lg ranking-bounce`}
           style={{ animationDelay: `${delay + 200}ms` }}>
@@ -163,12 +168,12 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       </div>
 
       {/* Avatar */}
-      <div className={`${config.avatarSize} mt-6 ranking-avatar-float`} style={{ animationDelay: `${delay + 400}ms` }}>
+      <div className={`${config.avatarSize} mt-6 ranking-avatar-float z-10`} style={{ animationDelay: `${delay + 400}ms` }}>
         <img src={avatars[user.level ?? 1]!} alt={`Level ${user.level}`} className="w-full h-full object-contain filter drop-shadow-xl" />
       </div>
 
       {/* Name + Level */}
-      <div className="w-full">
+      <div className="w-full z-10">
         <h4 className={`font-black ${config.nameSize} text-slate-900 dark:text-white truncate`}>{user.name}</h4>
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
           Lv.{user.level} · {user.university || 'N/A'}
@@ -176,13 +181,10 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
       </div>
 
       {/* Points */}
-      <div className={`w-full py-2.5 ${config.pointBg} rounded-xl border border-transparent`}>
+      <div className={`w-full py-2.5 ${config.pointBg} rounded-xl border border-transparent z-10`}>
         <span className={`font-black text-xl ${config.pointColor}`}>{user.points.toLocaleString()}</span>
         <span className="text-xs text-slate-400 uppercase tracking-wider font-bold ml-1">pts</span>
       </div>
-
-      {/* Shimmer sweep */}
-      <div className="absolute inset-0 pointer-events-none ranking-shimmer rounded-2xl" />
     </div>
   );
 }
@@ -708,7 +710,7 @@ export function RankingsPage() {
 function EmptyPodium({ place }: { place: 1 | 2 | 3 }) {
   const icons = { 1: <Crown className="w-8 h-8 text-yellow-300/40 animate-pulse" />, 2: <Medal className="w-7 h-7 text-slate-300/40" />, 3: <Award className="w-7 h-7 text-orange-300/40" /> };
   const borders = { 1: 'border-yellow-200 dark:border-yellow-800/30', 2: 'border-slate-200 dark:border-slate-800', 3: 'border-orange-200 dark:border-orange-900/30' };
-  const heights = { 1: 'h-[340px]', 2: 'h-[290px]', 3: 'h-[265px]' };
+  const heights = { 1: 'h-[340px]', 2: 'h-[280px]', 3: 'h-[240px]' };
   return (
     <div className={`border-2 border-dashed ${borders[place]} ${heights[place]} rounded-2xl flex flex-col items-center justify-center gap-2 opacity-40`}>
       {icons[place]}
