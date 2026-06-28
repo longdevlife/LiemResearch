@@ -315,7 +315,7 @@ export function RankingsPage() {
   const second = top3[1];
   const third = top3[2];
 
-  const userPoints = currentUser?.points ?? 0;
+  const userPoints = myRanking ? myRanking.stats.points : (currentUser?.points ?? 0);
   const myLevel = getLevel(userPoints);
   const myProgress = getLevelProgress(userPoints, myLevel);
   const myNextLevel = getNextLevelPoints(myLevel);
@@ -538,6 +538,7 @@ export function RankingsPage() {
                         disabled={pagination.page <= 1 || pageLoading}
                         className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400
                           hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Previous page"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -566,6 +567,7 @@ export function RankingsPage() {
                         disabled={pagination.page >= pagination.totalPages || pageLoading}
                         className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400
                           hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Next page"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
