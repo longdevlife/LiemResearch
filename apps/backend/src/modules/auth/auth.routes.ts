@@ -71,7 +71,7 @@ authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (r
  * Returns { rank, stats } for the "Your Position" sidebar.
  */
 authRouter.get("/rankings/me", requireAuth, async (req: Request, res: Response) => {
-  const userId = (req as any).user?._id?.toString();
+  const userId = (req as any).user?.sub?.toString();
   if (!userId) {
     res.status(401).json({ success: false, message: "Unauthorized" });
     return;
