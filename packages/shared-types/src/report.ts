@@ -15,13 +15,30 @@ export interface CreateReportRequest {
   fast?: boolean; // Fast mode — use the Flash model (faster, lighter). Ignored if deepAnalysis.
 }
 
+export interface GapProbe {
+  topicA: string;
+  topicB: string;
+  yearFrom?: number;
+  yearTo?: number;
+}
+
 export interface ResearchGap {
   title: string;
   description: string;
   rationale: string;
   /** RESOLVED paper ids (not citation numbers) — link them directly. */
   supportingPaperIds: string[];
-  confidence: number; // 0..1
+  confidence: number; // 0..1 — LLM self-reported (legacy; prefer evidenceConfidence)
+  /** v2 — the intersection the LLM claims is under-explored, verified deterministically. */
+  probe?: GapProbe;
+  /** v2 — # papers at topicA ∩ topicB ∩ years (from count_papers). */
+  intersectionCount?: number;
+  /** v2 — corpus volume of each parent topic. */
+  parentCounts?: { a: number; b: number };
+  /** v2 — the rising parent (if any) with its YoY growth %. */
+  parentTrend?: { topic: string; growthRatePct: number } | null;
+  /** v2 — deterministic confidence from scarcity + parent activity (replaces `confidence`). */
+  evidenceConfidence?: number; // 0..1
 }
 
 export interface AnalyticalReport {

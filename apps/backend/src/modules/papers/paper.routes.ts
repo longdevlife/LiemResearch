@@ -6,7 +6,9 @@ import { requireAuth, requireRole } from "../../common/middleware/auth.js";
 import { uploadSinglePdf } from "../../common/middleware/upload.js";
 import { CreatePaperSchema } from "./dto/create-paper.schema.js";
 import { paperService } from "./paper.service.js";
+import { comparePapers } from "./paper.compare.js";
 import { PaperListQuerySchema } from "./dto/paper.schema.js";
+import { CompareBodySchema } from "./dto/compare.schema.js";
 import { embeddingQueue } from "../../infrastructure/queue.js";
 
 export const paperRouter: Router = Router();
@@ -71,6 +73,20 @@ paperRouter.get("/my-requests", requireAuth, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+/**
+ * POST /papers/compare — side-by-side comparison of 2-4 papers.
+ * Declared BEFORE the `/:id` routes so "compare" is never captured as an :id.
+ */
+paperRouter.post("/compare", async (req: Request, res: Response, next: NextFunction) => {
+  const parsed = CompareBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    next(parsed.error);
+    return;
+  }
+  const data = await comparePapers(parsed.data.paperIds);
+  res.json({ success: true, data });
 });
 
 /** GET /papers/:id/references — references resolved to in-corpus papers. */

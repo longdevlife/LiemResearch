@@ -135,3 +135,23 @@ export type PaperSummary = Pick<
   | "dataQualityScore"
   | "aiScore"
 >;
+
+/** Body of POST /api/v1/papers/compare. */
+export interface CompareRequest {
+  paperIds: string[]; // 2..COMPARE_MAX_PAPERS distinct ids
+}
+
+export interface PaperComparison {
+  papers: PaperRef[]; // resolved, in request order
+  metrics: Array<{
+    paperId: string;
+    publicationYear: number;
+    citationCount: number;
+    aiScore?: PaperAiScore;
+    journalName?: string;
+    openAccess: boolean;
+    paperKind?: PaperKind;
+  }>;
+  /** LLM qualitative comparison; each dimension has one entry per paper (same order). */
+  llmComparison: { dimensions: Array<{ name: string; perPaper: string[] }> };
+}

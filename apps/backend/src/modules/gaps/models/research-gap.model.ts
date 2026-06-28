@@ -16,6 +16,17 @@ const researchGapSchema = new Schema(
     rationale: { type: String, required: true },
     supportingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     confidence: { type: Number, min: 0, max: 1, default: 0.5 },
+    // v2 — quantitative evidence verified against the corpus (see gap-evidence.ts).
+    probe: {
+      topicA: { type: String },
+      topicB: { type: String },
+      yearFrom: { type: Number },
+      yearTo: { type: Number },
+    },
+    intersectionCount: { type: Number },
+    parentCounts: { a: { type: Number }, b: { type: Number } },
+    parentTrend: { topic: { type: String }, growthRatePct: { type: Number } },
+    evidenceConfidence: { type: Number, min: 0, max: 1, index: true },
     source: { type: String, enum: ["report", "standalone"], required: true },
     sourceReportId: { type: Schema.Types.ObjectId, ref: "Report" },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
