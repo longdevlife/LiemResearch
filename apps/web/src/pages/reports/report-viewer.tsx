@@ -365,7 +365,10 @@ function ReportRatingWidget({ reportId }: { reportId: string }) {
       if (res.data.success && res.data.data) {
         const { ratingSummary, allRatings } = res.data.data;
         if (ratingSummary) {
-          setSummary(ratingSummary);
+          setSummary({
+            averageRating: ratingSummary.avg,
+            totalRatings: ratingSummary.count,
+          });
         }
         if (allRatings) {
           setAllRatings(allRatings);
@@ -490,6 +493,8 @@ function ReportRatingWidget({ reportId }: { reportId: string }) {
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
+                aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                aria-pressed={star <= rating}
               >
                 <Star
                   className={`w-7 h-7 cursor-pointer transition-colors ${
@@ -563,6 +568,7 @@ function ReportRatingWidget({ reportId }: { reportId: string }) {
                           onClick={() => handleDeleteReview(rating.id)}
                           className="text-red-500 hover:text-red-700 transition-colors p-0.5"
                           title="Delete review"
+                          aria-label="Delete review"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
