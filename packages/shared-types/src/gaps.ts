@@ -18,6 +18,11 @@ export interface ResearchGapItem {
   userId: string;
   status: GapStatus;
   createdAt: string;
+  probe?: { topicA: string; topicB: string; yearFrom?: number; yearTo?: number };
+  intersectionCount?: number;
+  parentCounts?: { a: number; b: number };
+  parentTrend?: { topic: string; growthRatePct: number } | null;
+  evidenceConfidence?: number;
 }
 
 export interface GapAnalysisResult {

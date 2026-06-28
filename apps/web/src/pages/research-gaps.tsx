@@ -13,7 +13,7 @@ import {
 } from "@/features/gaps";
 import type { GapSource } from "@trend/shared-types";
 
-function ConfidenceBar({ value }: { value: number }) {
+function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: boolean }) {
   const pct = Math.round(value * 100);
   let colorClass = "bg-rose-500";
   if (value >= 0.7) colorClass = "bg-emerald-500";
@@ -24,7 +24,9 @@ function ConfidenceBar({ value }: { value: number }) {
       <div className="w-28 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
         <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""}>{pct}% Confidence</span>
+      <span className={value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""}>
+        {pct}% {isEvidence ? "Evidence Confidence" : "Confidence"}
+      </span>
     </div>
   );
 }
@@ -225,16 +227,28 @@ export function ResearchGapsPage() {
             </p>
             
             {gap.rationale && (
-              <div className="bg-slate-50 dark:bg-[#15171c] border border-slate-100 dark:border-slate-800 p-4 rounded-xl mb-6 relative shadow-inner">
+              <div className="bg-slate-50 dark:bg-[#15171c] border border-slate-100 dark:border-slate-800 p-4 rounded-xl mb-4 relative shadow-inner">
                 <p className="text-[13.5px] text-slate-600 dark:text-slate-400 italic leading-relaxed">
                   <span className="font-bold text-slate-700 dark:text-slate-300 not-italic block mb-1.5 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-amber-500" /> Rationale:</span>
                   {gap.rationale}
                 </p>
               </div>
             )}
+
+            {/* Evidence Block (Bằng chứng thực tế từ v2) */}
+            {gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null && gap.probe && gap.parentTrend && (
+              <div className="bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-xl mb-4 relative shadow-inner">
+                <div className="text-[13px] text-emerald-800 dark:text-emerald-400 leading-relaxed">
+                  <span className="font-bold text-emerald-950 dark:text-emerald-300 block mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Bằng chứng thực tế (Evidence):
+                  </span>
+                  Chỉ có <strong className="text-emerald-950 dark:text-emerald-200">{gap.intersectionCount ?? 0}</strong> bài báo ở giao điểm <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicA}"</code> × <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicB}"</code> — trong khi <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.parentTrend.topic}"</code> có <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> bài, đang tăng trưởng <strong className="text-emerald-950 dark:text-emerald-200">+{gap.parentTrend.growthRatePct}%/năm</strong>.
+                </div>
+              </div>
+            )}
             
             {gap.supportingPaperIds && gap.supportingPaperIds.length > 0 && (
-               <div className="flex flex-wrap gap-2 mb-6 relative">
+               <div className="flex flex-wrap gap-2 mb-4 relative">
                  {gap.supportingPaperIds.map((id) => (
                    <Link key={id} to={`/papers/${id}`}>
                      <Badge variant="secondary" className="text-[11px] font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5">
@@ -246,7 +260,10 @@ export function ResearchGapsPage() {
             )}
             
             <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800 mt-auto relative">
-              <ConfidenceBar value={gap.confidence} />
+              <ConfidenceBar 
+                value={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null ? gap.evidenceConfidence : gap.confidence} 
+                isEvidence={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null}
+              />
               <div className="flex gap-2">
                 {filterStatus === "active" ? (
                   <>
