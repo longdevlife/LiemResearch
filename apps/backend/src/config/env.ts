@@ -103,6 +103,7 @@ const EnvSchema = z.object({
 const rawEnv = { ...process.env };
 // In testing environments (vitest, CI), inject mock defaults to avoid process.exit(1) due to missing secrets.
 if (rawEnv.NODE_ENV === "test" || rawEnv.VITEST === "true") {
+  rawEnv.NODE_ENV = "test";
   rawEnv.MONGODB_URI = rawEnv.MONGODB_URI || "mongodb://localhost:27017/test";
   rawEnv.REDIS_URL = rawEnv.REDIS_URL || "redis://localhost:6379";
   rawEnv.JWT_ACCESS_SECRET = rawEnv.JWT_ACCESS_SECRET || "mockaccesssecretmockaccesssecretmock";
