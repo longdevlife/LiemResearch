@@ -14,9 +14,7 @@ export interface AuthClaims {
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
-    interface Request {
-      user?: AuthClaims;
-    }
+    interface User extends AuthClaims {}
   }
 }
 

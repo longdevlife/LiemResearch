@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { HomePage } from "@/pages/home";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
+import { OAuthCallbackPage } from "@/pages/oauth-callback";
 import { DashboardPage } from "@/pages/dashboard";
 import { SearchPage } from "@/pages/search";
 import { TrendsPage } from "@/pages/trends";
@@ -75,6 +76,7 @@ export function AppRoutes() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/oauth-callback" element={<OAuthCallbackPage />} />
       </Route>
     </Routes>
   );

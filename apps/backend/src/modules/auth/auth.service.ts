@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
+import type { Profile } from "passport-google-oauth20";
 import type { AuthResponse, AuthTokens, User } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
@@ -31,8 +32,46 @@ export const authService = {
     const user = await UserModel.findOne({ email: input.email });
     if (!user) throw AppError.unauthorized("Invalid credentials");
 
+    if (!user.passwordHash) {
+      throw AppError.unauthorized("This account uses Google Login. Please sign in with Google.");
+    }
+
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) throw AppError.unauthorized("Invalid credentials");
+
+    if (user.isActive === false) {
+      throw AppError.forbidden("Account has been disabled");
+    }
+
+    const tokens = await issueTokens(user);
+    return { user: toUserDto(user), tokens };
+  },
+
+  async googleLogin(profile: Profile): Promise<AuthResponse> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) throw AppError.badRequest("Google profile missing email");
+
+    let user = await UserModel.findOne({ googleId: profile.id });
+    
+    if (!user) {
+      user = await UserModel.findOne({ email });
+      if (user) {
+        user.googleId = profile.id;
+        if (!user.avatarUrl && profile.photos?.[0]?.value) {
+          user.avatarUrl = profile.photos[0].value;
+        }
+        await user.save();
+      } else {
+        user = await UserModel.create({
+          email,
+          googleId: profile.id,
+          fullName: profile.displayName || "Google User",
+          avatarUrl: profile.photos?.[0]?.value,
+          role: "student",
+          passwordHash: "",
+        });
+      }
+    }
 
     if (user.isActive === false) {
       throw AppError.forbidden("Account has been disabled");
@@ -97,6 +136,10 @@ export const authService = {
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
     const user = await UserModel.findById(userId);
     if (!user) throw AppError.unauthorized();
+
+    if (!user.passwordHash) {
+      throw AppError.badRequest("Cannot change password for OAuth-only accounts");
+    }
 
     const ok = await bcrypt.compare(input.currentPassword, user.passwordHash);
     if (!ok) throw AppError.badRequest("Invalid current password");

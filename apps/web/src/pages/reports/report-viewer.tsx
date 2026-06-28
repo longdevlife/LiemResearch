@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle } from "lucide-react";
+import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
 import { useReport } from "@/features/reports/hooks/use-reports";
@@ -63,6 +63,7 @@ const RosePetals = () => {
 export function ReportViewerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showRoses, setShowRoses] = useState(true);
   const { data: report, isLoading, isError } = useReport(id || "");
 
   if (isLoading || report?.status === "generating" || report?.status === "queued") {
@@ -96,7 +97,7 @@ export function ReportViewerPage() {
 
   return (
     <main className="container py-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0f1115] min-h-screen relative overflow-hidden">
-      <RosePetals />
+      {showRoses && <RosePetals />}
       
       {/* Left side network decoration */}
       <div className="hidden xl:block absolute left-0 top-0 bottom-0 w-[200px] pointer-events-none opacity-50 dark:opacity-20 print:hidden">
@@ -142,6 +143,9 @@ export function ReportViewerPage() {
           </h1>
 
           <div className="flex items-center gap-3 mb-8 print:hidden">
+            <Button onClick={() => setShowRoses(!showRoses)} variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
+              <Flower className="w-4 h-4" /> {showRoses ? "Hide Roses" : "Show Roses"}
+            </Button>
             <Button variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
               <Share className="w-4 h-4" /> Share
             </Button>

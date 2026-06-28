@@ -4,6 +4,7 @@ import { validate } from "../../common/middleware/validate.js";
 import { authController } from "./auth.controller.js";
 import { LoginSchema, RefreshSchema, RegisterSchema, UpdateProfileSchema, ChangePasswordSchema } from "./dto/auth.schema.js";
 import { UserModel } from "./models/user.model.js";
+import passport from "./passport.js";
 
 export const authRouter: Router = Router();
 
@@ -14,6 +15,13 @@ authRouter.post("/logout", validate(RefreshSchema), authController.logout);
 authRouter.get("/me", requireAuth, authController.me);
 authRouter.patch("/me", requireAuth, validate(UpdateProfileSchema), authController.updateProfile);
 authRouter.post("/change-password", requireAuth, validate(ChangePasswordSchema), authController.changePassword);
+
+authRouter.get("/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));
+authRouter.get(
+  "/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: "/login?error=GoogleLoginFailed" }),
+  authController.googleCallback
+);
 
 /** GET /auth/rankings?limit=20 — Public leaderboard by points */
 authRouter.get("/rankings", async (req: Request, res: Response) => {

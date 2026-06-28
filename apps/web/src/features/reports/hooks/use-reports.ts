@@ -6,6 +6,12 @@ export function useReports() {
   return useQuery({
     queryKey: ["reports"],
     queryFn: () => reportsApi.list(),
+    refetchInterval: (query) => {
+      const hasPending = query.state?.data?.some(
+        (r) => r.status === "queued" || r.status === "generating"
+      );
+      return hasPending ? 3000 : false;
+    },
   });
 }
 
