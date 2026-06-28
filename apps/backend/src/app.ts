@@ -51,7 +51,6 @@ export function createApp(): Express {
     }),
   );
 
-  app.use("/uploads", express.static(path.resolve("uploads")));
   app.use("/api/v1", apiRouter);
 
   app.use(notFoundHandler);

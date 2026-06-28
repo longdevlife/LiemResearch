@@ -2,6 +2,7 @@ import type { Paper, PaperRef } from "@trend/shared-types";
 import mongoose from "mongoose";
 import fs from "node:fs/promises";
 import path from "node:path";
+import jwt from "jsonwebtoken";
 import { PaperModel, type PaperDoc } from "./models/paper.model.js";
 import { PaperDownloadModel } from "./models/paper-download.model.js";
 import { AppError } from "../../common/exceptions/app-error.js";
@@ -629,6 +630,7 @@ export const paperService = {
     paperId: string,
     userId: string,
     userRole: string,
+    baseUrl: string,
   ): Promise<{ downloadUrl: string; cost: number; isRepeatDownload: boolean }> {
     if (!mongoose.Types.ObjectId.isValid(paperId)) throw AppError.badRequest("Invalid paper id");
 
@@ -680,7 +682,12 @@ export const paperService = {
       await PaperModel.findByIdAndUpdate(paperId, { $inc: { downloadCount: 1 } });
     }
 
-    const downloadUrl = await resolveLocalPdfPath(paper.pdfPath);
+    const downloadToken = jwt.sign(
+      { paperId, userId },
+      env.JWT_ACCESS_SECRET,
+      { expiresIn: "5m" }
+    );
+    const downloadUrl = `${baseUrl}/api/v1/papers/${paperId}/download?token=${downloadToken}`;
     return { downloadUrl, cost, isRepeatDownload };
   },
 
