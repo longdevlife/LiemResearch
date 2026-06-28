@@ -76,8 +76,8 @@ function isSameId(
 }
 
 async function resolveLocalPdfPath(pdfPath: string): Promise<string> {
-  // Serve local files via backend absolute URL
-  return `http://localhost:${env.PORT}${pdfPath}`;
+  // Serve local files via relative path
+  return pdfPath;
 }
 
 async function deleteLocalPdf(pdfPath: string): Promise<void> {
