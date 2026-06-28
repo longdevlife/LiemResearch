@@ -109,9 +109,10 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
         },
       },
     ]),
-    // Count unique ratings given by this user
+    // Count unique targets rated by this user to prevent spam points
     UserRatingModel.aggregate<{ count: number }>([
       { $match: { userId: objectId } },
+      { $group: { _id: { targetKind: "$targetKind", targetId: "$targetId" } } },
       { $count: "count" },
     ]),
     // Get penalty points from user document
@@ -167,8 +168,10 @@ export async function calculateUserRankingStats(userId: string | mongoose.Types.
       },
       { $count: "requestedPapers" },
     ]),
+    // Count unique targets rated by this user to prevent spam points
     UserRatingModel.aggregate<{ count: number }>([
       { $match: { userId: objectId } },
+      { $group: { _id: { targetKind: "$targetKind", targetId: "$targetId" } } },
       { $count: "count" },
     ]),
     UserModel.findById(objectId).select("penaltyPoints").lean(),
