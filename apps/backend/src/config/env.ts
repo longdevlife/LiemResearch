@@ -57,6 +57,14 @@ const EnvSchema = z.object({
   GAPS_TOP_K: z.coerce.number().int().min(1).max(10).default(6),
   GAPS_MAX_PER_HOUR: z.coerce.number().int().positive().default(10),
   GAPS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2048),
+  // v2 — a gap is "confirmed" when its intersection is scarce AND a parent topic
+  // is rising. Scarce = intersectionCount ≤ GAP_SCARCE_ABS OR ≤ GAP_SCARCE_PCT × min(parentCounts).
+  GAP_SCARCE_ABS: z.coerce.number().int().nonnegative().default(5),
+  GAP_SCARCE_PCT: z.coerce.number().min(0).max(1).default(0.02),
+  GAP_PARENT_RISING_MIN: z.coerce.number().default(0), // growthRatePct strictly above this = rising
+  // v2 — paper comparison (one cached LLM call; capped to bound tokens).
+  COMPARE_MAX_PAPERS: z.coerce.number().int().min(2).max(4).default(4),
+  COMPARE_PROMPT_VERSION: z.string().default("compare-v1"),
   // Phase D — Function Calling
   DEEP_ANALYSIS_MAX_TURNS: z.coerce.number().int().min(1).max(10).default(5),
   DEEP_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
