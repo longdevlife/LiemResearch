@@ -40,7 +40,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       onSuccess: (data) => {
         toast.success(`Welcome back, ${data.user.fullName}`);
         const target =
-          redirectTo ?? (location.state as LocationState | null)?.from?.pathname ?? "/";
+          redirectTo ?? (location.state as LocationState | null)?.from?.pathname ?? "/home";
         navigate(target, { replace: true });
       },
       onError: (err) => {
@@ -61,7 +61,15 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       </div>
 
       {/* Social login placeholder */}
-      <Button variant="outline" className="w-full rounded-xl bg-white dark:bg-[#2a2a2a] border-slate-200 dark:border-[#3a3a3a] hover:bg-slate-50 dark:hover:bg-[#333] text-slate-900 dark:text-white h-12 font-bold shadow-sm" type="button">
+      <Button 
+        variant="outline" 
+        className="w-full rounded-xl bg-white dark:bg-[#2a2a2a] border-slate-200 dark:border-[#3a3a3a] hover:bg-slate-50 dark:hover:bg-[#333] text-slate-900 dark:text-white h-12 font-bold shadow-sm" 
+        type="button"
+        onClick={() => {
+          const baseUrl = import.meta.env.VITE_API_BASE ?? "/api/v1";
+          window.location.href = `${baseUrl}/auth/google`;
+        }}
+      >
         <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
           <path
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
