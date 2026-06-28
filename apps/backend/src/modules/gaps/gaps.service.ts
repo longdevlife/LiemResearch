@@ -3,9 +3,12 @@ import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { AppError } from "../../common/exceptions/app-error.js";
+import type { GapProbe } from "@trend/shared-types";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON, LlmContentError } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
+import { computeGapEvidence } from "./gap-evidence.js";
+import { fillMissingYears, truncateToCompleteYears, yoyGrowthPct } from "../trends/trend.formulas.js";
 import { ResearchGapModel } from "./models/research-gap.model.js";
 import { GapAnalysisModel } from "./models/gap-analysis.model.js";
 import { gapsQueue } from "../../infrastructure/queue.js";
@@ -34,6 +37,88 @@ function clamp01(x: unknown): number {
   const n = Number(x);
   if (!Number.isFinite(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
+}
+
+const GAP_WINDOW_YEARS = 5;
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Filter: active papers whose title OR abstract contains EVERY phrase (concept AND).
+ *  The probe is LLM-generated free text, so it is escaped before becoming a regex. */
+function conceptFilter(
+  phrases: string[],
+  years: { yearFrom?: number; yearTo?: number },
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = { dataStatus: "active" };
+  if (years.yearFrom !== undefined || years.yearTo !== undefined) {
+    filter.publicationYear = {
+      ...(years.yearFrom !== undefined ? { $gte: years.yearFrom } : {}),
+      ...(years.yearTo !== undefined ? { $lte: years.yearTo } : {}),
+    };
+  }
+  filter.$and = phrases.map((p) => {
+    const rx = new RegExp(escapeRegex(p.trim()), "i");
+    return { $or: [{ title: rx }, { abstractText: rx }] };
+  });
+  return filter;
+}
+
+/** YoY growth % of a free-text concept over the analysis window (0 if too sparse). */
+async function conceptGrowthPct(
+  phrase: string,
+  years: { yearFrom?: number; yearTo?: number },
+): Promise<number> {
+  const now = new Date().getFullYear();
+  const yearTo = years.yearTo ?? now;
+  const yearFrom = years.yearFrom ?? yearTo - GAP_WINDOW_YEARS;
+  const rows = await PaperModel.aggregate<{ _id: number; count: number }>([
+    { $match: conceptFilter([phrase], { yearFrom, yearTo }) },
+    { $group: { _id: "$publicationYear", count: { $sum: 1 } } },
+    { $sort: { _id: 1 } },
+  ]);
+  const series = fillMissingYears(
+    rows.map((r) => ({ year: r._id, count: r.count })),
+    yearFrom,
+    yearTo,
+  );
+  return yoyGrowthPct(truncateToCompleteYears(series, Math.min(yearTo, now - 1)));
+}
+
+/**
+ * Verify an LLM-proposed gap against the corpus (intersection count + parent
+ * volumes + parent growth) → deterministic evidence. Concepts are matched by
+ * escaped-regex on title+abstract (the probe is free text, not a canonical topic
+ * name). Returns null when the probe is missing so the gap degrades gracefully.
+ */
+async function scoreGapEvidence(probe: GapProbe | undefined) {
+  if (!probe?.topicA || !probe?.topicB) return null;
+  const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo };
+  const [intersectionCount, aCount, bCount, growthA, growthB] = await Promise.all([
+    PaperModel.countDocuments(conceptFilter([probe.topicA, probe.topicB], years)),
+    PaperModel.countDocuments(conceptFilter([probe.topicA], years)),
+    PaperModel.countDocuments(conceptFilter([probe.topicB], years)),
+    conceptGrowthPct(probe.topicA, years),
+    conceptGrowthPct(probe.topicB, years),
+  ]);
+  const parentTrend =
+    growthA >= growthB
+      ? { topic: probe.topicA, growthRatePct: growthA }
+      : { topic: probe.topicB, growthRatePct: growthB };
+  const ev = computeGapEvidence(
+    {
+      intersectionCount,
+      parentCounts: { a: aCount, b: bCount },
+      parentRisingGrowthPct: parentTrend.growthRatePct,
+    },
+    {
+      scarceAbs: env.GAP_SCARCE_ABS,
+      scarcePct: env.GAP_SCARCE_PCT,
+      parentRisingMin: env.GAP_PARENT_RISING_MIN,
+    },
+  );
+  return { ...ev, probe, parentTrend };
 }
 
 export const gapsService = {
@@ -129,8 +214,9 @@ export const gapsService = {
 
     // ⑤ Persist gaps (map 1-based evidence numbers back to real paper ids)
     const gapDocs = await Promise.all(
-      output.gaps.slice(0, 5).map((g) =>
-        ResearchGapModel.create({
+      output.gaps.slice(0, 5).map(async (g) => {
+        const evidence = await scoreGapEvidence(g.probe);
+        return ResearchGapModel.create({
           topic: analysis.topic,
           normalizedTopic,
           title: String(g.title ?? "").slice(0, 200),
@@ -140,10 +226,15 @@ export const gapsService = {
             .filter((n) => Number.isInteger(n) && n >= 1 && n <= papers.length)
             .map((n) => papers[n - 1]!.id),
           confidence: clamp01(g.confidence),
+          probe: evidence?.probe,
+          intersectionCount: evidence?.intersectionCount,
+          parentCounts: evidence?.parentCounts,
+          parentTrend: evidence?.parentTrend ?? null,
+          evidenceConfidence: evidence?.evidenceConfidence,
           source: "standalone",
           userId: analysis.userId,
-        }),
-      ),
+        });
+      }),
     );
 
     // ⑥ Update analysis
@@ -188,6 +279,12 @@ export const gapsService = {
           rationale: g.rationale,
           supportingPaperIds: g.supportingPaperIds,
           confidence: g.confidence,
+          // Report-path gaps carry no probe (the report LLM doesn't emit one yet),
+          // so they have no quantitative evidence. Seed evidenceConfidence from the
+          // LLM confidence so they sort fairly against standalone v2 gaps instead of
+          // sinking below them (null sorts last). Full probe-wiring for reports is a
+          // follow-up.
+          evidenceConfidence: g.confidence,
           source: "report",
           sourceReportId: report._id,
           userId: report.userId,
@@ -208,7 +305,9 @@ export const gapsService = {
     const { page, pageSize } = query;
     const [docs, total] = await Promise.all([
       ResearchGapModel.find(filter)
-        .sort({ confidence: -1, createdAt: -1 })
+        // Prefer the deterministic evidence score; fall back to LLM confidence for
+        // legacy gaps (created before v2, no evidenceConfidence).
+        .sort({ evidenceConfidence: -1, confidence: -1, createdAt: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean(),
@@ -225,6 +324,11 @@ export const gapsService = {
         rationale: d.rationale,
         supportingPaperIds: d.supportingPaperIds.map(String),
         confidence: d.confidence,
+        probe: d.probe,
+        intersectionCount: d.intersectionCount,
+        parentCounts: d.parentCounts,
+        parentTrend: d.parentTrend,
+        evidenceConfidence: d.evidenceConfidence,
         source: d.source,
         sourceReportId: d.sourceReportId ? String(d.sourceReportId) : undefined,
         userId: String(d.userId),
