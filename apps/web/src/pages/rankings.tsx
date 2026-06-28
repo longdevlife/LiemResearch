@@ -292,8 +292,7 @@ export function RankingsPage() {
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > pagination.totalPages) return;
-    setPagination((p) => ({ ...p, page: newPage }));
-    fetchRankings(newPage);
+    void fetchRankings(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

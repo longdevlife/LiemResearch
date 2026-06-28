@@ -749,6 +749,8 @@ function PaperRatingWidget({
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
+                aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                aria-pressed={star <= rating}
               >
                 <Star
                   className={`w-9 h-9 cursor-pointer transition-colors ${
@@ -894,6 +896,7 @@ function PaperReviewsList({
                         onClick={() => handleDeleteReview(rating.id)}
                         className="text-red-500 hover:text-red-700 transition-colors p-1"
                         title="Delete review"
+                        aria-label="Delete review"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
