@@ -1,9 +1,9 @@
 import mongoose, { type InferSchemaType, Schema } from "mongoose";
 
-/** quality_evaluations — one LLM-as-judge result per AI artifact (report/gap). */
+/** quality_evaluations — one LLM-as-judge result per target (report / gap / paper). */
 const qualityEvaluationSchema = new Schema(
   {
-    targetKind: { type: String, enum: ["report", "gap"], required: true },
+    targetKind: { type: String, enum: ["report", "gap", "paper"], required: true },
     targetId: { type: Schema.Types.ObjectId, required: true },
     relevance: { type: Number, min: 1, max: 5, required: true },
     groundedness: { type: Number, min: 1, max: 5, required: true },
