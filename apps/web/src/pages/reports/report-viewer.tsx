@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower } from "lucide-react";
+import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
 import { useReport } from "@/features/reports/hooks/use-reports";
@@ -8,6 +8,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import robotImg from "@/assets/robot.png";
 import holographicBookImg from "@/assets/holographic_book.png";
+import { api } from "@/services/api-client";
+import { toast } from "sonner";
+import { useAuthStore } from "@/stores/auth-store";
+import { useQueryClient } from "@tanstack/react-query";
 
 const growthData = [
   { year: "2020", volume: 10 },
@@ -64,6 +68,8 @@ export function ReportViewerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showRoses, setShowRoses] = useState(true);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === "admin";
   const { data: report, isLoading, isError } = useReport(id || "");
 
   if (isLoading || report?.status === "generating" || report?.status === "queued") {
@@ -322,7 +328,7 @@ export function ReportViewerPage() {
           </div>
           
           {/* Quick Actions */}
-          <div className="bg-gradient-to-br from-[#e0e7ff] to-[#dbeafe] dark:from-[#1e3a8a]/30 dark:to-[#172554]/30 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-6 shadow-sm">
+          <div className="bg-gradient-to-br from-[#e0e7ff] to-[#dbeafe] dark:from-[#1e3a8a]/30 dark:to-[#172554]/30 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-6 shadow-sm mb-6">
             <h3 className="text-base font-bold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Explore Further
             </h3>
@@ -333,8 +339,253 @@ export function ReportViewerPage() {
               View Research Gaps
             </Button>
           </div>
+
+          {/* Rating Widget */}
+          {!isAdmin && <ReportRatingWidget reportId={id || ""} />}
         </div>
       </div>
     </main>
+  );
+}
+
+function ReportRatingWidget({ reportId }: { reportId: string }) {
+  const [rating, setRating] = useState<number>(0);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [summary, setSummary] = useState<{ averageRating: number; totalRatings: number }>({ averageRating: 0, totalRatings: 0 });
+  const [allRatings, setAllRatings] = useState<any[]>([]);
+  const currentUser = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
+
+  const fetchRating = async () => {
+    try {
+      const res = await api.get(`/quality/report/${reportId}`);
+      if (res.data.success && res.data.data) {
+        const { ratingSummary, allRatings } = res.data.data;
+        if (ratingSummary) {
+          setSummary({
+            averageRating: ratingSummary.avg,
+            totalRatings: ratingSummary.count,
+          });
+        }
+        if (allRatings) {
+          setAllRatings(allRatings);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch rating:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRating();
+  }, [reportId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      toast.error("Please select a star rating");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api.post("/quality/rate", {
+        targetKind: "report",
+        targetId: reportId,
+        stars: rating,
+        comment: comment.trim() || undefined,
+      });
+      if (res.data.success) {
+        toast.success("Rating submitted! +5 contribution points earned.");
+        setRating(0);
+        setComment("");
+        
+        // Instant points/credits update on UI!
+        try {
+          const resMe = await api.get("/auth/me");
+          if (resMe.data.success) {
+            useAuthStore.setState({ user: resMe.data.data.user });
+            queryClient.setQueryData(["current-user"], resMe.data.data);
+          }
+        } catch (e) {
+          queryClient.invalidateQueries({ queryKey: ["current-user"] });
+        }
+
+        fetchRating();
+      }
+    } catch (err: any) {
+      console.error("Failed to save rating:", err);
+      toast.error(err.response?.data?.error?.message || "Failed to submit rating");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async (ratingId: string) => {
+    if (!confirm("Are you sure you want to delete your review?")) return;
+    try {
+      const res = await api.delete(`/quality/rate/${ratingId}`);
+      if (res.data.success) {
+        toast.success("Review deleted successfully.");
+        
+        // Instant points/credits update on UI!
+        try {
+          const resMe = await api.get("/auth/me");
+          if (resMe.data.success) {
+            useAuthStore.setState({ user: resMe.data.data.user });
+            queryClient.setQueryData(["current-user"], resMe.data.data);
+          }
+        } catch (e) {
+          queryClient.invalidateQueries({ queryKey: ["current-user"] });
+        }
+
+        fetchRating();
+      }
+    } catch (err: any) {
+      console.error("Failed to delete review:", err);
+      toast.error(err.response?.data?.error?.message || "Failed to delete review");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center justify-center py-8">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+      <div>
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+          Rate this Analytical Report
+        </h3>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          Reviewing this report helps refine model synthesis and awards you +5 contribution points.
+        </p>
+      </div>
+
+      {summary.totalRatings > 0 && (
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-zinc-900/30 p-2 rounded-lg">
+          <span className="text-amber-500 flex items-center gap-0.5 font-bold">
+            ★ {summary.averageRating.toFixed(1)}
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <span>{summary.totalRatings} user {summary.totalRatings === 1 ? "rating" : "ratings"}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        <div className="flex items-center gap-1.5 py-1">
+          {[1, 2, 3, 4, 5].map((star) => {
+            const active = hoverRating ? star <= hoverRating : star <= rating;
+            return (
+              <button
+                key={star}
+                type="button"
+                className="transition-transform active:scale-90"
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => setRating(star)}
+                aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                aria-pressed={star <= rating}
+              >
+                <Star
+                  className={`w-7 h-7 cursor-pointer transition-colors ${
+                    active 
+                      ? "text-amber-400 fill-amber-400 filter drop-shadow-[0_0_2px_rgba(250,204,21,0.4)]" 
+                      : "text-slate-300 dark:text-slate-700"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-1">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Add comments or notes about accuracy, completeness... (Optional)"
+            className="w-full text-xs bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 h-20 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none dark:text-white"
+            maxLength={1000}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm h-10 font-bold text-xs gap-1.5"
+          >
+            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Submit Feedback (+5 pts)
+          </Button>
+        </div>
+      </form>
+
+      {allRatings.length > 0 && (
+        <div className="border-t border-slate-100 dark:border-zinc-800 pt-4 mt-4 space-y-3 animate-fadeIn">
+          <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            All Reviews
+          </h4>
+          <div className="divide-y divide-slate-100 dark:divide-zinc-800 max-h-[220px] overflow-y-auto pr-1 space-y-2.5">
+            {allRatings.map((rating: any, index: number) => {
+              const userInit = rating.user?.fullName?.charAt(0) || "?";
+              const userName = rating.user?.fullName || "Anonymous";
+              const isMyReview = rating.user?.id === currentUser?.id;
+              return (
+                <div key={rating.id || index} className="pt-2.5 first:pt-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5.5 h-5.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/40 flex items-center justify-center text-[9px] font-bold text-blue-700 dark:text-blue-400">
+                        {userInit}
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[100px]" title={userName}>
+                        {userName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-2.5 h-2.5 ${
+                              star <= rating.stars ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-slate-800"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      {isMyReview && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReview(rating.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-0.5"
+                          title="Delete review"
+                          aria-label="Delete review"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {rating.comment && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 italic bg-slate-50/50 dark:bg-zinc-950/20 p-2 rounded border border-slate-100 dark:border-zinc-800/50 break-words leading-relaxed">
+                      "{rating.comment}"
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

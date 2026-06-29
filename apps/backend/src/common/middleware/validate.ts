@@ -12,7 +12,12 @@ export function validate<T>(
       next(parsed.error);
       return;
     }
-    (req as unknown as Record<string, unknown>)[source] = parsed.data;
+    Object.defineProperty(req, source, {
+      value: parsed.data,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
     next();
   };
 }

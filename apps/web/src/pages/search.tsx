@@ -1,14 +1,15 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
 
 type FeSortKey = "relevance" | "date" | "citations";
 import { usePapers } from "@/features/papers";
 import { useSearch } from "@/features/search";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useBookmarks } from "@/features/bookmarks";
 import { PaperCard } from "@/components/paper-card";
+import { useAuthStore } from "@/stores/auth-store";
 
 const PAGE_SIZE = 10;
 
@@ -16,6 +17,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
+  const currentUser = useAuthStore((s) => s.user);
 
   // Filter States
   const [searchMode, setSearchMode] = useState<"semantic" | "keyword">("semantic");
@@ -330,19 +332,30 @@ export function SearchPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-medium text-slate-500">Sort by:</span>
-            <div className="relative z-0">
-              <select
-                value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value as FeSortKey); resetPage(); }}
-                className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="relevance">Relevance (AI Score)</option>
-                <option value="date">Date (Newest)</option>
-                <option value="citations">Citations</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            {currentUser?.role !== "admin" && (
+              <Link to="/settings/submit-paper">
+                <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800 text-white font-bold gap-1.5 rounded-lg px-3 shadow-sm transition-all active:scale-95 duration-150">
+                  <Plus className="w-3.5 h-3.5" />
+                  Contribute Paper
+                </Button>
+              </Link>
+            )}
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500">Sort by:</span>
+              <div className="relative z-0">
+                <select
+                  value={sortBy}
+                  onChange={(e) => { setSortBy(e.target.value as FeSortKey); resetPage(); }}
+                  className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="relevance">Relevance (AI Score)</option>
+                  <option value="date">Date (Newest)</option>
+                  <option value="citations">Citations</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>

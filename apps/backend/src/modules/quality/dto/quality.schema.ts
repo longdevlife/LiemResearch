@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const TargetKind = z.enum(["report", "gap"]);
+const TargetKind = z.enum(["report", "gap", "paper"]);
 const ObjectId = z.string().regex(/^[a-fA-F0-9]{24}$/, "invalid id");
 
 export const EvaluateSchema = z.object({

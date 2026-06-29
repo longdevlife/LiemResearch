@@ -192,6 +192,9 @@ function toUserDto(user: UserDoc): User {
     institution: user.institution ?? undefined,
     researchInterests: user.researchInterests,
     isActive: user.isActive !== false,
+    points: user.points ?? 0,
+    credits: user.credits ?? 0,
+    penaltyPoints: user.penaltyPoints ?? 0,
     createdAt: (user as unknown as { createdAt: Date }).createdAt.toISOString(),
     updatedAt: (user as unknown as { updatedAt: Date }).updatedAt.toISOString(),
   };

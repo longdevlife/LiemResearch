@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import fs from "node:fs/promises";
 import path from "node:path";
+import jwt from "jsonwebtoken";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { requireAuth, requireRole } from "../../common/middleware/auth.js";
 import { uploadSinglePdf, assertPdfMagic } from "../../common/middleware/upload.js";
@@ -10,6 +11,7 @@ import { comparePapers } from "./paper.compare.js";
 import { PaperListQuerySchema } from "./dto/paper.schema.js";
 import { CompareBodySchema } from "./dto/compare.schema.js";
 import { embeddingQueue } from "../../infrastructure/queue.js";
+import { env } from "../../config/env.js";
 
 export const paperRouter: Router = Router();
 
@@ -165,12 +167,48 @@ paperRouter.post("/", requireAuth, uploadSinglePdf, async (req, res, next) => {
 /** GET /papers/:id/pdf-url — get a download URL for the PDF (charges credits). */
 paperRouter.get("/:id/pdf-url", requireAuth, async (req, res, next) => {
   try {
+    const host = req.get("host");
+    const baseUrl = `${req.protocol}://${host}`;
     const result = await paperService.getPdfDownloadUrl(
       String(req.params.id),
       String(req.user!.sub),
       String(req.user!.role),
+      baseUrl,
     );
     res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** GET /papers/:id/download — download the PDF using a short-lived query token. */
+paperRouter.get("/:id/download", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.query;
+    if (!token || typeof token !== "string") {
+      throw AppError.unauthorized("Download token is required");
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    } catch {
+      throw AppError.unauthorized("Download token is invalid or expired");
+    }
+
+    if (decoded.paperId !== id) {
+      throw AppError.forbidden("Token is not valid for this paper");
+    }
+
+    const paper = await paperService.getById(id);
+    if (!paper || !paper.pdfPath) {
+      throw AppError.notFound("PDF is not available for this paper");
+    }
+
+    const filePath = path.resolve(paper.pdfPath.replace(/^\//, ""));
+    res.setHeader("Content-Type", "application/pdf");
+    res.sendFile(filePath);
   } catch (error) {
     next(error);
   }

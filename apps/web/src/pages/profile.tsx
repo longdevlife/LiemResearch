@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail, FileText, Upload } from "lucide-react";
+import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail, FileText, Upload, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -241,6 +241,29 @@ export function ProfilePage() {
                 <User className="w-5 h-5 text-blue-600" />
                 Profile Information
               </h2>
+
+              {!isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-[#1b1c24] dark:to-[#121319] border border-blue-100 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Available Credits</p>
+                      <p className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">{(userData?.user as any)?.credits?.toLocaleString() ?? 0} credits</p>
+                    </div>
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-[#241e17] dark:to-[#19130e] border border-amber-100 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Contribution Points</p>
+                      <p className="text-2xl font-black text-amber-700 dark:text-amber-500 mt-1">{(userData?.user as any)?.points?.toLocaleString() ?? 0} pts</p>
+                    </div>
+                    <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-500">
+                      <Award className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
