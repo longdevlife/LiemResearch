@@ -9,6 +9,7 @@ import { useSearch } from "@/features/search";
 import { useSearchParams, Link } from "react-router-dom";
 import { useBookmarks } from "@/features/bookmarks";
 import { PaperCard } from "@/components/paper-card";
+import { useAuthStore } from "@/stores/auth-store";
 
 const PAGE_SIZE = 10;
 
@@ -16,6 +17,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
+  const currentUser = useAuthStore((s) => s.user);
 
   // Filter States
   const [searchMode, setSearchMode] = useState<"semantic" | "keyword">("semantic");
@@ -331,12 +333,14 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            <Link to="/settings/submit-paper">
-              <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800 text-white font-bold gap-1.5 rounded-lg px-3 shadow-sm transition-all active:scale-95 duration-150">
-                <Plus className="w-3.5 h-3.5" />
-                Contribute Paper
-              </Button>
-            </Link>
+            {currentUser?.role !== "admin" && (
+              <Link to="/settings/submit-paper">
+                <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800 text-white font-bold gap-1.5 rounded-lg px-3 shadow-sm transition-all active:scale-95 duration-150">
+                  <Plus className="w-3.5 h-3.5" />
+                  Contribute Paper
+                </Button>
+              </Link>
+            )}
 
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-slate-500">Sort by:</span>
