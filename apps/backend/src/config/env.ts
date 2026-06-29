@@ -101,8 +101,11 @@ const EnvSchema = z.object({
 });
 
 const rawEnv = { ...process.env };
-// In testing environments (vitest, CI), inject mock defaults to avoid process.exit(1) due to missing secrets.
-if (rawEnv.NODE_ENV === "test" || rawEnv.VITEST === "true") {
+// Inject mock defaults under Vitest ONLY to avoid process.exit(1) on missing secrets.
+// SECURITY: gated on VITEST (which Vitest sets automatically), NOT on NODE_ENV — a
+// production deploy mis-set to NODE_ENV=test must NOT silently boot with the hardcoded
+// mock JWT secrets (which are committed to this PUBLIC repo) and let anyone forge tokens.
+if (rawEnv.VITEST === "true") {
   rawEnv.NODE_ENV = "test";
   rawEnv.MONGODB_URI = rawEnv.MONGODB_URI || "mongodb://localhost:27017/test";
   rawEnv.REDIS_URL = rawEnv.REDIS_URL || "redis://localhost:6379";
