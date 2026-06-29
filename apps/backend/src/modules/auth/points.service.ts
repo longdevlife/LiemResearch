@@ -128,6 +128,30 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
   return points;
 }
 
+/**
+ * Reverse a previously-granted upload reward when an approval is REVOKED
+ * (downloaded → rejected). Atomically clears `uploadRewardedAt` first, so a
+ * concurrent double-revoke can only claw back once; then deducts the reward.
+ */
+export async function clawbackUploadReward(paper: {
+  _id: mongoose.Types.ObjectId;
+  uploadedBy?: mongoose.Types.ObjectId | null;
+  uploadCreditReward?: number;
+}): Promise<void> {
+  if (!paper.uploadedBy) return;
+  // Only the caller that actually clears the "rewarded" flag performs the deduction.
+  const cleared = await PaperModel.findOneAndUpdate(
+    { _id: paper._id, uploadRewardedAt: { $exists: true, $ne: null } },
+    { $unset: { uploadRewardedAt: "" } },
+  );
+  if (!cleared) return;
+  const reward = paper.uploadCreditReward ?? 0;
+  if (reward > 0) {
+    await UserModel.findByIdAndUpdate(paper.uploadedBy, { $inc: { credits: -reward } });
+  }
+  await syncUserPoints(String(paper.uploadedBy));
+}
+
 /** Apply the upload credit reward to the PDF uploader when status becomes 'downloaded'. */
 export async function applyUploadCreditReward(paper: {
   _id: mongoose.Types.ObjectId;

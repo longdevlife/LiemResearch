@@ -17,6 +17,7 @@ import {
   chargePaperDownloadCredit,
   syncUserPoints,
   applyUploadCreditReward,
+  clawbackUploadReward,
   REQUEST_PAPER_COST,
 } from "../auth/points.service.js";
 import { UserModel } from "../auth/models/user.model.js";
@@ -595,8 +596,14 @@ export const paperService = {
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
     Object.assign(updates, quality, { qualityTierName: tierDef.name });
 
-    const updated = await PaperModel.findByIdAndUpdate(paperId, updates, { new: true });
-    if (!updated) throw AppError.notFound("Paper not found");
+    // Guard the transition on the OBSERVED previous status, so two concurrent admins
+    // (e.g. double-clicking "reject") can't both run the refund/clawback side-effects.
+    const updated = await PaperModel.findOneAndUpdate(
+      { _id: paperId, paperStatus: previousStatus },
+      updates,
+      { new: true },
+    );
+    if (!updated) throw AppError.conflict("Paper status changed concurrently — please retry");
 
     // Reward upload credits when first approved
     if (!wasApproved && willBeApproved) {
@@ -617,6 +624,16 @@ export const paperService = {
           paperId: updated._id,
         });
       }
+    }
+
+    // Approval REVOKED (was approved → now rejected): claw back the upload reward the
+    // uploader was granted on approval, so a revoke doesn't leave free credits behind.
+    if (wasApproved && targetStatus === "rejected") {
+      await clawbackUploadReward({
+        _id: updated._id as mongoose.Types.ObjectId,
+        uploadedBy: updated.uploadedBy as mongoose.Types.ObjectId | undefined,
+        uploadCreditReward: updated.uploadCreditReward,
+      });
     }
 
     // Notify user on rejection / revocation
