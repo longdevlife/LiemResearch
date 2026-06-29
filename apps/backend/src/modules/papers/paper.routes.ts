@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { requireAuth, requireRole } from "../../common/middleware/auth.js";
-import { uploadSinglePdf } from "../../common/middleware/upload.js";
+import { uploadSinglePdf, assertPdfMagic } from "../../common/middleware/upload.js";
 import { CreatePaperSchema } from "./dto/create-paper.schema.js";
 import { paperService } from "./paper.service.js";
 import { comparePapers } from "./paper.compare.js";
@@ -134,6 +134,7 @@ paperRouter.post("/", requireAuth, uploadSinglePdf, async (req, res, next) => {
     let pdfPath: string | undefined;
     const reqFile = (req as any).file;
     if (reqFile) {
+      assertPdfMagic(reqFile.buffer);
       const uploadsDir = path.resolve("uploads");
       await fs.mkdir(uploadsDir, { recursive: true });
       const safeName = `${Date.now()}-${path.basename(reqFile.originalname)}`;
@@ -180,6 +181,7 @@ paperRouter.post("/:id/upload-pdf", requireAuth, uploadSinglePdf, async (req, re
   try {
     const reqFile = (req as any).file;
     if (!reqFile) throw AppError.badRequest("PDF file is required");
+    assertPdfMagic(reqFile.buffer);
 
     const uploadsDir = path.resolve("uploads");
     await fs.mkdir(uploadsDir, { recursive: true });
@@ -267,6 +269,7 @@ paperRouter.patch("/:id", requireAuth, uploadSinglePdf, async (req, res, next) =
     let pdfPath: string | undefined;
     const reqFile = (req as any).file;
     if (reqFile) {
+      assertPdfMagic(reqFile.buffer);
       const uploadsDir = path.resolve("uploads");
       await fs.mkdir(uploadsDir, { recursive: true });
       const safeName = `${Date.now()}-${path.basename(reqFile.originalname)}`;

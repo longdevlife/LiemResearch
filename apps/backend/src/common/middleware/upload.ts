@@ -17,3 +17,14 @@ export const uploadSinglePdf = (multer as any)({
     cb(null, true);
   },
 }).single("pdf");
+
+/**
+ * Verify the uploaded bytes are actually a PDF. The multer `fileFilter` only sees the
+ * client-supplied MIME type (spoofable), so the buffer is checked here AFTER upload for
+ * the `%PDF` magic bytes — call this in the route before persisting the file/rewarding.
+ */
+export function assertPdfMagic(buffer: Buffer | undefined): void {
+  if (!buffer || buffer.length < 5 || buffer.subarray(0, 4).toString("latin1") !== "%PDF") {
+    throw AppError.badRequest("Uploaded file is not a valid PDF");
+  }
+}

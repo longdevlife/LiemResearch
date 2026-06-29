@@ -40,7 +40,6 @@ function SettingsRow({
 
 export default function ProfileScreen() {
   const fallbackUser = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clear);
   const { colorScheme, toggleColorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const userQuery = useCurrentUser();
@@ -58,10 +57,10 @@ export default function ProfileScreen() {
       {
         text: "Sign out",
         style: "destructive",
-        onPress: () => {
-          clearAuth();
-          logoutMutation.mutate();
-        },
+        // Don't clear the store first — useLogout reads the refresh token from the
+        // store inside its mutationFn to revoke it server-side, then clears in onSettled.
+        // Pre-clearing wiped the token so the server session was never revoked (lived 7d).
+        onPress: () => logoutMutation.mutate(),
       },
     ]);
   };

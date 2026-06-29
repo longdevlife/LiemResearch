@@ -29,6 +29,9 @@ const researchGapSchema = new Schema(
     evidenceConfidence: { type: Number, min: 0, max: 1, index: true },
     source: { type: String, enum: ["report", "standalone"], required: true },
     sourceReportId: { type: Schema.Types.ObjectId, ref: "Report" },
+    // Standalone gaps link to their analysis so a retried job can clear+recreate
+    // its own gaps idempotently (report-sourced gaps have no analysisId).
+    analysisId: { type: Schema.Types.ObjectId, ref: "GapAnalysis", index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     status: {
       type: String,

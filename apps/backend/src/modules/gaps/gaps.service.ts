@@ -212,13 +212,19 @@ export const gapsService = {
       await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
     }
 
-    // ⑤ Persist gaps (map 1-based evidence numbers back to real paper ids)
+    // ⑤ Persist gaps (map 1-based evidence numbers back to real paper ids).
+    //    IDEMPOTENT: clear this analysis's prior gaps first, so a retried job (after a
+    //    partial earlier run that created some gaps then threw) can't leave duplicates
+    //    or orphans — the list() query is by userId+status, not gapIds, so orphans would
+    //    otherwise show on the FE forever.
+    await ResearchGapModel.deleteMany({ analysisId: analysis._id });
     const gapDocs = await Promise.all(
       output.gaps.slice(0, 5).map(async (g) => {
         const evidence = await scoreGapEvidence(g.probe);
         return ResearchGapModel.create({
           topic: analysis.topic,
           normalizedTopic,
+          analysisId: analysis._id,
           title: String(g.title ?? "").slice(0, 200),
           description: String(g.description ?? ""),
           rationale: String(g.rationale ?? ""),
@@ -230,7 +236,10 @@ export const gapsService = {
           intersectionCount: evidence?.intersectionCount,
           parentCounts: evidence?.parentCounts,
           parentTrend: evidence?.parentTrend ?? null,
-          evidenceConfidence: evidence?.evidenceConfidence,
+          // No probe → no quantitative evidence; fall back to the LLM confidence so a
+          // probe-less gap still sorts sanely instead of sinking below evidence-scored ones
+          // (Mongo sorts a missing field last under -1).
+          evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "standalone",
           userId: analysis.userId,
         });
