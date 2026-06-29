@@ -21,6 +21,7 @@ import {
   QUALITY_JUDGE_SYSTEM_PROMPT,
   QUALITY_PROMPT_VERSION,
   buildGapJudgePrompt,
+  buildPaperJudgePrompt,
   buildReportJudgePrompt,
   type JudgeEvidence,
 } from "./quality.prompt.js";
@@ -81,6 +82,14 @@ async function buildPromptForTarget(
     }
     const evidence = await loadEvidence((report.groundingPaperIds ?? []) as unknown[]);
     return buildReportJudgePrompt(report.query, report.markdown, evidence);
+  }
+  if (kind === "paper") {
+    const paper = await PaperModel.findById(id).select("title abstractText").lean();
+    if (!paper) throw AppError.notFound("Paper not found");
+    if (!paper.abstractText || !paper.abstractText.trim()) {
+      throw AppError.badRequest("Bài không đủ dữ liệu để AI chấm (thiếu abstract).");
+    }
+    return buildPaperJudgePrompt({ title: String(paper.title), abstractText: paper.abstractText });
   }
   const gap = await ResearchGapModel.findById(id).lean();
   if (!gap) throw AppError.notFound("Research gap not found");

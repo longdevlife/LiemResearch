@@ -23,6 +23,9 @@ export interface JudgeEvidence {
 /** Abstracts are truncated so groundedness can be judged without blowing tokens. */
 const MAX_ABSTRACT_CHARS = 600;
 const MAX_MARKDOWN_CHARS = 8000;
+/** A paper's own abstract is the main content here, so allow more than the 600-char
+ * evidence snippet — but still bound it so a pathological abstract can't blow tokens. */
+const MAX_PAPER_ABSTRACT_CHARS = 4000;
 
 function formatEvidence(evidence: JudgeEvidence[]): string {
   if (evidence.length === 0) return "(no evidence papers available)";
@@ -56,5 +59,25 @@ export function buildGapJudgePrompt(
     `EVIDENCE PAPERS (${evidence.length}):\n${formatEvidence(evidence)}`,
     `AI RESEARCH GAP TO EVALUATE:\nTitle: ${gap.title}\nDescription: ${gap.description}\nRationale: ${gap.rationale}`,
     "Score: relevance (is it a real, well-scoped gap?), groundedness (supported by the evidence?), completeness (clearly articulated?). Return ONLY the JSON.",
+  ].join("\n\n---\n\n");
+}
+
+/**
+ * Judge a user-uploaded paper from its OWN abstract (the paper is the source, so
+ * there is no separate evidence list). Reuses the 3-dimension JSON contract,
+ * reinterpreted for a standalone paper.
+ */
+export function buildPaperJudgePrompt(paper: { title: string; abstractText?: string }): string {
+  const abstract = (paper.abstractText ?? "(no abstract)").slice(0, MAX_PAPER_ABSTRACT_CHARS);
+  return [
+    `PAPER TITLE: ${paper.title}`,
+    `PAPER ABSTRACT:\n${abstract}`,
+    [
+      "Score this PAPER itself (it is source content, not an AI output) on:",
+      "- relevance: is it a clear, well-scoped research topic (vs vague / off-scope)?",
+      "- groundedness: are the abstract's claims backed by a stated method / data / results (vs hand-wavy)?",
+      "- completeness: does the abstract cover problem + method + result?",
+      "Return ONLY the JSON.",
+    ].join("\n"),
   ].join("\n\n---\n\n");
 }
