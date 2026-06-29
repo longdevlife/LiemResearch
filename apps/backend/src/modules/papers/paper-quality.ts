@@ -18,7 +18,9 @@ export interface QualityResult {
 // uploadCreditReward tuned down (was 100/150/200/300) so an upload reward stays
 // proportionate to the 100-credit request cost — a top-tier paper funds ~1.5
 // requests, a basic one 30, instead of every well-formed upload minting 2-3 free
-// requests. Re-score not back-applied: already-stamped papers keep their reward.
+// requests. Papers whose reward was ALREADY granted (uploadRewardedAt set) freeze
+// their stored uploadCreditReward (see paper.service updateStatus/updatePaper) so
+// clawback stays symmetric; un-granted papers pick up the new amount on next score.
 export const QUALITY_TIERS = [
   { tier: 0, name: "Không hợp lệ", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
   { tier: 1, name: "Cơ Bản", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 30 },

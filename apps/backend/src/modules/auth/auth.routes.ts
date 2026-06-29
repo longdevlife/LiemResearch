@@ -26,7 +26,7 @@ authRouter.get(
 
 /**
  * GET /auth/rankings/top?page=1&limit=20 — Paginated public leaderboard by points.
- * Returns { rankings, pagination } matching the legacy ranking.controller shape.
+ * Returns the standard { success, data, meta } envelope (§6).
  */
 authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (req: Request, res: Response) => {
   const { page, limit } = req.query as unknown as RankingsQueryInput;
@@ -63,7 +63,7 @@ authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (r
 
 /**
  * GET /auth/rankings/me — Get current user's rank and detailed stats.
- * Returns { rank, stats } for the "Your Position" sidebar.
+ * Returns { success, data: { rank, user, stats } } for the "Your Position" sidebar.
  */
 authRouter.get("/rankings/me", requireAuth, async (req: Request, res: Response) => {
   const userId = (req as any).user?.sub?.toString();

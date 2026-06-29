@@ -597,6 +597,12 @@ export const paperService = {
     const quality = calculatePaperQuality(paper as any);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
     Object.assign(updates, quality, { qualityTierName: tierDef.name });
+    // Once the reward has been granted, FREEZE the stored uploadCreditReward: clawback must
+    // reverse EXACTLY what was granted, so a later tier-table change (or re-score) must not
+    // move it. Tier/downloadCost still re-score normally.
+    if (paper.uploadRewardedAt) {
+      updates.uploadCreditReward = paper.uploadCreditReward;
+    }
 
     // Guard the transition on the OBSERVED previous status, so two concurrent admins
     // (e.g. double-clicking "reject") can't both run the refund/clawback side-effects.
@@ -814,6 +820,10 @@ export const paperService = {
     const quality = calculatePaperQuality(merged);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
     Object.assign(updates, quality, { qualityTierName: tierDef.name });
+    // Freeze the granted reward (see updateStatus): clawback must reverse exactly what was granted.
+    if (paper.uploadRewardedAt) {
+      updates.uploadCreditReward = paper.uploadCreditReward;
+    }
 
     const updated = await PaperModel.findByIdAndUpdate(paperId, updates, { new: true });
     if (!updated) throw AppError.notFound("Paper not found");
