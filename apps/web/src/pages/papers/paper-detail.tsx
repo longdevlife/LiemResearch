@@ -569,6 +569,9 @@ export function PaperDetailPage() {
             </div>
           </div>
 
+          {/* AI quality evaluation — advisory only, does not affect tier/credits */}
+          <PaperAiEvaluation paperId={id || ""} hasAbstract={!!paper.abstractText} />
+
           {/* Rating Section */}
           {!isAdmin && !isOwner && (
             <div className="border-t border-slate-100 dark:border-slate-800 pt-8 mb-8">
@@ -660,6 +663,110 @@ function SparklesIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
       <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
     </svg>
+  );
+}
+
+function PaperAiEvaluation({ paperId, hasAbstract }: { paperId: string; hasAbstract: boolean }) {
+  const [evaluation, setEvaluation] = useState<{
+    relevance: number;
+    groundedness: number;
+    completeness: number;
+    overall: number;
+    rationale: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [evaluating, setEvaluating] = useState(false);
+
+  useEffect(() => {
+    if (!paperId) return;
+    api
+      .get(`/quality/paper/${paperId}`)
+      .then((res) => {
+        if (res.data.success) setEvaluation(res.data.data?.evaluation ?? null);
+      })
+      .catch(() => {}) // no cached eval / not accessible — show the empty state
+      .finally(() => setLoading(false));
+  }, [paperId]);
+
+  const handleEvaluate = async () => {
+    setEvaluating(true);
+    try {
+      const res = await api.post("/quality/evaluate", { targetKind: "paper", targetId: paperId });
+      if (res.data.success) {
+        setEvaluation(res.data.data);
+        toast.success("AI đã đánh giá xong.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || "Không đánh giá được bài này.");
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  if (loading) return null;
+
+  const dims = evaluation
+    ? [
+        { label: "Relevance", value: evaluation.relevance },
+        { label: "Groundedness", value: evaluation.groundedness },
+        { label: "Completeness", value: evaluation.completeness },
+      ]
+    : [];
+
+  return (
+    <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-indigo-500" />
+          <h3 className="font-bold text-slate-900 dark:text-white text-base">AI đánh giá chất lượng</h3>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
+            AI tư vấn
+          </span>
+        </div>
+        <Button
+          onClick={handleEvaluate}
+          disabled={evaluating || !hasAbstract}
+          title={hasAbstract ? undefined : "Bài chưa có abstract để AI chấm"}
+          className="h-9 px-4 gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold"
+        >
+          {evaluating && <Loader2 className="w-4 h-4 animate-spin" />}
+          {evaluation ? "Đánh giá lại" : "AI đánh giá"}
+        </Button>
+      </div>
+
+      {!hasAbstract ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400">Bài chưa có abstract — AI chưa thể chấm.</p>
+      ) : evaluation ? (
+        <div className="space-y-4">
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
+              {evaluation.overall.toFixed(1)}
+            </span>
+            <span className="text-xs text-slate-500">/ 5 — điểm AI tổng</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {dims.map((d) => (
+              <div key={d.label} className="rounded-xl bg-slate-50 dark:bg-zinc-900/40 p-3 text-center">
+                <div className="text-lg font-black text-slate-800 dark:text-slate-200">{d.value}/5</div>
+                <div className="text-[11px] text-slate-500 mt-1">{d.label}</div>
+              </div>
+            ))}
+          </div>
+          {evaluation.rationale && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-l-2 border-indigo-300 dark:border-indigo-800 pl-3">
+              {evaluation.rationale}
+            </p>
+          )}
+          <p className="text-[11px] text-slate-400">
+            Điểm AI mang tính tham khảo, không ảnh hưởng tier/credit của bài.
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Chưa có đánh giá AI. Bấm “AI đánh giá” để Gemini chấm relevance / groundedness / completeness từ abstract.
+        </p>
+      )}
+    </div>
   );
 }
 
