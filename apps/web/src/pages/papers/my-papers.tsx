@@ -253,12 +253,6 @@ export function MyPapersPage({ isEmbedded = false }: { isEmbedded?: boolean } = 
               Track the status of your submitted papers.
             </p>
           </div>
-          <Link to={submitLink}>
-            <Button className="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white shadow-md text-xs">
-              <Plus className="w-4 h-4 mr-2" />
-              Submit Paper
-            </Button>
-          </Link>
         </div>
         {listContent}
       </div>
@@ -275,12 +269,6 @@ export function MyPapersPage({ isEmbedded = false }: { isEmbedded?: boolean } = 
             Track the status of your submitted papers.
           </p>
         </div>
-        <Link to={submitLink}>
-          <Button className="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white shadow-md">
-            <Plus className="w-4 h-4 mr-2" />
-            Submit Paper
-          </Button>
-        </Link>
       </div>
       {listContent}
     </main>
