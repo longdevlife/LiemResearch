@@ -357,18 +357,18 @@
   </table>
 
   <!-- 13 -->
-  <h2><span class="n">13.</span> Cơ chế chấm điểm bài báo</h2>
+  <h2><span class="n">13.</span> Cơ chế chấm điểm bài báo <span style="font-size:14px;color:var(--blue)">(v2 — công bằng theo tuổi)</span></h2>
   <p class="lead">Điểm bài báo là <b>điểm nội tại, tính bằng công thức cố định</b> — công khai, tái lập được, không phải số do AI sinh ra.</p>
   <div class="callout">
-    <b>finalScore = 0.40 × Impact + 0.35 × Recency + 0.25 × Metadata</b>
+    <b>finalScore = 0.60 × Impact + 0.40 × Recency</b>
   </div>
   <table>
     <tr><th>Tiêu chí</th><th>Trọng số</th><th>Công thức</th><th>Ý nghĩa</th></tr>
-    <tr><td><b>Impact</b></td><td>40%</td><td><code>log10(citations+1) / log10(1001)</code></td><td>Mức ảnh hưởng — log scale để 10→100 trích dẫn không nuốt hết thang</td></tr>
-    <tr><td><b>Recency</b></td><td>35%</td><td><code>1 − (năm nay − năm XB)/10</code></td><td>Độ mới — bài &gt; 10 năm = 0</td></tr>
-    <tr><td><b>Metadata</b></td><td>25%</td><td>7 trường đủ</td><td>title, abstract ≥ 250 ký tự, DOI, journal, năm, tác giả, open-access</td></tr>
+    <tr><td><b>Impact</b></td><td>60%</td><td><code>log10(citations/tuổi + 1) / log10(101)</code></td><td>Ảnh hưởng <b>theo tuổi</b> — bài 2024 không bị thiệt vì chưa kịp tích citation như bài 2010</td></tr>
+    <tr><td><b>Recency</b></td><td>40%</td><td><code>1 − (năm nay − năm XB)/10</code></td><td>Độ mới — bài &gt; 10 năm = 0</td></tr>
   </table>
-  <p style="color:var(--muted);font-size:14px">Ví dụ: bài <i>"A Survey of Large Language Models"</i> (2026, 1405 trích dẫn) → finalScore <b>1.0</b> — kiểm chứng được bằng tay.</p>
+  <p style="color:var(--muted);font-size:14px"><b>Độ đầy đủ dữ liệu</b> (7 trường: title, abstract ≥ 250 ký tự, DOI, journal, năm, tác giả, open-access) hiển thị RIÊNG, <b>không trộn vào điểm giá trị</b> — bài hay mà thiếu DOI không bị trừ điểm vô lý.</p>
+  <p style="color:var(--muted);font-size:14px">Ví dụ thật (đã backfill 15.081 bài): <i>"A Survey of Large Language Models"</i> (2026, 1405 trích dẫn) → Impact 1.0, Recency 1.0, <b>finalScore 1.0</b> — kiểm chứng được bằng tay.</p>
 
   <!-- 14 -->
   <h2><span class="n">14.</span> Làm sao biết một xu hướng là THẬT?</h2>
@@ -397,6 +397,24 @@
     <tr><td><b>Chất lượng</b></td><td>Cả rác lẫn vàng</td><td>Đã lọc — chỉ bài đủ abstract, AI-analyzable</td></tr>
     <tr><td><b>Trải nghiệm</b></td><td>API thô, tự ghép</td><td>1 luồng: search → trend → report → gap</td></tr>
   </table>
+
+  <!-- 16 -->
+  <h2><span class="n">16.</span> Nâng cấp v2 — biến "AI phán" thành "bằng chứng số"</h2>
+  <p class="lead">Trả lời trực tiếp góp ý của thầy: mọi kết luận phải có số chứng minh, không phải ý kiến của AI.</p>
+  <div class="grid c2">
+    <div class="card" style="border-left:4px solid var(--blue)">
+      <span class="pill">Research Gap có bằng chứng</span>
+      <h3>Khoảng trống được CHỨNG MINH bằng số</h3>
+      <p>AI đề xuất "X giao Y còn ít người làm" → hệ thống <b>tự đếm trên corpus</b>: số bài ở giao điểm + độ lớn từng nhánh + tốc độ tăng. Confidence là <b>số thật từ dữ liệu</b>, không phải AI tự khai.</p>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px">VD thật: transformer ∩ education = 103 bài (transformer 881, education 1212) → đã khai thác nhiều, KHÔNG phải gap.</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--blue)">
+      <span class="pill">So sánh bài báo</span>
+      <h3>Đối chiếu 2–4 bài cạnh nhau</h3>
+      <p>Chọn vài bài → bảng so sánh: số liệu (năm, citation, điểm AI) + đối chiếu định tính do AI sinh (phương pháp / dữ liệu / kết quả / hạn chế), grounded từ abstract. Cái OpenAlex không có.</p>
+    </div>
+  </div>
+  <div class="callout">Điểm chấm cũng nâng lên <b>v2 công bằng theo tuổi</b> (mục 13): bài mới không bị thiệt so với bài cũ nhiều citation.</div>
 
   <div class="callout ok" style="margin-top:40px">
     <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành dữ liệu không gian ngữ nghĩa thông qua mô hình Embedding. Hệ thống tận dụng công nghệ RAG và Vector Search để cung cấp khả năng tìm kiếm nâng cao, phân tích xu hướng chuyên sâu và báo cáo tự động có đối chiếu trực tiếp từ nguồn dữ liệu thật, mang lại độ tin cậy và tốc độ xử lý ưu việt.
