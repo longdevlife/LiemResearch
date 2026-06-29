@@ -253,11 +253,13 @@ export function RankingsPage() {
   const [myRanking, setMyRanking] = useState<MyRanking | null>(null);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
+  const [error, setError] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const particles = useRef(Array.from({ length: 15 }, (_, i) => ({ id: i, delay: i * 0.4, x: (i * 7) % 100, size: 4 + (i % 4) * 2 }))).current;
 
   const fetchRankings = async (page: number) => {
     setPageLoading(true);
+    setError(false);
     try {
       const res = await api.get(`/auth/rankings/top?page=${page}&limit=20`);
       const raw: RankingUser[] = (res.data.rankings ?? []).map((u: any) => ({
@@ -268,7 +270,8 @@ export function RankingsPage() {
       setRankings(raw);
       setPagination(res.data.pagination ?? { page, limit: 20, total: raw.length, totalPages: 1 });
     } catch {
-      // silent
+      // Distinguish a real fetch error from a genuinely empty leaderboard.
+      setError(true);
     } finally {
       setPageLoading(false);
       setLoading(false);
@@ -304,6 +307,22 @@ export function RankingsPage() {
           <div className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping" />
         </div>
         <p className="text-slate-400 text-sm font-medium animate-pulse">Loading leaderboard…</p>
+      </div>
+    );
+  }
+
+  // Real fetch error → don't masquerade as an empty leaderboard; offer a retry.
+  if (error && rankings.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
+        <p className="font-bold text-slate-700 dark:text-slate-200">Không tải được bảng xếp hạng.</p>
+        <p className="text-sm text-slate-400">Vui lòng thử lại sau.</p>
+        <button
+          onClick={() => void fetchRankings(1)}
+          className="mt-2 px-5 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm"
+        >
+          Thử lại
+        </button>
       </div>
     );
   }

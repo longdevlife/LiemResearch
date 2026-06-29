@@ -575,6 +575,7 @@ export function PaperDetailPage() {
               <PaperRatingWidget
                 paperId={id || ""}
                 loading={ratingLoading}
+                myRating={ratingView?.myRating}
                 onSuccess={fetchRatingView}
               />
             </div>
@@ -665,17 +666,26 @@ function SparklesIcon() {
 function PaperRatingWidget({
   paperId,
   loading,
+  myRating,
   onSuccess,
 }: {
   paperId: string;
   loading: boolean;
+  myRating?: { stars: number; comment?: string };
   onSuccess: () => void;
 }) {
-  const [rating, setRating] = useState<number>(0);
+  const alreadyRated = !!myRating;
+  const [rating, setRating] = useState<number>(myRating?.stars ?? 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [comment, setComment] = useState<string>("");
+  const [comment, setComment] = useState<string>(myRating?.comment ?? "");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const queryClient = useQueryClient();
+
+  // Prefill the user's existing rating (and re-sync after a successful submit reloads it).
+  useEffect(() => {
+    setRating(myRating?.stars ?? 0);
+    setComment(myRating?.comment ?? "");
+  }, [myRating?.stars, myRating?.comment]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -692,10 +702,12 @@ function PaperRatingWidget({
         comment: comment.trim() || undefined,
       });
       if (res.data.success) {
-        toast.success("Rating submitted! +5 contribution points earned.");
-        setRating(0);
-        setComment("");
-        
+        // Points are awarded only on the FIRST rating of a paper — re-rating just
+        // updates it, so don't promise "+5" again.
+        toast.success(
+          alreadyRated ? "Rating updated!" : "Rating submitted! +5 contribution points earned.",
+        );
+
         // Instant points/credits update on UI!
         try {
           const resMe = await api.get("/auth/me");
@@ -733,7 +745,9 @@ function PaperRatingWidget({
           Rate this Research Paper
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Help the community gauge document quality! Earn +5 contribution points for your feedback.
+          {alreadyRated
+            ? "You've already rated this paper (points awarded). You can update your rating below."
+            : "Help the community gauge document quality! Earn +5 contribution points for your feedback."}
         </p>
       </div>
 
@@ -781,7 +795,7 @@ function PaperRatingWidget({
             className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-11 px-6 gap-2 rounded-xl"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            Submit Feedback (+5 pts)
+            {alreadyRated ? "Update rating" : "Submit Feedback (+5 pts)"}
           </Button>
         </div>
       </form>
