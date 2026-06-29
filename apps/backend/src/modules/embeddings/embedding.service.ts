@@ -31,8 +31,10 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
   const batchSize = job.batchSize ?? env.EMBED_BATCH_SIZE;
   const maxPapers = job.maxPapers ?? env.EMBED_MAX_PAPERS_PER_RUN;
 
-  // Only papers good enough for AI, that don't have a vector yet.
-  const filter = { isAiAnalyzable: true, embedding: { $exists: false } };
+  // Only ACTIVE papers good enough for AI, that don't have a vector yet. The
+  // `dataStatus: "active"` gate keeps unreviewed user submissions (draft/pending)
+  // out of the embedding quota + semantic index until an admin approves them.
+  const filter = { isAiAnalyzable: true, dataStatus: "active", embedding: { $exists: false } };
 
   let totalEmbedded = 0;
   let totalFailed = 0;
