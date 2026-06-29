@@ -56,13 +56,8 @@ authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (r
 
   res.json({
     success: true,
-    rankings,
-    pagination: {
-      page: currentPage,
-      limit,
-      total,
-      totalPages,
-    },
+    data: rankings,
+    meta: { page: currentPage, limit, total, totalPages },
   });
 });
 
@@ -100,15 +95,17 @@ authRouter.get("/rankings/me", requireAuth, async (req: Request, res: Response) 
 
   res.json({
     success: true,
-    rank,
-    user: {
-      id: userId,
-      name: userDoc.fullName,
-      university: userDoc.institution ?? "",
-      role: userDoc.role,
-      avatarUrl: userDoc.avatarUrl ?? null,
+    data: {
+      rank,
+      user: {
+        id: userId,
+        name: userDoc.fullName,
+        university: userDoc.institution ?? "",
+        role: userDoc.role,
+        avatarUrl: userDoc.avatarUrl ?? null,
+      },
+      stats,
     },
-    stats,
   });
 });
 
