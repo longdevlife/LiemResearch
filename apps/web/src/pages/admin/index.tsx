@@ -1,13 +1,24 @@
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAdminStats } from "@/features/admin";
+import { useAdminStats, useQualityAgreement } from "@/features/admin";
 import { useCurrentUser } from "@/features/auth";
-import { Users, FileText, Lightbulb, BookOpen } from "lucide-react";
+import type { AgreementBucket } from "@trend/shared-types";
+import { Users, FileText, Lightbulb, BookOpen, Scale } from "lucide-react";
 
 export function AdminHomePage() {
   const { data: me } = useCurrentUser();
   const isAdmin = me?.user?.role === "admin";
   const { data, isLoading } = useAdminStats(isAdmin);
+  const { data: agreement } = useQualityAgreement(isAdmin);
+
+  const agreementRows: { label: string; b: AgreementBucket }[] = agreement
+    ? [
+        { label: "Tổng", b: agreement },
+        { label: "Report", b: agreement.byKind.report },
+        { label: "Gap", b: agreement.byKind.gap },
+        { label: "Paper", b: agreement.byKind.paper },
+      ]
+    : [];
 
   const cards = [
     { label: "Users", value: data?.users.total, icon: Users },
@@ -46,6 +57,49 @@ export function AdminHomePage() {
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border bg-card p-5">
+        <div className="mb-1 flex items-center gap-2">
+          <Scale className="h-4 w-4 text-indigo-500" />
+          <h2 className="text-sm font-semibold">AI vs Người thật — độ khớp điểm</h2>
+        </div>
+        <p className="mb-4 text-xs text-muted-foreground">
+          So điểm LLM tự chấm với điểm trung bình người dùng chấm, trên các mục có CẢ hai.
+          <b> MAE</b> thấp, <b> “trong ±1”</b> cao và <b> tương quan</b> gần 1 = AI khớp với người.
+        </p>
+        {!agreement || agreement.sampleSize === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Chưa đủ dữ liệu — cần các mục vừa được AI chấm vừa được người dùng chấm sao.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-2 pr-4 font-semibold">Loại</th>
+                  <th className="py-2 pr-4 font-semibold">Mẫu</th>
+                  <th className="py-2 pr-4 font-semibold">MAE</th>
+                  <th className="py-2 pr-4 font-semibold">Trong ±1</th>
+                  <th className="py-2 font-semibold">Tương quan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agreementRows.map(({ label, b }) => (
+                  <tr key={label} className="border-t">
+                    <td className="py-2 pr-4 font-medium">{label}</td>
+                    <td className="py-2 pr-4 tabular-nums">{b.sampleSize}</td>
+                    <td className="py-2 pr-4 tabular-nums">{b.mae.toFixed(2)}</td>
+                    <td className="py-2 pr-4 tabular-nums">{b.withinOnePct}%</td>
+                    <td className="py-2 tabular-nums">
+                      {b.correlation === null ? "—" : b.correlation.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

@@ -286,6 +286,7 @@ export const qualityService = {
       byKind: {
         report: bucketize(pairs.filter((p) => p.kind === "report")),
         gap: bucketize(pairs.filter((p) => p.kind === "gap")),
+        paper: bucketize(pairs.filter((p) => p.kind === "paper")),
       },
     };
   },
@@ -325,5 +326,11 @@ function pearson(xs: number[], ys: number[]): number | null {
 
 function emptyAgreement(): AgreementStats {
   const zero: AgreementBucket = { sampleSize: 0, mae: 0, withinOnePct: 0, correlation: null };
-  return { sampleSize: 0, mae: 0, withinOnePct: 0, correlation: null, byKind: { report: zero, gap: zero } };
+  return {
+    sampleSize: 0,
+    mae: 0,
+    withinOnePct: 0,
+    correlation: null,
+    byKind: { report: zero, gap: zero, paper: zero },
+  };
 }
