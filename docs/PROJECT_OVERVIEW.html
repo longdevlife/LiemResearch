@@ -370,6 +370,12 @@
   <p style="color:var(--muted);font-size:14px"><b>Độ đầy đủ dữ liệu</b> (7 trường: title, abstract ≥ 250 ký tự, DOI, journal, năm, tác giả, open-access) hiển thị RIÊNG, <b>không trộn vào điểm giá trị</b> — bài hay mà thiếu DOI không bị trừ điểm vô lý.</p>
   <p style="color:var(--muted);font-size:14px">Ví dụ thật (đã backfill 15.081 bài): <i>"A Survey of Large Language Models"</i> (2026, 1405 trích dẫn) → Impact 1.0, Recency 1.0, <b>finalScore 1.0</b> — kiểm chứng được bằng tay.</p>
 
+  <h3 style="margin-top:28px">Bổ sung: AI thật chấm bài người dùng tải lên <span style="font-size:13px;color:var(--blue)">(on-demand)</span></h3>
+  <p style="color:var(--muted);font-size:14px">Điểm công thức ở trên là <b>tất định</b>. Riêng với bài do người dùng <b>tải lên</b>, hệ thống cho gọi <b>LLM (Gemini) chấm theo yêu cầu</b> — nút <i>"AI đánh giá chất lượng"</i> ở trang chi tiết bài. AI đọc <b>title + abstract</b> rồi chấm 3 chiều (1–5): <b>relevance</b> (chủ đề rõ / đúng phạm vi), <b>groundedness</b> (luận điểm có dẫn method / data / kết quả hay nói suông), <b>completeness</b> (đủ problem + method + result), kèm 1–3 câu lý giải.</p>
+  <div class="callout">
+    <b>Thuần tư vấn:</b> điểm AI hiển thị cạnh điểm công thức nhưng <b>KHÔNG đổi tier, KHÔNG đổi credit/reward, KHÔNG tự duyệt</b> — AI không bao giờ chạm tiền. Kết quả <b>cache theo từng bài</b> (chỉ lần đầu tốn token) và bị rate-limit 20 lượt/giờ/user.
+  </div>
+
   <!-- 14 -->
   <h2><span class="n">14.</span> Làm sao biết một xu hướng là THẬT?</h2>
   <p class="lead">Một chủ đề/keyword chỉ được xem là "đang lên" khi vượt qua <b>3 cổng chống trend giả</b> — tránh một cú nhảy ngẫu nhiên bị hiểu nhầm thành xu hướng.</p>
