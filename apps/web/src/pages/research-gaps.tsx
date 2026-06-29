@@ -4,6 +4,7 @@ import { Sparkles, CheckCircle2, XCircle, Filter, Search, Zap, Loader2, Undo2, L
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AiEvaluation } from "@/components/ai-evaluation";
 import { Badge } from "@/components/ui/badge";
 import {
   useGaps,
@@ -294,6 +295,8 @@ export function ResearchGapsPage() {
                   </Button>
                 )}
               </div>
+
+              <AiEvaluation targetKind="gap" targetId={gap.id} lazy className="mt-4" />
             </div>
           </div>
         ))}

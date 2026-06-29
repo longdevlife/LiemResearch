@@ -10,6 +10,7 @@ import robotImg from "@/assets/robot.png";
 import holographicBookImg from "@/assets/holographic_book.png";
 import { api } from "@/services/api-client";
 import { toast } from "sonner";
+import { AiEvaluation } from "@/components/ai-evaluation";
 import { useAuthStore } from "@/stores/auth-store";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -339,6 +340,9 @@ export function ReportViewerPage() {
               View Research Gaps
             </Button>
           </div>
+
+          {/* AI quality evaluation — advisory; owner-only on the backend */}
+          {!isAdmin && <AiEvaluation targetKind="report" targetId={id || ""} className="mb-6" />}
 
           {/* Rating Widget */}
           {!isAdmin && <ReportRatingWidget reportId={id || ""} />}
