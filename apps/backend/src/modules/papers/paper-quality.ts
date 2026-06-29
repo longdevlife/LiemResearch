@@ -15,12 +15,18 @@ export interface QualityResult {
 }
 
 
+// uploadCreditReward tuned down (was 100/150/200/300) so an upload reward stays
+// proportionate to the 100-credit request cost — a top-tier paper funds ~1.5
+// requests, a basic one 30, instead of every well-formed upload minting 2-3 free
+// requests. Papers whose reward was ALREADY granted (uploadRewardedAt set) freeze
+// their stored uploadCreditReward (see paper.service updateStatus/updatePaper) so
+// clawback stays symmetric; un-granted papers pick up the new amount on next score.
 export const QUALITY_TIERS = [
   { tier: 0, name: "Không hợp lệ", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
-  { tier: 1, name: "Cơ Bản", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 100 },
-  { tier: 2, name: "Chuẩn Học Thuật", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 150 },
-  { tier: 3, name: "Giá Trị Cao", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 200 },
-  { tier: 4, name: "Tinh Hoa", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 300 },
+  { tier: 1, name: "Cơ Bản", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 30 },
+  { tier: 2, name: "Chuẩn Học Thuật", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 60 },
+  { tier: 3, name: "Giá Trị Cao", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 100 },
+  { tier: 4, name: "Tinh Hoa", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 150 },
 ];
 
 function hasValue(value: string | undefined | null): boolean {

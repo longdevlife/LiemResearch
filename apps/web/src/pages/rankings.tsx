@@ -262,13 +262,13 @@ export function RankingsPage() {
     setError(false);
     try {
       const res = await api.get(`/auth/rankings/top?page=${page}&limit=20`);
-      const raw: RankingUser[] = (res.data.rankings ?? []).map((u: any) => ({
+      const raw: RankingUser[] = (res.data.data ?? []).map((u: any) => ({
         ...u,
         level: getLevel(u.points),
         isMe: u.id === currentUser?.id,
       }));
       setRankings(raw);
-      setPagination(res.data.pagination ?? { page, limit: 20, total: raw.length, totalPages: 1 });
+      setPagination(res.data.meta ?? { page, limit: 20, total: raw.length, totalPages: 1 });
     } catch {
       // Distinguish a real fetch error from a genuinely empty leaderboard.
       setError(true);
@@ -282,7 +282,7 @@ export function RankingsPage() {
     if (!currentUser) return;
     try {
       const res = await api.get('/auth/rankings/me');
-      if (res.data.success) setMyRanking(res.data as MyRanking);
+      if (res.data.success) setMyRanking(res.data.data as MyRanking);
     } catch {
       // not ranked or not logged in
     }
