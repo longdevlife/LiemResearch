@@ -17,9 +17,20 @@ function toObjectId(id: string | mongoose.Types.ObjectId): mongoose.Types.Object
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/** Deduct REQUEST_PAPER_COST credits when a user creates a new paper request. */
-export async function chargePaperRequestCredit(userId: string | mongoose.Types.ObjectId): Promise<void> {
-  await UserModel.findByIdAndUpdate(userId, { $inc: { credits: -REQUEST_PAPER_COST } });
+/**
+ * Atomically charge the request fee ONLY if the user can afford it. Returns false
+ * when the balance is insufficient (no deduction). The `credits: { $gte }` filter
+ * makes the check-and-charge a single atomic op, so concurrent submits can't
+ * overdraw and there is no separate read-then-write race.
+ */
+export async function chargePaperRequestCreditChecked(
+  userId: string | mongoose.Types.ObjectId,
+): Promise<boolean> {
+  const updated = await UserModel.findOneAndUpdate(
+    { _id: toObjectId(String(userId)), credits: { $gte: REQUEST_PAPER_COST } },
+    { $inc: { credits: -REQUEST_PAPER_COST } },
+  );
+  return updated !== null;
 }
 
 /** Refund REQUEST_PAPER_COST credits when a request is cancelled or admin-rejected. */
