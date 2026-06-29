@@ -570,7 +570,7 @@ export function PaperDetailPage() {
           </div>
 
           {/* AI quality evaluation — advisory only, does not affect tier/credits */}
-          <PaperAiEvaluation paperId={id || ""} hasAbstract={!!paper.abstractText} />
+          <PaperAiEvaluation paperId={id || ""} hasAbstract={!!paper.abstractText?.trim()} />
 
           {/* Rating Section */}
           {!isAdmin && !isOwner && (
@@ -691,7 +691,13 @@ function PaperAiEvaluation({ paperId, hasAbstract }: { paperId: string; hasAbstr
   const handleEvaluate = async () => {
     setEvaluating(true);
     try {
-      const res = await api.post("/quality/evaluate", { targetKind: "paper", targetId: paperId });
+      // force re-judge when an eval already exists, so "Đánh giá lại" actually re-runs
+      // (without force, evaluate() just returns the cached doc).
+      const res = await api.post("/quality/evaluate", {
+        targetKind: "paper",
+        targetId: paperId,
+        force: !!evaluation,
+      });
       if (res.data.success) {
         setEvaluation(res.data.data);
         toast.success("AI đã đánh giá xong.");
