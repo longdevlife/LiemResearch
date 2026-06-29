@@ -187,13 +187,13 @@ export const qualityService = {
       }
     }
     await assertCanAccess(userId, targetKind, targetId);
-    await UserRatingModel.create({
-      userId,
-      targetKind,
-      targetId,
-      stars,
-      comment: comment ?? undefined,
-    });
+    // UPSERT so a user has exactly ONE rating per target (re-rating updates it) — matches
+    // the unique index and stops duplicate rating docs / point-farming via spam-create.
+    await UserRatingModel.findOneAndUpdate(
+      { userId, targetKind, targetId },
+      { $set: { stars, comment: comment ?? undefined } },
+      { upsert: true },
+    );
     const ratingSummary = await summarize(targetKind, targetId);
     await syncUserPoints(userId);
     return { ratingSummary, myRating: { stars, comment } };

@@ -122,7 +122,9 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
     ]),
     // Count unique targets rated by this user to prevent spam points
     UserRatingModel.aggregate<{ count: number }>([
-      { $match: { userId: objectId } },
+      // Only PAPER ratings earn ranking points. Reports/gaps are private to their owner,
+      // so counting them would let a user farm points by rating their own items.
+      { $match: { userId: objectId, targetKind: "paper" } },
       { $group: { _id: { targetKind: "$targetKind", targetId: "$targetId" } } },
       { $count: "count" },
     ]),
@@ -181,7 +183,9 @@ export async function calculateUserRankingStats(userId: string | mongoose.Types.
     ]),
     // Count unique targets rated by this user to prevent spam points
     UserRatingModel.aggregate<{ count: number }>([
-      { $match: { userId: objectId } },
+      // Only PAPER ratings earn ranking points. Reports/gaps are private to their owner,
+      // so counting them would let a user farm points by rating their own items.
+      { $match: { userId: objectId, targetKind: "paper" } },
       { $group: { _id: { targetKind: "$targetKind", targetId: "$targetId" } } },
       { $count: "count" },
     ]),

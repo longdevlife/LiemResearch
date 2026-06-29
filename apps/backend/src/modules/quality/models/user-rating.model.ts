@@ -12,17 +12,10 @@ const userRatingSchema = new Schema(
   { timestamps: true },
 );
 
-userRatingSchema.index({ userId: 1, targetKind: 1, targetId: 1 });
+// UNIQUE per (user, target): a user has exactly one rating per item. Re-rating UPSERTS
+// it — this prevents point-farming via duplicate docs and unbounded storage growth.
+userRatingSchema.index({ userId: 1, targetKind: 1, targetId: 1 }, { unique: true });
 userRatingSchema.index({ targetKind: 1, targetId: 1 }); // summary aggregation
-
-// Drop legacy unique index if exists to allow multiple reviews per user
-mongoose.connection.on("open", async () => {
-  try {
-    await mongoose.connection.db?.collection("user_ratings").dropIndex("userId_1_targetKind_1_targetId_1");
-  } catch (err) {
-    // index might not exist
-  }
-});
 
 export type UserRatingDoc = InferSchemaType<typeof userRatingSchema> & {
   _id: mongoose.Types.ObjectId;
