@@ -12,13 +12,15 @@ import type { CreatePaperInput } from "./dto/create-paper.schema.js";
 import { calculatePaperQuality, getQualityTier, QUALITY_TIERS } from "./paper-quality.js";
 import { computePaperScore } from "../scoring/paper-score.js";
 import {
-  chargePaperRequestCredit,
+  chargePaperRequestCreditChecked,
   refundPaperRequestCredit,
   rewardPaperUploadCredit,
   recordInvalidPdfUpload,
   chargePaperDownloadCredit,
   syncUserPoints,
   applyUploadCreditReward,
+  clawbackUploadReward,
+  REQUEST_PAPER_COST,
 } from "../auth/points.service.js";
 import { UserModel } from "../auth/models/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
@@ -110,7 +112,9 @@ export const paperService = {
     provider,
     sort = "relevance",
   }: ListPapersParams): Promise<ListPapersResult> {
-    const filter: Record<string, unknown> = {};
+    // Public listing shows only ACTIVE papers — unreviewed user submissions
+    // (draft/pending) and rejected papers must NOT leak into the public corpus.
+    const filter: Record<string, unknown> = { dataStatus: "active" };
     if (q) filter.$text = { $search: q };
     if (paperKinds && paperKinds.length) filter.paperKind = { $in: paperKinds };
     if (openAccess) filter.openAccessUrl = { $type: "string", $ne: "" };
@@ -252,6 +256,18 @@ export const paperService = {
       paperStatus = "pending";
     }
 
+    // 3.5 Charge the request fee for non-admins — ATOMIC check-and-charge. Without
+    //     this the request was FREE while cancel/reject refunded +100 → infinite-credit
+    //     glitch. Insufficient balance → reject before persisting anything.
+    if (!isAdmin) {
+      const charged = await chargePaperRequestCreditChecked(userId);
+      if (!charged) {
+        throw AppError.badRequest(
+          `Bạn cần tối thiểu ${REQUEST_PAPER_COST} credits để gửi yêu cầu tạo bài.`,
+        );
+      }
+    }
+
     // 4. Persist — also stamp an intrinsic aiScore so a freshly-uploaded paper
     //    shows its AI score immediately (citations 0 until/if enriched; recency-driven),
     //    instead of waiting for the next batch score:recompute. isAiAnalyzable is already
@@ -261,7 +277,9 @@ export const paperService = {
       new Date().getFullYear(),
       new Date().toISOString(),
     );
-    const paperDoc = await PaperModel.create({
+    let paperDoc;
+    try {
+      paperDoc = await PaperModel.create({
       title: input.title.trim(),
       abstractText: input.abstractText.trim(),
       publicationYear: input.publicationYear,
@@ -283,7 +301,13 @@ export const paperService = {
       paperStatus,
       ...quality,
       qualityTierName: tierDef.name,
-    });
+      });
+    } catch (err) {
+      // The atomic charge already deducted credits; refund if persistence fails so a
+      // failed insert (e.g. a duplicate that slipped past the pre-check) doesn't eat the fee.
+      if (!isAdmin) await refundPaperRequestCredit(userId);
+      throw err;
+    }
 
     // 5. Credit operations
     if (isAdmin && pdfPath) {
@@ -524,9 +548,11 @@ export const paperService = {
       throw AppError.badRequest("Only pending paper requests can be cancelled");
     }
 
-    const pdfToDelete = paper.pdfPath;
-    await PaperModel.findByIdAndDelete(paperId);
-    if (pdfToDelete) await deleteLocalPdf(pdfToDelete);
+    // Atomic guarded delete: only the FIRST concurrent cancel matches (status still
+    // "pending"), so only it refunds — a double-cancel race can't refund +100 twice.
+    const deleted = await PaperModel.findOneAndDelete({ _id: paperId, paperStatus: "pending" });
+    if (!deleted) throw AppError.badRequest("Only pending paper requests can be cancelled");
+    if (deleted.pdfPath) await deleteLocalPdf(deleted.pdfPath);
 
     await refundPaperRequestCredit(userId);
     await syncUserPoints(userId);
@@ -572,8 +598,14 @@ export const paperService = {
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
     Object.assign(updates, quality, { qualityTierName: tierDef.name });
 
-    const updated = await PaperModel.findByIdAndUpdate(paperId, updates, { new: true });
-    if (!updated) throw AppError.notFound("Paper not found");
+    // Guard the transition on the OBSERVED previous status, so two concurrent admins
+    // (e.g. double-clicking "reject") can't both run the refund/clawback side-effects.
+    const updated = await PaperModel.findOneAndUpdate(
+      { _id: paperId, paperStatus: previousStatus },
+      updates,
+      { new: true },
+    );
+    if (!updated) throw AppError.conflict("Paper status changed concurrently — please retry");
 
     // Reward upload credits when first approved
     if (!wasApproved && willBeApproved) {
@@ -594,6 +626,16 @@ export const paperService = {
           paperId: updated._id,
         });
       }
+    }
+
+    // Approval REVOKED (was approved → now rejected): claw back the upload reward the
+    // uploader was granted on approval, so a revoke doesn't leave free credits behind.
+    if (wasApproved && targetStatus === "rejected") {
+      await clawbackUploadReward({
+        _id: updated._id as mongoose.Types.ObjectId,
+        uploadedBy: updated.uploadedBy as mongoose.Types.ObjectId | undefined,
+        uploadCreditReward: updated.uploadCreditReward,
+      });
     }
 
     // Notify user on rejection / revocation
@@ -815,12 +857,28 @@ export const paperService = {
       throw AppError.forbidden("You can only delete your own paper requests");
     }
 
-    const shouldRefundRequestCredit = !isAdmin && isOwner && paper.paperStatus === "pending";
-    const pdfToDelete = paper.pdfPath;
+    // Refund the REQUESTER (who paid the fee) whenever a still-pending request is hard
+    // deleted — by the owner OR an admin. Without this, an admin deleting a pending paper
+    // would silently eat the user's 100 credits (the fee is now actually charged).
+    const wantsRefund = paper.paperStatus === "pending" && !!paper.requestedBy;
     const requestedById = paper.requestedBy;
     const uploadedById = paper.uploadedBy;
 
-    await PaperModel.findByIdAndDelete(paperId);
+    // When a refund is due, delete ATOMICALLY guarded on "pending" so only the winner
+    // of a concurrent delete/cancel race refunds (no double +100). Otherwise plain delete.
+    let pdfToDelete = paper.pdfPath;
+    let doRefund = false;
+    if (wantsRefund) {
+      const deleted = await PaperModel.findOneAndDelete({ _id: paperId, paperStatus: "pending" });
+      if (deleted) {
+        doRefund = true;
+        pdfToDelete = deleted.pdfPath;
+      } else {
+        await PaperModel.findByIdAndDelete(paperId);
+      }
+    } else {
+      await PaperModel.findByIdAndDelete(paperId);
+    }
 
     // Delete related downloads
     await PaperDownloadModel.deleteMany({ paper: new mongoose.Types.ObjectId(paperId) });
@@ -829,7 +887,7 @@ export const paperService = {
       await deleteLocalPdf(pdfToDelete);
     }
 
-    if (shouldRefundRequestCredit && requestedById) {
+    if (doRefund && requestedById) {
       await refundPaperRequestCredit(requestedById.toString());
     }
 
