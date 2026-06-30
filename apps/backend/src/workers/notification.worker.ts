@@ -51,6 +51,8 @@ async function sendPush(notificationId: string): Promise<void> {
     },
   }));
 
+  // TODO: Nit - Expo limits push requests to 100 messages per request. If a user has >100 registered
+  // active devices, we should chunk the `messages` array into slices of 100 before posting to Expo.
   const response = await fetch("https://exp.host/--/api/v2/push/send", {
     method: "POST",
     headers: {
@@ -70,6 +72,10 @@ async function sendPush(notificationId: string): Promise<void> {
     throw new Error(payload.errors.map((error) => error.message ?? "Expo push error").join("; "));
   }
 
+  // TODO: Technical Debt - Expo reports some dead/unregistered tokens asynchronously via receipts
+  // (using getPushNotificationReceiptsAsync or the /getReceipts endpoint) later.
+  // We currently only check the immediate ticket status for "DeviceNotRegistered". In the future,
+  // we should implement a background sync to check receipts and disable dead tokens.
   const tickets = Array.isArray(payload.data) ? payload.data : payload.data ? [payload.data] : [];
   const disabledTokens = tickets
     .map((ticket, index) => ({ ticket, token: tokens[index]?.token }))

@@ -2,8 +2,8 @@ import mongoose, { type InferSchemaType, Schema } from "mongoose";
 
 const deviceTokenSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    token: { type: String, required: true, unique: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    token: { type: String, required: true, unique: true },
     platform: { type: String, enum: ["android", "ios", "web", "unknown"], required: true },
     deviceName: { type: String, maxLength: 120 },
     lastSeenAt: { type: Date, required: true, default: Date.now },
