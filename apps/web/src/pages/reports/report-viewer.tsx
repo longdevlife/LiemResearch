@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2 } from "lucide-react";
+import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2, Bookmark as BookmarkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
 import { useReport } from "@/features/reports/hooks/use-reports";
+import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import robotImg from "@/assets/robot.png";
@@ -72,6 +73,42 @@ export function ReportViewerPage() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin";
   const { data: report, isLoading, isError } = useReport(id || "");
+  const bookmarkStatus = useBookmarkStatus("report", id);
+  const createBookmark = useCreateBookmark();
+  const deleteBookmark = useDeleteBookmark();
+  const isBookmarked = bookmarkStatus.data?.bookmarked ?? false;
+  const bookmarkBusy = createBookmark.isPending || deleteBookmark.isPending;
+
+  const handleToggleBookmark = () => {
+    if (!id) return;
+
+    if (isBookmarked && bookmarkStatus.data?.bookmarkId) {
+      deleteBookmark.mutate(
+        { id: bookmarkStatus.data.bookmarkId, targetKind: "report", targetId: id },
+        {
+          onSuccess: () => toast.success("Report removed from bookmarks."),
+          onError: (error: any) => {
+            toast.error(error?.response?.data?.error?.message || "Failed to remove report bookmark.");
+          },
+        },
+      );
+      return;
+    }
+
+    createBookmark.mutate(
+      { targetKind: "report", targetId: id },
+      {
+        onSuccess: () => toast.success("Report saved to bookmarks."),
+        onError: (error: any) => {
+          if (error?.response?.status === 409) {
+            toast.info("Report is already in your bookmarks.");
+            return;
+          }
+          toast.error(error?.response?.data?.error?.message || "Failed to save report bookmark.");
+        },
+      },
+    );
+  };
 
   if (isLoading || report?.status === "generating" || report?.status === "queued") {
     return (
@@ -155,6 +192,23 @@ export function ReportViewerPage() {
             </Button>
             <Button variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
               <Share className="w-4 h-4" /> Share
+            </Button>
+            <Button
+              onClick={handleToggleBookmark}
+              disabled={!id || bookmarkBusy}
+              variant={isBookmarked ? "default" : "outline"}
+              className={
+                isBookmarked
+                  ? "h-9 px-4 gap-2 bg-cyan-700 hover:bg-cyan-800 text-white font-semibold rounded-md shadow-sm"
+                  : "h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50"
+              }
+            >
+              {bookmarkBusy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <BookmarkIcon className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+              )}
+              {isBookmarked ? "Saved" : "Save"}
             </Button>
             <Button onClick={() => window.print()} className="h-9 px-4 bg-[#001b69] hover:bg-[#001040] text-white font-semibold gap-2 rounded-md shadow-sm">
               <Download className="w-4 h-4" /> PDF
