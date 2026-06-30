@@ -17,6 +17,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useBookmarks } from "@/features/bookmarks";
 import { useNotifications } from "@/features/notifications";
 import { cn } from "@/utils/cn";
+import { avatars, getLevel } from "@/utils/level";
 
 const navItems = [
   { to: "/search", label: "Search" },
@@ -166,9 +167,26 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <User className="h-4 w-4" />
-          <span className="hidden sm:inline">{fullName}</span>
+        <Button variant="ghost" size="sm" className="gap-2 h-9 px-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+          {role !== "admin" ? (
+            (() => {
+              const currentLevel = getLevel(points);
+              const levelAvatar = avatars[currentLevel];
+              return (
+                <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
+                  <img src={levelAvatar} alt={`Level ${currentLevel}`} className="w-full h-full object-contain rounded-full" />
+                </div>
+              );
+            })()
+          ) : (
+            <User className="h-4 w-4 text-slate-500" />
+          )}
+          <span className="hidden sm:inline font-semibold text-xs text-slate-700 dark:text-slate-300">{fullName}</span>
+          {role !== "admin" && (
+            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider scale-90">
+              Lv {getLevel(points)}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 z-[9999]">
