@@ -121,15 +121,17 @@ export class ProjectService {
 
     if (!hasAccess) throw AppError.forbidden("Only project members can modify papers");
 
-    const alreadyExists = project.papers.some((p) => p.targetId.toString() === paperId);
-    if (alreadyExists) throw AppError.badRequest("Paper already exists in the project");
+    const updated = await ProjectModel.findOneAndUpdate(
+      { _id: projectId, "papers.targetId": { $ne: new mongoose.Types.ObjectId(paperId) } },
+      { $push: { papers: { targetKind: "Paper", targetId: new mongoose.Types.ObjectId(paperId) } } },
+      { new: true }
+    );
 
-    project.papers.push({
-      targetKind: "Paper",
-      targetId: new mongoose.Types.ObjectId(paperId),
-    });
+    if (!updated) {
+      throw AppError.badRequest("Paper already exists in the project");
+    }
 
-    return await project.save();
+    return updated;
   }
 
   /**
@@ -145,9 +147,13 @@ export class ProjectService {
 
     if (!hasAccess) throw AppError.forbidden("Only project members can modify papers");
 
-    project.papers = project.papers.filter((p) => p.targetId.toString() !== paperId) as any;
+    const updated = await ProjectModel.findByIdAndUpdate(
+      projectId,
+      { $pull: { papers: { targetId: new mongoose.Types.ObjectId(paperId) } } },
+      { new: true }
+    );
 
-    return await project.save();
+    return updated!;
   }
 
   /**
@@ -167,16 +173,25 @@ export class ProjectService {
 
     if (!isOwner) throw AppError.forbidden("Only owners can modify project members");
 
-    const alreadyExists = project.members.some((m) => m.targetId.toString() === memberData.targetId);
-    if (alreadyExists) throw AppError.badRequest("Member already exists in the project");
+    const updated = await ProjectModel.findOneAndUpdate(
+      { _id: projectId, "members.targetId": { $ne: new mongoose.Types.ObjectId(memberData.targetId) } },
+      { 
+        $push: { 
+          members: { 
+            targetKind: memberData.targetKind, 
+            targetId: new mongoose.Types.ObjectId(memberData.targetId), 
+            role: memberData.role 
+          } 
+        } 
+      },
+      { new: true }
+    );
 
-    project.members.push({
-      targetKind: memberData.targetKind,
-      targetId: new mongoose.Types.ObjectId(memberData.targetId),
-      role: memberData.role,
-    });
+    if (!updated) {
+      throw AppError.badRequest("Member already exists in the project");
+    }
 
-    return await project.save();
+    return updated;
   }
 
   /**
@@ -198,9 +213,13 @@ export class ProjectService {
     const isSelf = targetId === userId;
     if (!isOwner && !isSelf) throw AppError.forbidden("Only owners can remove other members");
 
-    project.members = project.members.filter((m) => m.targetId.toString() !== targetId) as any;
+    const updated = await ProjectModel.findByIdAndUpdate(
+      projectId,
+      { $pull: { members: { targetId: new mongoose.Types.ObjectId(targetId) } } },
+      { new: true }
+    );
 
-    return await project.save();
+    return updated!;
   }
 }
 

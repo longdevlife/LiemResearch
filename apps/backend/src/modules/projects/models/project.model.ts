@@ -2,7 +2,7 @@ import mongoose, { type InferSchemaType, Schema } from "mongoose";
 
 const projectMemberSchema = new Schema(
   {
-    targetKind: { type: String, enum: ["User", "Expert"], required: true },
+    targetKind: { type: String, enum: ["User"], required: true },
     targetId: { type: Schema.Types.ObjectId, required: true, refPath: "members.targetKind" },
     role: { type: String, enum: ["owner", "member"], default: "member" },
   },

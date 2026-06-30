@@ -11,6 +11,8 @@ vi.mock("../models/project.model.js", () => {
       find: vi.fn(),
       findById: vi.fn(),
       findByIdAndDelete: vi.fn(),
+      findOneAndUpdate: vi.fn(),
+      findByIdAndUpdate: vi.fn(),
     }
   };
 });
@@ -91,6 +93,105 @@ describe("ProjectService", () => {
       } as any);
 
       await expect(projectService.getProjectById(projectId, userId)).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("updateProject", () => {
+    it("should allow owner to update", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: userId,
+        members: [],
+        save: vi.fn().mockResolvedValue({ _id: projectId, title: "New Title" })
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+
+      const result = await projectService.updateProject(projectId, { title: "New Title" }, userId);
+      expect(result.title).toBe("New Title");
+      expect(mockProject.save).toHaveBeenCalled();
+    });
+
+    it("should allow members with owner role to update", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: new mongoose.Types.ObjectId().toString(),
+        members: [{ targetId: userId, targetKind: "User", role: "owner" }],
+        save: vi.fn().mockResolvedValue({ _id: projectId, title: "New Title 2" })
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+
+      const result = await projectService.updateProject(projectId, { title: "New Title 2" }, userId);
+      expect(result.title).toBe("New Title 2");
+      expect(mockProject.save).toHaveBeenCalled();
+    });
+
+    it("should throw 403 if normal member tries to update", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: new mongoose.Types.ObjectId().toString(),
+        members: [{ targetId: userId, targetKind: "User", role: "member" }],
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+
+      await expect(projectService.updateProject(projectId, { title: "Fail" }, userId)).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("deleteProject", () => {
+    it("should allow primary owner to delete", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: userId,
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+      vi.mocked(ProjectModel.findByIdAndDelete).mockResolvedValue(mockProject as any);
+
+      await projectService.deleteProject(projectId, userId);
+      expect(ProjectModel.findByIdAndDelete).toHaveBeenCalledWith(projectId);
+    });
+
+    it("should throw 403 if non-primary owner tries to delete", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: new mongoose.Types.ObjectId().toString(),
+        members: [{ targetId: userId, targetKind: "User", role: "owner" }],
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+
+      await expect(projectService.deleteProject(projectId, userId)).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("addMemberToProject", () => {
+    it("should allow owner to add members", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: userId,
+        members: [],
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+      
+      const newMemberId = new mongoose.Types.ObjectId().toString();
+      vi.mocked(ProjectModel.findOneAndUpdate).mockResolvedValue({
+        _id: projectId,
+        members: [{ targetId: newMemberId, targetKind: "User", role: "member" }]
+      } as any);
+
+      const result = await projectService.addMemberToProject(projectId, { targetId: newMemberId, targetKind: "User", role: "member" }, userId);
+      expect(result).toBeDefined();
+      expect(ProjectModel.findOneAndUpdate).toHaveBeenCalled();
+    });
+
+    it("should throw 403 if normal member tries to add members", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: new mongoose.Types.ObjectId().toString(),
+        members: [{ targetId: userId, targetKind: "User", role: "member" }],
+      };
+      vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
+
+      const newMemberId = new mongoose.Types.ObjectId().toString();
+      await expect(projectService.addMemberToProject(projectId, { targetId: newMemberId, targetKind: "User", role: "member" }, userId)).rejects.toThrow(AppError);
     });
   });
 });
