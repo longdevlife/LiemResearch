@@ -90,16 +90,15 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto rounded-2xl p-6 transition-all duration-300 dark:bg-[#0c0d12] dark:border-slate-800 ${
-        viewMode === "result" ? "md:p-8" : ""
-      }`}>
+      <DialogContent className={`max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto rounded-2xl p-6 transition-all duration-300 dark:bg-[#0c0d12] dark:border-slate-800 ${viewMode === "result" ? "md:p-8" : ""
+        }`}>
         {viewMode === "picker" ? (
           /* --- MÀN HÌNH CHỌN BÀI BÁO (PICKER) --- */
           <div className="space-y-6">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-indigo-500" />
-                So sánh bài viết khoa học
+                Comparing scientific articles
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-500 dark:text-slate-400">
                 Chọn tối đa 3 bài viết khác để tiến hành phân tích, đối chiếu định lượng và so sánh định tính bằng AI.
@@ -223,11 +222,10 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                           <Button
                             size="sm"
                             variant={isAdded ? "secondary" : "outline"}
-                            className={`h-7 px-3 text-xs font-semibold gap-1 rounded-lg shrink-0 ${
-                              isAdded
-                                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
-                                : "text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                            }`}
+                            className={`h-7 px-3 text-xs font-semibold gap-1 rounded-lg shrink-0 ${isAdded
+                              ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
+                              : "text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                              }`}
                             onClick={() => handleAddPaper(paper)}
                             disabled={isAdded || selectedPapers.length >= 3}
                           >

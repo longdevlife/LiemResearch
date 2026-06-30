@@ -184,7 +184,7 @@ export function PaperDetailPage() {
   const isUploader = paper.uploadedBy?._id === currentUser?.id;
   const isOwner = isRequester || isUploader;
   const isPdfAvailable = paper.pdfPath && paper.paperStatus === "downloaded";
-  
+
   const isWaitingRequesterAccept =
     paper.paperStatus === "pending-requester-acceptance" ||
     (paper.paperStatus === "pending" && !!paper.pdfPath && paper.uploadedBy?._id !== paper.requestedBy?._id);
@@ -195,9 +195,9 @@ export function PaperDetailPage() {
   const canDownloadPdf = !!paper.pdfPath && (isPrivateDownload || canPublicDownload);
 
   const canUploadPdf = !!currentUser && !paper.pdfPath && paper.paperStatus !== "rejected" && (
-    isAdmin || 
-    isRequester || 
-    paper.paperStatus === "not-downloaded" || 
+    isAdmin ||
+    isRequester ||
+    paper.paperStatus === "not-downloaded" ||
     paper.paperStatus === "pending"
   );
 
@@ -217,7 +217,7 @@ export function PaperDetailPage() {
     const titleString = paper.title.endsWith(".") ? paper.title : `${paper.title}.`;
     const journalString = paper.journalName ? `${paper.journalName}` : "";
     const citation = `${authorString} (${paper.publicationYear}). ${titleString}${journalString ? ` ${journalString}.` : ""}`;
-    
+
     navigator.clipboard.writeText(citation).then(
       () => {
         toast.success("APA Citation copied to clipboard!");
@@ -240,36 +240,35 @@ export function PaperDetailPage() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Main Column */}
         <div className="flex-1 min-w-0">
-          
+
           {/* Hero Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-4">
               {paper.title}
             </h1>
-            
+
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">
               {paper.paperStatus && (
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${
-                  paper.paperStatus === "pending"
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${paper.paperStatus === "pending"
                     ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
                     : paper.paperStatus === "not-downloaded"
-                    ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
-                    : paper.paperStatus === "downloaded"
-                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                    : paper.paperStatus === "rejected"
-                    ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20"
-                    : "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20"
-                }`}>
+                      ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
+                      : paper.paperStatus === "downloaded"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                        : paper.paperStatus === "rejected"
+                          ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20"
+                          : "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20"
+                  }`}>
                   {paper.paperStatus === "pending"
                     ? "Pending Review"
                     : paper.paperStatus === "not-downloaded"
-                    ? "Awaiting PDF"
-                    : paper.paperStatus === "downloaded"
-                    ? "Completed"
-                    : paper.paperStatus === "rejected"
-                    ? "Rejected"
-                    : "Awaiting Acceptance"}
+                      ? "Awaiting PDF"
+                      : paper.paperStatus === "downloaded"
+                        ? "Completed"
+                        : paper.paperStatus === "rejected"
+                          ? "Rejected"
+                          : "Awaiting Acceptance"}
                 </span>
               )}
               {paper.openAccessUrl && (
@@ -335,32 +334,31 @@ export function PaperDetailPage() {
                     Read PDF
                   </Button>
                 ) : null}
-                <Button 
-                  variant={isBookmarked ? "default" : "outline"} 
-                  className={`h-10 px-4 gap-2 font-bold rounded-lg ${
-                    isBookmarked 
-                      ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600" 
+                <Button
+                  variant={isBookmarked ? "default" : "outline"}
+                  className={`h-10 px-4 gap-2 font-bold rounded-lg ${isBookmarked
+                      ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600"
                       : "text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
-                  }`}
+                    }`}
                   onClick={handleBookmarkToggle}
                   disabled={createBookmark.isPending || deleteBookmark.isPending}
                 >
-                  <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} /> 
+                  <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
                   {isBookmarked ? "Saved" : "Save"}
                 </Button>
-                 <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="h-10 px-4 gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-300 dark:border-slate-700 rounded-lg"
                   onClick={handleCopyCitation}
                 >
                   <Quote className="w-4 h-4" /> Cite
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="h-10 px-4 gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold rounded-lg"
                   onClick={() => setCompareOpen(true)}
                 >
-                  <Scale className="w-4 h-4" /> So sánh với...
+                  <Scale className="w-4 h-4" /> Comparing scientific articles...
                 </Button>
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
@@ -394,7 +392,7 @@ export function PaperDetailPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Download cost / info */}
                   {paper.paperStatus === "downloaded" && (
                     <div className="text-xs text-slate-500 sm:text-right shrink-0">
@@ -470,7 +468,7 @@ export function PaperDetailPage() {
                     ? "Awaiting request approval from administrators before PDF can be uploaded."
                     : "No PDF document uploaded for this request yet."}
                 </p>
-                
+
                 {canUploadPdf && (
                   <div className="max-w-md mx-auto">
                     <label
@@ -625,7 +623,7 @@ export function PaperDetailPage() {
             {paper.authors[0] && (
               <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
                 <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-4">Lead Author</div>
-                
+
                 <div className="flex gap-4 mb-6">
                   <div className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-lg font-bold text-blue-700 dark:text-blue-400">
                     {paper.authors[0].displayName.charAt(0)}
@@ -777,11 +775,10 @@ function PaperRatingWidget({
                 aria-pressed={star <= rating}
               >
                 <Star
-                  className={`w-9 h-9 cursor-pointer transition-colors ${
-                    active 
-                      ? "text-amber-400 fill-amber-400 filter drop-shadow-[0_0_4px_rgba(250,204,21,0.35)]" 
+                  className={`w-9 h-9 cursor-pointer transition-colors ${active
+                      ? "text-amber-400 fill-amber-400 filter drop-shadow-[0_0_4px_rgba(250,204,21,0.35)]"
                       : "text-slate-200 dark:text-slate-800"
-                  }`}
+                    }`}
                 />
               </button>
             );
@@ -844,7 +841,7 @@ function PaperReviewsList({
       const res = await api.delete(`/quality/rate/${ratingId}`);
       if (res.data.success) {
         toast.success("Review deleted successfully.");
-        
+
         // Instant points/credits update on UI!
         try {
           const resMe = await api.get("/auth/me");
@@ -870,7 +867,7 @@ function PaperReviewsList({
         <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
           User Ratings & Reviews
         </h3>
-        
+
         {totalRatings > 0 ? (
           <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-zinc-800 w-fit">
             <span className="text-amber-500 flex items-center gap-0.5">
@@ -908,9 +905,8 @@ function PaperReviewsList({
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`w-3 h-3 ${
-                            star <= rating.stars ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-slate-800"
-                          }`}
+                          className={`w-3 h-3 ${star <= rating.stars ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-slate-800"
+                            }`}
                         />
                       ))}
                     </div>

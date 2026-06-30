@@ -37,7 +37,7 @@ export class ProjectService {
     })
       .sort({ updatedAt: -1 })
       .populate("members.targetId", "fullName email avatarUrl")
-      .populate("papers.targetId", "title year")
+      .populate("papers.targetId", "title publicationYear")
       .lean();
   }
 
@@ -47,7 +47,7 @@ export class ProjectService {
   async getProjectById(projectId: string, userId: string): Promise<ProjectDoc> {
     const project = await ProjectModel.findById(projectId)
       .populate("members.targetId", "fullName email avatarUrl")
-      .populate("papers.targetId", "title year authors abstract")
+      .populate("papers.targetId", "title publicationYear authors abstract")
       .lean();
     if (!project) {
       throw AppError.notFound("Project not found");
