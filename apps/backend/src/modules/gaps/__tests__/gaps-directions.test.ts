@@ -20,8 +20,9 @@ describe("buildDirectionsPrompt", () => {
       { id: "b", title: "Second", abstractText: "abs2" },
     ]);
     expect(prompt).toContain("No benchmark for multi-hop reasoning");
-    expect(prompt).toContain("[1] First");
-    expect(prompt).toContain("[2] Second");
+    // Paper ids MUST appear so the LLM can ground relatedPaperIds in real ids.
+    expect(prompt).toContain('[1] id=a "First"');
+    expect(prompt).toContain('[2] id=b "Second"');
   });
 
   it("renders (no abstract) for a paper without one", () => {

@@ -55,7 +55,7 @@ function formatPapers(papers: DirectionPaper[]): string {
   return papers
     .map(
       (p, i) =>
-        `[${i + 1}] ${p.title}\n    ${(p.abstractText ?? "(no abstract)").slice(0, MAX_ABSTRACT_CHARS)}`,
+        `[${i + 1}] id=${p.id} "${p.title}"\n    ${(p.abstractText ?? "(no abstract)").slice(0, MAX_ABSTRACT_CHARS)}`,
     )
     .join("\n\n");
 }
