@@ -1,6 +1,7 @@
 import type { PaperComparison } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
+import { hashKey } from "../../infrastructure/cache.js";
 import { generateJSON } from "../llm/gemini.client.js";
 import { cachedGenerate } from "../llm/llm.run.js";
 import { PaperModel } from "./models/paper.model.js";
@@ -69,13 +70,21 @@ export async function comparePapers(ids: string[]): Promise<PaperComparison> {
       abstractText: o.abstractText ? String(o.abstractText) : undefined,
     };
   });
+  const prompt = buildComparePrompt(candidates);
   const llm = await cachedGenerate<CompareLlmOutput>({
     task: "compare",
     promptVersion: env.COMPARE_PROMPT_VERSION,
     keyParts: { legacyCacheKey: cacheKey },
+    inputHash: hashKey({ system: COMPARE_SYSTEM_PROMPT, prompt }),
     model,
+    validate: (candidate) => {
+      if (!candidate.dimensions || candidate.dimensions.length === 0) {
+        throw AppError.serviceUnavailable("AI comparison returned an unexpected result.");
+      }
+      return candidate;
+    },
     generate: async (routedModel) => {
-      const raw = await generateJSON<unknown>(buildComparePrompt(candidates), {
+      const raw = await generateJSON<unknown>(prompt, {
         model: routedModel,
         system: COMPARE_SYSTEM_PROMPT,
         temperature: 0.2,

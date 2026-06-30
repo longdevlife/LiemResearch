@@ -144,6 +144,21 @@ export const qualityService = {
         model: env.GEMINI_MODEL_FAST,
         bypassCache: force,
         prompt,
+        validate: (candidate) => {
+          if (!candidate || typeof candidate !== "object") {
+            throw new Error("Quality judge returned non-object output");
+          }
+          for (const field of ["relevance", "groundedness", "completeness"] as const) {
+            const value = Number(candidate[field]);
+            if (!Number.isFinite(value) || value < 1 || value > 5) {
+              throw new Error(`Quality judge returned invalid ${field}`);
+            }
+          }
+          if (typeof candidate.rationale !== "string" || candidate.rationale.trim().length === 0) {
+            throw new Error("Quality judge returned empty rationale");
+          }
+          return candidate;
+        },
         options: {
           system: QUALITY_JUDGE_SYSTEM_PROMPT,
           temperature: 0.2,

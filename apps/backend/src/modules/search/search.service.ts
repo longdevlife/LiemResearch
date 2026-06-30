@@ -131,6 +131,12 @@ async function rerankedSearch(args: {
       },
       model,
       inputHash: prompt,
+      validate: (candidate) => {
+        if (Object.keys(candidate).length === 0) {
+          throw new Error("Rerank returned no valid scores");
+        }
+        return candidate;
+      },
       generate: async (routedModel) => {
         const output = await generateJSON<RerankLlmOutput>(prompt, {
           model: routedModel,

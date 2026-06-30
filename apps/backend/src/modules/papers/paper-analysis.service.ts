@@ -58,13 +58,27 @@ export async function runPaperAnalysis(job: RunPaperAnalysisJob = {}): Promise<R
           model: env.GEMINI_MODEL_FAST,
           bypassCache: Boolean(job.force),
           prompt,
+          validate: (candidate) => {
+            const sanitized = sanitizePaperAnalysis(candidate);
+            const hasContent =
+              sanitized.summary !== null ||
+              sanitized.methods !== null ||
+              sanitized.dataset !== null ||
+              sanitized.findings.length > 0 ||
+              sanitized.limitations.length > 0 ||
+              sanitized.contributions.length > 0 ||
+              sanitized.futureWork.length > 0 ||
+              sanitized.keyTerms.length > 0;
+            if (!hasContent) throw new Error("LLM returned empty paper analysis");
+            return sanitized;
+          },
           options: {
             system: PAPER_ANALYSIS_SYSTEM_PROMPT,
             temperature: 0,
             maxOutputTokens: env.PAPER_ANALYSIS_MAX_OUTPUT_TOKENS,
           },
         });
-        const aiAnalysis = withAnalysisMetadata(sanitizePaperAnalysis(raw));
+        const aiAnalysis = withAnalysisMetadata(raw);
         await PaperModel.updateOne(
           { _id: paper._id },
           {
