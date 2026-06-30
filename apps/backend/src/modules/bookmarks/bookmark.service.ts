@@ -104,7 +104,7 @@ export const bookmarkService = {
         userId,
         targetKind: doc.targetKind,
         targetId,
-        note: doc.note ?? undefined,
+        note: doc.note === null ? null : (doc.note ?? undefined),
         createdAt: doc.createdAt.toISOString(),
         updatedAt: doc.updatedAt.toISOString(),
       };
