@@ -61,7 +61,9 @@ export const bookmarkService = {
       throw AppError.forbidden("You do not own this bookmark");
     }
 
-    bookmark.note = input.note || undefined;
+    if (input.note !== undefined) {
+      bookmark.note = input.note;
+    }
     await bookmark.save();
 
     const [updated] = await this.populateDetails([bookmark]);
