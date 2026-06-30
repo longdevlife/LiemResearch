@@ -39,6 +39,7 @@ export const reportService = {
       userId,
       query: input.query,
       topic: input.topic,
+      projectId: input.projectId,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
       deepAnalysis: input.deepAnalysis ?? false,
@@ -56,9 +57,19 @@ export const reportService = {
     return { id: String(report._id), status: "queued" };
   },
 
-  /** The user's own reports, newest first — WITHOUT heavy fields. */
-  async list(userId: string, { page, pageSize }: ListReportsQuery) {
-    const filter = { userId };
+  /** The user's own reports (or project reports), newest first — WITHOUT heavy fields. */
+  async list(userId: string, { page, pageSize, projectId }: ListReportsQuery) {
+    let filter: Record<string, any> = { userId };
+    
+    if (projectId) {
+      const { ProjectModel } = await import("../projects/models/project.model.js");
+      const project = await ProjectModel.findById(projectId).lean();
+      if (!project) throw AppError.notFound("Project not found");
+      const hasAccess = project.ownerId.toString() === userId || project.members.some((m) => m.targetId.toString() === userId);
+      if (!hasAccess) throw AppError.notFound("Project not found");
+      filter = { projectId }; // Show all reports for this project
+    }
+
     const [docs, total] = await Promise.all([
       ReportModel.find(filter)
         .select("-markdown -researchGaps -groundingPaperIds")
@@ -71,10 +82,23 @@ export const reportService = {
     return { reports: docs.map((d) => toReportDto(d) as ReportListItem), total };
   },
 
-  /** Full report — owner only. 404 (not 403) so we don't leak existence. */
+  /** Full report — owner or project member. */
   async getById(userId: string, id: string): Promise<AnalyticalReport> {
-    const doc = await ReportModel.findOne({ _id: id, userId }).lean().catch(() => null);
+    const doc = await ReportModel.findOne({ _id: id }).lean().catch(() => null);
     if (!doc) throw AppError.notFound("Report not found");
+
+    // Check access
+    let hasAccess = doc.userId.toString() === userId;
+    if (!hasAccess && doc.projectId) {
+      // Lazy import to avoid circular dep just in case
+      const { ProjectModel } = await import("../projects/models/project.model.js");
+      const project = await ProjectModel.findById(doc.projectId).lean();
+      if (project) {
+        hasAccess = project.ownerId.toString() === userId || project.members.some((m) => m.targetId.toString() === userId);
+      }
+    }
+    if (!hasAccess) throw AppError.notFound("Report not found"); // mask 403 as 404
+
     const report = toReportDto(doc);
     report.groundingPapers = await paperService.getSummariesByIds(report.groundingPaperIds ?? []);
     return report;

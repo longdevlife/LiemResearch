@@ -148,6 +148,7 @@ export const gapsService = {
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
     const analysis = await GapAnalysisModel.create({
       userId,
+      projectId: dto.projectId,
       topic: dto.topic,
       yearFrom: dto.yearFrom,
       yearTo: dto.yearTo,
@@ -264,6 +265,7 @@ export const gapsService = {
           evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "standalone",
           userId: analysis.userId,
+          projectId: analysis.projectId,
         });
       }),
     );
@@ -289,6 +291,7 @@ export const gapsService = {
   async fanOutGapsFromReport(report: {
     _id: unknown;
     userId: unknown;
+    projectId?: unknown;
     query: string;
     researchGaps: Array<{
       title: string;
@@ -319,6 +322,7 @@ export const gapsService = {
           source: "report",
           sourceReportId: report._id,
           userId: report.userId,
+          projectId: report.projectId,
         }),
       ),
     );
@@ -326,7 +330,17 @@ export const gapsService = {
 
   /** Paginated, filterable list of gaps (the FE gaps page). */
   async list(userId: string, query: ListGapsQuery) {
-    const filter: Record<string, unknown> = { userId, status: query.status };
+    let filter: Record<string, unknown> = { userId, status: query.status };
+
+    if (query.projectId) {
+      const { ProjectModel } = await import("../projects/models/project.model.js");
+      const project = await ProjectModel.findById(query.projectId).lean();
+      if (!project) throw AppError.notFound("Project not found");
+      const hasAccess = project.ownerId.toString() === userId || project.members.some((m) => m.targetId.toString() === userId);
+      if (!hasAccess) throw AppError.notFound("Project not found");
+      filter = { projectId: query.projectId, status: query.status }; // Show all gaps for this project
+    }
+
     if (query.topic) {
       filter.normalizedTopic = { $regex: normalizeTopicStr(query.topic), $options: "i" };
     }

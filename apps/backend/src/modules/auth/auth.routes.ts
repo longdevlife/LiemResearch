@@ -25,6 +25,35 @@ authRouter.get(
 );
 
 /**
+ * GET /auth/search?email=... — Search users by email for adding to projects.
+ */
+authRouter.get("/search", requireAuth, async (req: Request, res: Response) => {
+  const emailQuery = req.query.email as string;
+  if (!emailQuery || emailQuery.length < 2) {
+    res.json({ success: true, data: [] });
+    return;
+  }
+  
+  const users = await UserModel.find({
+    email: { $regex: emailQuery, $options: "i" },
+    isActive: { $ne: false },
+  })
+    .select("email fullName avatarUrl")
+    .limit(10)
+    .lean();
+    
+  res.json({
+    success: true,
+    data: users.map(u => ({
+      id: u._id.toString(),
+      email: u.email,
+      fullName: u.fullName,
+      avatarUrl: u.avatarUrl
+    }))
+  });
+});
+
+/**
  * GET /auth/rankings/top?page=1&limit=20 — Paginated public leaderboard by points.
  * Returns the standard { success, data, meta } envelope (§6).
  */

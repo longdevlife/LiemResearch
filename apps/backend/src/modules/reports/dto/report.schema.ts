@@ -5,6 +5,7 @@ export const CreateReportSchema = z
   .object({
     query: z.string().trim().min(3, "query must be at least 3 characters").max(500),
     topic: z.string().trim().max(200).optional(),
+    projectId: z.string().optional(),
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
     deepAnalysis: z.boolean().optional(), // Phase D — opt-in Gemini function-calling mode
@@ -20,6 +21,7 @@ export type CreateReportInput = z.infer<typeof CreateReportSchema>;
 export const ListReportsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
+  projectId: z.string().optional(),
 });
 
 export type ListReportsQuery = z.infer<typeof ListReportsQuerySchema>;

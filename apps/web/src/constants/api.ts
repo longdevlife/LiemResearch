@@ -60,4 +60,15 @@ export const API_ROUTES = {
     patch: (id: string) => `/gaps/${id}`,
     directions: (id: string) => `/gaps/${id}/directions`,
   },
+  projects: {
+    list: "/projects",
+    create: "/projects",
+    detail: (id: string) => `/projects/${id}`,
+    update: (id: string) => `/projects/${id}`,
+    delete: (id: string) => `/projects/${id}`,
+    addPaper: (id: string) => `/projects/${id}/papers`,
+    removePaper: (id: string, paperId: string) => `/projects/${id}/papers/${paperId}`,
+    addMember: (id: string) => `/projects/${id}/members`,
+    removeMember: (id: string, memberId: string) => `/projects/${id}/members/${memberId}`,
+  }
 } as const;

@@ -25,6 +25,7 @@ export const gapsApi = {
     status?: "active" | "resolved" | "dismissed";
     page?: number;
     pageSize?: number;
+    projectId?: string;
   }): Promise<ListGapsResponse> {
     const res = await api.get(API_ROUTES.gaps.list, { params });
     return { data: res.data.data, meta: res.data.meta };

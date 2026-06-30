@@ -12,10 +12,12 @@ import { analyticsRouter } from "../modules/analytics/analytics.routes.js";
 import { qualityRouter } from "../modules/quality/quality.routes.js";
 import { adminRouter } from "../modules/admin/admin.routes.js";
 import { notificationRouter } from "../modules/notifications/notification.routes.js";
+import { projectRouter } from "../modules/projects/project.routes.js";
 
 export const apiRouter: Router = Router();
 
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/projects", projectRouter);
 apiRouter.use("/papers", paperRouter);
 apiRouter.use("/search", searchRouter); // Phase B — semantic search
 apiRouter.use("/trends", trendRouter); // Phase B/C — publication trends

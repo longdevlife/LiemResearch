@@ -15,6 +15,7 @@ export interface ResearchGapItem {
   confidence: number;
   source: GapSource;
   sourceReportId?: string;
+  projectId?: string;
   userId: string;
   status: GapStatus;
   createdAt: string;
@@ -35,6 +36,7 @@ export interface GapAnalysisResult {
 
 export interface AnalyzeGapRequest {
   topic: string;
+  projectId?: string;
   yearFrom?: number;
   yearTo?: number;
 }
