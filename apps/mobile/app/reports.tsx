@@ -5,8 +5,10 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import type { ReportListItem, ReportStatus } from "@trend/shared-types";
+import { Swipeable } from "react-native-gesture-handler";
 
-import { useCreateReport, useReport, useReports } from "@/features/reports";
+import { useCreateBookmark } from "@/features/bookmarks";
+import { useCreateReport, useDeleteReport, useReport, useReports } from "@/features/reports";
 
 function statusColor(status: ReportStatus) {
   if (status === "ready") return "text-emerald-500";
@@ -15,26 +17,72 @@ function statusColor(status: ReportStatus) {
   return "text-[#06B6D4]";
 }
 
-function ReportRow({ report, selected, onPress }: { report: ReportListItem; selected: boolean; onPress: () => void }) {
-  return (
+function ReportRow({
+  report,
+  selected,
+  onPress,
+  onDeleted,
+}: {
+  report: ReportListItem;
+  selected: boolean;
+  onPress: () => void;
+  onDeleted: () => void;
+}) {
+  const deleteReport = useDeleteReport();
+
+  const confirmDelete = () => {
+    Alert.alert("Delete report", "Delete this report?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          deleteReport.mutate(report.id, {
+            onSuccess: onDeleted,
+            onError: (error: any) => {
+              Alert.alert("Delete failed", error?.response?.data?.error?.message ?? "Could not delete report.");
+            },
+          }),
+      },
+    ]);
+  };
+
+  const renderRightActions = () => (
     <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.86}
-      className={`mb-3 rounded-2xl border p-4 ${
-        selected ? "border-[#06B6D4] bg-cyan-50 dark:bg-[#082F49]" : "border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332]"
-      }`}
+      className="w-16 items-center justify-center bg-[#DC2626]"
+      onPress={confirmDelete}
+      disabled={deleteReport.isPending}
     >
-      <View className="flex-row items-start gap-3">
-        <View className="h-10 w-10 rounded-xl bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center">
-          <Ionicons name="sparkles" size={18} color="#8B5CF6" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-bold text-foreground dark:text-[#F8FAFC]" numberOfLines={2}>{report.topic || report.query}</Text>
-          <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]" numberOfLines={1}>{report.query}</Text>
-          <Text className={`mt-2 text-xs font-bold uppercase ${statusColor(report.status)}`}>{report.status}</Text>
-        </View>
-      </View>
+      {deleteReport.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Feather name="trash-2" size={20} color="#FFFFFF" />}
     </TouchableOpacity>
+  );
+
+  return (
+    <Swipeable
+      overshootRight={false}
+      friction={2}
+      renderRightActions={renderRightActions}
+      containerStyle={{ marginBottom: 12, borderRadius: 16, overflow: "hidden" }}
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.86}
+        className={`rounded-2xl border p-4 ${
+          selected ? "border-[#06B6D4] bg-cyan-50 dark:bg-[#082F49]" : "border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332]"
+        }`}
+      >
+        <View className="flex-row items-start gap-3">
+          <View className="h-10 w-10 rounded-xl bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center">
+            <Ionicons name="sparkles" size={18} color="#8B5CF6" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-foreground dark:text-[#F8FAFC]" numberOfLines={2}>{report.topic || report.query}</Text>
+            <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]" numberOfLines={1}>{report.query}</Text>
+            <Text className={`mt-2 text-xs font-bold uppercase ${statusColor(report.status)}`}>{report.status}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
   );
 }
 
@@ -44,6 +92,7 @@ export default function ReportsScreen() {
   const isDark = colorScheme === "dark";
   const reportsQuery = useReports({ page: 1, pageSize: 20 });
   const createReport = useCreateReport();
+  const createBookmark = useCreateBookmark();
   const reports = reportsQuery.data?.reports ?? [];
   const [query, setQuery] = useState("Analyze research trends in large language models for education");
   const [topic, setTopic] = useState("LLM in education");
@@ -62,6 +111,16 @@ export default function ReportsScreen() {
       {
         onSuccess: (data) => {
           setSelectedId(data.id);
+          createBookmark.mutate(
+            { targetKind: "report", targetId: data.id },
+            {
+              onError: (error: any) => {
+                if (error?.response?.status !== 409) {
+                  Alert.alert("Bookmark failed", error?.response?.data?.error?.message ?? "Report was created but not saved to bookmarks.");
+                }
+              },
+            },
+          );
           Alert.alert("Report queued", "Worker will generate it in the background.");
         },
         onError: (error: any) => {
@@ -167,6 +226,9 @@ export default function ReportsScreen() {
                 } else {
                   setSelectedId(report.id);
                 }
+              }}
+              onDeleted={() => {
+                if (selectedId === report.id) setSelectedId(undefined);
               }}
             />
           ))

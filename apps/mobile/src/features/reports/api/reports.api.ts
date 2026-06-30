@@ -17,4 +17,8 @@ export const reportsApi = {
     const res = await api.post(API_ROUTES.reports.create, payload);
     return res.data.data;
   },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(API_ROUTES.reports.delete(id));
+  },
 };
