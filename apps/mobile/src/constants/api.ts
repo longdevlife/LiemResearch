@@ -26,6 +26,7 @@ export const API_ROUTES = {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
+    delete: (id: string) => `/reports/${id}`,
   },
   bookmarks: {
     list: "/bookmarks",
@@ -33,6 +34,12 @@ export const API_ROUTES = {
     delete: (id: string) => `/bookmarks/${id}`,
     check: "/bookmarks/check",
     updateNote: (id: string) => `/bookmarks/${id}`,
+  },
+  notifications: {
+    list: "/notifications",
+    registerDeviceToken: "/notifications/device-token",
+    markRead: (id: string) => `/notifications/${id}/read`,
+    markAllRead: "/notifications/read-all",
   },
   analytics: {
     summary: "/analytics/search/summary",
