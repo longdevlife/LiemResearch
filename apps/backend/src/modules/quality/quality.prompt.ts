@@ -1,3 +1,8 @@
+import {
+  formatEvidence,
+  UNTRUSTED_DATA_PREAMBLE,
+} from "../llm/grounding.js";
+
 /**
  * Prompt construction for the LLM-as-a-judge — PURE functions, no I/O.
  * Bump QUALITY_PROMPT_VERSION on any wording change.
@@ -6,6 +11,7 @@ export const QUALITY_PROMPT_VERSION = "quality-v1";
 
 export const QUALITY_JUDGE_SYSTEM_PROMPT = [
   "You are a STRICT research-quality evaluator for an academic platform.",
+  UNTRUSTED_DATA_PREAMBLE,
   "Score the given AI output on three criteria, each an INTEGER 1-5:",
   "- relevance: does it actually address the question/topic?",
   "- groundedness: are its claims supported by the PROVIDED evidence papers? Penalize unsupported or hallucinated claims.",
@@ -27,14 +33,9 @@ const MAX_MARKDOWN_CHARS = 8000;
  * evidence snippet — but still bound it so a pathological abstract can't blow tokens. */
 const MAX_PAPER_ABSTRACT_CHARS = 4000;
 
-function formatEvidence(evidence: JudgeEvidence[]): string {
+function formatJudgeEvidence(evidence: JudgeEvidence[]): string {
   if (evidence.length === 0) return "(no evidence papers available)";
-  return evidence
-    .map(
-      (e, i) =>
-        `[${i + 1}] "${e.title}"\n    ${(e.abstractText ?? "(no abstract)").slice(0, MAX_ABSTRACT_CHARS)}`,
-    )
-    .join("\n\n");
+  return formatEvidence(evidence, { maxAbstractChars: MAX_ABSTRACT_CHARS }).text;
 }
 
 export function buildReportJudgePrompt(
@@ -44,7 +45,7 @@ export function buildReportJudgePrompt(
 ): string {
   return [
     `QUESTION:\n${query}`,
-    `EVIDENCE PAPERS (${evidence.length}):\n${formatEvidence(evidence)}`,
+    `EVIDENCE PAPERS (${evidence.length}):\n${formatJudgeEvidence(evidence)}`,
     `AI REPORT TO EVALUATE:\n${markdown.slice(0, MAX_MARKDOWN_CHARS)}`,
     "Score the report on relevance / groundedness / completeness as instructed. Return ONLY the JSON.",
   ].join("\n\n---\n\n");
@@ -56,7 +57,7 @@ export function buildGapJudgePrompt(
 ): string {
   return [
     `TOPIC: ${gap.topic}`,
-    `EVIDENCE PAPERS (${evidence.length}):\n${formatEvidence(evidence)}`,
+    `EVIDENCE PAPERS (${evidence.length}):\n${formatJudgeEvidence(evidence)}`,
     `AI RESEARCH GAP TO EVALUATE:\nTitle: ${gap.title}\nDescription: ${gap.description}\nRationale: ${gap.rationale}`,
     "Score: relevance (is it a real, well-scoped gap?), groundedness (supported by the evidence?), completeness (clearly articulated?). Return ONLY the JSON.",
   ].join("\n\n---\n\n");
@@ -69,9 +70,11 @@ export function buildGapJudgePrompt(
  */
 export function buildPaperJudgePrompt(paper: { title: string; abstractText?: string }): string {
   const abstract = (paper.abstractText ?? "(no abstract)").slice(0, MAX_PAPER_ABSTRACT_CHARS);
+  const evidence = formatEvidence([{ title: paper.title, abstractText: abstract }], {
+    maxAbstractChars: MAX_PAPER_ABSTRACT_CHARS,
+  }).text;
   return [
-    `PAPER TITLE: ${paper.title}`,
-    `PAPER ABSTRACT:\n${abstract}`,
+    `PAPER DATA:\n${evidence}`,
     [
       "Score this PAPER itself (it is source content, not an AI output) on:",
       "- relevance: is it a clear, well-scoped research topic (vs vague / off-scope)?",

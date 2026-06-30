@@ -54,7 +54,7 @@ describe("buildChatPrompt", () => {
   it("truncates long abstracts", () => {
     const long = "x".repeat(MAX_CHAT_ABSTRACT_CHARS + 20);
     const built = buildChatPrompt({ question: "q", evidence: [{ ...paper("a"), abstractText: long }] });
-    expect(built.prompt).toContain("x".repeat(MAX_CHAT_ABSTRACT_CHARS));
+    expect(built.prompt).toContain(`${"x".repeat(MAX_CHAT_ABSTRACT_CHARS - 3)}...`);
     expect(built.prompt).not.toContain("x".repeat(MAX_CHAT_ABSTRACT_CHARS + 1));
   });
 

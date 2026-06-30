@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
-import { cache } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { getLlmProvider } from "../llm/llm.factory.js";
+import { cachedGenerate } from "../llm/llm.run.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ProjectModel } from "./models/project.model.js";
 import { ProjectChatMessageModel } from "./models/project-chat-message.model.js";
@@ -16,7 +16,6 @@ import {
   type ChatHistoryTurn,
 } from "./project-chat.prompt.js";
 import {
-  buildChatCacheKey,
   fitToBudget,
   normalizeQuestion,
   PROJECT_CHAT_PROMPT_VERSION,
@@ -77,42 +76,37 @@ export class ProjectChatService {
     });
     const provider = getLlmProvider();
     const model = provider.name === "ollama" ? env.OLLAMA_MODEL : env.GEMINI_MODEL_FAST;
-    const cacheKey = buildChatCacheKey({
-      projectId,
-      question: message,
-      paperIds: evidence.map((paper) => paper.id),
-      promptVersion: PROJECT_CHAT_PROMPT_VERSION,
-      provider: provider.name,
-      model,
-    });
-
-    const cached = await cache.get<SendProjectChatMessageResult>(cacheKey);
-    if (cached) {
-      await this.saveTurn(projectId, userId, message, cached.answer, cached.citedPaperIds);
-      logger.debug({ projectId, userId, cacheKey }, "project chat cache hit");
-      return cached;
-    }
-
-    let answer: string;
+    let result: SendProjectChatMessageResult;
     try {
-      answer = (
-        await provider.generate(prompt, {
-          system,
-          temperature: 0.25,
-          maxOutputTokens: 1024,
-        })
-      )
-        .trim()
-        .slice(0, 4000);
+      result = await cachedGenerate<SendProjectChatMessageResult>({
+        task: "chat",
+        promptVersion: PROJECT_CHAT_PROMPT_VERSION,
+        keyParts: {
+          projectId,
+          question: normalizeQuestion(message),
+          paperIds: evidence.map((paper) => paper.id).sort(),
+          provider: provider.name,
+        },
+        model,
+        ttlSeconds: env.CHAT_CACHE_TTL_SECONDS,
+        generate: async () => {
+          const answer = (
+            await provider.generate(prompt, {
+              system,
+              temperature: 0.25,
+              maxOutputTokens: 1024,
+            })
+          )
+            .trim()
+            .slice(0, 4000);
+          return { answer, citedPaperIds: parseCitations(answer, evidence) };
+        },
+      });
     } catch (err) {
       logger.warn({ err, projectId, userId, provider: provider.name }, "project chat LLM failed");
       throw AppError.serviceUnavailable("LLM provider unreachable");
     }
-
-    const citedPaperIds = parseCitations(answer, evidence);
-    const result = { answer, citedPaperIds };
-    await cache.set(cacheKey, result, env.CHAT_CACHE_TTL_SECONDS);
-    await this.saveTurn(projectId, userId, message, answer, citedPaperIds);
+    await this.saveTurn(projectId, userId, message, result.answer, result.citedPaperIds);
     return result;
   }
 

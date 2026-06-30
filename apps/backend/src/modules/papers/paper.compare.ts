@@ -1,8 +1,8 @@
 import type { PaperComparison } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
-import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { generateJSON } from "../llm/gemini.client.js";
+import { cachedGenerate } from "../llm/llm.run.js";
 import { PaperModel } from "./models/paper.model.js";
 import { toPaperRef } from "./paper.service.js";
 import {
@@ -61,25 +61,29 @@ export async function comparePapers(ids: string[]): Promise<PaperComparison> {
     model,
     promptVersion: env.COMPARE_PROMPT_VERSION,
   });
-  let llm = await cache.get<CompareLlmOutput>(cacheKey);
-  if (!llm) {
-    const candidates = canonical.map((id) => {
-      const o = byId.get(id) as Record<string, unknown>;
-      return {
-        id,
-        title: String(o.title ?? ""),
-        abstractText: o.abstractText ? String(o.abstractText) : undefined,
-      };
-    });
-    const raw = await generateJSON<unknown>(buildComparePrompt(candidates), {
-      model,
-      system: COMPARE_SYSTEM_PROMPT,
-      temperature: 0.2,
-      maxOutputTokens: 2048,
-    });
-    llm = parseComparison(raw, canonical.length);
-    await cache.set(cacheKey, llm, LLM_CACHE_TTL_SECONDS);
-  }
+  const candidates = canonical.map((id) => {
+    const o = byId.get(id) as Record<string, unknown>;
+    return {
+      id,
+      title: String(o.title ?? ""),
+      abstractText: o.abstractText ? String(o.abstractText) : undefined,
+    };
+  });
+  const llm = await cachedGenerate<CompareLlmOutput>({
+    task: "compare",
+    promptVersion: env.COMPARE_PROMPT_VERSION,
+    keyParts: { legacyCacheKey: cacheKey },
+    model,
+    generate: async (routedModel) => {
+      const raw = await generateJSON<unknown>(buildComparePrompt(candidates), {
+        model: routedModel,
+        system: COMPARE_SYSTEM_PROMPT,
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+      });
+      return parseComparison(raw, canonical.length);
+    },
+  });
 
   // Remap each dimension's perPaper from canonical order → request order so the
   // columns line up with `papers`/`metrics`.
