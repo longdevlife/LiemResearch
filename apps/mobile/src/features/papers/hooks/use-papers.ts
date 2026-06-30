@@ -29,3 +29,11 @@ export function usePaper(id: string | undefined) {
     enabled: !!id,
   });
 }
+
+export function usePaperReferences(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["paper", id, "references"],
+    queryFn: () => papersApi.references(id!),
+    enabled: !!id && enabled,
+  });
+}

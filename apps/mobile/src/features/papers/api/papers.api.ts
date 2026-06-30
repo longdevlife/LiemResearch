@@ -1,4 +1,4 @@
-import type { Paper } from "@trend/shared-types";
+import type { Paper, PaperRef } from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
@@ -6,6 +6,12 @@ export interface PapersListParams {
   q?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface PaperReferencesResult {
+  references: PaperRef[];
+  totalReferenced: number;
+  inCorpus: number;
 }
 
 export const papersApi = {
@@ -23,6 +29,10 @@ export const papersApi = {
   },
   async detail(id: string): Promise<Paper> {
     const res = await api.get(API_ROUTES.papers.detail(id));
+    return res.data.data;
+  },
+  async references(id: string): Promise<PaperReferencesResult> {
+    const res = await api.get(API_ROUTES.papers.references(id));
     return res.data.data;
   },
 };

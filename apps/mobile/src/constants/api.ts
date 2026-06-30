@@ -14,6 +14,7 @@ export const API_ROUTES = {
   papers: {
     list: "/papers",
     detail: (id: string) => `/papers/${id}`,
+    references: (id: string) => `/papers/${id}/references`,
   },
   search: {
     semantic: "/search", 
