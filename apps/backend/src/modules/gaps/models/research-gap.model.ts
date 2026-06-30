@@ -33,6 +33,7 @@ const researchGapSchema = new Schema(
     // its own gaps idempotently (report-sourced gaps have no analysisId).
     analysisId: { type: Schema.Types.ObjectId, ref: "GapAnalysis", index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    projectId: { type: Schema.Types.ObjectId, ref: "Project", index: true },
     status: {
       type: String,
       enum: ["active", "resolved", "dismissed"],

@@ -1,20 +1,26 @@
 import { z } from "zod";
 
 /** Body of POST /api/v1/gaps/analyze. */
-export const AnalyzeGapSchema = z.object({
-  topic: z.string().min(2).max(200),
-  yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
-  yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
-});
+export const AnalyzeGapSchema = z
+  .object({
+    topic: z.string().trim().min(3).max(200),
+    projectId: z.string().optional(),
+    yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
+    yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+  })
+  .refine((b) => b.yearFrom === undefined || b.yearTo === undefined || b.yearFrom <= b.yearTo, {
+    message: "yearFrom must be <= yearTo",
+  });
 
 /** Query params of GET /api/v1/gaps. */
 export const ListGapsQuerySchema = z.object({
-  topic: z.string().optional(),
+  topic: z.string().trim().max(200).optional(),
   minConfidence: z.coerce.number().min(0).max(1).optional(),
   source: z.enum(["report", "standalone"]).optional(),
   status: z.enum(["active", "resolved", "dismissed"]).default("active"),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(50).default(20),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+  projectId: z.string().optional(),
 });
 
 /** Body of PATCH /api/v1/gaps/:id. */

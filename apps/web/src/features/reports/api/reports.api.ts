@@ -3,8 +3,8 @@ import { API_ROUTES } from "@/constants/api";
 import type { AnalyticalReport, ReportListItem, CreateReportRequest } from "@trend/shared-types";
 
 export const reportsApi = {
-  async list(): Promise<ReportListItem[]> {
-    const res = await api.get(API_ROUTES.reports.list);
+  async list(params?: { projectId?: string }): Promise<ReportListItem[]> {
+    const res = await api.get(API_ROUTES.reports.list, { params });
     return res.data.data;
   },
 

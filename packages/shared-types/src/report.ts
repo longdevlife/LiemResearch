@@ -7,6 +7,7 @@ export type ReportStatus = "queued" | "generating" | "ready" | "failed";
 export interface CreateReportRequest {
   /** The analytical question. The report mirrors its language (VN → VN). */
   query: string;
+  projectId?: string;
   /** Optional display label, e.g. the topic the user clicked on the Trends page. */
   topic?: string;
   yearFrom?: number;
@@ -44,6 +45,7 @@ export interface ResearchGap {
 export interface AnalyticalReport {
   id: string;
   userId: string;
+  projectId?: string;
   topic?: string;
   query: string;
   status: ReportStatus;

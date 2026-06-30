@@ -1,0 +1,207 @@
+import { ProjectModel, type ProjectDoc } from "./models/project.model.js";
+import type { CreateProjectRequest, UpdateProjectRequest, AddProjectMemberRequest } from "@trend/shared-types";
+import { AppError } from "../../common/exceptions/app-error.js";
+import mongoose from "mongoose";
+
+export class ProjectService {
+  /**
+   * Create a new project.
+   */
+  async createProject(data: CreateProjectRequest, ownerId: string): Promise<ProjectDoc> {
+    const project = new ProjectModel({
+      title: data.title,
+      description: data.description,
+      ownerId: new mongoose.Types.ObjectId(ownerId),
+      members: [
+        {
+          targetKind: "User",
+          targetId: new mongoose.Types.ObjectId(ownerId),
+          role: "owner",
+        },
+      ],
+      papers: [],
+    });
+
+    return await project.save();
+  }
+
+  /**
+   * Get all projects where the user is a member (or owner).
+   */
+  async getProjectsByUser(userId: string): Promise<ProjectDoc[]> {
+    return await ProjectModel.find({
+      $or: [
+        { ownerId: new mongoose.Types.ObjectId(userId) },
+        { "members.targetId": new mongoose.Types.ObjectId(userId) },
+      ],
+    })
+      .sort({ updatedAt: -1 })
+      .populate("members.targetId", "fullName email avatarUrl")
+      .populate("papers.targetId", "title year")
+      .lean();
+  }
+
+  /**
+   * Get a specific project by ID.
+   */
+  async getProjectById(projectId: string, userId: string): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId)
+      .populate("members.targetId", "fullName email avatarUrl")
+      .populate("papers.targetId", "title year authors abstract")
+      .lean();
+    if (!project) {
+      throw AppError.notFound("Project not found");
+    }
+
+    // Verify access
+    const hasAccess =
+      project.ownerId.toString() === userId ||
+      project.members.some((m) => {
+        const targetId = m.targetId as any;
+        const id = typeof targetId === 'object' && targetId !== null && '_id' in targetId
+          ? targetId._id.toString()
+          : targetId.toString();
+        return id === userId;
+      });
+
+    if (!hasAccess) {
+      throw AppError.forbidden("Access denied to this project");
+    }
+
+    return project;
+  }
+
+  /**
+   * Update project details.
+   */
+  async updateProject(
+    projectId: string,
+    data: UpdateProjectRequest,
+    userId: string,
+  ): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    const isOwner = project.ownerId.toString() === userId || project.members.some(
+      (m) => m.targetId.toString() === userId && m.role === "owner"
+    );
+
+    if (!isOwner) throw AppError.forbidden("Only owners can update the project details");
+
+    if (data.title !== undefined) project.title = data.title;
+    if (data.description !== undefined) project.description = data.description;
+
+    return await project.save();
+  }
+
+  /**
+   * Delete a project.
+   */
+  async deleteProject(projectId: string, userId: string): Promise<void> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    if (project.ownerId.toString() !== userId) {
+      throw AppError.forbidden("Only the primary owner can delete the project");
+    }
+
+    await ProjectModel.findByIdAndDelete(projectId);
+  }
+
+  /**
+   * Add a paper to the project.
+   */
+  async addPaperToProject(projectId: string, paperId: string, userId: string): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    const hasAccess = project.ownerId.toString() === userId || project.members.some(
+      (m) => m.targetId.toString() === userId
+    );
+
+    if (!hasAccess) throw AppError.forbidden("Only project members can modify papers");
+
+    const alreadyExists = project.papers.some((p) => p.targetId.toString() === paperId);
+    if (alreadyExists) throw AppError.badRequest("Paper already exists in the project");
+
+    project.papers.push({
+      targetKind: "Paper",
+      targetId: new mongoose.Types.ObjectId(paperId),
+    });
+
+    return await project.save();
+  }
+
+  /**
+   * Remove a paper from the project.
+   */
+  async removePaperFromProject(projectId: string, paperId: string, userId: string): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    const hasAccess = project.ownerId.toString() === userId || project.members.some(
+      (m) => m.targetId.toString() === userId
+    );
+
+    if (!hasAccess) throw AppError.forbidden("Only project members can modify papers");
+
+    project.papers = project.papers.filter((p) => p.targetId.toString() !== paperId) as any;
+
+    return await project.save();
+  }
+
+  /**
+   * Add a member to the project.
+   */
+  async addMemberToProject(
+    projectId: string,
+    memberData: AddProjectMemberRequest,
+    userId: string,
+  ): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    const isOwner = project.ownerId.toString() === userId || project.members.some(
+      (m) => m.targetId.toString() === userId && m.role === "owner"
+    );
+
+    if (!isOwner) throw AppError.forbidden("Only owners can modify project members");
+
+    const alreadyExists = project.members.some((m) => m.targetId.toString() === memberData.targetId);
+    if (alreadyExists) throw AppError.badRequest("Member already exists in the project");
+
+    project.members.push({
+      targetKind: memberData.targetKind,
+      targetId: new mongoose.Types.ObjectId(memberData.targetId),
+      role: memberData.role,
+    });
+
+    return await project.save();
+  }
+
+  /**
+   * Remove a member from the project.
+   */
+  async removeMemberFromProject(projectId: string, targetId: string, userId: string): Promise<ProjectDoc> {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found");
+
+    if (project.ownerId.toString() === targetId) {
+      throw AppError.badRequest("Cannot remove the primary owner");
+    }
+
+    const isOwner = project.ownerId.toString() === userId || project.members.some(
+      (m) => m.targetId.toString() === userId && m.role === "owner"
+    );
+
+    // User can remove themselves, or owners can remove anyone
+    const isSelf = targetId === userId;
+    if (!isOwner && !isSelf) throw AppError.forbidden("Only owners can remove other members");
+
+    project.members = project.members.filter((m) => m.targetId.toString() !== targetId) as any;
+
+    return await project.save();
+  }
+}
+
+export const projectService = new ProjectService();
