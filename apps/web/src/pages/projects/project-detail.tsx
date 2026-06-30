@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useProject, useAddPaperToProject, useRemovePaperFromProject, useAddMemberToProject, useRemoveMemberFromProject } from "@/features/projects/hooks/use-projects";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api-client";
-
+import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
+import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 function useSearchUsers(email: string) {
   return useQuery({
     queryKey: ["searchUsers", email],
@@ -35,9 +38,11 @@ function useSearchPapers(query: string) {
   });
 }
 import { toast } from "sonner";
-import { FileText, Users, Trash2, Plus } from "lucide-react";
+import { FileText, Users, Trash2, Plus, Loader2, CheckCircle2, XCircle, Sparkles, Zap, Search, ListFilter } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 export function ProjectDetailPage() {
+  const currentUser = useAuthStore(s => s.user);
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading } = useProject(id);
   const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps">("papers");
@@ -62,86 +67,389 @@ export function ProjectDetailPage() {
   }
 
   return (
-    <main className="container py-8 space-y-8">
-      <PageHeader
-        title={project.title}
-        description={project.description || "No description provided."}
-      />
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0a0a0a]">
+      <main className="container max-w-6xl py-10 space-y-10">
+        
+        {/* Overview Dashboard Header */}
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div className="flex-1">
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-3">{project.title}</h1>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-lg leading-relaxed">{project.description || "No description provided."}</p>
+          </div>
+          
+          <div className="flex gap-4 items-center shrink-0">
+            <div className="flex flex-col items-center bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 min-w-[120px] shadow-sm transition-transform hover:-translate-y-1 duration-300">
+              <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mb-1">{project.papers?.length || 0}</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Papers</span>
+            </div>
+            <div className="flex flex-col items-center bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 min-w-[120px] shadow-sm transition-transform hover:-translate-y-1 duration-300">
+              <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mb-1">{project.members?.length || 0}</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Members</span>
+            </div>
+          </div>
+        </div>
 
-      <div className="flex border-b">
-        <button
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeTab === "papers" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("papers")}
-        >
-          Papers ({project.papers?.length || 0})
-        </button>
-        <button
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeTab === "members" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("members")}
-        >
-          Members ({project.members?.length || 0})
-        </button>
-        <button
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeTab === "reports" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("reports")}
-        >
-          Reports
-        </button>
-        <button
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeTab === "gaps" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("gaps")}
-        >
-          Gaps
-        </button>
-      </div>
+        {/* Underline Tabs */}
+        <div className="border-b border-slate-200 dark:border-white/10">
+          <div className="flex gap-8">
+            <button
+              className={`pb-4 text-sm font-semibold transition-all relative ${
+                activeTab === "papers" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              onClick={() => setActiveTab("papers")}
+            >
+              Papers
+              <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300">{project.papers?.length || 0}</Badge>
+              {activeTab === "papers" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+            </button>
+            
+            <button
+              className={`pb-4 text-sm font-semibold transition-all relative ${
+                activeTab === "members" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              onClick={() => setActiveTab("members")}
+            >
+              Members
+              <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300">{project.members?.length || 0}</Badge>
+              {activeTab === "members" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+            </button>
 
-      <div>
-        {activeTab === "papers" && <PapersTab projectId={project._id} papers={project.papers} />}
-        {activeTab === "members" && <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} />}
-        {activeTab === "reports" && <ReportsTab projectId={project._id} />}
-        {activeTab === "gaps" && <GapsTab projectId={project._id} />}
-      </div>
-    </main>
+            <button
+              className={`pb-4 text-sm font-semibold transition-all relative ${
+                activeTab === "reports" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              onClick={() => setActiveTab("reports")}
+            >
+              Reports
+              {activeTab === "reports" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+            </button>
+
+            <button
+              className={`pb-4 text-sm font-semibold transition-all relative ${
+                activeTab === "gaps" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              onClick={() => setActiveTab("gaps")}
+            >
+              Gaps
+              {activeTab === "gaps" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          {activeTab === "papers" && <PapersTab projectId={project._id} papers={project.papers} currentUserId={currentUser?.id} ownerId={project.ownerId} />}
+          {activeTab === "members" && <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} currentUserId={currentUser?.id} />}
+          {activeTab === "reports" && <ReportsTab projectId={project._id} />}
+          {activeTab === "gaps" && <GapsTab projectId={project._id} />}
+        </div>
+      </main>
+    </div>
   );
 }
 
 function ReportsTab({ projectId }: { projectId: string }) {
-  // In a full implementation, this would use useReports(projectId)
-  // and have a button to create a new report.
+  const { data: reports, isLoading } = useReports(projectId);
+  const createReport = useCreateReport();
+
+  const [open, setOpen] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [query, setQuery] = useState("");
+  const [deepAnalysis, setDeepAnalysis] = useState(false);
+  const [fast, setFast] = useState(true);
+
+  const handleGenerate = async () => {
+    if (!query.trim()) {
+      toast.error("Please enter a question for the AI to analyze");
+      return;
+    }
+    try {
+      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, deepAnalysis, fast, projectId });
+      setOpen(false);
+      setTopic("");
+      setQuery("");
+      setDeepAnalysis(false);
+      setFast(true);
+      toast.success("Report generation started");
+    } catch (error) {
+      toast.error("Failed to create report. Please try again.");
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-        <FileText className="mx-auto h-8 w-8 mb-4 opacity-50" />
-        <p>No reports in this project yet.</p>
-        <p className="text-sm mt-2">Create reports and assign them to this project to share with members.</p>
+    <div className="space-y-4 mt-2">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Project Reports</h3>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> New Report</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Generate AI Report</DialogTitle>
+              <DialogDescription>
+                Create a comprehensive report attached to this project.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="topic">Topic / Keyword</Label>
+                <Input
+                  id="topic"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. LLM in Education"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="query">Question</Label>
+                <textarea
+                  id="query"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="What should AI analyze?"
+                  rows={4}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} className="rounded border-gray-300" />
+                <span className="font-medium">Fast Mode</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={deepAnalysis} onChange={(e) => setDeepAnalysis(e.target.checked)} className="rounded border-gray-300" />
+                <span className="font-medium">Deep Analysis</span>
+              </label>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)} disabled={createReport.isPending}>Cancel</Button>
+              <Button onClick={handleGenerate} disabled={createReport.isPending}>
+                {createReport.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Generate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {isLoading ? (
+        <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/50" /></div>
+      ) : reports && reports.length > 0 ? (
+        <div className="rounded-2xl border bg-card divide-y divide-border/50">
+          {reports.map(report => (
+            <div key={report.id} className="p-5 flex items-center justify-between group hover:bg-muted/30 transition-colors">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <Link to={`/reports/${report.id}`} className="font-semibold hover:text-primary transition-colors">
+                    {report.topic || 'AI Report'}
+                  </Link>
+                  <p className="text-sm text-muted-foreground line-clamp-1 mt-1 max-w-xl">{report.query}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <Badge 
+                  variant={report.status === 'ready' ? 'default' : report.status === 'failed' ? 'destructive' : 'secondary'} 
+                  className={`rounded-full ${report.status === 'ready' ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-transparent' : ''}`}
+                >
+                  {report.status}
+                </Badge>
+                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                  {new Date(report.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-8 flex flex-col items-center justify-center rounded-3xl border border-dashed bg-muted/20 px-6 py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
+            <FileText className="h-6 w-6 text-muted-foreground/60" />
+          </div>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No reports generated yet</h4>
+          <p className="text-sm text-muted-foreground max-w-sm mb-6">
+            Generate AI reports to analyze papers and extract insights for this project.
+          </p>
+          <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full shadow-sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Generate first report
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: () => void }) {
+  const { data } = useGapAnalysisStatus(analysisId);
+
+  useEffect(() => {
+    if (data?.status === "ready") {
+      onDone();
+    }
+  }, [data?.status, onDone]);
+
+  if (data?.status === "failed") {
+    return (
+      <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200 text-sm flex items-center gap-2 mb-4">
+        <XCircle className="w-4 h-4" />
+        {data.errorMessage ?? "Analysis failed."}
+      </div>
+    );
+  }
+  if (data?.status === "ready") return null;
+  return (
+    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900 p-4 rounded-lg flex items-center gap-3 mb-4 shadow-sm">
+      <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+      <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+        {data?.status === "analyzing" ? "Analyzing documents with AI…" : "Analysis job queued…"}
+      </p>
     </div>
   );
 }
 
 function GapsTab({ projectId }: { projectId: string }) {
-  // In a full implementation, this would use useGaps({ projectId })
-  // and have a button to create a new gap analysis.
+  const { data: gapsData, isLoading, refetch } = useGaps({ projectId, pageSize: 50 });
+  const analyze = useAnalyzeGap();
+
+  const [open, setOpen] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      toast.error("Please enter a topic for gap analysis");
+      return;
+    }
+    analyze.mutate({ topic: topic.trim(), projectId }, {
+      onSuccess: ({ analysisId }) => {
+        setOpen(false);
+        setTopic("");
+        setActiveAnalysisId(analysisId);
+        toast.success("Gap analysis queued");
+      },
+      onError: () => {
+        toast.error("Failed to start gap analysis");
+      }
+    });
+  };
+
+  const handleDone = useCallback(() => {
+    setActiveAnalysisId(null);
+    void refetch();
+  }, [refetch]);
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-        <FileText className="mx-auto h-8 w-8 mb-4 opacity-50" />
-        <p>No research gaps in this project yet.</p>
-        <p className="text-sm mt-2">Generate gap analyses for this project to share with members.</p>
+    <div className="space-y-4 mt-2">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Research Gaps</h3>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="rounded-full shadow-sm"><Sparkles className="w-4 h-4 mr-2" /> New Gap Analysis</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Generate Gap Analysis</DialogTitle>
+              <DialogDescription>
+                Discover research opportunities and missing literature for this project.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="gap-topic">Topic</Label>
+                <Input
+                  id="gap-topic"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. AI in Healthcare"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)} disabled={analyze.isPending}>Cancel</Button>
+              <Button onClick={handleGenerate} disabled={analyze.isPending}>
+                {analyze.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Generate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {activeAnalysisId && (
+        <AnalysisPoller
+          analysisId={activeAnalysisId}
+          onDone={handleDone}
+        />
+      )}
+
+      {isLoading ? (
+        <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/50" /></div>
+      ) : gapsData?.data && gapsData.data.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {gapsData.data.map(gap => (
+            <div key={gap.id} className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-cyan-500/10 hover:border-cyan-500/30 group">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              
+              <div className="relative z-10 mb-5">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 transition-transform group-hover:scale-110 duration-500">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <Badge 
+                    variant={gap.status === 'dismissed' ? 'secondary' : 'outline'} 
+                    className={`text-[10px] rounded-full px-2.5 py-0.5 font-bold uppercase tracking-wider shrink-0 shadow-sm ${gap.status === 'active' ? 'text-slate-500 border-slate-200 dark:border-zinc-700' : gap.status === 'resolved' ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-transparent' : 'text-slate-500 border-slate-200 dark:border-zinc-700'}`}
+                  >
+                    {gap.status}
+                  </Badge>
+                </div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-lg tracking-tight group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors mb-2">
+                  {gap.title}
+                </h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {gap.description}
+                </p>
+              </div>
+              
+              {gap.evidenceConfidence !== undefined && (
+                <div className="relative z-10 pt-5 border-t border-slate-100 dark:border-zinc-800/50 mt-auto">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                       <Zap className="w-3.5 h-3.5 text-emerald-500" /> Confidence
+                    </span>
+                    <span className="text-sm font-black text-slate-700 dark:text-slate-300">{Math.round(gap.evidenceConfidence * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden shadow-inner">
+                    <div 
+                      className="bg-gradient-to-r from-emerald-400 to-teal-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                      style={{ width: `${Math.round(gap.evidenceConfidence * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-8 flex flex-col items-center justify-center rounded-3xl border border-dashed bg-muted/20 px-6 py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
+            <Sparkles className="h-6 w-6 text-muted-foreground/60" />
+          </div>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No research gaps yet</h4>
+          <p className="text-sm text-muted-foreground max-w-sm mb-6">
+            Generate gap analyses to discover research opportunities and missing literature for this project.
+          </p>
+          <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full shadow-sm">
+            <Sparkles className="w-4 h-4 mr-2 text-cyan-500" />
+            Generate first gap analysis
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-function PapersTab({ projectId, papers }: { projectId: string; papers: any[] }) {
+function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: string; papers: any[]; currentUserId?: string; ownerId: string }) {
+  const isCurrentUserOwner = currentUserId === ownerId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTitle, setSearchTitle] = useState("");
   const [selectedPaper, setSelectedPaper] = useState<{ id: string; title: string; year: number } | null>(null);
@@ -164,112 +472,149 @@ function PapersTab({ projectId, papers }: { projectId: string; papers: any[] }) 
     }
   };
 
-  const handleRemove = async (id: string) => {
-    if (!confirm("Remove this paper from the project?")) return;
+  const [paperToDelete, setPaperToDelete] = useState<string | null>(null);
+
+  const handleRemove = async () => {
+    if (!paperToDelete) return;
     try {
-      await removePaper.mutateAsync(id);
+      await removePaper.mutateAsync(paperToDelete);
       toast.success("Paper removed");
     } catch (err) {
       toast.error("Failed to remove paper");
+    } finally {
+      setPaperToDelete(null);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <div className="space-y-4 mt-2">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Collected Papers</h3>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Add Paper</Button>
+            <Button size="sm" className="rounded-full shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add Paper</Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Paper</DialogTitle>
-              <DialogDescription>Enter the Paper Object ID to add it to this project.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4 pt-4">
-              <div className="space-y-2 relative">
-                <Label>Search Paper by Title</Label>
-                {selectedPaper ? (
-                  <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
-                    <div className="text-sm">
-                      <p className="font-medium line-clamp-2">{selectedPaper.title}</p>
-                      <p className="text-muted-foreground text-xs">Year: {selectedPaper.year}</p>
-                    </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedPaper(null)}>Change</Button>
-                  </div>
-                ) : (
-                  <div>
-                    <Input
-                      value={searchTitle}
-                      onChange={(e) => setSearchTitle(e.target.value)}
-                      placeholder="e.g. LLM in education..."
-                      autoComplete="off"
-                    />
-                    {searchTitle.length > 2 && (
-                      <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
-                        {isSearching ? (
-                          <div className="p-3 text-sm text-muted-foreground">Searching...</div>
-                        ) : searchResults?.length === 0 ? (
-                          <div className="p-3 text-sm text-muted-foreground">No papers found.</div>
-                        ) : (
-                          searchResults?.map((p: any) => (
-                            <div
-                              key={p.id}
-                              className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
-                              onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.year })}
-                            >
-                              <p className="font-medium text-sm line-clamp-2">{p.title}</p>
-                              <p className="text-muted-foreground text-xs">Year: {p.year}</p>
-                            </div>
-                          ))
-                        )}
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Paper</DialogTitle>
+                <DialogDescription>Enter the Paper Object ID to add it to this project.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAdd} className="space-y-4 pt-4">
+                <div className="space-y-2 relative">
+                  <Label>Search Paper by Title</Label>
+                  {selectedPaper ? (
+                    <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
+                      <div className="text-sm">
+                        <p className="font-medium line-clamp-2">{selectedPaper.title}</p>
+                        <p className="text-muted-foreground text-xs">Year: {selectedPaper.year}</p>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setSelectedPaper(null); setSearchTitle(""); }}>Cancel</Button>
-                <Button type="submit" disabled={addPaper.isPending || !selectedPaper}>
-                  {addPaper.isPending ? "Adding..." : "Add"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedPaper(null)}>Change</Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Input
+                        value={searchTitle}
+                        onChange={(e) => setSearchTitle(e.target.value)}
+                        placeholder="e.g. LLM in education..."
+                        autoComplete="off"
+                      />
+                      {searchTitle.length > 2 && (
+                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
+                          {isSearching ? (
+                            <div className="p-3 text-sm text-muted-foreground">Searching...</div>
+                          ) : searchResults?.length === 0 ? (
+                            <div className="p-3 text-sm text-muted-foreground">No papers found.</div>
+                          ) : (
+                            searchResults?.map((p: any) => (
+                              <div
+                                key={p.id}
+                                className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
+                                onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.year })}
+                              >
+                                <p className="font-medium text-sm line-clamp-2">{p.title}</p>
+                                <p className="text-muted-foreground text-xs">Year: {p.year}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setSelectedPaper(null); setSearchTitle(""); }}>Cancel</Button>
+                  <Button type="submit" disabled={addPaper.isPending || !selectedPaper}>
+                    {addPaper.isPending ? "Adding..." : "Add"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
       </div>
 
+      <Dialog open={!!paperToDelete} onOpenChange={(open) => !open && setPaperToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Paper</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this paper from the project?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaperToDelete(null)} disabled={removePaper.isPending}>Cancel</Button>
+            <Button variant="destructive" onClick={handleRemove} disabled={removePaper.isPending}>
+              {removePaper.isPending ? "Removing..." : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {papers?.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          <FileText className="mx-auto h-8 w-8 mb-4 opacity-50" />
-          <p>No papers in this project yet.</p>
+        <div className="mt-8 flex flex-col items-center justify-center rounded-3xl border border-dashed bg-muted/20 px-6 py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
+            <FileText className="h-6 w-6 text-muted-foreground/60" />
+          </div>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No papers collected yet</h4>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Add relevant literature to this workspace for AI analysis and reference.
+          </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 mt-4">
           {papers.map((p) => {
             const paperObj = typeof p.targetId === 'object' && p.targetId !== null ? p.targetId : null;
             const paperId = paperObj ? paperObj._id : p.targetId;
             return (
-              <Card key={paperId}>
-                <CardHeader className="flex flex-row justify-between items-start space-y-0 pb-2">
-                  <div>
+              <div key={paperId} className="flex flex-row justify-between items-center rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-500/30 group">
+                <div className="flex items-start gap-4 flex-1 min-w-0 pr-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 transition-colors group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
                     {paperObj ? (
                       <>
-                        <CardTitle className="text-base font-medium line-clamp-2">{paperObj.title}</CardTitle>
-                        <CardDescription>Year: {paperObj.year} • {paperObj.authors?.slice(0,2).join(", ")}{paperObj.authors?.length > 2 ? " et al." : ""}</CardDescription>
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <Link to={`/papers/${paperId}`} className="hover:underline decoration-indigo-300 underline-offset-2">{paperObj.title}</Link>
+                        </h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-2">
+                           <span className="bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-xs font-semibold">{paperObj.publicationYear || "N/A"}</span>
+                           <span className="opacity-50">•</span>
+                           <span className="truncate">{paperObj.authors?.map((a: any) => a.displayName).slice(0, 2).join(", ")}{paperObj.authors?.length > 2 ? " et al." : ""}</span>
+                        </p>
                       </>
                     ) : (
                       <>
-                        <CardTitle className="text-base font-medium font-mono text-muted-foreground">ID: {paperId}</CardTitle>
-                        <CardDescription>Target Kind: {p.targetKind}</CardDescription>
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                          Unknown Paper (ID: <span className="font-mono text-slate-400 text-sm">{paperId}</span>)
+                        </h4>
                       </>
                     )}
                   </div>
-                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRemove(paperId)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-              </Card>
+                </div>
+                <Button variant="ghost" size="icon" className="relative z-10 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 shrink-0 h-9 w-9 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300" onClick={() => setPaperToDelete(paperId)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             );
           })}
         </div>
@@ -278,12 +623,13 @@ function PapersTab({ projectId, papers }: { projectId: string; papers: any[] }) 
   );
 }
 
-function MembersTab({ projectId, members, ownerId }: { projectId: string; members: any[]; ownerId: string }) {
+function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId: string; members: any[]; ownerId: string; currentUserId?: string }) {
+  const isCurrentUserOwner = currentUserId === ownerId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchEmail, setSearchEmail] = useState("");
   const [selectedUser, setSelectedUser] = useState<{ id: string; fullName: string; email: string } | null>(null);
   const [role, setRole] = useState<"owner" | "member">("member");
-  
+
   const { data: searchResults, isLoading: isSearching } = useSearchUsers(searchEmail);
   const addMember = useAddMemberToProject(projectId);
   const removeMember = useRemoveMemberFromProject(projectId);
@@ -302,132 +648,166 @@ function MembersTab({ projectId, members, ownerId }: { projectId: string; member
     }
   };
 
-  const handleRemove = async (id: string) => {
-    if (!confirm("Remove this member from the project?")) return;
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+
+  const handleRemove = async () => {
+    if (!memberToDelete) return;
     try {
-      await removeMember.mutateAsync(id);
+      await removeMember.mutateAsync(memberToDelete);
       toast.success("Member removed");
     } catch (err) {
       toast.error("Failed to remove member");
+    } finally {
+      setMemberToDelete(null);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Add Member</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Member</DialogTitle>
-              <DialogDescription>Add a User or Expert to this project.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4 pt-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <select
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as any)}
-                  >
-                    <option value="member">Member</option>
-                    <option value="owner">Owner</option>
-                  </select>
+    <div className="space-y-4 mt-2">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Project Members</h3>
+        {isCurrentUserOwner && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="rounded-full shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add Member</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Member</DialogTitle>
+                <DialogDescription>Add a User or Expert to this project.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAdd} className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label>Role</Label>
+                    <select
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as any)}
+                    >
+                      <option value="member">Member</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2 relative">
-                <Label>Search User by Email</Label>
-                {selectedUser ? (
-                  <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
-                    <div className="text-sm">
-                      <p className="font-medium">{selectedUser.fullName}</p>
-                      <p className="text-muted-foreground text-xs">{selectedUser.email}</p>
-                    </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedUser(null)}>Change</Button>
-                  </div>
-                ) : (
-                  <div>
-                    <Input
-                      value={searchEmail}
-                      onChange={(e) => setSearchEmail(e.target.value)}
-                      placeholder="e.g. user@example.com..."
-                      autoComplete="off"
-                    />
-                    {searchEmail.length > 1 && (
-                      <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
-                        {isSearching ? (
-                          <div className="p-3 text-sm text-muted-foreground">Searching...</div>
-                        ) : searchResults?.length === 0 ? (
-                          <div className="p-3 text-sm text-muted-foreground">No users found.</div>
-                        ) : (
-                          searchResults?.map((u: any) => (
-                            <div
-                              key={u.id}
-                              className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
-                              onClick={() => setSelectedUser(u)}
-                            >
-                              <p className="font-medium text-sm">{u.fullName}</p>
-                              <p className="text-muted-foreground text-xs">{u.email}</p>
-                            </div>
-                          ))
-                        )}
+                <div className="space-y-2 relative">
+                  <Label>Search User by Email</Label>
+                  {selectedUser ? (
+                    <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
+                      <div className="text-sm">
+                        <p className="font-medium">{selectedUser.fullName}</p>
+                        <p className="text-muted-foreground text-xs">{selectedUser.email}</p>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setSelectedUser(null); setSearchEmail(""); }}>Cancel</Button>
-                <Button type="submit" disabled={addMember.isPending || !selectedUser}>
-                  {addMember.isPending ? "Adding..." : "Add"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedUser(null)}>Change</Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Input
+                        value={searchEmail}
+                        onChange={(e) => setSearchEmail(e.target.value)}
+                        placeholder="e.g. user@example.com..."
+                        autoComplete="off"
+                      />
+                      {searchEmail.length > 1 && (
+                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
+                          {isSearching ? (
+                            <div className="p-3 text-sm text-muted-foreground">Searching...</div>
+                          ) : searchResults?.length === 0 ? (
+                            <div className="p-3 text-sm text-muted-foreground">No users found.</div>
+                          ) : (
+                            searchResults?.map((u: any) => (
+                              <div
+                                key={u.id}
+                                className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
+                                onClick={() => setSelectedUser(u)}
+                              >
+                                <p className="font-medium text-sm">{u.fullName}</p>
+                                <p className="text-muted-foreground text-xs">{u.email}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setSelectedUser(null); setSearchEmail(""); }}>Cancel</Button>
+                  <Button type="submit" disabled={addMember.isPending || !selectedUser}>
+                    {addMember.isPending ? "Adding..." : "Add"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
+      <Dialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this member from the project? They will lose access to add papers and create reports.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMemberToDelete(null)} disabled={removeMember.isPending}>Cancel</Button>
+            <Button variant="destructive" onClick={handleRemove} disabled={removeMember.isPending}>
+              {removeMember.isPending ? "Removing..." : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {members?.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          <Users className="mx-auto h-8 w-8 mb-4 opacity-50" />
-          <p>No members in this project.</p>
+        <div className="mt-8 flex flex-col items-center justify-center rounded-3xl border border-dashed bg-muted/20 px-6 py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
+            <Users className="h-6 w-6 text-muted-foreground/60" />
+          </div>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No members yet</h4>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Invite colleagues or experts to collaborate on this project.
+          </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 mt-4">
           {members.map((m) => {
             const memberObj = typeof m.targetId === 'object' && m.targetId !== null ? m.targetId : null;
             const memberId = memberObj ? memberObj._id : m.targetId;
             const isPrimaryOwner = memberId === ownerId;
             return (
-              <Card key={memberId}>
-                <CardHeader className="flex flex-row justify-between items-start space-y-0 pb-2">
-                  <div>
+              <div key={memberId} className="flex flex-row justify-between items-center rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+                <div className="flex items-center gap-4 flex-1 overflow-hidden">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground font-medium uppercase">
+                    {memberObj ? memberObj.fullName.charAt(0) : <Users className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
                     {memberObj ? (
                       <>
-                        <CardTitle className="text-base font-medium">{memberObj.fullName || 'Unknown User'}</CardTitle>
-                        <CardDescription>{memberObj.email} • <span className="capitalize">{m.role}</span> {isPrimaryOwner && "(Creator)"}</CardDescription>
+                        <h4 className="text-base font-semibold truncate text-foreground">{memberObj.fullName || 'Unknown User'}</h4>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {memberObj.email} <span className="opacity-50 mx-1">•</span> <span className="capitalize font-medium text-foreground">{m.role}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        </p>
                       </>
                     ) : (
                       <>
-                        <CardTitle className="text-base font-medium">
-                          {m.targetKind} (ID: <span className="font-mono text-muted-foreground text-sm">{memberId}</span>)
-                        </CardTitle>
-                        <CardDescription className="capitalize">
-                          Role: {m.role} {isPrimaryOwner && "(Creator)"}
-                        </CardDescription>
+                        <h4 className="text-base font-semibold truncate text-foreground">
+                          {m.targetKind} (ID: <span className="font-mono text-muted-foreground text-xs">{memberId}</span>)
+                        </h4>
+                        <p className="text-sm text-muted-foreground capitalize">
+                          Role: <span className="font-medium text-foreground">{m.role}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        </p>
                       </>
                     )}
                   </div>
-                  {!isPrimaryOwner && (
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRemove(memberId)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </CardHeader>
-              </Card>
+                </div>
+                {isCurrentUserOwner && !isPrimaryOwner && (
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 h-8 w-8 rounded-full ml-4" onClick={() => setMemberToDelete(memberId)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             );
           })}
         </div>
