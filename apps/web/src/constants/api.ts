@@ -58,5 +58,6 @@ export const API_ROUTES = {
     analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
     list: "/gaps",
     patch: (id: string) => `/gaps/${id}`,
+    directions: (id: string) => `/gaps/${id}/directions`,
   },
 } as const;
