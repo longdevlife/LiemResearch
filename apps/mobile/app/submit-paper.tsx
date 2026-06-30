@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -200,59 +200,61 @@ export default function SubmitPaperScreen() {
           <ActivityIndicator color="#06B6D4" />
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-          <View className="rounded-2xl border border-[#06B6D4] bg-[#082F49] p-4 mb-5">
-            <Text className="text-[#E0F2FE] font-bold mb-1">{isEditing ? "Fix and resubmit" : "Direct submission"}</Text>
-            <Text className="text-[#BAE6FD] text-xs leading-5">
-              New submissions cost 100 credits and stay pending until admin review. Approved PDF uploads earn ranking points.
-            </Text>
-          </View>
-
-          <Field label="Title" value={title} onChangeText={setTitle} placeholder="Paper title" />
-          <Field label="DOI" value={doi} onChangeText={setDoi} placeholder="10.xxxx/xxxxx" />
-          <Field label="Paper link" value={paperLink} onChangeText={setPaperLink} placeholder="https://..." keyboardType="url" />
-          <Field label={`Abstract (${abstractWords}/350 words)`} value={abstractText} onChangeText={setAbstractText} placeholder="50-350 words" multiline />
-          <Field label="Publication year" value={publicationYear} onChangeText={setPublicationYear} keyboardType="numeric" />
-
-          <Text className="text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8] mb-2">Paper kind</Text>
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            {PAPER_KINDS.map((kind) => (
-              <TouchableOpacity
-                key={kind}
-                className={`px-3 py-2 rounded-full border ${paperKind === kind ? "bg-[#1D4ED8] border-[#1D4ED8]" : "bg-card dark:bg-[#1A2332] border-border dark:border-[#26334A]"}`}
-                onPress={() => setPaperKind(kind)}
-              >
-                <Text className={`text-xs font-bold ${paperKind === kind ? "text-white" : "text-foreground dark:text-[#F8FAFC]"}`}>{kind}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Field label="Authors" value={authors} onChangeText={setAuthors} placeholder="Alice Nguyen, Bob Tran" />
-          <Field label="Keywords" value={keywords} onChangeText={setKeywords} placeholder="RAG, LLM, education" />
-          <Field label="Topics" value={topics} onChangeText={setTopics} placeholder="Large Language Models, Education" />
-          <Field label="Open access URL" value={openAccessUrl} onChangeText={setOpenAccessUrl} placeholder="Optional" keyboardType="url" />
-
-          <TouchableOpacity
-            className="rounded-2xl border border-dashed border-[#06B6D4] bg-card dark:bg-[#1A2332] p-4 mb-5 flex-row items-center"
-            onPress={pickPdf}
-          >
-            <View className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-[#083344] items-center justify-center mr-3">
-              <Feather name="file-plus" size={18} color="#06B6D4" />
+        <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>
+          <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+            <View className="rounded-2xl border border-[#06B6D4] bg-[#082F49] p-4 mb-5">
+              <Text className="text-[#E0F2FE] font-bold mb-1">{isEditing ? "Fix and resubmit" : "Direct submission"}</Text>
+              <Text className="text-[#BAE6FD] text-xs leading-5">
+                New submissions cost 100 credits and stay pending until admin review. Approved PDF uploads earn ranking points.
+              </Text>
             </View>
-            <View className="flex-1">
-              <Text className="text-foreground dark:text-[#F8FAFC] font-bold">{pdf?.name ?? (editingPaper?.pdfPath ? "Keep existing PDF or choose a new one" : "Choose PDF")}</Text>
-              <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs mt-1">PDF only, max 10MB</Text>
-            </View>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            className={`rounded-xl py-4 items-center ${isSubmitting ? "bg-[#1D4ED8]/60" : "bg-[#1D4ED8]"}`}
-            disabled={isSubmitting}
-            onPress={submit}
-          >
-            {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-white font-bold">{isEditing ? "Resubmit paper" : "Submit paper"}</Text>}
-          </TouchableOpacity>
-        </ScrollView>
+            <Field label="Title" value={title} onChangeText={setTitle} placeholder="Paper title" />
+            <Field label="DOI" value={doi} onChangeText={setDoi} placeholder="10.xxxx/xxxxx" />
+            <Field label="Paper link" value={paperLink} onChangeText={setPaperLink} placeholder="https://..." keyboardType="url" />
+            <Field label={`Abstract (${abstractWords}/350 words)`} value={abstractText} onChangeText={setAbstractText} placeholder="50-350 words" multiline />
+            <Field label="Publication year" value={publicationYear} onChangeText={setPublicationYear} keyboardType="numeric" />
+
+            <Text className="text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8] mb-2">Paper kind</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {PAPER_KINDS.map((kind) => (
+                <TouchableOpacity
+                  key={kind}
+                  className={`px-3 py-2 rounded-full border ${paperKind === kind ? "bg-[#1D4ED8] border-[#1D4ED8]" : "bg-card dark:bg-[#1A2332] border-border dark:border-[#26334A]"}`}
+                  onPress={() => setPaperKind(kind)}
+                >
+                  <Text className={`text-xs font-bold ${paperKind === kind ? "text-white" : "text-foreground dark:text-[#F8FAFC]"}`}>{kind}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Field label="Authors" value={authors} onChangeText={setAuthors} placeholder="Alice Nguyen, Bob Tran" />
+            <Field label="Keywords" value={keywords} onChangeText={setKeywords} placeholder="RAG, LLM, education" />
+            <Field label="Topics" value={topics} onChangeText={setTopics} placeholder="Large Language Models, Education" />
+            <Field label="Open access URL" value={openAccessUrl} onChangeText={setOpenAccessUrl} placeholder="Optional" keyboardType="url" />
+
+            <TouchableOpacity
+              className="rounded-2xl border border-dashed border-[#06B6D4] bg-card dark:bg-[#1A2332] p-4 mb-5 flex-row items-center"
+              onPress={pickPdf}
+            >
+              <View className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-[#083344] items-center justify-center mr-3">
+                <Feather name="file-plus" size={18} color="#06B6D4" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground dark:text-[#F8FAFC] font-bold">{pdf?.name ?? (editingPaper?.pdfPath ? "Keep existing PDF or choose a new one" : "Choose PDF")}</Text>
+                <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs mt-1">PDF only, max 10MB</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className={`rounded-xl py-4 items-center ${isSubmitting ? "bg-[#1D4ED8]/60" : "bg-[#1D4ED8]"}`}
+              disabled={isSubmitting}
+              onPress={submit}
+            >
+              {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-white font-bold">{isEditing ? "Resubmit paper" : "Submit paper"}</Text>}
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );
