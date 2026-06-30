@@ -12,6 +12,7 @@ import {
 } from "../llm/gemini.client.js";
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
+import { notificationService } from "../notifications/notification.service.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ReportModel, type ReportHydrated } from "./models/report.model.js";
 import { RagQueryModel } from "./models/rag-query.model.js";
@@ -209,6 +210,19 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
   // ⑦ Audit trail.
   await auditRagRun(report, { embeddingMs, searchMs, llmMs, cacheHit, papers });
+
+  await notificationService
+    .create({
+      userId: report.userId,
+      title: "Report ready",
+      message: `Your AI report "${report.topic || report.query}" is ready to read.`,
+      type: "report_ready",
+      targetKind: "report",
+      targetId: report._id,
+    })
+    .catch((err) =>
+      logger.warn({ err, reportId: String(report._id) }, "report-ready notification failed (non-fatal)"),
+    );
 
   // ⑧ Fan-out gaps into research_gaps collection (non-fatal).
   await gapsService
