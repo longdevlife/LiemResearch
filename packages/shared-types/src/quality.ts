@@ -74,5 +74,5 @@ export interface AgreementStats {
   mae: number;
   withinOnePct: number;
   correlation: number | null;
-  byKind: { report: AgreementBucket; gap: AgreementBucket };
+  byKind: { report: AgreementBucket; gap: AgreementBucket; paper: AgreementBucket };
 }
