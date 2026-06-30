@@ -1,4 +1,4 @@
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
@@ -8,6 +8,7 @@ import { useCurrentUser, useLogout } from "@/features/auth";
 import { useBookmarks } from "@/features/bookmarks";
 import { useReports } from "@/features/reports";
 import { useAuthStore } from "@/stores/auth-store";
+import { LEVEL_IMAGES, getLevel } from "@/features/rankings";
 
 function SettingsRow({
   icon,
@@ -62,6 +63,7 @@ export default function ProfileScreen() {
   const reportsQuery = useReports({ page: 1, pageSize: 1 });
   const logoutMutation = useLogout();
   const user = userQuery.data?.user ?? fallbackUser;
+  const userLevel = getLevel(user?.points ?? 0);
   const bookmarks = bookmarksQuery.data ?? [];
   const reportTotal = reportsQuery.data?.meta?.total ?? reportsQuery.data?.reports.length ?? 0;
   const topicCount = new Set(bookmarks.flatMap((bookmark) => bookmark.paperDetail?.topics?.map((topic) => topic.topicName) ?? [])).size;
@@ -88,8 +90,8 @@ export default function ProfileScreen() {
         </View>
 
         <View className="items-center mb-6">
-          <View className="w-20 h-20 rounded-full bg-card dark:bg-[#111C2E] border border-[#06B6D4] items-center justify-center mb-3">
-            <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">{user?.fullName?.slice(0, 1).toUpperCase() ?? "R"}</Text>
+          <View className="w-20 h-20 rounded-full bg-card dark:bg-[#111C2E] border border-[#06B6D4] items-center justify-center mb-3 p-2">
+            <Image source={LEVEL_IMAGES[userLevel]} className="w-full h-full" resizeMode="contain" />
           </View>
           <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC] mb-1">{user?.fullName ?? "Researcher"}</Text>
           <View className="bg-cyan-50 dark:bg-[#083344] px-3 py-1 rounded-full mb-2">
@@ -119,6 +121,9 @@ export default function ProfileScreen() {
         <View className="mb-6">
           <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1">Activity</Text>
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
+            <SettingsRow icon="upload-cloud" label="Submit Paper" onPress={() => router.push("/submit-paper" as any)} />
+            <SettingsRow icon="file-text" label="My Papers" onPress={() => router.push("/my-papers" as any)} />
+            <SettingsRow icon="award" label="Rankings" onPress={() => router.push("/rankings" as any)} />
             <SettingsRow icon="bell" label="Notifications" onPress={() => router.push("/notifications" as any)} />
           </View>
         </View>
