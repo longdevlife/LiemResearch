@@ -22,7 +22,7 @@ export function BookmarksPage() {
   const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
 
-  const handleOpenEditNote = (id: string, note?: string) => {
+  const handleOpenEditNote = (id: string, note?: string | null) => {
     setEditingBookmarkId(id);
     setEditingNoteValue(note || "");
   };
