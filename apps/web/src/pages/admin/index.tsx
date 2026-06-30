@@ -13,7 +13,7 @@ export function AdminHomePage() {
 
   const agreementRows: { label: string; b: AgreementBucket }[] = agreement
     ? [
-        { label: "Tổng", b: agreement },
+        { label: "Total", b: agreement },
         { label: "Report", b: agreement.byKind.report },
         { label: "Gap", b: agreement.byKind.gap },
         { label: "Paper", b: agreement.byKind.paper },
@@ -29,7 +29,7 @@ export function AdminHomePage() {
 
   return (
     <main className="space-y-8">
-      <PageHeader title="Admin overview" description="System totals at a glance." />
+      <PageHeader title="Admin Overview" description="System statistics and analytics." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, icon: Icon }) => (
           <div key={label} className="rounded-xl border bg-card p-5 shadow-sm">
@@ -61,26 +61,26 @@ export function AdminHomePage() {
       <div className="rounded-xl border bg-card p-5">
         <div className="mb-1 flex items-center gap-2">
           <Scale className="h-4 w-4 text-indigo-500" />
-          <h2 className="text-sm font-semibold">AI vs Người thật — độ khớp điểm</h2>
+          <h2 className="text-sm font-semibold">AI vs Human Agreement</h2>
         </div>
         <p className="mb-4 text-xs text-muted-foreground">
-          So điểm LLM tự chấm với điểm trung bình người dùng chấm, trên các mục có CẢ hai.
-          <b> MAE</b> thấp, <b> “trong ±1”</b> cao và <b> tương quan</b> gần 1 = AI khớp với người.
+          Compares AI qualitative evaluation score with average human rating, on items evaluated by both.
+          <b> MAE</b> low, <b> "within ±1"</b> high, and <b> correlation</b> close to 1 = AI matches humans.
         </p>
         {!agreement || agreement.sampleSize === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Chưa đủ dữ liệu — cần các mục vừa được AI chấm vừa được người dùng chấm sao.
+            Not enough data yet — requires items evaluated by both AI and user ratings.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-4 font-semibold">Loại</th>
-                  <th className="py-2 pr-4 font-semibold">Mẫu</th>
+                  <th className="py-2 pr-4 font-semibold">Type</th>
+                  <th className="py-2 pr-4 font-semibold">Samples</th>
                   <th className="py-2 pr-4 font-semibold">MAE</th>
-                  <th className="py-2 pr-4 font-semibold">Trong ±1</th>
-                  <th className="py-2 font-semibold">Tương quan</th>
+                  <th className="py-2 pr-4 font-semibold">Within ±1</th>
+                  <th className="py-2 font-semibold">Correlation</th>
                 </tr>
               </thead>
               <tbody>

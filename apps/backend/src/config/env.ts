@@ -32,6 +32,17 @@ const EnvSchema = z.object({
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
+  // Project Chat — only the project chatbot uses this pluggable provider for now.
+  LLM_PROVIDER: z.enum(["gemini", "ollama"]).default("gemini"),
+  OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
+  OLLAMA_MODEL: z.string().default("llama3.1"),
+  CHAT_MAX_PER_HOUR: z.coerce.number().int().positive().default(40),
+  CHAT_CONTEXT_PAPERS: z.coerce.number().int().min(1).max(50).default(12),
+  CHAT_HISTORY_TURNS: z.coerce.number().int().min(0).max(20).default(6),
+  CHAT_MAX_PROMPT_CHARS: z.coerce.number().int().positive().default(12000),
+  CHAT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(604800),
+  CHAT_ABSTRACT_MAX_CHARS: z.coerce.number().int().positive().default(800),
+
   OPENALEX_MAILTO: z.string().email().optional(),
   SEMANTIC_SCHOLAR_API_KEY: z.string().optional(),
   CROSSREF_MAILTO: z.string().email().optional(),

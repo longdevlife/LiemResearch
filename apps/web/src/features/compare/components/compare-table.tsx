@@ -15,12 +15,12 @@ export function CompareTable({ comparison }: CompareTableProps) {
     return metrics.find((m) => m.paperId === paperId);
   };
 
-  // Ánh xạ tên dimension tiếng Anh sang tiếng Việt thân thiện hơn
+  // Mapping dimension names in English
   const dimensionNames: Record<string, string> = {
-    method: "Phương pháp nghiên cứu",
-    dataScope: "Phạm vi dữ liệu",
-    keyFinding: "Phát hiện chính",
-    limitation: "Hạn chế đề tài",
+    method: "Research Methodology",
+    dataScope: "Data Scope & Sample",
+    keyFinding: "Key Findings",
+    limitation: "Research Limitations",
   };
 
   return (
@@ -29,7 +29,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
         <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
           <TableRow className="border-b border-slate-200 dark:border-slate-800">
             <TableHead className="w-64 font-bold text-slate-700 dark:text-slate-300 py-4 px-6 text-sm">
-              Tiêu chí so sánh
+              Comparison Criteria
             </TableHead>
             {papers.map((paper, idx) => {
               const metric = getMetricForPaper(paper.id);
@@ -41,7 +41,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
                         {idx + 1}
                       </span>
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        Bài viết {idx === 0 ? "(Hiện tại)" : ""}
+                        Paper {idx === 0 ? "(Current)" : ""}
                       </span>
                     </div>
                     <h4 className="font-extrabold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title={paper.title}>
@@ -60,14 +60,14 @@ export function CompareTable({ comparison }: CompareTableProps) {
           {/* --- SECTION: DETERMINISTIC METRICS --- */}
           <TableRow className="bg-slate-50/30 dark:bg-zinc-900/5 border-b border-slate-200 dark:border-slate-800">
             <TableCell colSpan={papers.length + 1} className="font-bold text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 py-2.5 px-6">
-              Chỉ số định lượng (Deterministic Metrics)
+              Quantitative Metrics (Deterministic)
             </TableCell>
           </TableRow>
 
-          {/* Năm xuất bản */}
+          {/* Publication Year */}
           <TableRow className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="font-semibold text-slate-700 dark:text-slate-300 py-3.5 px-6 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" /> Năm xuất bản
+              <Clock className="w-4 h-4 text-slate-400" /> Publication Year
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -79,10 +79,10 @@ export function CompareTable({ comparison }: CompareTableProps) {
             })}
           </TableRow>
 
-          {/* Số trích dẫn */}
+          {/* Citations */}
           <TableRow className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="font-semibold text-slate-700 dark:text-slate-300 py-3.5 px-6 text-sm flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-slate-400" /> Số trích dẫn
+              <BarChart3 className="w-4 h-4 text-slate-400" /> Citations
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -94,10 +94,10 @@ export function CompareTable({ comparison }: CompareTableProps) {
             })}
           </TableRow>
 
-          {/* Tạp chí */}
+          {/* Journal */}
           <TableRow className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="font-semibold text-slate-700 dark:text-slate-300 py-3.5 px-6 text-sm flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-slate-400" /> Tạp chí (Journal)
+              <BookOpen className="w-4 h-4 text-slate-400" /> Journal
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -120,11 +120,11 @@ export function CompareTable({ comparison }: CompareTableProps) {
                 <TableCell key={paper.id} className="py-3.5 px-6">
                   {metric?.openAccess ? (
                     <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-none gap-1 py-0.5 px-2">
-                      <Check className="w-3.5 h-3.5" /> Có
+                      <Check className="w-3.5 h-3.5" /> Yes
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-slate-400 border-slate-200 dark:border-slate-800 gap-1 py-0.5 px-2">
-                      <X className="w-3.5 h-3.5" /> Không
+                      <X className="w-3.5 h-3.5" /> No
                     </Badge>
                   )}
                 </TableCell>
@@ -132,10 +132,10 @@ export function CompareTable({ comparison }: CompareTableProps) {
             })}
           </TableRow>
 
-          {/* Loại bài viết */}
+          {/* Paper Type */}
           <TableRow className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="font-semibold text-slate-700 dark:text-slate-300 py-3.5 px-6 text-sm flex items-center gap-2">
-              Loại bài viết
+              Paper Type
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -147,10 +147,10 @@ export function CompareTable({ comparison }: CompareTableProps) {
             })}
           </TableRow>
 
-          {/* Điểm AI Overall */}
+          {/* AI Score Overall */}
           <TableRow className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10 bg-cyan-50/10 dark:bg-cyan-950/5">
             <TableCell className="font-bold text-cyan-700 dark:text-cyan-400 py-4 px-6 text-sm flex items-center gap-2">
-              <Sparkles className="w-4 h-4" /> Điểm AI tổng quan (Overall Score)
+              <Sparkles className="w-4 h-4" /> AI Overall Score
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -168,10 +168,10 @@ export function CompareTable({ comparison }: CompareTableProps) {
             })}
           </TableRow>
 
-          {/* Chi tiết Điểm AI (Impact & Recency) */}
+          {/* AI Score Details (Impact & Recency) */}
           <TableRow className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="text-slate-500 dark:text-slate-400 pl-10 py-3 px-6 text-xs">
-              ↳ Ảnh hưởng theo tuổi
+              ↳ Citation Impact
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -184,7 +184,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
           </TableRow>
           <TableRow className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10">
             <TableCell className="text-slate-500 dark:text-slate-400 pl-10 py-3 px-6 text-xs">
-              ↳ Độ mới (Recency)
+              ↳ Recency
             </TableCell>
             {papers.map((paper) => {
               const metric = getMetricForPaper(paper.id);
@@ -199,7 +199,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
           {/* --- SECTION: QUALITATIVE LLM COMPARISON --- */}
           <TableRow className="bg-slate-50/30 dark:bg-zinc-900/5 border-b border-slate-200 dark:border-slate-800">
             <TableCell colSpan={papers.length + 1} className="font-bold text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 py-2.5 px-6">
-              Đánh giá định tính (LLM Qualitative Dimensions)
+              Qualitative Evaluation (LLM Dimensions)
             </TableCell>
           </TableRow>
 
@@ -211,7 +211,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
               {papers.map((_, idx) => (
                 <TableCell key={idx} className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
                   {dim.perPaper[idx] || (
-                    <span className="text-slate-400 italic">Đang phân tích hoặc không khả dụng...</span>
+                    <span className="text-slate-400 italic">Analyzing or unavailable...</span>
                   )}
                 </TableCell>
               ))}

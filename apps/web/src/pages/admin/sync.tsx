@@ -185,7 +185,7 @@ export function AdminSyncPage() {
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <PageHeader
-          title="Sync management"
+          title="Synchronization Management"
           description="Trigger and monitor academic API synchronisation from sources like OpenAlex."
         />
         <div className="flex items-center gap-3">

@@ -86,7 +86,7 @@ export function ReportsListPage() {
             )}
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#001b69] hover:bg-[#001040] text-white">New report</Button>
+                <Button className="bg-[#001b69] hover:bg-[#001040] text-white">Create New Report</Button>
               </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -134,7 +134,7 @@ export function ReportsListPage() {
                   <span className="text-sm">
                     <span className="font-semibold text-slate-900 dark:text-white">⚡ Fast mode</span>
                     <span className="block text-xs text-slate-500 dark:text-slate-400">
-                      Nhanh hơn (model Flash). Bỏ chọn để phân tích kỹ hơn bằng model Pro — chậm hơn ~2–4×.
+                      Faster (Flash model). Uncheck to analyze with the Pro model — ~2–4× slower.
                     </span>
                   </span>
                 </label>
@@ -242,7 +242,7 @@ export function ReportsListPage() {
               {(!reports || reports.length === 0) && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No reports generated yet. Click "New report" to get started.
+                    No reports yet. Click "Create New Report" to start.
                   </td>
                 </tr>
               )}

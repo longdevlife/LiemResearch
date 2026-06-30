@@ -104,25 +104,25 @@ export function TrendsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPICard 
-          title="Total papers" 
+          title="Total Papers" 
           value={data?.totalPapersInWindow?.toLocaleString() || "0"} 
           trend={`From ${data?.yearFrom || 2015} to ${data?.yearTo || 2024}`} 
           icon={<FileText className="w-5 h-5 text-blue-600" />} 
         />
         <KPICard 
-          title="Total topics" 
+          title="Total Topics" 
           value={data?.topics?.length?.toString() || "0"} 
           trend="Tracked in window" 
           icon={<BookOpen className="w-5 h-5 text-purple-600" />} 
         />
         <KPICard 
-          title="Rising keywords" 
+          title="Rising Keywords" 
           value={data?.risingKeywords?.length?.toString() || "0"} 
           subtitle="Emerging trends" 
           icon={<Sparkles className="w-5 h-5 text-emerald-600" />} 
         />
         <KPICard 
-          title="Avg citations" 
+          title="Avg Citations" 
           value="23.4" 
           subtitle="Per published paper" 
           icon={<span className="text-amber-500 font-bold text-lg font-serif italic">99</span>} 

@@ -76,7 +76,7 @@ export function AdminPapersPage() {
       setPapers(res.data.data ?? []);
       setTotal(res.data.meta?.total ?? 0);
     } catch {
-      toast.error("Failed to load papers");
+      toast.error("Failed to load paper list");
     } finally {
       setLoading(false);
     }
