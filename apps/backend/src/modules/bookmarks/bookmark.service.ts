@@ -29,7 +29,7 @@ export const bookmarkService = {
       userId,
       targetKind: input.targetKind,
       targetId: input.targetId,
-      note: input.note,
+      note: input.note?.trim() || null,
     });
 
     const [created] = await this.populateDetails([doc]);
@@ -62,7 +62,7 @@ export const bookmarkService = {
     }
 
     if (input.note !== undefined) {
-      bookmark.note = input.note;
+      bookmark.note = input.note?.trim() || null;
     }
     await bookmark.save();
 
