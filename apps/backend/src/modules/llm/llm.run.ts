@@ -14,6 +14,7 @@ interface CachedGenerateBase<T> {
   bypassCache?: boolean;
   onCacheHit?: () => void;
   onCacheMiss?: () => void;
+  validate?: (output: T) => T;
   generate: (model: string) => Promise<T>;
 }
 
@@ -50,13 +51,23 @@ export async function cachedGenerate<T>(args: CachedGenerateBase<T>): Promise<T>
   if (!args.bypassCache) {
     const cached = await cache.get<T>(cacheKey);
     if (cached !== null) {
+      if (args.validate) {
+        try {
+          const validated = args.validate(cached);
+          args.onCacheHit?.();
+          return validated;
+        } catch {
+          await cache.del(cacheKey);
+        }
+      } else {
       args.onCacheHit?.();
       return cached;
+      }
     }
   }
   args.onCacheMiss?.();
 
-  const output = await args.generate(model);
+  const output = args.validate ? args.validate(await args.generate(model)) : await args.generate(model);
   await cache.set(cacheKey, output, args.ttlSeconds ?? LLM_CACHE_TTL_SECONDS);
   return output;
 }

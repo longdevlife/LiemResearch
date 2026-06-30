@@ -228,16 +228,18 @@ export const gapsService = {
       onCacheHit: () => {
         cacheHit = true;
       },
+      validate: (candidate) => {
+        if (!candidate || !Array.isArray(candidate.gaps) || candidate.gaps.length === 0) {
+          throw new LlmContentError("LLM returned empty gaps output");
+        }
+        return candidate;
+      },
       options: {
         system: GAPS_SYSTEM_PROMPT,
         temperature: 0.2,
         maxOutputTokens: env.GAPS_MAX_OUTPUT_TOKENS,
       },
     });
-    if (!output || !Array.isArray(output.gaps) || output.gaps.length === 0) {
-      // Empty/malformed output won't self-heal on retry → fail fast.
-      throw new LlmContentError("LLM returned empty gaps output");
-    }
 
     // ⑤ Persist gaps (map 1-based evidence numbers back to real paper ids).
     //    IDEMPOTENT: clear this analysis's prior gaps first, so a retried job (after a
@@ -447,6 +449,13 @@ export const gapsService = {
         model: env.GEMINI_MODEL_FAST,
         bypassCache: force,
         prompt,
+        validate: (candidate) => {
+          const directions = sanitizeDirections(candidate, allowedPaperIds);
+          if (directions.length === 0) {
+            throw new LlmContentError("LLM returned no valid research directions");
+          }
+          return candidate;
+        },
         options: {
           system: DIRECTIONS_SYSTEM_PROMPT,
           temperature: 0.4,
