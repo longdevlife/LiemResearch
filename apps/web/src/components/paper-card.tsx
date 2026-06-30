@@ -53,7 +53,7 @@ export function PaperCard({
         { id: bookmarkId, targetKind: "paper", targetId: id },
         {
           onSuccess: () => toast.success("Removed from library"),
-          onError: () => toast.error("Failed to remove bookmark"),
+          onError: () => toast.error("Failed to remove from library"),
         }
       );
     } else {
@@ -61,7 +61,7 @@ export function PaperCard({
         { targetKind: "paper", targetId: id },
         {
           onSuccess: () => toast.success("Saved to library"),
-          onError: () => toast.error("Failed to save bookmark"),
+          onError: () => toast.error("Failed to save to library"),
         }
       );
     }

@@ -413,7 +413,7 @@ export function ProfilePage() {
                   className="bg-blue-700 hover:bg-blue-800 text-white font-bold h-11 px-6 gap-2 rounded-lg"
                 >
                   <Lock className="w-4 h-4" />
-                  {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
+                  {changePasswordMutation.isPending ? "Updating..." : "Change Password"}
                 </Button>
               </form>
             </div>

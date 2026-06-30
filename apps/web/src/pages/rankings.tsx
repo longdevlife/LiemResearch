@@ -315,13 +315,13 @@ export function RankingsPage() {
   if (error && rankings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
-        <p className="font-bold text-slate-700 dark:text-slate-200">Không tải được bảng xếp hạng.</p>
-        <p className="text-sm text-slate-400">Vui lòng thử lại sau.</p>
+        <p className="font-bold text-slate-700 dark:text-slate-200">Failed to load rankings.</p>
+        <p className="text-sm text-slate-400">Please try again later.</p>
         <button
           onClick={() => void fetchRankings(1)}
           className="mt-2 px-5 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm"
         >
-          Thử lại
+          Retry
         </button>
       </div>
     );
