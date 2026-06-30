@@ -75,13 +75,13 @@ function PaperCard({ paper }: { paper: Paper | ScoredPaper }) {
         </TouchableOpacity>
       </View>
 
-      <View className="mt-3 flex-row items-center justify-between">
-        <Text className="text-muted-foreground dark:text-[#94A3B8] text-[11px]" numberOfLines={1}>
+      <View className="mt-3 flex-row items-center gap-2">
+        <Text className="flex-1 text-muted-foreground dark:text-[#94A3B8] text-[11px]" numberOfLines={1}>
           {paper.journalName ? `${paper.journalName} · ` : ""}{paper.publicationYear} · {paper.citationCount ?? 0} cites
         </Text>
-        <View className="rounded-md bg-cyan-50 dark:bg-[#083344] px-2 py-1 flex-row items-center">
+        <View className="shrink-0 rounded-md bg-cyan-50 dark:bg-[#083344] px-2 py-1 flex-row items-center">
           <Ionicons name="sparkles" color="#06B6D4" size={12} />
-          <Text className="text-[#0891B2] dark:text-[#67E8F9] text-[11px] font-bold ml-1">
+          <Text className="text-[#0891B2] dark:text-[#67E8F9] text-[11px] font-bold ml-1" numberOfLines={1}>
             {("score" in paper ? paper.score : paper.dataQualityScore).toFixed(2)}
           </Text>
         </View>
