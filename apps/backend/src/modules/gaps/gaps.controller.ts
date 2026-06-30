@@ -43,4 +43,20 @@ export const gapsController = {
     const data = await gapsService.patchStatus(req.user!.sub, req.params["id"] as string, req.body as PatchGapDto);
     res.json({ success: true, data });
   },
+
+  /** POST /api/v1/gaps/:id/directions — on-demand AI research-direction suggestions (advisory). */
+  async generateDirections(req: Request, res: Response) {
+    const data = await gapsService.generateDirections(
+      req.user!.sub,
+      req.params["id"] as string,
+      (req.body as { force?: boolean }).force,
+    );
+    res.json({ success: true, data });
+  },
+
+  /** GET /api/v1/gaps/:id/directions — cached directions (or null). */
+  async getDirections(req: Request, res: Response) {
+    const data = await gapsService.getDirections(req.params["id"] as string);
+    res.json({ success: true, data });
+  },
 };

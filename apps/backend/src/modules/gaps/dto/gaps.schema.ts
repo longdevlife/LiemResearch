@@ -25,3 +25,14 @@ export const PatchGapSchema = z.object({
 export type AnalyzeGapDto = z.infer<typeof AnalyzeGapSchema>;
 export type ListGapsQuery = z.infer<typeof ListGapsQuerySchema>;
 export type PatchGapDto = z.infer<typeof PatchGapSchema>;
+
+/** Params of the directions routes: /api/v1/gaps/:id/directions. */
+export const GapIdParamsSchema = z.object({
+  id: z.string().regex(/^[a-fA-F0-9]{24}$/, "invalid id"),
+});
+
+/** Body of POST /api/v1/gaps/:id/directions. */
+export const DirectionsBodySchema = z.object({
+  force: z.boolean().optional(),
+});
+export type DirectionsBody = z.infer<typeof DirectionsBodySchema>;
