@@ -67,6 +67,7 @@ export interface Paper {
   dataQualityScore: number; // 0..1 — field-presence quality
   isAiAnalyzable: boolean; // true when quality is high enough for AI analysis
   aiScore?: PaperAiScore; // Phase B
+  aiAnalysis?: PaperAiAnalysis; // F2 structured knowledge extracted once from title+abstract
   metadataScore?: number;
   sourceScore?: number;
   duplicateScore?: number;
@@ -112,6 +113,20 @@ export interface PaperAiScore {
   finalScore: number; // 0..1 — weighted blend
   modelVersion: string;
   computedAt: ISODateString;
+}
+
+export interface PaperAiAnalysis {
+  summary: string | null;
+  methods: string | null;
+  dataset: string | null;
+  findings: string[];
+  limitations: string[];
+  contributions: string[];
+  futureWork: string[];
+  keyTerms: string[];
+  extractedBy: "llm";
+  analysisPromptVersion: string;
+  extractedAt: ISODateString;
 }
 
 /** Lightweight paper reference — used for references + report grounding lists. */

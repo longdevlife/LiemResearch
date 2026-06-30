@@ -1,5 +1,14 @@
+import {
+  assertCitationsInRange,
+  formatEvidence,
+  parseCitedIds,
+  sanitizeForPrompt,
+  UNTRUSTED_DATA_PREAMBLE,
+} from "../llm/grounding.js";
+
 export const CHAT_SYSTEM_PROMPT = [
   "You are a research assistant for an academic project.",
+  UNTRUSTED_DATA_PREAMBLE,
   "Answer only from the provided project papers.",
   "When you use evidence, cite it with bracket numbers like [1].",
   "If the provided papers do not contain enough evidence, say that clearly.",
@@ -54,21 +63,21 @@ export function buildChatPrompt(input: ChatPromptInput): { system: string; promp
   const evidenceBlock =
     input.evidence.length === 0
       ? "(No project papers were provided.)"
-      : input.evidence
-          .map((paper, index) => {
-            const n = index + 1;
-            const authors = paper.authorNames?.length ? paper.authorNames.slice(0, 4).join(", ") : "Unknown authors";
+      : formatEvidence(
+          input.evidence.map((paper) => {
+            const authors = paper.authorNames?.length
+              ? paper.authorNames.slice(0, 4).join(", ")
+              : "Unknown authors";
             const year = paper.publicationYear ?? "n.d.";
-            const abstract = truncate(sanitizeForPrompt(paper.abstractText || "(no abstract)"), abstractMaxChars);
-            return [
-              `<<<ABSTRACT_${n}>>> id=${paper.id}`,
-              `[${n}] ${sanitizeForPrompt(paper.title)} (${year})`,
-              `Authors: ${sanitizeForPrompt(authors)}`,
-              abstract,
-              `<<<END_ABSTRACT_${n}>>>`,
-            ].join("\n");
-          })
-          .join("\n\n");
+            return {
+              id: paper.id,
+              title: paper.title,
+              abstractText: paper.abstractText,
+              meta: `Year: ${year}; Authors: ${authors}`,
+            };
+          }),
+          { maxAbstractChars: abstractMaxChars },
+        ).text;
 
   const historyBlock =
     input.history && input.history.length > 0
@@ -98,14 +107,8 @@ export function buildChatPrompt(input: ChatPromptInput): { system: string; promp
 }
 
 export function parseCitations(answer: string, evidence: ChatEvidencePaper[]): string[] {
-  const cited = new Set<string>();
-  for (const match of answer.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)) {
-    for (const raw of match[1]!.split(",")) {
-      const n = Number(raw.trim());
-      if (Number.isInteger(n) && n >= 1 && n <= evidence.length) cited.add(evidence[n - 1]!.id);
-    }
-  }
-  return [...cited];
+  assertCitationsInRange(answer, evidence.length);
+  return parseCitedIds(answer, evidence.map((paper) => paper.id));
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -120,10 +123,6 @@ function cosineSimilarity(a: number[], b: number[]): number {
   }
   if (aMag === 0 || bMag === 0) return Number.NEGATIVE_INFINITY;
   return dot / (Math.sqrt(aMag) * Math.sqrt(bMag));
-}
-
-function sanitizeForPrompt(value: string): string {
-  return value.replace(/<<<|>>>/g, "").replace(/\u0000/g, "").trim();
 }
 
 function truncate(value: string, max: number): string {

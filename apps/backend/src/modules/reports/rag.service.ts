@@ -1,7 +1,5 @@
-import type { PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
-import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { gapsService } from "../gaps/gaps.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import {
@@ -10,13 +8,14 @@ import {
   LlmTruncationError,
   LlmContentError,
 } from "../llm/gemini.client.js";
+import { buildLlmCacheKey, cachedGenerate } from "../llm/llm.run.js";
+import { assertCitationsInRange as assertGroundedCitationsInRange } from "../llm/grounding.js";
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
-import { PaperModel } from "../papers/models/paper.model.js";
+import { retrieve } from "../retrieval/retriever.js";
 import { ReportModel, type ReportHydrated } from "./models/report.model.js";
 import { RagQueryModel } from "./models/rag-query.model.js";
 import {
-  buildReportCacheKey,
   buildReportPrompt,
   PROMPT_VERSION,
   REPORT_SYSTEM_PROMPT,
@@ -35,8 +34,6 @@ const DEEP_ANALYSIS_SYSTEM_PROMPT = [
   "- Return ONLY valid JSON. No markdown fences, no commentary.",
 ].join("\n");
 
-/** Atlas Vector Search index — same one the /search endpoint uses. */
-const VECTOR_INDEX = "paper_vector_index";
 export interface ReportJob {
   reportId: string;
 }
@@ -85,34 +82,45 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   // and standard (Pro) outputs never collide.
   const model =
     !report.deepAnalysis && report.fast ? env.GEMINI_MODEL_FAST : env.GEMINI_MODEL_DEEP;
-  const cacheKey = buildReportCacheKey({
+  const prompt = buildReportPrompt(report.query, papers);
+  const keyParts = {
     query: report.query,
-    yearFrom: report.yearFrom ?? undefined,
-    yearTo: report.yearTo ?? undefined,
-    model,
+    yearFrom: report.yearFrom ?? null,
+    yearTo: report.yearTo ?? null,
+    deepAnalysis: Boolean(report.deepAnalysis),
     retrievedPaperIds: papers.map((p) => p.id),
+  };
+  const inputHash = report.deepAnalysis ? `${DEEP_ANALYSIS_SYSTEM_PROMPT}\n${prompt}` : `${REPORT_SYSTEM_PROMPT}\n${prompt}`;
+  const effectiveCacheKey = buildLlmCacheKey({
+    task: "report",
+    promptVersion: PROMPT_VERSION,
+    model,
+    keyParts,
+    inputHash,
   });
-
-  // Fix 1: deepAnalysis uses a separate cache key to avoid collision with classic.
-  const deepCacheKey = `deep:${cacheKey}`;
-  const effectiveCacheKey = report.deepAnalysis ? deepCacheKey : cacheKey;
-
-  let output = await cache.get<ReportLlmOutput>(effectiveCacheKey);
-  const cacheHit = output !== null;
+  let cacheHit = false;
 
   // ⑤ Generate (only on cache miss).
   const t2 = Date.now();
-  if (!output) {
-    if (report.deepAnalysis) {
+  const output = await cachedGenerate<ReportLlmOutput>({
+    task: "report",
+    promptVersion: PROMPT_VERSION,
+    keyParts,
+    model,
+    inputHash,
+    onCacheHit: () => {
+      cacheHit = true;
+    },
+    generate: async (routedModel) => {
+      if (report.deepAnalysis) {
       // D2: Gemini may call tools to gather extra context, but it cites from the
       // SAME pre-fetched `papers[]` evidence list as classic mode — so citations,
       // groundingPaperIds, and gap supportingEvidence all map to one paper set.
       // On truncation OR malformed content, fall back to classic RAG so the report
       // still completes rather than failing after 5 retries.
-      let deepOutput: ReportLlmOutput;
       try {
         const rawJson = await generateWithTools(
-          buildReportPrompt(report.query, papers) +
+          prompt +
             "\n\n---\n\nYou MAY call tools to gather additional context before writing, " +
             "but cite ONLY from the numbered EVIDENCE PAPERS listed above.",
           MCP_TOOL_DEFS,
@@ -122,7 +130,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
               userId: String(report.userId),
             }),
           {
-            model,
+            model: routedModel,
             system: DEEP_ANALYSIS_SYSTEM_PROMPT,
             temperature: 0.3,
             maxOutputTokens: env.DEEP_ANALYSIS_MAX_OUTPUT_TOKENS,
@@ -141,8 +149,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           throw new LlmContentError("Deep analysis LLM returned malformed report JSON");
         }
         assertCitationsInRange(parsed.markdown, papers.length);
-        await cache.set(deepCacheKey, parsed, LLM_CACHE_TTL_SECONDS);
-        deepOutput = parsed;
+        return parsed;
       } catch (err) {
         // Only truncation / malformed content fall back; real errors propagate.
         if (!(err instanceof LlmTruncationError || err instanceof LlmContentError)) throw err;
@@ -151,21 +158,19 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           "deepAnalysis failed — falling back to classic RAG",
         );
         const fallback = await generateJSON<ReportLlmOutput>(
-          buildReportPrompt(report.query, papers),
-          { model, system: REPORT_SYSTEM_PROMPT, temperature: 0.3, maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS },
+          prompt,
+          { model: routedModel, system: REPORT_SYSTEM_PROMPT, temperature: 0.3, maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS },
         );
         if (!fallback || typeof fallback.markdown !== "string" || fallback.markdown.length < 50) {
           throw new LlmContentError("Fallback classic RAG also returned malformed report JSON");
         }
         assertCitationsInRange(fallback.markdown, papers.length);
-        await cache.set(deepCacheKey, fallback, LLM_CACHE_TTL_SECONDS);
-        deepOutput = fallback;
+        return fallback;
       }
-      output = deepOutput;
-    } else {
+    }
       // Classic path — existing generateJSON call:
-      output = await generateJSON<ReportLlmOutput>(buildReportPrompt(report.query, papers), {
-        model,
+      const output = await generateJSON<ReportLlmOutput>(prompt, {
+        model: routedModel,
         system: REPORT_SYSTEM_PROMPT,
         temperature: 0.3,
         maxOutputTokens: env.REPORT_MAX_OUTPUT_TOKENS,
@@ -175,9 +180,9 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         throw new LlmContentError("LLM returned malformed report JSON");
       }
       assertCitationsInRange(output.markdown, papers.length);
-      await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
-    }
-  }
+      return output;
+    },
+  });
   const llmMs = Date.now() - t2;
 
   // ⑥ Persist the finished report.
@@ -251,56 +256,15 @@ export async function markReportFailed(reportId: string, message: string): Promi
   );
 }
 
-async function retrieveEvidence(
-  queryVector: number[],
-  filters: { yearFrom?: number; yearTo?: number },
-): Promise<EvidencePaper[]> {
-  const filter: Record<string, unknown> = { dataStatus: "active" };
-  if (filters.yearFrom !== undefined || filters.yearTo !== undefined) {
-    filter.publicationYear = {
-      ...(filters.yearFrom !== undefined ? { $gte: filters.yearFrom } : {}),
-      ...(filters.yearTo !== undefined ? { $lte: filters.yearTo } : {}),
-    };
-  }
-
-  const pipeline = [
-    {
-      $vectorSearch: {
-        index: VECTOR_INDEX,
-        path: "embedding",
-        queryVector,
-        numCandidates: 200,
-        limit: env.REPORT_TOP_K,
-        filter,
-      },
-    },
-    { $addFields: { score: { $meta: "vectorSearchScore" } } },
-    {
-      $project: {
-        title: 1,
-        abstractText: 1,
-        publicationYear: 1,
-        journalName: 1,
-        citationCount: 1,
-        "authors.displayName": 1,
-        score: 1,
-      },
-    },
-  ];
-
-  const docs = await PaperModel.aggregate(pipeline as unknown as PipelineStage[]);
-  return docs.map((d) => ({
-    id: String(d._id),
-    title: String(d.title),
-    abstractText: d.abstractText ? String(d.abstractText) : undefined,
-    publicationYear: d.publicationYear as number | undefined,
-    journalName: d.journalName ? String(d.journalName) : undefined,
-    citationCount: d.citationCount as number | undefined,
-    authorNames: ((d.authors ?? []) as Array<{ displayName?: string }>)
-      .map((a) => a.displayName ?? "")
-      .filter(Boolean),
-    score: Number(d.score ?? 0),
-  }));
+async function retrieveEvidence(queryVector: number[], filters: { yearFrom?: number; yearTo?: number }): Promise<EvidencePaper[]> {
+  return retrieve({
+    queryVector,
+    topK: env.REPORT_TOP_K,
+    poolSize: env.REPORT_TOP_K,
+    numCandidates: 200,
+    filters,
+    projection: "report",
+  });
 }
 
 async function auditRagRun(
@@ -344,15 +308,5 @@ function clamp01(x: unknown): number {
  * classic and deepAnalysis output so deep mode is not the weaker path.
  */
 function assertCitationsInRange(markdown: string, papersLength: number): void {
-  // Match single [n] AND grouped [1, 3] / [1,2,3] — the old /\[(\d+)\]/ silently
-  // skipped grouped citations, so an out-of-range number inside a group slipped
-  // past the guard. The pattern requires digits (won't false-match "[ ]"/"[x]").
-  const cited: number[] = [];
-  for (const m of markdown.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)) {
-    for (const part of m[1]!.split(",")) cited.push(Number(part.trim()));
-  }
-  const outOfRange = [...new Set(cited.filter((n) => n < 1 || n > papersLength))];
-  if (outOfRange.length > 0) {
-    throw new LlmContentError(`Report cites out-of-range evidence [${outOfRange.join(", ")}]`);
-  }
+  assertGroundedCitationsInRange(markdown, papersLength, (message) => new LlmContentError(message));
 }
