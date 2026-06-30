@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { Badge } from "@/components/ui/badge";
+import { GapDirectionsPanel } from "@/features/gaps/components/gap-directions";
 import {
   useGaps,
   useAnalyzeGap,
@@ -298,6 +299,8 @@ export function ResearchGapsPage() {
 
               <AiEvaluation targetKind="gap" targetId={gap.id} lazy className="mt-4" />
             </div>
+
+            <GapDirectionsPanel gapId={gap.id} className="mt-4" />
           </div>
         ))}
       </div>

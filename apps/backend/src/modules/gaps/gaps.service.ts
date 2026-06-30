@@ -3,13 +3,21 @@ import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
 import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { AppError } from "../../common/exceptions/app-error.js";
-import type { GapProbe } from "@trend/shared-types";
+import type { GapProbe, GapDirections } from "@trend/shared-types";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON, LlmContentError } from "../llm/gemini.client.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { computeGapEvidence } from "./gap-evidence.js";
 import { fillMissingYears, truncateToCompleteYears, yoyGrowthPct } from "../trends/trend.formulas.js";
 import { ResearchGapModel } from "./models/research-gap.model.js";
+import { GapDirectionsModel, type GapDirectionsDoc } from "./models/gap-directions.model.js";
+import {
+  buildDirectionsPrompt,
+  sanitizeDirections,
+  DIRECTIONS_PROMPT_VERSION,
+  DIRECTIONS_SYSTEM_PROMPT,
+  type DirectionsRaw,
+} from "./gaps-directions.js";
 import { GapAnalysisModel } from "./models/gap-analysis.model.js";
 import { gapsQueue } from "../../infrastructure/queue.js";
 import {
@@ -119,6 +127,20 @@ async function scoreGapEvidence(probe: GapProbe | undefined) {
     },
   );
   return { ...ev, probe, parentTrend };
+}
+
+function toDirectionsDto(d: GapDirectionsDoc): GapDirections {
+  return {
+    gapId: String(d.gapId),
+    directions: (d.directions ?? []).map((x) => ({
+      title: x.title,
+      rationale: x.rationale ?? "",
+      suggestedApproach: x.suggestedApproach ?? "",
+      relatedPaperIds: (x.relatedPaperIds ?? []).map(String),
+    })),
+    model: d.model ?? "",
+    createdAt: (d as unknown as { createdAt: Date }).createdAt.toISOString(),
+  };
 }
 
 export const gapsService = {
@@ -358,6 +380,85 @@ export const gapsService = {
     gap.status = dto.status;
     await gap.save();
     return { id: String(gap._id), status: gap.status };
+  },
+
+  /**
+   * On-demand AI research-direction suggestions for ONE gap. Advisory — never
+   * touches points/credit/tier. Cached as one doc per gap; `force` re-generates.
+   * Synchronous (no vector search): the gap doc already carries full context.
+   */
+  async generateDirections(
+    _userId: string,
+    gapId: string,
+    force?: boolean,
+  ): Promise<GapDirections> {
+    const gap = await ResearchGapModel.findById(gapId).lean();
+    if (!gap) throw AppError.notFound("Research gap not found");
+
+    const existing = await GapDirectionsModel.findOne({ gapId });
+    if (existing && !force && existing.promptVersion === DIRECTIONS_PROMPT_VERSION) {
+      return toDirectionsDto(existing as GapDirectionsDoc);
+    }
+
+    const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
+    const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
+      .select("title abstractText")
+      .lean();
+
+    let raw: DirectionsRaw;
+    try {
+      raw = await generateJSON<DirectionsRaw>(
+        buildDirectionsPrompt(
+          {
+            topic: gap.topic,
+            title: gap.title,
+            description: gap.description,
+            rationale: gap.rationale,
+            intersectionCount: gap.intersectionCount ?? undefined,
+            parentTrend: gap.parentTrend as { topic: string; growthRatePct: number } | undefined,
+          },
+          papers.map((p) => ({
+            id: String(p._id),
+            title: String(p.title),
+            abstractText: p.abstractText ? String(p.abstractText) : undefined,
+          })),
+        ),
+        {
+          model: env.GEMINI_MODEL_FAST,
+          system: DIRECTIONS_SYSTEM_PROMPT,
+          temperature: 0.4,
+          maxOutputTokens: 1024,
+        },
+      );
+    } catch {
+      throw AppError.serviceUnavailable(
+        "AI gợi ý tạm thời không khả dụng. Vui lòng thử lại.",
+      );
+    }
+
+    const directions = sanitizeDirections(raw, allowedPaperIds);
+    if (directions.length === 0) {
+      throw AppError.serviceUnavailable("AI không trả về gợi ý hợp lệ. Vui lòng thử lại.");
+    }
+
+    const doc = await GapDirectionsModel.findOneAndUpdate(
+      { gapId },
+      {
+        $set: {
+          directions,
+          model: env.GEMINI_MODEL_FAST,
+          promptVersion: DIRECTIONS_PROMPT_VERSION,
+        },
+      },
+      { upsert: true, new: true },
+    );
+    return toDirectionsDto(doc as GapDirectionsDoc);
+  },
+
+  /** Cached directions for a gap (or null if never generated). */
+  async getDirections(gapId: string): Promise<GapDirections | null> {
+    const doc = await GapDirectionsModel.findOne({ gapId });
+    return doc ? toDirectionsDto(doc as GapDirectionsDoc) : null;
   },
 
   /** Mark an analysis failed — called by the worker when retries are exhausted. */

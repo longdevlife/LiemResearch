@@ -4,6 +4,7 @@ import type {
   AnalyzeGapRequest,
   GapAnalysisResult,
   ListGapsResponse,
+  GapDirections,
 } from "@trend/shared-types";
 
 export const gapsApi = {
@@ -31,5 +32,15 @@ export const gapsApi = {
 
   async patchStatus(id: string, status: "active" | "resolved" | "dismissed"): Promise<void> {
     await api.patch(API_ROUTES.gaps.patch(id), { status });
+  },
+
+  async getDirections(gapId: string): Promise<GapDirections | null> {
+    const res = await api.get(API_ROUTES.gaps.directions(gapId));
+    return res.data.data ?? null;
+  },
+
+  async generateDirections(gapId: string, force: boolean): Promise<GapDirections> {
+    const res = await api.post(API_ROUTES.gaps.directions(gapId), { force });
+    return res.data.data;
   },
 };

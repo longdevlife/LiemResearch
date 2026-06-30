@@ -3,7 +3,13 @@ import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { requireAuth } from "../../common/middleware/auth.js";
 import { validate } from "../../common/middleware/validate.js";
-import { AnalyzeGapSchema, ListGapsQuerySchema, PatchGapSchema } from "./dto/gaps.schema.js";
+import {
+  AnalyzeGapSchema,
+  ListGapsQuerySchema,
+  PatchGapSchema,
+  GapIdParamsSchema,
+  DirectionsBodySchema,
+} from "./dto/gaps.schema.js";
 import { gapsController } from "./gaps.controller.js";
 
 export const gapsRouter: Router = Router();
@@ -32,7 +38,36 @@ const analyzeGapLimiter = rateLimit({
     }),
 });
 
+/** Per-user throttle for the directions LLM call — protects the Gemini free-tier quota. */
+const directionsLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: env.DIRECTIONS_MAX_PER_HOUR,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? (req.ip || "anonymous"),
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: {
+        code: "TOO_MANY_REQUESTS",
+        message: "Direction suggestion rate limit exceeded — try again later.",
+      },
+    }),
+});
+
 gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);
 gapsRouter.get("/", gapsController.list);
 gapsRouter.patch("/:id", validate(PatchGapSchema), gapsController.patch);
+gapsRouter.post(
+  "/:id/directions",
+  directionsLimiter,
+  validate(GapIdParamsSchema, "params"),
+  validate(DirectionsBodySchema),
+  gapsController.generateDirections,
+);
+gapsRouter.get(
+  "/:id/directions",
+  validate(GapIdParamsSchema, "params"),
+  gapsController.getDirections,
+);

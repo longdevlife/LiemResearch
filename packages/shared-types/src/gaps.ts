@@ -48,3 +48,20 @@ export interface ListGapsResponse {
     totalPages: number;
   };
 }
+
+/** One AI-suggested next research direction for a gap (advisory). */
+export interface ResearchDirection {
+  title: string;
+  rationale: string;
+  suggestedApproach: string;
+  /** Subset of the gap's supportingPaperIds the LLM cited (hallucinated ids stripped server-side). */
+  relatedPaperIds: string[];
+}
+
+/** Persisted set of AI research directions for a single gap (one doc per gap). */
+export interface GapDirections {
+  gapId: string;
+  directions: ResearchDirection[];
+  model: string;
+  createdAt: string;
+}

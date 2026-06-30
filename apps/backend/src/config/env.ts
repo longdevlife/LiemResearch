@@ -90,6 +90,9 @@ const EnvSchema = z.object({
   // Quality & Feedback — per-user/hour cap on the on-demand LLM-judge (a generate call).
   QUALITY_EVAL_MAX_PER_HOUR: z.coerce.number().int().positive().default(20),
 
+  // Research directions — per-user/hour cap on the on-demand "suggest directions" LLM call.
+  DIRECTIONS_MAX_PER_HOUR: z.coerce.number().int().positive().default(20),
+
   // DEV ONLY: when "true", the /api/v1/admin/sync endpoints skip auth so the
   // team can demo before an admin user is seeded. Never enable in production.
   // (Plain z.coerce.boolean() is unsafe — "false" would coerce to true — so we
