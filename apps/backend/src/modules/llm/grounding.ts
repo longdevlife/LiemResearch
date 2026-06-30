@@ -69,10 +69,14 @@ export function parseCitedIds(text: string, idByNumber: string[]): string[] {
   return [...ids];
 }
 
-export function assertCitationsInRange(text: string, evidenceCount: number): void {
+export function assertCitationsInRange(
+  text: string,
+  evidenceCount: number,
+  makeError: (message: string) => Error = (message) => new Error(message),
+): void {
   const outOfRange = [...new Set(parseCitationNumbers(text).filter((n) => n < 1 || n > evidenceCount))];
   if (outOfRange.length > 0) {
-    throw new Error(`Output cites out-of-range evidence [${outOfRange.join(", ")}]`);
+    throw makeError(`Output cites out-of-range evidence [${outOfRange.join(", ")}]`);
   }
 }
 

@@ -8,9 +8,12 @@ interface CachedGenerateBase<T> {
   task: LlmTask;
   promptVersion: string;
   keyParts: unknown;
+  inputHash?: string;
   ttlSeconds?: number;
   model?: string;
   bypassCache?: boolean;
+  onCacheHit?: () => void;
+  onCacheMiss?: () => void;
   generate: (model: string) => Promise<T>;
 }
 
@@ -25,10 +28,12 @@ export function buildLlmCacheKey(args: {
   promptVersion: string;
   model: string;
   keyParts: unknown;
+  inputHash?: string;
 }): string {
   return `llm:${args.task}:${args.promptVersion}:${hashKey({
     model: args.model,
     keyParts: args.keyParts,
+    inputHash: args.inputHash ?? null,
   })}`;
 }
 
@@ -39,12 +44,17 @@ export async function cachedGenerate<T>(args: CachedGenerateBase<T>): Promise<T>
     promptVersion: args.promptVersion,
     model,
     keyParts: args.keyParts,
+    inputHash: args.inputHash,
   });
 
   if (!args.bypassCache) {
     const cached = await cache.get<T>(cacheKey);
-    if (cached !== null) return cached;
+    if (cached !== null) {
+      args.onCacheHit?.();
+      return cached;
+    }
   }
+  args.onCacheMiss?.();
 
   const output = await args.generate(model);
   await cache.set(cacheKey, output, args.ttlSeconds ?? LLM_CACHE_TTL_SECONDS);
@@ -59,6 +69,7 @@ export async function cachedGenerateJSON<T>(
 ): Promise<T> {
   return cachedGenerate<T>({
     ...args,
+    inputHash: args.inputHash ?? hashKey({ prompt: args.prompt, system: args.options?.system ?? null }),
     generate: (model) =>
       generateJSON<T>(args.prompt, {
         ...args.options,
@@ -75,6 +86,7 @@ export async function cachedGenerateText(
 ): Promise<string> {
   return cachedGenerate<string>({
     ...args,
+    inputHash: args.inputHash ?? hashKey({ prompt: args.prompt, system: args.options?.system ?? null }),
     generate: (model) =>
       generateText(args.prompt, {
         ...args.options,

@@ -75,12 +75,13 @@ describe("parseCitations", () => {
     expect(parseCitations("Dựa trên [1] và [3].", evidence)).toEqual(["a", "c"]);
   });
 
-  it("drops out-of-range and malformed citations", () => {
-    expect(parseCitations("Có [99], [abc], và [2].", evidence)).toEqual(["b"]);
+  it("rejects out-of-range citations and ignores malformed text", () => {
+    expect(() => parseCitations("Có [99], [abc], và [2].", evidence)).toThrow(/out-of-range/);
+    expect(parseCitations("Có [abc], và [2].", evidence)).toEqual(["b"]);
   });
 
   it("supports grouped citations", () => {
-    expect(parseCitations("Có [1, 3, 99].", evidence)).toEqual(["a", "c"]);
+    expect(parseCitations("Có [1, 3].", evidence)).toEqual(["a", "c"]);
   });
 
   it("returns [] when there are no citations", () => {

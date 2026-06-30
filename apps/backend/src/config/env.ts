@@ -62,6 +62,13 @@ const EnvSchema = z.object({
   EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
 
+  // F2 — structured paper knowledge extraction. Runs offline in a worker so
+  // user-facing search/chat/report requests never wait on one-call-per-paper LLM work.
+  PAPER_ANALYSIS_CRON: z.string().default("0 4 * * *"),
+  PAPER_ANALYSIS_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
+  PAPER_ANALYSIS_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(100),
+  PAPER_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1024),
+
   // Phase C — RAG analytical reports.
   REPORT_TOP_K: z.coerce.number().int().min(1).max(10).default(8),
   REPORT_MAX_PENDING_PER_USER: z.coerce.number().int().positive().default(2),

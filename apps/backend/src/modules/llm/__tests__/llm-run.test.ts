@@ -24,14 +24,19 @@ describe("llm.run", () => {
 
   it("builds stable cache keys from task, version, model and key parts", () => {
     expect(
-      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" } }),
+      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" }, inputHash: "h1" }),
     ).toBe(
-      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" } }),
+      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" }, inputHash: "h1" }),
     );
     expect(
-      buildLlmCacheKey({ task: "chat", promptVersion: "v2", model: "m", keyParts: { q: "x" } }),
+      buildLlmCacheKey({ task: "chat", promptVersion: "v2", model: "m", keyParts: { q: "x" }, inputHash: "h1" }),
     ).not.toBe(
-      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" } }),
+      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" }, inputHash: "h1" }),
+    );
+    expect(
+      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" }, inputHash: "h2" }),
+    ).not.toBe(
+      buildLlmCacheKey({ task: "chat", promptVersion: "v1", model: "m", keyParts: { q: "x" }, inputHash: "h1" }),
     );
   });
 

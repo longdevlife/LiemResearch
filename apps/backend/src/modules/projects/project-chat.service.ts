@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
+import { hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
-import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { getLlmProvider } from "../llm/llm.factory.js";
 import { cachedGenerate } from "../llm/llm.run.js";
 import { PaperModel } from "../papers/models/paper.model.js";
+import { retrieve } from "../retrieval/retriever.js";
 import { ProjectModel } from "./models/project.model.js";
 import { ProjectChatMessageModel } from "./models/project-chat-message.model.js";
 import {
@@ -87,6 +88,7 @@ export class ProjectChatService {
           paperIds: evidence.map((paper) => paper.id).sort(),
           provider: provider.name,
         },
+        inputHash: hashKey({ system, prompt }),
         model,
         ttlSeconds: env.CHAT_CACHE_TTL_SECONDS,
         generate: async () => {
@@ -158,8 +160,15 @@ export class ProjectChatService {
 
   private async selectEvidence(question: string, papers: ChatEvidencePaper[]): Promise<ChatEvidencePaper[]> {
     if (papers.length <= env.CHAT_CONTEXT_PAPERS) return pickEvidence(papers, env.CHAT_CONTEXT_PAPERS);
-    const questionVector = await getEmbeddingProvider().embed(normalizeQuestion(question));
-    return pickEvidence(papers, env.CHAT_CONTEXT_PAPERS, questionVector);
+    const retrieved = await retrieve({
+      queryText: normalizeQuestion(question),
+      topK: env.CHAT_CONTEXT_PAPERS,
+      poolSize: 1000,
+      numCandidates: 1000,
+      filters: { paperIds: papers.map((paper) => paper.id) },
+      projection: "chat",
+    });
+    return retrieved.length > 0 ? retrieved : pickEvidence(papers, env.CHAT_CONTEXT_PAPERS);
   }
 
   private async loadRecentHistory(projectId: string, userId: string): Promise<ChatHistoryTurn[]> {
@@ -185,7 +194,7 @@ export class ProjectChatService {
     if (paperIds.length === 0) return [];
 
     const docs = await PaperModel.find({ _id: { $in: paperIds.map((id) => new mongoose.Types.ObjectId(id)) } })
-      .select("title abstractText publicationYear authors +embedding")
+      .select("title abstractText publicationYear authors")
       .lean();
 
     const byId = new Map(docs.map((doc) => [String(doc._id), doc]));
@@ -198,7 +207,6 @@ export class ProjectChatService {
         abstractText: doc.abstractText || undefined,
         publicationYear: doc.publicationYear,
         authorNames: (doc.authors ?? []).map((a) => a.displayName).filter(Boolean),
-        embedding: Array.isArray(doc.embedding) ? doc.embedding : undefined,
       }));
   }
 

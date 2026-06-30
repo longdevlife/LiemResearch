@@ -1,4 +1,5 @@
 import {
+  assertCitationsInRange,
   formatEvidence,
   parseCitedIds,
   sanitizeForPrompt,
@@ -106,6 +107,7 @@ export function buildChatPrompt(input: ChatPromptInput): { system: string; promp
 }
 
 export function parseCitations(answer: string, evidence: ChatEvidencePaper[]): string[] {
+  assertCitationsInRange(answer, evidence.length);
   return parseCitedIds(answer, evidence.map((paper) => paper.id));
 }
 
