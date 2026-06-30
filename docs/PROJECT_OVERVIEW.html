@@ -376,6 +376,16 @@
     <b>Thuần tư vấn:</b> điểm AI hiển thị cạnh điểm công thức nhưng <b>KHÔNG đổi tier, KHÔNG đổi credit/reward, KHÔNG tự duyệt</b> — AI không bao giờ chạm tiền. Kết quả <b>cache theo từng bài</b> (chỉ lần đầu tốn token) và bị rate-limit 20 lượt/giờ/user.
   </div>
 
+  <h3 style="margin-top:28px">Đo độ tin của AI: dashboard “AI vs Người thật”</h3>
+  <p style="color:var(--muted);font-size:14px">Admin có bảng <b>so điểm LLM tự chấm với điểm trung bình người dùng chấm sao</b> (trên các mục có CẢ hai), tách theo report / gap / paper:</p>
+  <table>
+    <tr><th>Chỉ số</th><th>Ý nghĩa</th><th>Tốt khi</th></tr>
+    <tr><td><b>MAE</b></td><td>Sai số tuyệt đối trung bình <code>|điểm AI − điểm người|</code></td><td>càng <b>thấp</b></td></tr>
+    <tr><td><b>Trong ±1</b></td><td>% mục mà AI lệch người ≤ 1 điểm</td><td>càng <b>cao</b></td></tr>
+    <tr><td><b>Tương quan</b></td><td>Pearson giữa điểm AI và điểm người</td><td>càng <b>gần 1</b></td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:14px">→ Trả lời thẳng câu hỏi <i>"AI chấm có đáng tin không?"</i> bằng SỐ chứ không phải lời hứa: AI càng khớp người, điểm AI càng đáng dùng để tham khảo.</p>
+
   <!-- 14 -->
   <h2><span class="n">14.</span> Làm sao biết một xu hướng là THẬT?</h2>
   <p class="lead">Một chủ đề/keyword chỉ được xem là "đang lên" khi vượt qua <b>3 cổng chống trend giả</b> — tránh một cú nhảy ngẫu nhiên bị hiểu nhầm thành xu hướng.</p>
