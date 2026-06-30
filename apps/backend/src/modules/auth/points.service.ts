@@ -4,6 +4,7 @@ import { PaperModel } from "../papers/models/paper.model.js";
 import { PaperDownloadModel } from "../papers/models/paper-download.model.js";
 import { UserRatingModel } from "../quality/models/user-rating.model.js";
 import { notificationService } from "../notifications/notification.service.js";
+import { logger } from "../../infrastructure/logger.js";
 
 function getLevel(points: number): number {
   if (points >= 3000) return 10;
@@ -191,12 +192,17 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
   await UserModel.findByIdAndUpdate(objectId, { $set: { points } });
 
   if (levelAfter > levelBefore) {
-    await notificationService.create({
-      userId: objectId,
-      title: "Level Up!",
-      message: `🎉 Chúc mừng bạn đã thăng cấp lên Cấp độ ${levelAfter}!`,
-      type: "level_up",
-    });
+    try {
+      await notificationService.create({
+        userId: objectId,
+        title: "Level Up!",
+        message: `🎉 Chúc mừng bạn đã thăng cấp lên Cấp độ ${levelAfter}!`,
+        type: "level_up",
+      });
+    } catch (err) {
+      // Không để lỗi thông báo phá vỡ việc đồng bộ điểm đã hoàn tất
+      logger.error({ err, userId: String(objectId) }, "Failed to send level-up notification");
+    }
   }
 
   return points;
