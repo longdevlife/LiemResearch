@@ -64,6 +64,30 @@ function AppStack() {
           }}
         />
         <Stack.Screen
+          name="submit-paper"
+          options={{
+            title: "Submit paper",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="my-papers"
+          options={{
+            title: "My papers",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="rankings"
+          options={{
+            title: "Rankings",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="gaps"
           options={{
             title: "Gaps",
