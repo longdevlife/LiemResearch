@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import type { ImageSourcePropType } from "react-native";
 
 import { useMyRanking, useRankings, type RankingUser, LEVEL_IMAGES, getLevel, getProgress } from "@/features/rankings";
 import { useAuthStore } from "@/stores/auth-store";
