@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import { usePapers } from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useTrendsOverview } from "@/features/trends";
 import { useAuthStore } from "@/stores/auth-store";
+import { LEVEL_IMAGES, getLevel } from "@/features/rankings";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
@@ -92,6 +93,7 @@ function PaperCard({ paper }: { paper: Paper | ScoredPaper }) {
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
+  const userLevel = getLevel(user?.points ?? 0);
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -128,8 +130,8 @@ export default function HomeScreen() {
             <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">Hi, {user?.fullName?.split(" ")[0] || "Researcher"}</Text>
             <Text className="text-sm text-muted-foreground dark:text-[#94A3B8] mt-1">What are you researching today?</Text>
           </View>
-          <View className="w-11 h-11 rounded-full bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] items-center justify-center">
-            <Text className="text-foreground dark:text-[#F8FAFC] font-bold">{user?.fullName?.slice(0, 1).toUpperCase() || "R"}</Text>
+          <View className="w-11 h-11 rounded-full bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] items-center justify-center p-1">
+            <Image source={LEVEL_IMAGES[userLevel]} className="w-full h-full" resizeMode="contain" />
           </View>
         </View>
 
@@ -214,12 +216,12 @@ export default function HomeScreen() {
           <View className="flex-row gap-2">
             <TouchableOpacity
               className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/trends" as any)}
+              onPress={() => router.push("/submit-paper" as any)}
             >
               <View className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
-                <Feather name="trending-up" color="#06B6D4" size={18} />
+                <Feather name="upload-cloud" color="#06B6D4" size={18} />
               </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Trends</Text>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Submit</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -234,12 +236,12 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/gaps" as any)}
+              onPress={() => router.push("/rankings" as any)}
             >
               <View className="w-10 h-10 rounded-full bg-[#1E1B4B] items-center justify-center mb-2">
-                <Feather name="target" color="#A5B4FC" size={18} />
+                <Feather name="award" color="#A5B4FC" size={18} />
               </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Gaps</Text>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Ranks</Text>
             </TouchableOpacity>
           </View>
         </View>
