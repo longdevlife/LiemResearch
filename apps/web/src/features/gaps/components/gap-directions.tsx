@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Lightbulb, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,25 +9,21 @@ import { toast } from "sonner";
 
 /**
  * On-demand AI research-direction suggestions for one gap. Advisory — never
- * affects tier/credit/approval. Lazy: fetches the cached doc on mount, the
- * button (re)generates.
+ * affects tier/credit/approval. Lazy by design: this renders once PER gap card
+ * in a list, so it does NOT fetch on mount (N cards would fire N un-throttled
+ * GETs — the sibling AiEvaluation skips its on-mount GET for the same reason).
+ * The first button click sends force:false, so the backend returns the cached
+ * doc if one exists, otherwise generates.
  */
 export function GapDirectionsPanel({ gapId, className }: { gapId: string; className?: string }) {
   const [data, setData] = useState<GapDirections | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    if (!gapId) return;
-    gapsApi
-      .getDirections(gapId)
-      .then(setData)
-      .catch(() => {}); // no cached directions yet — show the empty state
-  }, [gapId]);
-
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      // force a real re-generate when directions already exist ("Gợi ý lại").
+      // First click (data === null) sends force:false → cached-or-generate.
+      // A later click (data set) sends force:true → real re-generate ("Gợi ý lại").
       const res = await gapsApi.generateDirections(gapId, !!data);
       setData(res);
       toast.success("AI đã gợi ý hướng nghiên cứu.");
