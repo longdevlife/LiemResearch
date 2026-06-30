@@ -8,6 +8,7 @@ import { useCurrentUser, useUpdateProfile, useChangePassword } from "@/features/
 import { Badge } from "@/components/ui/badge";
 import { SubmitPaperPage } from "./papers/submit-paper";
 import { MyPapersPage } from "./papers/my-papers";
+import { avatars, getLevel, getLevelProgress, getNextLevelPoints, LEVEL_THRESHOLDS } from "@/utils/level";
 
 type SettingsSection = "profile" | "security" | "preferences" | "submit-paper" | "my-papers";
 
@@ -241,6 +242,79 @@ export function ProfilePage() {
                 <User className="w-5 h-5 text-blue-600" />
                 Profile Information
               </h2>
+
+              {!isAdmin && user && (
+                (() => {
+                  const pts = user.points ?? 0;
+                  const currentLevel = getLevel(pts);
+                  const progress = getLevelProgress(pts, currentLevel);
+                  const nextLevelPoints = getNextLevelPoints(currentLevel);
+                  const pointsNeeded = nextLevelPoints === Infinity ? 0 : nextLevelPoints - pts;
+                  const levelAvatar = avatars[currentLevel];
+
+                  return (
+                    <div className="mb-8 p-6 bg-slate-50 dark:bg-[#1a1a24]/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+                      <div className="relative group shrink-0">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 group-hover:opacity-55 transition duration-500"></div>
+                        <div className="relative w-24 h-24 rounded-full bg-white dark:bg-zinc-900 border-2 border-white dark:border-zinc-800 overflow-hidden flex items-center justify-center p-1.5 shadow-md">
+                          <img
+                            src={levelAvatar}
+                            alt={`Level ${currentLevel} Avatar`}
+                            className="w-full h-full object-contain rounded-full"
+                          />
+                        </div>
+                        <span className="absolute -bottom-1.5 right-1/2 translate-x-1/2 bg-blue-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow border-2 border-white dark:border-zinc-900 uppercase tracking-wide">
+                          Lv {currentLevel}
+                        </span>
+                      </div>
+
+                      <div className="flex-1 w-full text-center sm:text-left space-y-3">
+                        <div>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                              {user.fullName}
+                            </h3>
+                            <div className="flex justify-center sm:justify-start gap-2">
+                              <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none capitalize text-xs font-bold px-2 py-0.5">
+                                {user.role}
+                              </Badge>
+                              <Badge className="bg-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-none text-xs font-bold px-2 py-0.5">
+                                Level {currentLevel}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{user.email}</p>
+                        </div>
+
+                        {currentLevel < 10 ? (
+                          <div className="space-y-1.5 max-w-md">
+                            <div className="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+                              <span>Next level: {progress}%</span>
+                              <span>{pts}/{nextLevelPoints} pts</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium italic">
+                              Need {pointsNeeded} more points to reach level {currentLevel + 1}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 max-w-md">
+                            <p className="text-xs text-amber-500 font-bold flex items-center gap-1">
+                              👑 Max Level reached! (Level 10)
+                            </p>
+                            <div className="h-2 w-full bg-amber-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
 
               {!isAdmin && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
