@@ -139,7 +139,7 @@ function toDirectionsDto(d: GapDirectionsDoc): GapDirections {
       relatedPaperIds: (x.relatedPaperIds ?? []).map(String),
     })),
     model: d.model ?? "",
-    createdAt: (d as unknown as { createdAt: Date }).createdAt.toISOString(),
+    updatedAt: (d as unknown as { updatedAt: Date }).updatedAt.toISOString(),
   };
 }
 
@@ -430,7 +430,8 @@ export const gapsService = {
           maxOutputTokens: 1024,
         },
       );
-    } catch {
+    } catch (err) {
+      logger.warn({ err, gapId }, "gap directions generation failed");
       throw AppError.serviceUnavailable(
         "AI gợi ý tạm thời không khả dụng. Vui lòng thử lại.",
       );

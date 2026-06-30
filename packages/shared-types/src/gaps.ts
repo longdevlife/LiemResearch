@@ -63,5 +63,6 @@ export interface GapDirections {
   gapId: string;
   directions: ResearchDirection[];
   model: string;
-  createdAt: string;
+  /** When the directions were last generated (moves on each force-regenerate). */
+  updatedAt: string;
 }
