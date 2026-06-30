@@ -8,6 +8,8 @@ const notificationSchema = new Schema(
     message: { type: String, required: true },
     type: { type: String, required: true }, // e.g. "submission_pending", "submission_approved", "submission_rejected"
     paperId: { type: Schema.Types.ObjectId, ref: "Paper" },
+    targetKind: { type: String, enum: ["paper", "report", "gap", "project"], index: true },
+    targetId: { type: Schema.Types.ObjectId, index: true },
     readBy: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
     isRead: { type: Boolean, default: false },
   },
@@ -17,4 +19,4 @@ const notificationSchema = new Schema(
 export type NotificationDoc = InferSchemaType<typeof notificationSchema> & {
   _id: mongoose.Types.ObjectId;
 };
-export const NotificationModel = mongoose.model("Notification", notificationSchema);
+export const NotificationModel = mongoose.model("Notification", notificationSchema, "notifications");
