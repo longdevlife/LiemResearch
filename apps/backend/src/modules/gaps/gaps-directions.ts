@@ -49,6 +49,8 @@ export interface DirectionPaper {
 const MAX_ABSTRACT_CHARS = 500;
 const MAX_DIRECTIONS = 4;
 const MAX_TEXT_CHARS = 1000;
+/** Matches the "<= 160 chars" instruction in DIRECTIONS_SYSTEM_PROMPT. */
+const MAX_TITLE_CHARS = 160;
 
 function formatPapers(papers: DirectionPaper[]): string {
   if (papers.length === 0) return "(no supporting papers)";
@@ -92,7 +94,7 @@ export function sanitizeDirections(
   const allowed = new Set(allowedPaperIds);
   const out: ResearchDirection[] = [];
   for (const d of raw.directions) {
-    const title = String(d?.title ?? "").trim().slice(0, 200);
+    const title = String(d?.title ?? "").trim().slice(0, MAX_TITLE_CHARS);
     if (!title) continue;
     const ids = Array.isArray(d?.relatedPaperIds) ? d!.relatedPaperIds : [];
     const relatedPaperIds = [
