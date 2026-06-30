@@ -17,6 +17,35 @@ function toObjectId(id: string | mongoose.Types.ObjectId): mongoose.Types.Object
   return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
 }
 
+// ── Pure money logic (single source of truth, unit-tested) ────────────────────
+
+/**
+ * The ranking-points formula. Single source of truth shared by syncUserPoints
+ * (which persists) and calculateUserRankingStats (read-only), so the two can
+ * never drift. Floored at 0 — a penalty can never drive points negative.
+ */
+export function computeRankingPoints(input: {
+  uploadCreditReward: number;
+  ratingsGiven: number;
+  penaltyPoints: number;
+}): number {
+  return Math.max(
+    0,
+    input.uploadCreditReward + input.ratingsGiven * RATING_POINTS - input.penaltyPoints,
+  );
+}
+
+/**
+ * Credits charged for a PDF download: the paper's tier cost on the first
+ * download, the flat REDOWNLOAD_COST on any repeat.
+ */
+export function resolveDownloadCost(
+  paper: { downloadCost?: number | null },
+  isRepeatDownload: boolean,
+): number {
+  return isRepeatDownload ? REDOWNLOAD_COST : (paper.downloadCost ?? 0);
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -70,7 +99,7 @@ export async function chargePaperDownloadCredit({
     paper: paper._id,
   });
 
-  const cost = existingDownload ? REDOWNLOAD_COST : (paper.downloadCost ?? 0);
+  const cost = resolveDownloadCost(paper, Boolean(existingDownload));
 
   if (cost > 0) {
     await UserModel.findByIdAndUpdate(userId, { $inc: { credits: -cost } });
@@ -135,7 +164,11 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
   const uploadReward = uploadStats[0]?.totalReward ?? 0;
   const ratingsGiven = ratingStats[0]?.count ?? 0;
   const penalty = userDoc?.penaltyPoints ?? 0;
-  const points = Math.max(0, uploadReward + ratingsGiven * RATING_POINTS - penalty);
+  const points = computeRankingPoints({
+    uploadCreditReward: uploadReward,
+    ratingsGiven,
+    penaltyPoints: penalty,
+  });
 
   await UserModel.findByIdAndUpdate(objectId, { $set: { points } });
   return points;
@@ -197,7 +230,7 @@ export async function calculateUserRankingStats(userId: string | mongoose.Types.
   const requestedPapers = paperStats[0]?.requestedPapers ?? 0;
   const ratingsGiven = ratingStats[0]?.count ?? 0;
   const penaltyPoints = userDoc?.penaltyPoints ?? 0;
-  const points = Math.max(0, uploadCreditReward + ratingsGiven * RATING_POINTS - penaltyPoints);
+  const points = computeRankingPoints({ uploadCreditReward, ratingsGiven, penaltyPoints });
 
   return { points, uploadCreditReward, uploadedPdfs, requestedPapers, ratingsGiven, penaltyPoints };
 }
