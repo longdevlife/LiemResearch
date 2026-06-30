@@ -5,19 +5,7 @@ import { PaperDownloadModel } from "../papers/models/paper-download.model.js";
 import { UserRatingModel } from "../quality/models/user-rating.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { logger } from "../../infrastructure/logger.js";
-
-function getLevel(points: number): number {
-  if (points >= 3000) return 10;
-  if (points >= 2000) return 9;
-  if (points >= 1500) return 8;
-  if (points >= 1000) return 7;
-  if (points >= 600) return 6;
-  if (points >= 300) return 5;
-  if (points >= 150) return 4;
-  if (points >= 75) return 3;
-  if (points >= 25) return 2;
-  return 1;
-}
+import { getLevel } from "@trend/shared-types";
 
 // ── Constants (mirrored from Legacy) ────────────────────────────────────────
 export const REQUEST_PAPER_COST = 100;   // Credits deducted when creating a request
