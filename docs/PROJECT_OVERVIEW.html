@@ -318,8 +318,9 @@
     <div class="feat-card">
       <span class="pill done">Implemented</span>
       <h4>🔍 Semantic Search</h4>
-      <p>Query → <b>F1</b> Retriever (embed + $vectorSearch) → trả danh sách paper xếp theo cosine score. <b>Không gọi LLM</b>, 0 token.</p>
-      <div class="tech">F1 Retriever · Gemini Embedding · MongoDB Vector</div>
+      <p>Query → <b>F1</b> Retriever (embed + $vectorSearch) → trả danh sách paper xếp theo cosine score. <b>Không gọi LLM</b>, 0 token. Hỗ trợ sort theo relevance/year/citations, filter paperKind/openAccess/provider/minScore.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Opt-in LLM Re-rank:</b> Khi bật <code>rerank=true</code>, hệ thống gửi top candidate pool cho Gemini Flash chấm lại điểm relevance rồi sắp xếp lại. Nếu LLM fail → <b>negative-cache 10 phút</b> (tránh đốt quota lần sau) rồi <b>graceful fallback</b> về thứ tự vector gốc. Paper bị LLM bỏ sót thì giữ nguyên vector score thay vì bị gán 0.</p>
+      <div class="tech">F1 Retriever · Gemini Embedding · MongoDB Vector · Optional LLM Rerank</div>
     </div>
     <div class="feat-card">
       <span class="pill done">Implemented</span>
@@ -331,7 +332,8 @@
       <span class="pill done">Implemented</span>
       <h4>📄 RAG Reports</h4>
       <p>Query → <b>F1</b> retrieve top-K → <b>F4</b> check cache → Gemini sinh markdown có <code>[n]</code> citations → <b>F3</b> grounding check → lưu + trả FE. Worker BullMQ xử lý nền.</p>
-      <div class="tech">F1 + F3 + F4 · Gemini Flash · BullMQ report.worker</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Deep Analysis fallback:</b> Khi deep analysis mode bị <code>LlmTruncationError</code> (output vượt maxTokens) hoặc <code>LlmContentError</code> (JSON malformed) → hệ thống <b>tự động fallback về classic RAG</b> thay vì fail toàn bộ report. Fan-out gaps vào <code>research_gaps</code> collection sau khi report hoàn tất (non-fatal).</p>
+      <div class="tech">F1 + F3 + F4 · Gemini Flash/Pro · BullMQ report.worker · Auto-fallback</div>
     </div>
     <div class="feat-card">
       <span class="pill done">Implemented</span>
@@ -354,14 +356,16 @@
     <div class="feat-card">
       <span class="pill done">Implemented</span>
       <h4>💬 Project Chat</h4>
-      <p>User hỏi đáp trên tập paper đã lưu trong project. <b>F1</b> retrieve trong scope project → LLM trả lời. Provider cắm rút: Gemini mặc định hoặc <b>Ollama local</b>.</p>
-      <div class="tech">F1 + F4 · Gemini hoặc Ollama · projects module</div>
+      <p>User hỏi đáp trên tập paper đã lưu trong project. Load papers từ project → dùng <b>embedding vectors</b> của papers để <code>pickEvidence</code> chọn papers gần câu hỏi nhất → LLM trả lời. Provider cắm rút: Gemini mặc định hoặc <b>Ollama local</b>.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Token budget:</b> <code>fitToBudget()</code> kiểm soát prompt size, tự cắt papers và history để fit vào <code>CHAT_MAX_PROMPT_CHARS</code>. Abstract cắt theo <code>CHAT_ABSTRACT_MAX_CHARS</code>. Cache theo <code>hash(projectId + question + paperIds + provider)</code>.</p>
+      <div class="tech">F1 + F4 · Gemini hoặc Ollama · projects module · Token budget control</div>
     </div>
     <div class="feat-card">
       <span class="pill done">Implemented</span>
       <h4>🛠️ MCP / Deep Analysis</h4>
-      <p>Ở chế độ deep analysis, Gemini Pro có thể <b>gọi tool nội bộ</b> (search papers, lấy trend, đếm paper) qua MCP executor. AI tự bổ sung evidence trước khi viết report. Tool run logs lưu lại.</p>
-      <div class="tech">F1 + F3 + F4 · Gemini Pro · mcp.executor + mcp.tools</div>
+      <p>Ở chế độ deep analysis, Gemini Pro có thể <b>gọi tool nội bộ</b> (<code>search_papers</code>, <code>get_trends</code>, <code>count_papers</code>) qua MCP executor. AI tự bổ sung evidence trước khi viết report. Tool run logs lưu vào <code>mcp_tool_runs</code> collection.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Graceful error handling:</b> Tool error KHÔNG crash pipeline. Khi tool throw (ví dụ: <code>get_trends</code> trả 404 cho topic hiếm), executor trả <code>{ error: message }</code> cho model tự xử lý, thay vì fail cả report qua 5 lần BullMQ retry.</p>
+      <div class="tech">F1 + F3 + F4 · Gemini Pro · mcp.executor + mcp.tools · Graceful tool errors</div>
     </div>
   </div>
 
@@ -492,6 +496,30 @@
   </table>
   <p style="color:var(--muted);font-size:14px"><b>Độ đầy đủ dữ liệu</b> (7 trường) hiển thị RIÊNG, <b>không trộn vào điểm giá trị</b>.</p>
 
+  <h3>Hệ thống chấm chất lượng 6 chiều (paper-quality.ts)</h3>
+  <p class="lead">Ngoài điểm giá trị (impact + recency), mỗi paper còn được chấm <b>qualityScore</b> — quyết định tier, chi phí download và phần thưởng upload.</p>
+  <table>
+    <tr><th>Chiều chấm</th><th>Điểm tối đa</th><th>Tiêu chí</th></tr>
+    <tr><td><b>Metadata</b></td><td>15</td><td>Có title (3), authors (3), year (2), abstract (4), keywords/topics (3)</td></tr>
+    <tr><td><b>Source</b></td><td>15</td><td>DOI hợp lệ (15), link arxiv/zenodo (8), link khác (10), chỉ PDF (2)</td></tr>
+    <tr><td><b>Duplicate</b></td><td>20</td><td>Unique (20), needs review (10), duplicate (0)</td></tr>
+    <tr><td><b>Relevance</b></td><td>15</td><td>Có topics + keywords + abstract ≥ 20 words → 15; 2/3 → 10; 1/3 → 5</td></tr>
+    <tr><td><b>Prestige</b></td><td>15</td><td>article/proceedings (15), review/book-chapter (10), preprint (8), khác (3)</td></tr>
+    <tr><td><b>Utility</b></td><td>15</td><td>data/software/benchmark (15), method/experiment/result (12), review (12), case study (8)</td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:14px"><b>qualityScore = Σ 6 chiều</b> (0–95) → map vào 5 tiers:</p>
+  <table>
+    <tr><th>Tier</th><th>Tên</th><th>Điểm</th><th>Download Cost</th><th>Upload Reward</th></tr>
+    <tr><td>0</td><td>Không hợp lệ</td><td>0–49</td><td>N/A</td><td>0 credit</td></tr>
+    <tr><td>1</td><td>Cơ Bản</td><td>50–64</td><td>20 credit</td><td>30 credit</td></tr>
+    <tr><td>2</td><td>Chuẩn Học Thuật</td><td>65–79</td><td>30 credit</td><td>60 credit</td></tr>
+    <tr><td>3</td><td>Giá Trị Cao</td><td>80–91</td><td>50 credit</td><td>100 credit</td></tr>
+    <tr><td>4</td><td>Tinh Hoa</td><td>92–100</td><td>80 credit</td><td>150 credit</td></tr>
+  </table>
+  <div class="callout warn">
+    <b>Quan trọng:</b> Upload reward được thiết kế sao cho bài tier cao nhất chỉ fund ~1.5 lần request (100 credit/request), tránh lạm phát credit. Papers đã nhận reward (<code>uploadRewardedAt</code> set) sẽ freeze reward cũ, không bị ảnh hưởng khi điều chỉnh bảng tier.
+  </div>
+
   <h3>Bổ sung: AI chấm bài on-demand</h3>
   <p style="color:var(--muted);font-size:14px">Điểm công thức là <b>tất định</b>. Riêng với bài người dùng upload, hệ thống cho gọi <b>Gemini chấm theo yêu cầu</b> — 3 chiều (1–5): relevance, groundedness, completeness. <b>Thuần tư vấn:</b> KHÔNG đổi tier, KHÔNG đổi credit, KHÔNG tự duyệt. Cache theo từng bài, rate-limit 20 lượt/giờ/user.</p>
 
@@ -506,6 +534,23 @@
     <tr><td><b>Bỏ năm hiện tại đang chạy dở</b> <span class="mono">(truncateToCompleteYears)</span></td><td>Năm chưa hết → chưa đủ dữ liệu → không lấy làm chuẩn</td></tr>
     <tr><td><b>3 chỉ số độc lập</b> (YoY + CAGR + Momentum)</td><td>Trend thật phải đẹp ở cả 3, không chỉ spike 1 năm</td></tr>
   </table>
+
+  <!-- GAP EVIDENCE SCORING -->
+  <h3>Công thức Gap Evidence Scoring (gap-evidence.ts)</h3>
+  <p style="color:var(--muted);font-size:14px">Khi AI đề xuất một gap ("chủ đề A giao B còn ít nghiên cứu"), hệ thống <b>tự đếm trên corpus</b> để kiểm chứng:</p>
+  <table>
+    <tr><th>Bước</th><th>Công thức / Logic</th></tr>
+    <tr><td><b>1. Đếm giao điểm</b></td><td><code>intersectionCount</code> = số paper chứa CẢ topicA VÀ topicB (regex trên title+abstract)</td></tr>
+    <tr><td><b>2. Đếm nhánh cha</b></td><td><code>parentCounts.a</code>, <code>parentCounts.b</code> = số paper mỗi nhánh riêng</td></tr>
+    <tr><td><b>3. Tính ceiling</b></td><td><code>ceiling = max(scarceAbs, floor(scarcePct × minParent), 1)</code></td></tr>
+    <tr><td><b>4. Scarcity score</b></td><td><code>scarcityScore = clamp01(1 - intersectionCount / ceiling)</code> — càng cao càng hiếm</td></tr>
+    <tr><td><b>5. Parent rising</b></td><td>Lấy YoY growth % của nhánh cha tăng nhanh hơn, so với ngưỡng <code>parentRisingMin</code></td></tr>
+    <tr><td><b>6. Confirmed</b></td><td><code>confirmed = scarce AND parent rising</code> — gap thật = hiếm VÀ nhánh cha đang tăng</td></tr>
+    <tr><td><b>7. Evidence confidence</b></td><td>Confirmed: <code>0.5 + 0.5 × scarcityScore</code>. Unconfirmed: <code>0.25 × scarcityScore</code></td></tr>
+  </table>
+  <div class="callout ok">
+    <b>Ý nghĩa:</b> Confidence là <b>số thật từ dữ liệu</b>, không phải AI tự khai. Gap "confirmed" (hiếm + nhánh cha đang tăng) được anchor ở 0.5–1.0, gap unconfirmed bị giữ ở 0–0.25. FE sort theo <code>evidenceConfidence</code> giảm dần.
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- 13. SO SÁNH VS OPENALEX -->
@@ -562,8 +607,47 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- FOOTER -->
   <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ERROR RESILIENCE -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">16.</span> Cơ chế chịu lỗi (Error Resilience)</h2>
+  <p class="lead">Hệ thống thiết kế để <b>không đốt quota vô ích</b> và <b>degrade gracefully</b> thay vì crash.</p>
+  <table>
+    <tr><th>Cơ chế</th><th>Mô tả</th><th>Áp dụng ở</th></tr>
+    <tr>
+      <td><b><code>LlmTruncationError</code></b></td>
+      <td>Output vượt maxOutputTokens → đánh dấu <code>nonRetryable = true</code>. BullMQ worker <b>không retry</b> (retry cùng budget sẽ fail y hệt). Fail fast thay vì đốt 5× quota.</td>
+      <td>Report worker, Gap worker</td>
+    </tr>
+    <tr>
+      <td><b><code>LlmContentError</code></b></td>
+      <td>JSON malformed, report quá ngắn, citation out-of-range → <code>nonRetryable</code>. Cùng input sẽ sinh cùng lỗi, retry vô ích.</td>
+      <td>Report worker, Gap worker, Compare</td>
+    </tr>
+    <tr>
+      <td><b>Deep Analysis auto-fallback</b></td>
+      <td>Khi deep analysis (Gemini Pro + tools) bị Truncation/Content error → tự động <b>fallback về classic RAG</b> (generateJSON không tools). Report vẫn hoàn thành.</td>
+      <td>rag.service.ts</td>
+    </tr>
+    <tr>
+      <td><b>Rerank negative-cache</b></td>
+      <td>Khi LLM rerank fail → cache failure 10 phút. Cùng query+filters trong 10 phút sẽ skip rerank, trả kết quả vector gốc — tránh đốt quota lặp lại.</td>
+      <td>search.service.ts</td>
+    </tr>
+    <tr>
+      <td><b>MCP tool error isolation</b></td>
+      <td>Tool throw → trả <code>{ error: message }</code> cho model. Model có thể proceed hoặc fallback. Tool error <b>KHÔNG fail pipeline</b>.</td>
+      <td>mcp.executor.ts</td>
+    </tr>
+    <tr>
+      <td><b>Non-fatal side effects</b></td>
+      <td>Audit logging, gap fan-out, MCP tool-run logging — tất cả <code>.catch()</code> non-fatal. Nếu ghi log fail, report/gap vẫn thành công.</td>
+      <td>rag.service, gaps.service, mcp.executor</td>
+    </tr>
+  </table>
+
   <div class="callout ok" style="margin-top:40px">
-    <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp 8 tính năng AI (search, trends, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, và hỗ trợ cả Gemini cloud lẫn Ollama local.
+    <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp 8 tính năng AI (search, trends, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, hỗ trợ cả Gemini cloud lẫn Ollama local, với hệ thống chịu lỗi không đốt quota vô ích.
   </div>
 </div>
 <footer>
