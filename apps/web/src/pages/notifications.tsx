@@ -54,6 +54,10 @@ export function NotificationsPage() {
     }
 
     // Navigate based on role and notification type
+    if (type === "level_up") {
+      return;
+    }
+
     if (isAdmin) {
       navigate("/admin/papers");
     } else {
