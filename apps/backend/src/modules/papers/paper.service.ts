@@ -212,11 +212,6 @@ export const paperService = {
     input: CreatePaperInput,
     pdfPath?: string,
   ): Promise<Paper> {
-    // Enforce PDF for non-admins in Direct Submission
-    if (!pdfPath && !isAdmin) {
-      throw AppError.badRequest("PDF file is required for direct submission");
-    }
-
     // 1. Duplicate check
     const duplicateFilters: Record<string, unknown>[] = [
       { title: buildTitleDuplicateRegex(input.title.trim()) },
