@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -38,7 +39,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="w-full space-y-8 select-none pb-12">
+    <div className="w-full space-y-6 select-none pb-12">
       {/* 1. Header / Hero Section based on Mode */}
       {data.mode === "guest" ? (
         <GuestHero />
@@ -49,17 +50,14 @@ export function HomePage() {
       {/* 2. Admin Health summary (If Admin Mode) */}
       {data.mode === "admin" && data.admin && <AdminHealthSummary admin={data.admin} />}
 
-      {/* 3. Guest System Snapshot (If Guest Mode) */}
-      {data.mode === "guest" && data.summary && (
+      {/* 3. System Snapshot Cards */}
+      {data.mode === "guest" && data.summary ? (
         <GuestSystemSnapshot
           summary={data.summary}
           topTrend={data.trends?.topics?.[0]?.topic}
         />
-      )}
-
-      {/* 3. Primary Workspace snapshot cards for Logged-in Users */}
-      {data.mode !== "guest" && data.workspace && (
-        <WorkspaceSnapshot workspace={data.workspace} />
+      ) : (
+        data.workspace && <WorkspaceSnapshot workspace={data.workspace} />
       )}
 
       {/* 4. Guest explanation Pipeline under Hero */}
@@ -68,13 +66,28 @@ export function HomePage() {
       {/* 5. Capability cards for Guest */}
       {data.mode === "guest" && <CapabilityCards />}
 
-      {/* 6. Dashboard grid for User / Admin */}
-      {data.mode !== "guest" && data.workspace && (
-        <WorkspaceDetailGrid workspace={data.workspace} />
-      )}
+      {/* 6. Main Cockpit Layout (Asymmetric 2-Column Grid) for Logged-in Users */}
+      {data.mode !== "guest" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Main Column (Left - 8/12) */}
+          <div className="lg:col-span-8 space-y-6">
+            <LiveVelocityChart trends={data.trends} />
+            {data.workspace && <WorkspaceActivityTabs workspace={data.workspace} />}
+            <RecentIndexedPapers recentPapers={data.recentPapers} />
+          </div>
 
-      {/* 7. Live Research Signals (Visible to all, shows data.trends) */}
-      <LiveSignalsSection trends={data.trends} recentPapers={data.recentPapers} />
+          {/* Sidebar Column (Right - 4/12) */}
+          <div className="lg:col-span-4 space-y-6">
+            <AIQuickGenerator />
+            <TrendingTopicsWidget trends={data.trends} />
+            <RisingKeywordsWidget trends={data.trends} />
+            {data.workspace && <RecentSearchesWidget workspace={data.workspace} />}
+          </div>
+        </div>
+      ) : (
+        /* Guest Layout falls back to static layout */
+        <LiveSignalsSection trends={data.trends} recentPapers={data.recentPapers} />
+      )}
     </div>
   );
 }
@@ -85,12 +98,11 @@ export function HomePage() {
 function GuestHero() {
   return (
     <div className="relative text-center py-16 md:py-24 space-y-8 max-w-4xl mx-auto overflow-hidden rounded-3xl bg-gradient-to-b from-blue-50/40 via-indigo-50/10 to-transparent dark:from-blue-950/10 dark:via-indigo-950/5 dark:to-transparent border border-slate-200/50 dark:border-slate-800/40 p-6 md:p-10 shadow-sm">
-      {/* Glow decorative effects */}
       <div className="absolute -top-12 -left-12 w-48 h-48 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs font-bold text-blue-700 dark:text-blue-400 select-none animate-pulse">
-        <Sparkles className="w-3.5 h-3.5" />
+      <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs font-bold text-blue-700 dark:text-blue-400 select-none">
+        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
         <span>Next-Gen Analytics Engine</span>
       </div>
 
@@ -126,16 +138,22 @@ function GuestHero() {
   );
 }
 
-// 2. Logged-in User Hero Section
+// 2. Logged-in User Hero Section (Vuexy Clean Greeting Cockpit)
 function UserHero({ name }: { name: string }) {
+  const formattedDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
   return (
-    <div className="relative overflow-hidden bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-      {/* Corner decoration gradient */}
+    <div className="relative overflow-hidden bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/10 dark:to-indigo-500/10 rounded-bl-full pointer-events-none" />
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white">
               Welcome back,
             </span>
@@ -144,29 +162,13 @@ function UserHero({ name }: { name: string }) {
             </span>
           </div>
           <p className="text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400">
-            Here is an overview of your research cockpit and system indicators today.
+            Overview of your research cockpit and systems.
           </p>
         </div>
 
-        {/* Quick action buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-950 h-9 px-4 active:scale-95 transition-all shadow-sm" asChild>
-            <Link to="/search">Search Papers</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-950 h-9 px-4 active:scale-95 transition-all shadow-sm" asChild>
-            <Link to="/trends">Explore Trends</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-950 h-9 px-4 active:scale-95 transition-all shadow-sm" asChild>
-            <Link to="/research-gaps">Research Gaps</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-950 h-9 px-4 active:scale-95 transition-all shadow-sm" asChild>
-            <Link to="/projects">Projects</Link>
-          </Button>
-          <Button size="sm" className="rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 active:scale-95 transition-all shadow-sm" asChild>
-            <Link to="/reports?create=true" className="flex items-center gap-1.5">
-              <Plus className="w-4 h-4" /> Create Report
-            </Link>
-          </Button>
+        <div className="text-right shrink-0">
+          <span className="text-xs font-bold text-slate-450 dark:text-slate-550 block">TODAY</span>
+          <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 block mt-0.5">{formattedDate}</span>
         </div>
       </div>
     </div>
@@ -418,7 +420,6 @@ function CapabilityCards() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {capabilities.map((c) => (
           <div key={c.title} className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#121212] p-6 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between gap-4 group">
-            {/* Visual background accents */}
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-slate-500/5 to-transparent rounded-bl-full pointer-events-none" />
 
             <div className="space-y-3">
@@ -444,321 +445,377 @@ function CapabilityCards() {
   );
 }
 
-// 8. Workspace Detail Grid (Logged-in details)
-function WorkspaceDetailGrid({ workspace }: { workspace: NonNullable<HomeOverview["workspace"]> }) {
+// 8. AI Quick Generator Widget (Vuexy-style Sidebar Item)
+function AIQuickGenerator() {
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
+
+  const handleGenerate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      navigate(`/reports?create=true&topic=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Col 1: Recent Searches */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-transparent dark:from-blue-950/10 dark:via-indigo-950/5 p-5 shadow-sm">
+      <div className="space-y-3 relative z-10">
         <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
-          <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600">
-            <History className="w-4 h-4" />
+          <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-sm">
+            <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-            Recent Searches
+          <h3 className="text-sm font-bold text-slate-850 dark:text-slate-200">
+            AI Quick Generator
           </h3>
         </div>
 
-        {workspace.recentSearches.length === 0 ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-2 select-none">
-            <Search className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
-            <p className="font-bold text-slate-400 mt-1">No recent searches yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {workspace.recentSearches.slice(0, 5).map((s, idx) => (
-              <div
-                key={`s-${idx}`}
-                onClick={() => navigate(`/search?q=${encodeURIComponent(s.query)}`)}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
-              >
-                <div className="flex items-center gap-2.5 truncate pr-2">
-                  <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 shrink-0" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" title={s.query}>
-                    {s.query}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-105 dark:bg-slate-800 px-2 py-0.5 rounded">
-                  {s.resultCount} res
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
+          Launch a comprehensive evidence-backed RAG report instantly on any research concept.
+        </p>
 
-      {/* Col 2: Latest Reports */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/60">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600">
-              <FileText className="w-4 h-4" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              Latest Reports
-            </h3>
+        <form onSubmit={handleGenerate} className="space-y-2 pt-1">
+          <input
+            type="text"
+            placeholder="Enter research topic..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+          />
+          <Button
+            type="submit"
+            className="w-full h-9 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+            disabled={!query.trim()}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Generate AI Report
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// 9. Workspace Activity Tabs (Reports & Projects Tabs)
+function WorkspaceActivityTabs({ workspace }: { workspace: NonNullable<HomeOverview["workspace"]> }) {
+  const [activeTab, setActiveTab] = useState<"reports" | "projects">("reports");
+  const navigate = useNavigate();
+
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+      {/* Header & Switchers */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600">
+            <FolderKanban className="w-4 h-4" />
           </div>
-          {workspace.latestReports.length > 0 && (
-            <Link to="/reports" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-              View All
-            </Link>
-          )}
+          <h3 className="text-sm font-bold text-slate-850 dark:text-slate-250">
+            Workspace Activity
+          </h3>
         </div>
 
-        {workspace.latestReports.length === 0 ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
-            <FileText className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
-            <p className="font-bold text-slate-400">No reports generated yet.</p>
-            <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
-              <Link to="/reports?create=true">Generate First Report</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {workspace.latestReports.slice(0, 5).map((r) => (
-              <div
-                key={r.id}
-                onClick={() => navigate(`/reports/${r.id}`)}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
-              >
-                <div className="truncate pr-2">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400" title={r.topic || r.query}>
-                    {r.topic || r.query}
-                  </span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block font-semibold">
-                    {new Date(r.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border shrink-0 ${
-                  r.status === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40" :
-                  r.status === "failed" ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/40" :
-                  "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40 animate-pulse"
-                }`}>
-                  {r.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Tab Buttons */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === "reports"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50 dark:border-slate-700/60"
+                : "text-slate-450 dark:text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            AI Reports ({workspace.reportCount})
+          </button>
+          <button
+            onClick={() => setActiveTab("projects")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === "projects"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50 dark:border-slate-700/60"
+                : "text-slate-450 dark:text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Projects ({workspace.projectCount})
+          </button>
+        </div>
       </div>
 
-      {/* Col 3: Latest Projects */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/60">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 text-purple-600">
-              <FolderKanban className="w-4 h-4" />
+      {/* Tab Contents */}
+      <div className="min-h-[160px] pt-1">
+        {activeTab === "reports" ? (
+          workspace.latestReports.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
+              <FileText className="w-8 h-8 text-slate-300 dark:text-slate-700 stroke-[1.5]" />
+              <p className="font-semibold text-slate-450">No reports generated yet.</p>
+              <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
+                <Link to="/reports?create=true">Generate First Report</Link>
+              </Button>
             </div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              Latest Projects
-            </h3>
-          </div>
-          {workspace.latestProjects.length > 0 && (
-            <Link to="/projects" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-              View All
-            </Link>
-          )}
-        </div>
-
-        {workspace.latestProjects.length === 0 ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
-            <FolderKanban className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
-            <p className="font-bold text-slate-400">No research projects created.</p>
-            <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
-              <Link to="/projects">Create Project</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {workspace.latestProjects.slice(0, 5).map((p) => (
-              <div
-                key={p.id}
-                onClick={() => navigate(`/projects/${p.id}`)}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
-              >
-                <div className="truncate pr-2">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400" title={p.title}>
-                    {p.title}
-                  </span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block font-semibold">
-                    Updated: {new Date(p.updatedAt).toLocaleDateString()}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {workspace.latestReports.slice(0, 4).map((r) => (
+                <div
+                  key={r.id}
+                  onClick={() => navigate(`/reports/${r.id}`)}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/65 hover:border-blue-250 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
+                >
+                  <div className="truncate pr-2 space-y-1">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-350 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={r.topic || r.query}>
+                      {r.topic || r.query}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-semibold">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border shrink-0 ${
+                    r.status === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40" :
+                    r.status === "failed" ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/40" :
+                    "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40 animate-pulse"
+                  }`}>
+                    {r.status}
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-105 dark:bg-slate-800 px-2 py-0.5 rounded shrink-0">
-                  {p.paperCount} papers
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
+        ) : (
+          workspace.latestProjects.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
+              <FolderKanban className="w-8 h-8 text-slate-300 dark:text-slate-700 stroke-[1.5]" />
+              <p className="font-semibold text-slate-450">No projects created yet.</p>
+              <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
+                <Link to="/projects">Create Project</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {workspace.latestProjects.slice(0, 4).map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => navigate(`/projects/${p.id}`)}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/65 hover:border-blue-250 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
+                >
+                  <div className="truncate pr-2 space-y-1">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-350 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={p.title}>
+                      {p.title}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-semibold">
+                      Updated: {new Date(p.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded shrink-0">
+                    {p.paperCount} papers
+                  </span>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
     </div>
   );
 }
 
-// 8. Live Research Signals (Publication Velocity + Trending Topics + Rising Keywords)
-function LiveSignalsSection({
-  trends,
-  recentPapers
-}: {
-  trends: HomeOverview["trends"];
-  recentPapers: HomeOverview["recentPapers"];
-}) {
-  const navigate = useNavigate();
-
-  // Xử lý dữ liệu Velocity và gán YTD nếu cần
+// 10. Live Velocity Chart
+function LiveVelocityChart({ trends }: { trends: HomeOverview["trends"] }) {
   const velocityData = (trends.yearlyTotalPapers || []).map((p: any) => ({
     name: p.year > trends.lastCompleteYear ? `${p.year} (YTD)` : p.year.toString(),
     value: p.count
   }));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-slate-200 dark:border-slate-800 pt-8">
-      {/* Main Column: Chart & Recent Papers */}
-      <div className="lg:col-span-8 space-y-8">
-        {/* Publication Velocity Chart */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-              Publication Velocity
-            </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">
-              Annual volume of academic papers indexed within the current corpus scope.
-            </p>
-          </div>
-
-          <div className="h-52 w-full text-xs pt-2 select-none">
-            {velocityData.length === 0 ? (
-              <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs select-none">
-                No yearly trend data yet. Sync more papers to populate this chart.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={velocityData} barSize={28}>
-                  <Tooltip
-                    cursor={{ fill: "transparent" }}
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "none",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      backgroundColor: "rgba(255, 255, 255, 0.95)"
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Papers */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-widest">
-              Recent Indexed Papers
-            </h3>
-            <Button variant="link" size="sm" className="text-xs font-bold p-0 h-auto" asChild>
-              <Link to="/search">Explore Library</Link>
-            </Button>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {recentPapers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl select-none">
-                No recent papers found. Click "Explore Library" to run search.
-              </div>
-            ) : (
-              recentPapers.map((paper) => (
-                <PaperCard
-                  key={paper.id}
-                  id={paper.id}
-                  journal={paper.journalName || "Unknown Journal"}
-                  date={paper.publicationDate ? new Date(paper.publicationDate).toLocaleDateString() : paper.publicationYear.toString()}
-                  title={paper.title}
-                  abstract={paper.abstractText || "No abstract available"}
-                  authors={paper.authors?.map((a: any) => a.displayName).join(", ") || "Unknown Author"}
-                  score={paper.dataQualityScore?.toFixed(2) || "N/A"}
-                />
-              ))
-            )}
-          </div>
-        </div>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+      <div>
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+          Publication Velocity
+        </h3>
+        <p className="text-[10px] text-slate-450 mt-0.5 font-semibold">
+          Annual volume of academic papers indexed within the current corpus scope.
+        </p>
       </div>
 
-      {/* Sidebar Column: Topics & Keywords */}
-      <div className="lg:col-span-4 space-y-6">
-        {/* Trending Topics */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-slate-400" />
-            Trending Topics
-          </h3>
-          <div className="flex flex-wrap gap-2 pt-1 select-none">
-            {trends.topics.length === 0 ? (
-              <span className="text-xs text-slate-400">No trending topics.</span>
-            ) : (
-              trends.topics.slice(0, 6).map((topic, idx) => {
-                const colors = [
-                  "bg-blue-50/80 text-blue-700 border-blue-200/50 hover:bg-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40",
-                  "bg-emerald-50/80 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40",
-                  "bg-purple-50/80 text-purple-700 border-purple-200/50 hover:bg-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40",
-                  "bg-slate-50/80 text-slate-700 border-slate-200/50 hover:bg-slate-100 dark:bg-slate-850 dark:text-slate-300 dark:border-slate-700/60"
-                ];
-                const colorClass = colors[idx % colors.length];
-                return (
-                  <button
-                    key={topic.topic}
-                    onClick={() => navigate(`/trends/${encodeURIComponent(topic.topic)}`)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg border hover:scale-[1.02] transition-all text-left shadow-sm active:scale-95 duration-200 ${colorClass}`}
-                  >
-                    {topic.topic}
-                  </button>
-                );
-              })
-            )}
+      <div className="h-52 w-full text-xs pt-2 select-none">
+        {velocityData.length === 0 ? (
+          <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs">
+            No yearly trend data yet. Sync more papers to populate this chart.
           </div>
-        </div>
-
-        {/* Rising Keywords */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-slate-400" />
-            Rising Keywords
-          </h3>
-          <ul className="space-y-2.5 text-xs">
-            {trends.risingKeywords.length === 0 ? (
-              <li className="text-slate-400">No rising keywords.</li>
-            ) : (
-              trends.risingKeywords.slice(0, 8).map((k, idx) => (
-                <li
-                  key={`k-${idx}`}
-                  onClick={() => navigate(`/search?q=${encodeURIComponent(k.keyword)}`)}
-                  className="p-3 border border-slate-200/60 dark:border-slate-800/60 rounded-xl hover:bg-blue-50/30 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-300 space-y-1.5 hover:border-blue-300 hover:translate-x-0.5 hover:shadow-sm"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{k.keyword}</span>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
-                      +{Math.round(k.growthRatePct)}%
-                    </span>
-                  </div>
-                  {(k as any).warning && (
-                    <div className="flex items-center gap-1 text-[9.5px] text-amber-600 font-mono">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{(k as any).warning}</span>
-                    </div>
-                  )}
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={velocityData} barSize={28}>
+              <Tooltip
+                cursor={{ fill: "transparent" }}
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  backgroundColor: "rgba(255, 255, 255, 0.95)"
+                }}
+              />
+              <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
 }
 
-// 9. Standard KPI Card Sub-component
+// 11. Recent Indexed Papers
+function RecentIndexedPapers({ recentPapers }: { recentPapers: HomeOverview["recentPapers"] }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
+        <h3 className="text-sm font-bold text-slate-850 dark:text-white uppercase tracking-widest">
+          Recent Indexed Papers
+        </h3>
+        <Button variant="link" size="sm" className="text-xs font-bold p-0 h-auto" asChild>
+          <Link to="/search">Explore Library</Link>
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {recentPapers.length === 0 ? (
+          <div className="py-12 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl select-none">
+            No recent papers found. Click "Explore Library" to run search.
+          </div>
+        ) : (
+          recentPapers.map((paper) => (
+            <PaperCard
+              key={paper.id}
+              id={paper.id}
+              journal={paper.journalName || "Unknown Journal"}
+              date={paper.publicationDate ? new Date(paper.publicationDate).toLocaleDateString() : paper.publicationYear.toString()}
+              title={paper.title}
+              abstract={paper.abstractText || "No abstract available"}
+              authors={paper.authors?.map((a: any) => a.displayName).join(", ") || "Unknown Author"}
+              score={paper.dataQualityScore?.toFixed(2) || "N/A"}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 12. Trending Topics Sidebar Widget
+function TrendingTopicsWidget({ trends }: { trends: HomeOverview["trends"] }) {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+      <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-slate-400" />
+        Trending Topics
+      </h3>
+      <div className="flex flex-wrap gap-2 pt-1 select-none">
+        {trends.topics.length === 0 ? (
+          <span className="text-xs text-slate-400">No trending topics.</span>
+        ) : (
+          trends.topics.slice(0, 6).map((topic, idx) => {
+            const colors = [
+              "bg-blue-50/80 text-blue-750 border-blue-200/50 hover:bg-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40",
+              "bg-emerald-50/80 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40",
+              "bg-purple-50/80 text-purple-700 border-purple-200/50 hover:bg-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40",
+              "bg-slate-50/80 text-slate-700 border-slate-200/50 hover:bg-slate-100 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60"
+            ];
+            const colorClass = colors[idx % colors.length];
+            return (
+              <button
+                key={topic.topic}
+                onClick={() => navigate(`/trends/${encodeURIComponent(topic.topic)}`)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border hover:scale-[1.02] transition-all text-left shadow-sm active:scale-95 duration-200 ${colorClass}`}
+              >
+                {topic.topic}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 13. Rising Keywords Sidebar Widget
+function RisingKeywordsWidget({ trends }: { trends: HomeOverview["trends"] }) {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+      <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-slate-400" />
+        Rising Keywords
+      </h3>
+      <ul className="space-y-2.5 text-xs">
+        {trends.risingKeywords.length === 0 ? (
+          <li className="text-slate-400">No rising keywords.</li>
+        ) : (
+          trends.risingKeywords.slice(0, 8).map((k, idx) => (
+            <li
+              key={`k-${idx}`}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(k.keyword)}`)}
+              className="p-3 border border-slate-100 dark:border-slate-800/60 rounded-xl hover:bg-blue-50/30 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-300 space-y-1.5 hover:border-blue-300 hover:translate-x-0.5 hover:shadow-sm"
+            >
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-slate-850 dark:text-slate-200">{k.keyword}</span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                  +{Math.round(k.growthRatePct)}%
+                </span>
+              </div>
+              {(k as any).warning && (
+                <div className="flex items-center gap-1 text-[9.5px] text-amber-600 font-mono">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{(k as any).warning}</span>
+                </div>
+              )}
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}
+
+// 14. Recent Searches Sidebar Widget (Moved to Sidebar Column)
+function RecentSearchesWidget({ workspace }: { workspace: NonNullable<HomeOverview["workspace"]> }) {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+      <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
+        <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600">
+          <History className="w-4 h-4" />
+        </div>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          Recent Searches
+        </h3>
+      </div>
+
+      {workspace.recentSearches.length === 0 ? (
+        <div className="py-8 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-2 select-none">
+          <Search className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
+          <p className="font-bold text-slate-400 mt-1">No recent searches yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {workspace.recentSearches.slice(0, 5).map((s, idx) => (
+            <div
+              key={`s-${idx}`}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(s.query)}`)}
+              className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-2.5 truncate pr-2">
+                <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 shrink-0" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" title={s.query}>
+                  {s.query}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded">
+                {s.resultCount} res
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 15. Standard KPI Card Sub-component
 function KPICard({
   title,
   value,
@@ -785,18 +842,18 @@ function KPICard({
     >
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <span className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block">
             {title}
           </span>
           <span className="text-3xl font-bold text-slate-900 dark:text-white block font-sans leading-none">
             {typeof value === "number" ? value.toLocaleString() : value}
           </span>
         </div>
-        <div className={`p-3 rounded-xl ${
+        <div className={`p-3 rounded-xl transition-all duration-350 ${
           isNeutral
-            ? "bg-slate-50 dark:bg-slate-800/80 text-slate-450 dark:text-slate-400"
+            ? "bg-slate-55 dark:bg-slate-800/80 text-slate-450 dark:text-slate-400"
             : "bg-blue-50/80 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
-        } transition-all duration-300`}>
+        }`}>
           {icon}
         </div>
       </div>
@@ -804,7 +861,91 @@ function KPICard({
   );
 }
 
-// 10. Home Skeletons (Loading state)
+// 16. Live Signals Section (Static fallback/Guest mode)
+function LiveSignalsSection({
+  trends,
+  recentPapers
+}: {
+  trends: HomeOverview["trends"];
+  recentPapers: HomeOverview["recentPapers"];
+}) {
+  const navigate = useNavigate();
+  const velocityData = (trends.yearlyTotalPapers || []).map((p: any) => ({
+    name: p.year > trends.lastCompleteYear ? `${p.year} (YTD)` : p.year.toString(),
+    value: p.count
+  }));
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-slate-200 dark:border-slate-800 pt-8">
+      <div className="lg:col-span-8 space-y-8">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+              Publication Velocity
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">
+              Annual volume of academic papers indexed within the current corpus scope.
+            </p>
+          </div>
+          <div className="h-52 w-full text-xs pt-2 select-none">
+            {velocityData.length === 0 ? (
+              <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs">
+                No yearly trend data yet. Sync more papers to populate this chart.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={velocityData} barSize={28}>
+                  <Tooltip
+                    cursor={{ fill: "transparent" }}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "none",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                      backgroundColor: "rgba(255, 255, 255, 0.95)"
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
+            <h3 className="text-sm font-bold text-slate-850 dark:text-white uppercase tracking-widest">
+              Recent Indexed Papers
+            </h3>
+            <Button variant="link" size="sm" className="text-xs font-bold p-0 h-auto" asChild>
+              <Link to="/search">Explore Library</Link>
+            </Button>
+          </div>
+          <div className="flex flex-col gap-4">
+            {recentPapers.map((paper) => (
+              <PaperCard
+                key={paper.id}
+                id={paper.id}
+                journal={paper.journalName || "Unknown Journal"}
+                date={paper.publicationDate ? new Date(paper.publicationDate).toLocaleDateString() : paper.publicationYear.toString()}
+                title={paper.title}
+                abstract={paper.abstractText || "No abstract available"}
+                authors={paper.authors?.map((a: any) => a.displayName).join(", ") || "Unknown Author"}
+                score={paper.dataQualityScore?.toFixed(2) || "N/A"}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="lg:col-span-4 space-y-6">
+        <TrendingTopicsWidget trends={trends} />
+        <RisingKeywordsWidget trends={trends} />
+      </div>
+    </div>
+  );
+}
+
+// 17. Home Skeletons (Loading state)
 function HomeSkeleton() {
   return (
     <div className="w-full space-y-8">
@@ -828,7 +969,7 @@ function HomeSkeleton() {
   );
 }
 
-// 11. Home Error Fallback View
+// 18. Home Error Fallback View
 function HomeErrorFallback() {
   return (
     <div className="w-full max-w-md mx-auto py-20 text-center space-y-5">
