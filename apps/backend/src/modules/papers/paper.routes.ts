@@ -13,12 +13,32 @@ import { CompareBodySchema } from "./dto/compare.schema.js";
 import { embeddingQueue } from "../../infrastructure/queue.js";
 import { env } from "../../config/env.js";
 
+import { UserModel } from "../auth/models/user.model.js";
+import type { AuthClaims } from "../../common/middleware/auth.js";
+
 export const paperRouter: Router = Router();
+
+const parseOptionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    const token = header.slice("Bearer ".length);
+    try {
+      const claims = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthClaims;
+      const user = await UserModel.findById(claims.sub).select("isActive role").lean();
+      if (user && user.isActive !== false) {
+        req.user = { ...claims, role: user.role };
+      }
+    } catch {
+      // Ignore token verification failures for optional auth
+    }
+  }
+  next();
+};
 
 /**
  * GET /papers — keyword search + server-side filters + sort + pagination (with adminView support).
  */
-paperRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
+paperRouter.get("/", parseOptionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isAdmin = (req.user?.role as string) === "admin";
     // Admin hitting / with status filter → admin list
