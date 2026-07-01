@@ -5,6 +5,8 @@ export function useNotifications(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationsApi.list(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     ...options,
   });
 }

@@ -44,7 +44,12 @@ export function NotificationsPage() {
     }
   };
 
-  const handleNotificationClick = async (id: string, isRead: boolean, type: string) => {
+  const handleNotificationClick = async (
+    id: string, 
+    isRead: boolean, 
+    targetKind: string | null, 
+    targetId: string | null
+  ) => {
     if (!isRead) {
       try {
         await markReadMutation.mutateAsync(id);
@@ -53,7 +58,15 @@ export function NotificationsPage() {
       }
     }
 
-    // Navigate based on role and notification type
+    if (targetKind && targetId) {
+      if (targetKind === "paper") navigate(`/papers/${targetId}`);
+      else if (targetKind === "report") navigate(`/reports/${targetId}`);
+      else if (targetKind === "gap") navigate(`/gaps/${targetId}`);
+      else if (targetKind === "project") navigate(`/projects/${targetId}`);
+      return;
+    }
+
+    // Navigate based on role and notification type (legacy fallback)
     if (isAdmin) {
       navigate("/admin/papers");
     } else {
@@ -196,7 +209,7 @@ export function NotificationsPage() {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => handleNotificationClick(item.id, item.isRead, item.type)}
+                    onClick={() => handleNotificationClick(item.id, item.isRead, item.targetKind, item.targetId)}
                     className={`border rounded-xl p-5 relative cursor-pointer transition-all hover:border-slate-300 dark:hover:border-zinc-700 ${
                       item.isRead
                         ? "bg-white dark:bg-[#121212] border-slate-200 dark:border-slate-800"

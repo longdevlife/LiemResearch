@@ -1,15 +1,6 @@
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  paperId: string | null;
-  isRead: boolean;
-  createdAt: string;
-}
+import type { NotificationItem } from "@trend/shared-types";
 
 export const notificationsApi = {
   async list(): Promise<NotificationItem[]> {
