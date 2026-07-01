@@ -6,6 +6,41 @@ import { useNavigate } from "react-router-dom";
 import { useTrendsOverview } from "@/features/trends/hooks/use-trends";
 import { getRisingKeywordTarget, getTopicTrendTarget } from "./trends.navigation";
 
+function getTopicMetric(topic: {
+  totalPapers: number;
+  growthRatePct: number;
+  momentum: number;
+}, sortBy: "momentum" | "growth" | "total") {
+  if (sortBy === "growth") return topic.growthRatePct;
+  if (sortBy === "total") return topic.totalPapers;
+  return topic.momentum;
+}
+
+function CustomBarTooltip({ active, payload }: any) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const formatValue = (val: number) => {
+      if (typeof val !== 'number') return '-';
+      return val > 0 ? `+${val.toFixed(1)}` : val.toFixed(1);
+    };
+    return (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-lg text-xs select-none">
+        <p className="font-extrabold text-slate-900 dark:text-white mb-2">{data.topic}</p>
+        <div className="space-y-1.5 text-slate-600 dark:text-slate-400 font-medium">
+          <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            Value: {formatValue(data.value)}
+          </p>
+          <p>Total papers: <span className="text-slate-900 dark:text-white font-bold">{data.totalPapers}</span></p>
+          <p>Growth: <span className="text-slate-900 dark:text-white font-bold">+{data.growthRatePct.toFixed(1)}%</span></p>
+          <p>Momentum: <span className="text-slate-900 dark:text-white font-bold">+{data.momentum.toFixed(2)} papers/year</span></p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function TrendsPage() {
   const navigate = useNavigate();
 
@@ -15,7 +50,7 @@ export function TrendsPage() {
   const [sortBy, setSortBy] = useState<"momentum" | "growth" | "total">("momentum");
   const [minPapers, setMinPapers] = useState<number>(2);
 
-  const { data, isLoading } = useTrendsOverview({
+  const { data, isLoading, isError } = useTrendsOverview({
     yearFrom,
     yearTo,
     sortBy,
@@ -38,16 +73,25 @@ export function TrendsPage() {
   const barChartData = useMemo(() => {
     if (!data?.topics) return [];
     return data.topics
-      .map((t) => ({ topic: t.topic, count: t.totalPapers }))
-      .sort((a, b) => b.count - a.count)
+      .map((t) => ({
+        topic: t.topic,
+        value: getTopicMetric(t, sortBy),
+        totalPapers: t.totalPapers,
+        growthRatePct: t.growthRatePct,
+        momentum: t.momentum,
+      }))
+      .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-  }, [data]);
+  }, [data, sortBy]);
 
   const keywordsData = useMemo(() => {
     if (!data?.risingKeywords) return [];
     return data.risingKeywords.map((k) => ({
       keyword: k.keyword,
+      growthRatePct: k.growthRatePct,
       growth: `+${k.growthRatePct}%`,
+      totalPapers: k.totalPapers,
+      yearlyBreakdown: k.yearlyBreakdown,
       status: k.growthRatePct > 100 ? "Hot" : "Rising",
     }));
   }, [data]);
@@ -126,13 +170,14 @@ export function TrendsPage() {
 
         {/* Min Papers */}
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-slate-500 font-medium">Min Papers:</span>
+          <span className="text-xs text-slate-500 font-medium" title="Hide noisy topics with fewer than this many papers in the selected window.">Min Papers:</span>
           <input
             type="number"
             value={minPapers}
             min="1"
             onChange={(e) => setMinPapers(parseInt(e.target.value, 10) || 1)}
             className="w-16 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            title="Hide noisy topics with fewer than this many papers in the selected window."
           />
         </div>
 
@@ -146,8 +191,20 @@ export function TrendsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {isError ? (
+      <div className="w-full min-h-[350px] flex flex-col items-center justify-center text-center bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
+        <p className="text-lg font-bold text-slate-900 dark:text-white">Failed to load trends data.</p>
+        <p className="text-sm text-slate-500 mt-2">Please check your network connection or adjust your filters and try again.</p>
+      </div>
+    ) : !data?.topics?.length ? (
+      <div className="w-full min-h-[350px] flex flex-col items-center justify-center text-center bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
+        <p className="text-lg font-bold text-slate-900 dark:text-white">No trends found.</p>
+        <p className="text-sm text-slate-500 mt-2">Try lowering "Min Papers" or expanding the year range to see more topics.</p>
+      </div>
+    ) : (
+      <>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <KPICard
           title="Total Papers"
           value={data?.totalPapersInWindow?.toLocaleString() || "0"}
@@ -167,16 +224,32 @@ export function TrendsPage() {
           icon={<Sparkles className="w-5 h-5 text-emerald-600" />}
         />
         <KPICard
-          title="Avg Citations"
-          value="23.4"
-          subtitle="Per published paper"
-          icon={<span className="text-amber-500 font-bold text-lg font-serif italic">99</span>}
+          title="Metric Window"
+          value={`${data?.yearFrom ?? "-"}-${data?.lastCompleteYear ?? "-"}`}
+          subtitle={data?.yearTo && data.yearTo > data.lastCompleteYear ? `${data.yearTo} shown as YTD` : "Complete years only"}
+          icon={<Calendar className="w-5 h-5 text-amber-600" />}
         />
+      </div>
+
+      {/* Metrics Explanation Strip */}
+      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-xl px-4 py-3 mb-8 text-xs text-slate-500 dark:text-slate-400 flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-sm select-none">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span>
+            <strong>Momentum</strong> = trend slope in papers/year. <strong>Growth</strong> = year-over-year change using the last complete year. Current-year data is shown as YTD and excluded from growth math.
+          </span>
+        </div>
+        <div className="text-slate-400 dark:text-slate-500 font-semibold md:text-right shrink-0">
+          Metrics computed through {data?.lastCompleteYear ?? "-"}. {data?.yearTo && data.yearTo > (data.lastCompleteYear ?? 0) ? `${data.yearTo} is YTD.` : ""}
+        </div>
       </div>
 
       {/* Main Area Chart */}
       <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm mb-8">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Publications per year</h3>
+        <div className="mb-6">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Publications per year across displayed topics</h3>
+          <p className="text-xs text-slate-500 mt-1">This chart sums yearly paper counts for the topics currently shown below, not necessarily every paper in the corpus.</p>
+        </div>
         <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={areaChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -223,7 +296,9 @@ export function TrendsPage() {
 
         {/* Left: Bar Chart Top Topics (7 columns) */}
         <div className="lg:col-span-7 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Top Topics</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">
+            {sortBy === "growth" ? "Top Topics by Growth" : sortBy === "total" ? "Top Topics by Total Papers" : "Top Topics by Momentum"}
+          </h3>
           <div className="flex-1 w-full min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barChartData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
@@ -238,9 +313,9 @@ export function TrendsPage() {
                 />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  content={<CustomBarTooltip />}
                 />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={24}>
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
                   {barChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -266,7 +341,9 @@ export function TrendsPage() {
               <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 dark:bg-slate-900/20">
                 <tr>
                   <th className="px-6 py-3 font-medium">Keyword</th>
+                  <th className="px-6 py-3 font-medium text-right">Papers</th>
                   <th className="px-6 py-3 font-medium text-right">Growth</th>
+                  <th className="px-6 py-3 font-medium text-center">Trend</th>
                   <th className="px-6 py-3 font-medium text-center">Status</th>
                 </tr>
               </thead>
@@ -277,12 +354,29 @@ export function TrendsPage() {
                       <button
                         onClick={() => navigate(getRisingKeywordTarget(row.keyword))}
                         className="hover:text-blue-600 transition-colors text-left"
+                        title={`Search papers about ${row.keyword}`}
                       >
                         {row.keyword}
                       </button>
                     </td>
+                    <td className="px-6 py-4 text-right font-medium text-slate-700 dark:text-slate-300">
+                      {row.totalPapers}
+                    </td>
                     <td className="px-6 py-4 text-right font-bold text-emerald-600">
                       {row.growth}
+                    </td>
+                    <td className="px-6 py-2">
+                      {row.yearlyBreakdown && row.yearlyBreakdown.length > 0 && (
+                        <div className="flex justify-center items-center">
+                          <div className="h-6 w-16 opacity-85 hover:opacity-100 transition-opacity">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={row.yearlyBreakdown.map((y) => ({ year: String(y.year), count: y.count }))}>
+                                <Area type="monotone" dataKey="count" stroke="#10b981" fill="#ecfdf5" strokeWidth={1.5} fillOpacity={0.5} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -301,7 +395,9 @@ export function TrendsPage() {
         </div>
 
       </div>
-    </div>
+    </>
+  )}
+  </div>
   );
 }
 
