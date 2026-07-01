@@ -239,40 +239,7 @@ export function ReportViewerPage() {
               </>
             )}
 
-            <h2 id="publication-growth" className="text-[22px] font-semibold text-slate-900 dark:text-white mb-4">Publication Volume Growth</h2>
-            <p className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-8">
-              Analysis of major academic databases reveals a &gt;400% year-over-year increase in papers discussing "GPT", "LLM", and "Education" simultaneously starting in early 2023 <a href="#" className="font-mono text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded no-underline">[2]</a>.
-            </p>
 
-            {/* Recharts BarChart */}
-            <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 mb-12 shadow-sm">
-              <div className="flex items-center justify-end mb-4">
-                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Publications per Year</span>
-              </div>
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={growthData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barGap={2} barCategoryGap="10%">
-                    <XAxis 
-                      dataKey="year" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} 
-                      dy={10}
-                    />
-                    <Tooltip 
-                      cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                    />
-                    <Bar dataKey="volume" radius={[2, 2, 0, 0]}>
-                      {growthData.map((entry, index) => {
-                         const colors = ["#dbeafe", "#bfdbfe", "#93c5fd", "#1e3a8a", "#1e3a8a"]; // Matching the shades in the design
-                         return <Cell key={`cell-${index}`} fill={colors[index]} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
             <div className="flex items-center justify-between mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3 print:border-none print:pb-0">
               <h2 id="research-gaps" className="text-[22px] font-semibold text-slate-900 dark:text-white m-0 border-none pb-0">Identified Research Gaps</h2>

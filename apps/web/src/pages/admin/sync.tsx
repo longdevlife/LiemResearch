@@ -1,7 +1,8 @@
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
-import { useSyncRuns, useTriggerSync, type ApiSyncRun } from "@/features/admin";
+import { useSyncRuns, useTriggerSync, useEmbedStatus, useTriggerEmbedding } from "@/features/admin/hooks/use-admin-sync";
+import type { ApiSyncRun } from "@/features/admin/api/admin.api";
 import { useState } from "react";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
@@ -50,11 +51,27 @@ export function AdminSyncPage() {
 
   const { data: runs, isLoading, isError, refetch } = useSyncRuns(isAdmin);
   const triggerSyncMutation = useTriggerSync();
+  const { data: embedStatus, isLoading: isEmbedStatusLoading, refetch: refetchEmbedStatus } = useEmbedStatus(isAdmin);
+  const triggerEmbedMutation = useTriggerEmbedding();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("large language model education");
   const [yearFrom, setYearFrom] = useState(2022);
   const [maxPages, setMaxPages] = useState(1);
+
+  const handleTriggerEmbed = () => {
+    triggerEmbedMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Embedding job queued successfully!");
+        refetchEmbedStatus();
+      },
+      onError: (err: any) => {
+        const axiosErr = err as AxiosError<{ error?: { message?: string } }>;
+        const errMsg = axiosErr?.response?.data?.error?.message ?? "Failed to trigger embedding.";
+        toast.error(errMsg);
+      }
+    });
+  };
 
   if (!isAdmin) {
     return (
@@ -272,6 +289,66 @@ export function AdminSyncPage() {
             Authorized administrators only
           </p>
         </div>
+      </div>
+
+      {/* A1: Vector Embedding Status & Controls Card */}
+      <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+          <div>
+            <h2 className="text-base font-bold tracking-tight text-[#111111] dark:text-white">Vector Embedding Pipeline</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Generate 768-dimensional embeddings using Gemini to make papers searchable by AI.
+            </p>
+          </div>
+          <Button
+            onClick={handleTriggerEmbed}
+            disabled={triggerEmbedMutation.isPending || embedStatus?.pendingPapers === 0 || embedStatus?.isEmbeddingActive}
+            className="bg-blue-700 hover:bg-blue-800 text-white font-bold h-9 px-4 gap-2 rounded-lg shadow-sm transition-all active:scale-[0.98] duration-100 text-xs"
+          >
+            {triggerEmbedMutation.isPending || embedStatus?.isEmbeddingActive ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5 fill-current" />
+            )}
+            {embedStatus?.isEmbeddingActive ? "Embedding Active..." : "Trigger Embedding"}
+          </Button>
+        </div>
+
+        {isEmbedStatusLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        ) : embedStatus ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">AI-Analyzable Papers</span>
+              <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white block mt-1">
+                {embedStatus.totalPapers}
+              </span>
+              <span className="text-[10px] text-slate-400">Papers passing the quality gate</span>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Embedded Papers</span>
+              <span className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 block mt-1">
+                {embedStatus.embeddedPapers}
+              </span>
+              <span className="text-[10px] text-slate-400">Vector representation active in search index</span>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Pending Embeddings</span>
+              <span className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 block mt-1">
+                {embedStatus.pendingPapers}
+              </span>
+              <span className="text-[10px] text-slate-400">Papers awaiting embedding job</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-red-500">Failed to load embedding status.</p>
+        )}
       </div>
 
       {/* Run History List */}

@@ -20,6 +20,15 @@ export interface PaperCardProps {
   isBookmarked?: boolean;
   bookmarkId?: string;
   showBookmark?: boolean;
+  publicationYear?: number;
+  citationCount?: number;
+  primaryProvider?: string;
+  paperKind?: string;
+  openAccessUrl?: string;
+  dataQualityScore?: number;
+  aiScore?: number;
+  rerankScore?: number;
+  searchMode?: "semantic" | "keyword";
 }
 
 export function PaperCard({
@@ -35,15 +44,19 @@ export function PaperCard({
   isBookmarked = false,
   bookmarkId,
   showBookmark = false,
+  publicationYear,
+  citationCount,
+  primaryProvider,
+  paperKind,
+  openAccessUrl,
+  dataQualityScore,
+  aiScore,
+  rerankScore,
+  searchMode = "semantic",
 }: PaperCardProps) {
   const navigate = useNavigate();
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
-
-  const isHigh = parseFloat(score) >= 0.8;
-  const badgeColors = isHigh
-    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
-    : "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400";
 
   const handleBookmarkToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -68,92 +81,154 @@ export function PaperCard({
     }
   };
 
+  const isSemantic = searchMode === "semantic" && score !== "N/A" && score !== undefined;
+  const hasRerank = rerankScore !== undefined;
+
   return (
-    <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative">
-      {/* Title & Score */}
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <Link
-          to={`/papers/${id}`}
-          className="text-lg font-bold text-blue-900 dark:text-blue-100 leading-tight pr-16 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer block"
-        >
-          {title}
-        </Link>
-        <div className="flex items-center gap-2 shrink-0">
-          {showBookmark && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 rounded-full transition-colors ${
-                isBookmarked
-                  ? "text-amber-500 hover:text-amber-600 bg-amber-500/10 hover:bg-amber-500/20"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-              onClick={handleBookmarkToggle}
-              disabled={createBookmark.isPending || deleteBookmark.isPending}
+    <div className="bg-gradient-to-br from-white via-white to-slate-50/40 dark:from-[#151518] dark:via-[#121212] dark:to-[#181820]/30 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_-6px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 hover:border-indigo-200/80 dark:hover:border-indigo-900/60 transition-all duration-300 relative flex flex-col justify-between min-h-[190px]">
+      <div>
+        {/* Title & Actions */}
+        <div className="flex items-start justify-between gap-4 mb-2.5">
+          <div className="flex-1 min-w-0">
+            <Link
+              to={`/papers/${id}`}
+              className="text-[19px] font-extrabold text-slate-800 dark:text-slate-100 leading-snug hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer block mb-2 transition-colors duration-200"
             >
-              <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
-            </Button>
-          )}
+              {title}
+            </Link>
 
-          <AddToProjectDropdown paperId={id} />
+            {/* S5: Rich Academic Metadata (Primary) */}
+            <div className="text-[12.5px] font-medium text-slate-400 dark:text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1 select-none">
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{authors}</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-slate-500 dark:text-slate-300">{journal}</span>
+              {publicationYear && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                  <span>{publicationYear}</span>
+                </>
+              )}
+              {citationCount !== undefined && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                  <span>Citations: {citationCount}</span>
+                </>
+              )}
+              {paperKind && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                  <span className="capitalize">{paperKind}</span>
+                </>
+              )}
+              {openAccessUrl && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                  <span className="bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-150 dark:border-emerald-500/20 text-emerald-650 dark:text-emerald-450 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Open Access
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
 
-          <div
-            className={`flex flex-col items-center justify-center border rounded-lg px-2 py-1 shrink-0 ${badgeColors}`}
-            title="AI Relevance Score"
-          >
-            <span className="font-extrabold text-sm flex items-center leading-none">
-              <span className="w-2.5 h-2.5 bg-current opacity-20 rounded-full inline-block mr-1"></span>
-              {score}
-            </span>
+          <div className="flex items-center gap-1.5 shrink-0 select-none">
+            {showBookmark && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-full transition-colors ${
+                  isBookmarked
+                    ? "text-amber-500 hover:text-amber-600 bg-amber-500/10 hover:bg-amber-500/20"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+                onClick={handleBookmarkToggle}
+                disabled={createBookmark.isPending || deleteBookmark.isPending}
+              >
+                <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+              </Button>
+            )}
+
+            <AddToProjectDropdown paperId={id} />
           </div>
         </div>
-      </div>
 
-      {/* Meta Info */}
-      <div className="text-xs font-medium text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 mb-4">
-        <span className="text-slate-700 dark:text-slate-300 font-bold">{authors}</span>
-        <span className="text-slate-300 dark:text-slate-600">•</span>
-        <span>{journal}</span>
-        {date && (
-          <>
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-            <span>{date}</span>
-          </>
-        )}
-        {doi && (
-          <>
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-            <a
-              href={`https://doi.org/${doi}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {doi} <ExternalLink className="w-3 h-3" />
-            </a>
-          </>
+        {/* Abstract */}
+        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mt-4 mb-4 border-l-2 border-slate-200/80 dark:border-slate-800 pl-4 italic">
+          {abstract}
+        </p>
+
+        {/* Keywords */}
+        {keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {keywords.map((kw) => (
+              <span
+                key={kw}
+                className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border border-slate-200/40 dark:border-slate-800 px-2.5 py-0.5 rounded-md text-[11px] font-medium hover:bg-indigo-50/50 hover:text-indigo-600 hover:border-indigo-200 dark:hover:bg-indigo-950/20 dark:hover:text-indigo-400 dark:hover:border-indigo-900/50 transition-all duration-200"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Abstract */}
-      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4">
-        {abstract}
-      </p>
-
-      {/* Keywords */}
-      {keywords.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {keywords.map((kw) => (
-            <span
-              key={kw}
-              className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full text-xs font-medium"
-            >
-              {kw}
+      {/* Footer: Source, System metrics & DOI */}
+      <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-y-2 text-[11px] font-medium text-slate-400 dark:text-slate-500 select-none">
+        <div className="flex items-center gap-x-3.5 flex-wrap">
+          {primaryProvider && (
+            <span className="uppercase text-[9px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-bold border border-slate-200/60 dark:border-slate-800 mr-1">
+              Source: {primaryProvider}
             </span>
-          ))}
+          )}
+
+          {dataQualityScore !== undefined && (
+            <span className="flex items-center gap-1.5" title={`Data quality score: ${Math.round(dataQualityScore * 100)}%`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${Math.round(dataQualityScore * 100) >= 80 ? "bg-emerald-500" : "bg-amber-500"}`}></span>
+              Quality: <span className="text-slate-600 dark:text-slate-300 font-bold">{Math.round(dataQualityScore * 100)}%</span>
+            </span>
+          )}
+
+          {aiScore !== undefined && (
+            <>
+              <span className="text-slate-200 dark:text-slate-800">|</span>
+              <span className="flex items-center gap-1.5" title={`Intrinsic AI score: ${aiScore}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                AI Value: <span className="text-blue-600 dark:text-blue-400 font-bold">{aiScore.toFixed(2)}</span>
+              </span>
+            </>
+          )}
+
+          {isSemantic && (
+            <>
+              <span className="text-slate-200 dark:text-slate-800">|</span>
+              {hasRerank ? (
+                <span className="flex items-center gap-1.5" title="AI Rerank Score">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                  Rerank: <span className="text-purple-600 dark:text-purple-400 font-bold">{rerankScore!.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 font-medium">(Vector: {parseFloat(score).toFixed(2)})</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5" title="Semantic Vector Similarity Score">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                  Semantic Match: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{parseFloat(score).toFixed(2)}</span>
+                </span>
+              )}
+            </>
+          )}
         </div>
-      )}
+
+        {doi && (
+          <a
+            href={`https://doi.org/${doi}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 dark:hover:text-blue-300 font-mono text-[10px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            doi:{doi} <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        )}
+      </div>
     </div>
   );
 }

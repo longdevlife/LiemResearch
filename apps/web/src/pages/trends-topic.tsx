@@ -60,7 +60,7 @@ export function TopicDetailPage() {
         
         <Button 
           className="bg-[#001b69] hover:bg-[#001040] text-white shadow-sm gap-2"
-          onClick={() => navigate('/reports')}
+          onClick={() => navigate(`/reports?topic=${encodeURIComponent(decodedTopic)}&create=true`)}
         >
           <Sparkles className="w-4 h-4" /> Generate Report
         </Button>

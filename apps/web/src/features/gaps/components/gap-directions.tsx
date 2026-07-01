@@ -83,11 +83,11 @@ export function GapDirectionsPanel({
                 {i + 1}. {d.title}
               </div>
               {d.rationale && (
-                <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed">{d.rationale}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{d.rationale}</p>
               )}
               {d.suggestedApproach && (
-                <p className="text-[11px] text-slate-550 dark:text-slate-400">
-                  <span className="font-semibold text-slate-700 dark:text-slate-350">Approach: </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Approach: </span>
                   {d.suggestedApproach}
                 </p>
               )}

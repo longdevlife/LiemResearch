@@ -97,7 +97,7 @@ interface Evaluation {
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
           <h3 className="font-bold text-slate-850 dark:text-slate-200 text-sm">AI Quality Evaluation</h3>
-          <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-650 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
             AI Advisory
           </span>
         </div>
@@ -108,7 +108,7 @@ interface Evaluation {
           variant={isFlat ? "outline" : "default"}
           className={
             isFlat
-              ? "h-8 px-3 rounded-lg text-xs font-semibold border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 gap-1.5"
+              ? "h-8 px-3 rounded-lg text-xs font-semibold border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 gap-1.5"
               : "h-9 px-4 gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold"
           }
         >
@@ -138,7 +138,7 @@ interface Evaluation {
             ))}
           </div>
           {evaluation.rationale && (
-            <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed border-l-2 border-indigo-200 dark:border-indigo-850 pl-3 italic">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-l-2 border-indigo-200 dark:border-indigo-800 pl-3 italic">
               {evaluation.rationale}
             </p>
           )}

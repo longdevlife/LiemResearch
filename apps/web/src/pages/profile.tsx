@@ -386,7 +386,7 @@ export function ProfilePage() {
                 {/* Research Interests (Tags) */}
                 <div className="space-y-3">
                   <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Research Interests</Label>
-                  <div className="flex flex-wrap gap-2 mb-2 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg min-h-[50px] border border-slate-100 dark:border-slate-850">
+                  <div className="flex flex-wrap gap-2 mb-2 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg min-h-[50px] border border-slate-100 dark:border-slate-800">
                     {researchInterests.length === 0 ? (
                       <span className="text-xs text-slate-400">No interests added yet. Type below and press Enter or click Add.</span>
                     ) : (

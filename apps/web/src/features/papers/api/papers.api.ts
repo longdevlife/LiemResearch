@@ -37,4 +37,8 @@ export const papersApi = {
     const res = await api.get(API_ROUTES.papers.detail(id));
     return res.data.data;
   },
+  async references(id: string): Promise<{ references: any[]; totalReferenced: number; inCorpus: number }> {
+    const res = await api.get(`/papers/${id}/references`);
+    return res.data.data || { references: [], totalReferenced: 0, inCorpus: 0 };
+  },
 };

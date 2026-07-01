@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
@@ -24,10 +24,30 @@ export function SearchPage() {
   const [yearFrom, setYearFrom] = useState<string>("2020");
   const [yearTo, setYearTo] = useState<string>("2026");
   const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(false);
-  const [journalTypes, setJournalTypes] = useState<string[]>(["article", "proceedings"]);
+  const [journalTypes, setJournalTypes] = useState<string[]>([]); // S2: Default to empty array (All types)
   const [primaryProvider, setPrimaryProvider] = useState<string>("all");
   const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0);
   const [sortBy, setSortBy] = useState<FeSortKey>("relevance");
+  const [rerank, setRerank] = useState<boolean>(false); // S3: Rerank state
+
+  const [localSearchQuery, setLocalSearchQuery] = useState(q);
+
+  useEffect(() => {
+    setLocalSearchQuery(q);
+  }, [q]);
+
+  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchParams(prev => {
+      if (localSearchQuery.trim()) {
+        prev.set("q", localSearchQuery.trim());
+      } else {
+        prev.delete("q");
+      }
+      prev.set("page", "1");
+      return prev;
+    });
+  }, [localSearchQuery, setSearchParams]);
 
   const parsedYearFrom = yearFrom ? parseInt(yearFrom, 10) : undefined;
   const parsedYearTo = yearTo ? parseInt(yearTo, 10) : undefined;
@@ -62,11 +82,12 @@ export function SearchPage() {
     pageSize: PAGE_SIZE,
     ...filterParams,
     minScore: aiScoreThreshold > 0 ? aiScoreThreshold : undefined,
+    rerank: isSemanticSearchActive ? rerank : undefined, // S3: Wire rerank param
   });
 
   const data = isSemanticSearchActive ? search.data : browse.data;
   const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
-  const papers = (data?.papers ?? []) as (Paper & { score?: number })[];
+  const papers = (data?.papers ?? []) as (Paper & { score?: number; rerankScore?: number })[];
   const meta = data?.meta;
   const totalPages = meta?.totalPages ?? 1;
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -138,8 +159,8 @@ export function SearchPage() {
 
         {/* Publication Year */}
         <div className="mb-6">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-3 h-3 border border-current rounded-sm inline-block"></span> PUBLICATION YEAR
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">
+            PUBLICATION YEAR
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -161,23 +182,16 @@ export function SearchPage() {
         </div>
 
         {/* Open Access Only */}
-        <div className="mb-6 flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={openAccessOnly}
-              onChange={() => { setOpenAccessOnly(!openAccessOnly); resetPage(); }}
-              className="sr-only"
-            />
-            <span className={`w-3.5 h-3.5 border rounded-sm flex items-center justify-center transition-colors ${openAccessOnly ? "border-blue-700 bg-blue-700 text-white" : "border-slate-300 dark:border-slate-750 bg-white dark:bg-[#1e1e1e]"}`}>
-              {openAccessOnly && <Check className="w-2.5 h-2.5" />}
-            </span>
+        <div
+          onClick={() => { setOpenAccessOnly(prev => !prev); resetPage(); }}
+          className="mb-6 flex items-center justify-between cursor-pointer select-none"
+        >
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Open Access Only
-          </label>
+          </span>
           {/* Custom toggle switch */}
           <div
-            onClick={() => { setOpenAccessOnly(prev => !prev); resetPage(); }}
-            className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${openAccessOnly ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
+            className={`w-9 h-5 rounded-full relative transition-colors ${openAccessOnly ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
           >
             <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${openAccessOnly ? "right-0.5" : "left-0.5"}`}></div>
           </div>
@@ -185,8 +199,8 @@ export function SearchPage() {
 
         {/* Journal Type */}
         <div className="mb-6">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-3 h-3 border border-current rounded-sm inline-block"></span> JOURNAL TYPE
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">
+            JOURNAL TYPE
           </label>
           <div className="space-y-3">
             <label className="flex items-center gap-3 cursor-pointer select-none" onClick={() => handleJournalTypeToggle("proceedings")}>
@@ -212,8 +226,8 @@ export function SearchPage() {
 
         {/* Source */}
         <div className="mb-6">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-3 h-3 border border-current rounded-sm inline-block"></span> SOURCE
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">
+            SOURCE
           </label>
           <div className="relative">
             <select
@@ -230,10 +244,10 @@ export function SearchPage() {
         </div>
 
         {/* AI Score Threshold */}
-        <div>
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-3 h-3 border border-current rounded-full inline-block"></span> AI SCORE THRESHOLD
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              AI SCORE THRESHOLD
             </label>
             <span className="text-xs font-bold text-blue-700 dark:text-blue-500">
               {aiScoreThreshold.toFixed(2)}+
@@ -255,17 +269,64 @@ export function SearchPage() {
             </div>
           </div>
         </div>
+        {/* S3: AI Rerank */}
+        <div className="mb-6 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <div
+            onClick={() => {
+              if (searchMode === "semantic" && hasQuery) {
+                setRerank(prev => !prev); resetPage();
+              }
+            }}
+            className={`flex items-center justify-between select-none ${searchMode === "semantic" && hasQuery ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+          >
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              AI Rerank top results
+            </span>
+            {/* Custom toggle switch */}
+            <div
+              className={`w-9 h-5 rounded-full relative transition-colors ${rerank ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${rerank ? "right-0.5" : "left-0.5"}`}></div>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-2 leading-normal">
+            Reranking uses LLM to score relevance. It is slower and may consume AI quota.
+          </p>
+        </div>
       </aside>
 
       {/* MAIN CONTENT: Search Results */}
       <main className="flex-1 w-full min-w-0">
 
+        {/* S1: Search Input */}
+        <div className="mb-6 bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+          <form onSubmit={handleSearchSubmit} className="flex gap-2">
+            <input
+              type="text"
+              placeholder={searchMode === "semantic" ? "Search research papers by concept, question or topic..." : "Search papers by keywords in title or abstract..."}
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              className="flex-1 h-10 rounded-md border border-slate-350 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] px-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <Button type="submit" className="h-10 bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 rounded-md shadow-sm transition-all active:scale-95 duration-150">
+              Search
+            </Button>
+          </form>
+        </div>
+
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {isLoading ? "Searching..." : hasQuery ? `Results for "${q}"` : "Browse papers"}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {isLoading ? "Searching..." : hasQuery ? `Results for "${q}"` : "Browse papers"}
+              </h1>
+              {(meta as any)?.mode === "semantic+rerank" && !isLoading && (
+                <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800 uppercase tracking-wide select-none">
+                  AI Reranked
+                </span>
+              )}
+            </div>
             {!isLoading && meta && (
               <p className="text-sm text-slate-500 mt-1">
                 Showing {papers.length > 0 ? ((safePage - 1) * PAGE_SIZE) + 1 : 0}–{Math.min(safePage * PAGE_SIZE, meta.total)} of {meta.total}{isSemanticSearchActive ? " top matches" : " papers"}
@@ -320,10 +381,11 @@ export function SearchPage() {
                   setYearTo("2026");
                   setSearchMode("semantic");
                   setOpenAccessOnly(false);
-                  setJournalTypes(["article", "proceedings"]);
+                  setJournalTypes([]);
                   setPrimaryProvider("all");
                   setAiScoreThreshold(0);
                   setSortBy("relevance");
+                  setRerank(false);
                   resetPage();
                 }}
               >
@@ -350,7 +412,7 @@ export function SearchPage() {
                   onChange={(e) => { setSortBy(e.target.value as FeSortKey); resetPage(); }}
                   className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="relevance">Relevance (AI Score)</option>
+                  <option value="relevance">Relevance</option>
                   <option value="date">Date (Newest)</option>
                   <option value="citations">Citations</option>
                 </select>
@@ -365,7 +427,9 @@ export function SearchPage() {
           {isLoading ? (
             <div className="py-8 text-center text-slate-500">Loading papers...</div>
           ) : papers.length === 0 ? (
-            <div className="py-8 text-center text-slate-500">No papers found matching the filters.</div>
+            <div className="py-8 text-center text-slate-500">
+              {hasQuery ? "No papers found matching the filters." : "Browse state is empty. Enter a search query to explore."}
+            </div>
           ) : (
             papers.map(paper => (
               <PaperCard
@@ -385,6 +449,15 @@ export function SearchPage() {
                 isBookmarked={bookmarkedPaperIds.has(paper.id)}
                 bookmarkId={bookmarkIdMap.get(paper.id)}
                 showBookmark={true}
+                publicationYear={paper.publicationYear}
+                citationCount={paper.citationCount}
+                primaryProvider={paper.primaryProvider}
+                paperKind={paper.paperKind}
+                openAccessUrl={paper.openAccessUrl}
+                dataQualityScore={paper.dataQualityScore}
+                aiScore={paper.aiScore?.finalScore}
+                rerankScore={paper.rerankScore}
+                searchMode={searchMode}
               />
             ))
           )}
