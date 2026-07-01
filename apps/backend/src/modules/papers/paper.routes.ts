@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import jwt from "jsonwebtoken";
 import { AppError } from "../../common/exceptions/app-error.js";
-import { requireAuth, requireRole } from "../../common/middleware/auth.js";
+import { requireAuth, requireRole, optionalAuth } from "../../common/middleware/auth.js";
 import { uploadSinglePdf, assertPdfMagic } from "../../common/middleware/upload.js";
 import { CreatePaperSchema } from "./dto/create-paper.schema.js";
 import { paperService } from "./paper.service.js";
@@ -18,7 +18,7 @@ export const paperRouter: Router = Router();
 /**
  * GET /papers — keyword search + server-side filters + sort + pagination (with adminView support).
  */
-paperRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
+paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isAdmin = (req.user?.role as string) === "admin";
     // Admin hitting / with status filter → admin list
