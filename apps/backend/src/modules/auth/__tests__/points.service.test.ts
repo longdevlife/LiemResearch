@@ -6,6 +6,8 @@ import {
   REQUEST_PAPER_COST,
   REDOWNLOAD_COST,
 } from "../points.service.js";
+import { UserModel } from "../models/user.model.js";
+import { env } from "../../../config/env.js";
 
 /**
  * Pure money-logic tests. The DB-bound functions (charge/refund/clawback and the
@@ -64,3 +66,12 @@ describe("economy constants (guard against accidental change)", () => {
     expect(RATING_POINTS).toBe(5);
   });
 });
+
+describe("UserModel schema defaults", () => {
+  it("defaults credits using env.INITIAL_USER_CREDITS", () => {
+    const defaultFn = (UserModel.schema.path("credits") as any).defaultValue;
+    expect(typeof defaultFn).toBe("function");
+    expect(defaultFn()).toBe(env.INITIAL_USER_CREDITS);
+  });
+});
+

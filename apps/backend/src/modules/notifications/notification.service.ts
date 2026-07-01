@@ -94,6 +94,12 @@ export const notificationService = {
         title = "Paper Submission Approved";
       } else if (title === "Yêu cầu đăng bài bị từ chối") {
         title = "Paper Submission Rejected";
+      } else if (title === "Test Điều hướng Paper") {
+        title = "Paper Navigation Test";
+      } else if (title === "Test Điều hướng Report") {
+        title = "Report Navigation Test";
+      } else if (title === "Test Điều hướng Project") {
+        title = "Project Navigation Test";
       }
 
       if (message && typeof message === "string") {
@@ -117,6 +123,12 @@ export const notificationService = {
             const reason = parts[1];
             message = `Your paper submission '${titleName}' was rejected. Reason: ${reason}`;
           }
+        } else if (message === "Click vào đây sẽ nhảy sang trang chi tiết bài báo (Sẽ báo lỗi 404 vì ID này là ID ảo, nhưng URL sẽ đúng).") {
+          message = "Click here to navigate to the paper details page (Will show 404 because this is a dummy ID, but the URL will be correct).";
+        } else if (message === "Click vào đây sẽ nhảy sang trang Report Detail.") {
+          message = "Click here to navigate to the Report Detail page.";
+        } else if (message === "Click vào đây sẽ nhảy sang trang Project Detail.") {
+          message = "Click here to navigate to the Project Detail page.";
         }
       }
 

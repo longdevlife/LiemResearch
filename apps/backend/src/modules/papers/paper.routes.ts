@@ -13,7 +13,19 @@ import { CompareBodySchema } from "./dto/compare.schema.js";
 import { embeddingQueue } from "../../infrastructure/queue.js";
 import { env } from "../../config/env.js";
 
+import { runEmbedding } from "../embeddings/embedding.service.js";
+import { logger } from "../../infrastructure/logger.js";
+
 export const paperRouter: Router = Router();
+
+const triggerEmbedding = () => {
+  // 1. Add to BullMQ queue for robustness / production worker
+  embeddingQueue.add("manual-embedding", {}).catch(() => {});
+  // 2. Run in-process in the background to guarantee indexing in development
+  runEmbedding({ maxPapers: 5, batchSize: 5 }).catch((err) => {
+    logger.error({ err }, "In-process runEmbedding failed");
+  });
+};
 
 /**
  * GET /papers — keyword search + server-side filters + sort + pagination (with adminView support).
@@ -150,11 +162,7 @@ paperRouter.post("/", requireAuth, uploadSinglePdf, async (req, res, next) => {
     const paper = await paperService.create(userId, isAdmin, parsed.data, pdfPath);
 
     // 5. Trigger embedding worker
-    try {
-      await embeddingQueue.add("manual-embedding", {});
-    } catch {
-      // Non-fatal — embedding can be retried
-    }
+    triggerEmbedding();
 
     res.status(201).json({ success: true, data: paper });
   } catch (error) {
@@ -244,6 +252,7 @@ paperRouter.post("/:id/upload-pdf", requireAuth, uploadSinglePdf, async (req, re
 paperRouter.patch("/:id/accept-pdf", requireAuth, async (req, res, next) => {
   try {
     const paper = await paperService.acceptPdf(String(req.params.id), String(req.user!.sub));
+    triggerEmbedding();
     res.json({ success: true, data: paper });
   } catch (error) {
     next(error);
@@ -276,6 +285,7 @@ paperRouter.patch("/:id/status", requireAuth, requireRole("admin"), async (req, 
     const { status, rejectionReason } = req.body as { status: string; rejectionReason?: string };
     if (!status) throw AppError.badRequest("Status is required");
     const paper = await paperService.updateStatus(String(req.params.id), status, rejectionReason);
+    triggerEmbedding();
     res.json({ success: true, data: paper });
   } catch (error) {
     next(error);
@@ -328,6 +338,7 @@ paperRouter.patch("/:id", requireAuth, uploadSinglePdf, async (req, res, next) =
       updated = await paperService.resubmit(id, userId, req.body, pdfPath);
     }
 
+    triggerEmbedding();
     res.json({ success: true, data: updated });
   } catch (error) {
     next(error);

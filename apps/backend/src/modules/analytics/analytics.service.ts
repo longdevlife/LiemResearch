@@ -2,6 +2,7 @@ import type { TopQuery, VolumeByDay, SearchSummary } from "@trend/shared-types";
 import { logger } from "../../infrastructure/logger.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { SearchLogModel, type SearchLogDoc } from "./models/search-log.model.js";
+import { UserModel } from "../auth/models/user.model.js";
 
 export type { SearchLogDoc };
 export type { TopQuery, VolumeByDay, SearchSummary };
@@ -58,15 +59,15 @@ export const analyticsService = {
   },
 
   async getSummary(): Promise<SearchSummary> {
-    const [totalSearches, totalPapers, distinctUsers] = await Promise.all([
+    const [totalSearches, totalPapers, uniqueUsers] = await Promise.all([
       SearchLogModel.countDocuments(),
       PaperModel.countDocuments({ dataStatus: "active" }),
-      SearchLogModel.distinct("userId"),
+      UserModel.countDocuments(),
     ]);
     return {
       totalSearches,
       totalPapers,
-      uniqueUsers: distinctUsers.filter(Boolean).length,
+      uniqueUsers,
     };
   },
 };

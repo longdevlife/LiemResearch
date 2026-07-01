@@ -68,10 +68,10 @@ export function MainLayout() {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      "px-3 py-2 rounded-t-md rounded-b-none text-sm font-medium transition-all border-b-2",
                       isActive
-                        ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-500"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-red-50/50 dark:hover:bg-red-950/10 hover:text-red-600 dark:hover:text-red-400 border-transparent"
                     )
                   }
                 >
@@ -85,7 +85,7 @@ export function MainLayout() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             {isAuthed && (
-              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400" asChild>
                 <Link to="/bookmarks" aria-label="Bookmarks">
                   <Bookmark className="h-5 w-5" />
                   {validBookmarksCount > 0 && (
@@ -96,7 +96,7 @@ export function MainLayout() {
                 </Link>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400" asChild>
               <Link to="/notifications" aria-label="Notifications">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -208,12 +208,7 @@ function UserMenu() {
         {role === "admin" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate("/dashboard")}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate("/admin/sync")}>
-              <Sparkles className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onSelect={() => navigate("/admin")}>
               Admin
             </DropdownMenuItem>
           </>
