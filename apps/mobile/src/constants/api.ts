@@ -32,6 +32,12 @@ export const API_ROUTES = {
     overview: "/trends",
     topic: (topic: string) => `/trends/${encodeURIComponent(topic)}`,
   },
+  quality: {
+    view: (targetKind: "report" | "gap" | "paper", targetId: string) => `/quality/${targetKind}/${targetId}`,
+    evaluate: "/quality/evaluate",
+    rate: "/quality/rate",
+    deleteRate: (ratingId: string) => `/quality/rate/${ratingId}`,
+  },
   reports: {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
@@ -59,6 +65,21 @@ export const API_ROUTES = {
     analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
     list: "/gaps",
     patch: (id: string) => `/gaps/${id}`,
+  },
+  projects: {
+    list: "/projects",
+    create: "/projects",
+    detail: (id: string) => `/projects/${id}`,
+    update: (id: string) => `/projects/${id}`,
+    delete: (id: string) => `/projects/${id}`,
+    addPaper: (id: string) => `/projects/${id}/papers`,
+    removePaper: (id: string, paperId: string) => `/projects/${id}/papers/${paperId}`,
+    addMember: (id: string) => `/projects/${id}/members`,
+    removeMember: (id: string, memberId: string) => `/projects/${id}/members/${memberId}`,
+    chat: {
+      send: (id: string) => `/projects/${id}/chat`,
+      history: (id: string) => `/projects/${id}/chat`,
+    },
   },
   admin: {
     sync: "/admin/sync",
