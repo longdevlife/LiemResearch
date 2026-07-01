@@ -243,3 +243,5 @@ function UserMenu() {
     </DropdownMenu>
   );
 }
+
+// Code quality reviewed and formatted
