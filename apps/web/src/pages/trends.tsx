@@ -5,53 +5,32 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useTrendsOverview } from "@/features/trends/hooks/use-trends";
 import { getRisingKeywordTarget, getTopicTrendTarget } from "./trends.navigation";
+import {
+  formatMetricValue,
+  formatSigned,
+  getFastestKeyword,
+  getFastestTopic,
+  getHighestGrowthTopic,
+  getMostEstablishedTopic,
+  getTopicMetric,
+  isSmallBaseKeyword,
+  TrendSortKey,
+} from "./trends.insights";
 
-function getTopicMetric(topic: {
-  totalPapers: number;
-  growthRatePct: number;
-  momentum: number;
-}, sortBy: "momentum" | "growth" | "total") {
-  if (sortBy === "growth") return topic.growthRatePct;
-  if (sortBy === "total") return topic.totalPapers;
-  return topic.momentum;
-}
-
-function CustomBarTooltip({ active, payload, sortBy }: { active?: boolean, payload?: any[], sortBy: "momentum" | "growth" | "total" }) {
+function CustomBarTooltip({ active, payload, sortBy }: { active?: boolean, payload?: any[], sortBy: TrendSortKey }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const formatValue = () => {
-      const val = data.value;
-      if (typeof val !== 'number') return '-';
-      if (sortBy === "total") {
-        return `${val.toLocaleString()} papers`;
-      }
-      if (sortBy === "growth") {
-        return `${val > 0 ? '+' : ''}${val.toFixed(1)}%`;
-      }
-      return `${val > 0 ? '+' : ''}${val.toFixed(2)} papers/year`;
-    };
-
-    const formatGrowth = (pct: number) => {
-      if (typeof pct !== 'number') return '-';
-      return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
-    };
-
-    const formatMomentum = (mom: number) => {
-      if (typeof mom !== 'number') return '-';
-      return `${mom > 0 ? '+' : ''}${mom.toFixed(2)} papers/year`;
-    };
-
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-lg text-xs select-none">
         <p className="font-extrabold text-slate-900 dark:text-white mb-2">{data.topic}</p>
         <div className="space-y-1.5 text-slate-600 dark:text-slate-400 font-medium">
           <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            Value: {formatValue()}
+            {data.metricLabel}: {data.metricDisplay}
           </p>
-          <p>Total papers: <span className="text-slate-900 dark:text-white font-bold">{data.totalPapers}</span></p>
-          <p>Growth: <span className="text-slate-900 dark:text-white font-bold">{formatGrowth(data.growthRatePct)}</span></p>
-          <p>Momentum: <span className="text-slate-900 dark:text-white font-bold">{formatMomentum(data.momentum)}</span></p>
+          <p>Total papers: <span className="text-slate-900 dark:text-white font-bold">{data.totalPapers.toLocaleString()}</span></p>
+          <p>Growth: <span className="text-slate-900 dark:text-white font-bold">{formatMetricValue(data.growthRatePct, "growth")}</span></p>
+          <p>Momentum: <span className="text-slate-900 dark:text-white font-bold">{formatMetricValue(data.momentum, "momentum")}</span></p>
         </div>
       </div>
     );
@@ -88,6 +67,10 @@ export function TrendsPage() {
       .sort((a, b) => Number(a.year) - Number(b.year));
   }, [data]);
 
+  const peakYear = useMemo(() => {
+    return [...areaChartData].sort((a, b) => b.publications - a.publications)[0] ?? null;
+  }, [areaChartData]);
+
   const barChartData = useMemo(() => {
     if (!data?.topics) return [];
     return data.topics
@@ -97,6 +80,8 @@ export function TrendsPage() {
         totalPapers: t.totalPapers,
         growthRatePct: t.growthRatePct,
         momentum: t.momentum,
+        metricLabel: sortBy === "growth" ? "Growth" : sortBy === "total" ? "Total papers" : "Momentum",
+        metricDisplay: formatMetricValue(getTopicMetric(t, sortBy), sortBy),
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
@@ -114,6 +99,11 @@ export function TrendsPage() {
     }));
   }, [data]);
 
+  const fastestTopic = useMemo(() => getFastestTopic((data?.topics ?? []) as any), [data?.topics]);
+  const highestGrowthTopic = useMemo(() => getHighestGrowthTopic((data?.topics ?? []) as any), [data?.topics]);
+  const establishedTopic = useMemo(() => getMostEstablishedTopic((data?.topics ?? []) as any), [data?.topics]);
+  const fastestKeyword = useMemo(() => getFastestKeyword((data?.risingKeywords ?? []) as any), [data?.risingKeywords]);
+
   if (isLoading) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center">
@@ -125,6 +115,39 @@ export function TrendsPage() {
 
   return (
     <div className="w-full">
+      {/* Insight Summary Cards (V2 Premium UI/UX) */}
+      {data?.topics && data.topics.length > 0 && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <InsightCard
+            label="Fastest moving topic"
+            value={fastestTopic?.topic ?? "No topic"}
+            detail={fastestTopic ? `${formatSigned(fastestTopic.momentum, 2)} papers/year` : "No data"}
+            actionLabel="Open trend"
+            onAction={() => fastestTopic && navigate(getTopicTrendTarget(fastestTopic.topic))}
+          />
+          <InsightCard
+            label="Highest YoY growth"
+            value={highestGrowthTopic?.topic ?? "No topic"}
+            detail={highestGrowthTopic ? `${formatSigned(highestGrowthTopic.growthRatePct, 1)}% growth` : "No data"}
+            actionLabel="Explore papers"
+            onAction={() => highestGrowthTopic && navigate(`/search?q=${encodeURIComponent(highestGrowthTopic.topic)}`)}
+          />
+          <InsightCard
+            label="Most established"
+            value={establishedTopic?.topic ?? "No topic"}
+            detail={establishedTopic ? `${establishedTopic.totalPapers.toLocaleString()} papers` : "No data"}
+            actionLabel="Generate report"
+            onAction={() => establishedTopic && navigate(`/reports?create=true&topic=${encodeURIComponent(establishedTopic.topic)}`)}
+          />
+          <InsightCard
+            label="Emerging keyword"
+            value={fastestKeyword?.keyword ?? "No keyword"}
+            detail={fastestKeyword ? `${formatSigned(fastestKeyword.growthRatePct, 1)}% growth · ${fastestKeyword.totalPapers} papers` : "No data"}
+            actionLabel="Search keyword"
+            onAction={() => fastestKeyword && navigate(getRisingKeywordTarget(fastestKeyword.keyword))}
+          />
+        </section>
+      )}
 
       {/* Control Bar */}
       <div className="flex flex-col md:flex-row items-center gap-4 mb-8 bg-white dark:bg-[#121212] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex-wrap">
@@ -209,6 +232,15 @@ export function TrendsPage() {
         </div>
       </div>
 
+      {/* OpenAlex Facet Hint Note (V2 Premium UI/UX) */}
+      {data?.topics && data.topics.length > 0 && (
+        <div className="mb-8 px-4 py-3 bg-slate-50/50 dark:bg-slate-900/10 border-l-2 border-slate-300 dark:border-slate-700 rounded-r-xl text-xs text-slate-500 dark:text-slate-400 select-none">
+          <p className="leading-relaxed">
+            <strong>Data Basis Hint:</strong> Trends are derived from active papers grouped by topic and keyword. OpenAlex-style fields such as publication year, topic, source/type, citations, and open access can become additional facets when backend support is added.
+          </p>
+        </div>
+      )}
+
     {isError ? (
       <div className="w-full min-h-[350px] flex flex-col items-center justify-center text-center bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
         <p className="text-lg font-bold text-slate-900 dark:text-white">Failed to load trends data.</p>
@@ -264,11 +296,24 @@ export function TrendsPage() {
 
       {/* Main Area Chart */}
       <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm mb-8">
-        <div className="mb-6">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Publications per year across displayed topics</h3>
-          <p className="text-xs text-slate-500 mt-1">This chart sums yearly paper counts for the topics currently shown below, not necessarily every paper in the corpus.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Publications per year across displayed topics</h3>
+            <p className="text-xs text-slate-500 mt-1">This chart sums yearly paper counts for the topics currently shown below, not necessarily every paper in the corpus.</p>
+            {data?.yearTo && data.yearTo > data.lastCompleteYear ? (
+              <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                {data.yearTo} is year-to-date, so the final point may look lower until the year completes.
+              </p>
+            ) : null}
+          </div>
+          {peakYear && (
+            <span className="text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 shrink-0 h-fit self-start sm:self-center select-none">
+              Peak: {peakYear.year} · {peakYear.publications.toLocaleString()} papers
+            </span>
+          )}
         </div>
-        <div className="h-[350px] w-full">
+        <div className="h-[260px] md:h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={areaChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -363,19 +408,27 @@ export function TrendsPage() {
                   <th className="px-6 py-3 font-medium text-right">Growth</th>
                   <th className="px-6 py-3 font-medium text-center">Trend</th>
                   <th className="px-6 py-3 font-medium text-center">Status</th>
+                  <th className="px-6 py-3 font-medium text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {keywordsData.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 capitalize">
-                      <button
-                        onClick={() => navigate(getRisingKeywordTarget(row.keyword))}
-                        className="hover:text-blue-600 transition-colors text-left"
-                        title={`Search papers about ${row.keyword}`}
-                      >
-                        {row.keyword}
-                      </button>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => navigate(getRisingKeywordTarget(row.keyword))}
+                          className="hover:text-blue-600 transition-colors text-left"
+                          title={`Search papers about ${row.keyword}`}
+                        >
+                          {row.keyword}
+                        </button>
+                        {isSmallBaseKeyword(row) && (
+                          <span className="rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 px-2 py-0.5 text-[9px] font-extrabold shrink-0 border border-amber-200/50 dark:border-amber-900/30" title="High YoY growth computed from a very small number of papers (fewer than 10 papers total)">
+                            small base
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-slate-700 dark:text-slate-300">
                       {row.totalPapers}
@@ -404,6 +457,24 @@ export function TrendsPage() {
                       }`}>
                         {row.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => navigate(getRisingKeywordTarget(row.keyword))}
+                          className="text-xs font-extrabold text-blue-700 dark:text-blue-400 hover:underline"
+                        >
+                          Papers
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/reports?create=true&topic=${encodeURIComponent(row.keyword)}&query=${encodeURIComponent(`Analyze research trends and gaps for ${row.keyword}`)}`)}
+                          className="text-xs font-extrabold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                        >
+                          Report
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -448,6 +519,39 @@ function KPICard({ title, value, trend, subtitle, icon }: { title: string, value
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function InsightCard({
+  label,
+  value,
+  detail,
+  actionLabel,
+  onAction,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden bg-white/70 dark:bg-[#121212]/70 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-98 transition-all duration-300 group flex flex-col justify-between h-36">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/10 dark:to-indigo-500/10 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform duration-500" />
+      <div>
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{label}</p>
+        <p className="mt-2.5 text-base font-extrabold text-slate-850 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={value}>{value}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{detail}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        className="mt-3 text-xs font-extrabold text-blue-700 dark:text-blue-450 hover:text-blue-800 hover:underline flex items-center gap-1 w-fit transition-colors"
+      >
+        <span>{actionLabel}</span>
+        <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
+      </button>
     </div>
   );
 }
