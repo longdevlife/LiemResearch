@@ -385,10 +385,11 @@ export function DashboardPage() {
                       <YAxis
                         dataKey="query"
                         type="category"
-                        width={140}
+                        width={160}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 11, fill: '#64748b', fontWeight: 550 }}
+                        tickFormatter={(value) => typeof value === 'string' && value.length > 25 ? value.substring(0, 22) + '...' : value}
                       />
                       <Tooltip
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
