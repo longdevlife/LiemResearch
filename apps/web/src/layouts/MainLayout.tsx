@@ -20,7 +20,6 @@ import { cn } from "@/utils/cn";
 import { avatars, getLevel } from "@/utils/level";
 
 const navItems = [
-  { to: "/search", label: "Search" },
   { to: "/trends", label: "Trends" },
   { to: "/reports", label: "Reports" },
   { to: "/research-gaps", label: "Research Gaps" },
@@ -52,8 +51,13 @@ export function MainLayout() {
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-8">
-            <Link to="/" className="text-xl font-bold text-[#001b69] dark:text-blue-400 tracking-tight shrink-0">
-              Publication Trend
+            <Link to="/" className="flex items-center gap-2 font-black text-lg tracking-tight shrink-0 select-none">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-xs">
+                <Award className="h-4.5 w-4.5 text-white stroke-[2.5]" />
+              </div>
+              <span className="bg-gradient-to-r from-blue-750 to-indigo-850 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
+                PubTrend
+              </span>
             </Link>
             
             <nav className="hidden md:flex items-center gap-1">
