@@ -1,6 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { trendService } from "./trend.service.js";
-import { TopicTrendQuerySchema, TrendsOverviewQuerySchema } from "./dto/trends.schema.js";
+import {
+  TopicTrendQuerySchema,
+  TrendCompareQuerySchema,
+  TrendExplainBodySchema,
+  TrendRelationshipQuerySchema,
+  TrendsOverviewQuerySchema,
+} from "./dto/trends.schema.js";
 
 /**
  * Trends endpoints. Query is parsed inline (not via the validate() middleware)
@@ -28,6 +34,42 @@ export const trendController = {
     }
 
     const data = await trendService.topic(req.params.topic as string, parsed.data);
+    res.json({ success: true, data });
+  },
+
+  /** GET /api/v1/trends/compare?topics=a,b&yearFrom=&yearTo= */
+  async compare(req: Request, res: Response, next: NextFunction) {
+    const parsed = TrendCompareQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await trendService.compare(parsed.data);
+    res.json({ success: true, data });
+  },
+
+  /** GET /api/v1/trends/relationships?topic=a&limit=12&yearFrom=&yearTo= */
+  async relationships(req: Request, res: Response, next: NextFunction) {
+    const parsed = TrendRelationshipQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await trendService.relationships(parsed.data);
+    res.json({ success: true, data });
+  },
+
+  /** POST /api/v1/trends/explain — AI explanation grounded in trend aggregate data. */
+  async explain(req: Request, res: Response, next: NextFunction) {
+    const parsed = TrendExplainBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await trendService.explain(parsed.data);
     res.json({ success: true, data });
   },
 };

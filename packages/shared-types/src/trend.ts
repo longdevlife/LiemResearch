@@ -10,6 +10,25 @@ export interface TopItem {
   count: number;
 }
 
+export interface YearlyCitationMetric extends YearlyCount {
+  totalCitations: number;
+  avgCitations: number;
+}
+
+export interface TrendFacetBucket {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export interface TrendFacets {
+  paperKinds: TrendFacetBucket[];
+  openAccessStatuses: TrendFacetBucket[];
+  providers: TrendFacetBucket[];
+  topSources: TrendFacetBucket[];
+  citationBands: TrendFacetBucket[];
+}
+
 /**
  * Growth metrics computed from a yearly publication series.
  *
@@ -55,9 +74,59 @@ export interface TrendsOverview {
    *  label them differently on charts (`yc.year > lastCompleteYear`). */
   lastCompleteYear: number;
   totalPapersInWindow: number;
+  yearlyTotalPapers: YearlyCount[];
+  citationTrend: YearlyCitationMetric[];
+  facets: TrendFacets;
   topics: TrendingTopic[];
   risingKeywords: RisingKeyword[];
   computedAt: string;
+}
+
+export interface TopicComparisonItem extends TrendMetrics {
+  topic: string;
+  totalPapers: number;
+  yearlyBreakdown: YearlyCount[];
+  citationTrend: YearlyCitationMetric[];
+}
+
+export interface TrendCompareResponse {
+  yearFrom: number;
+  yearTo: number;
+  lastCompleteYear: number;
+  topics: TopicComparisonItem[];
+  computedAt: string;
+}
+
+export interface TopicRelationshipNode {
+  id: string;
+  label: string;
+  count: number;
+}
+
+export interface TopicRelationshipEdge {
+  source: string;
+  target: string;
+  count: number;
+}
+
+export interface TopicRelationshipResponse {
+  topic: string;
+  yearFrom: number;
+  yearTo: number;
+  nodes: TopicRelationshipNode[];
+  edges: TopicRelationshipEdge[];
+  computedAt: string;
+}
+
+export interface TrendExplanationResponse {
+  topic: string | null;
+  language: "en" | "vi";
+  summary: string;
+  whyItMatters: string[];
+  evidenceSignals: string[];
+  cautions: string[];
+  suggestedActions: string[];
+  generatedAt: string;
 }
 
 /** Response shape of GET /api/v1/trends/:topic — deep dive into one topic. */
