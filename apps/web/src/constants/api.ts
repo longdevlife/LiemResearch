@@ -11,6 +11,9 @@ export const API_ROUTES = {
     me: "/auth/me",
     changePassword: "/auth/change-password",
   },
+  home: {
+    overview: "/home/overview",
+  },
   papers: {
     list: "/papers",
     detail: (id: string) => `/papers/${id}`,

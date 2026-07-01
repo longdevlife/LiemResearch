@@ -16,6 +16,7 @@ export const openapiSpec = {
   servers: [{ url: "http://localhost:4000", description: "Local dev" }],
   tags: [
     { name: "Health" },
+    { name: "Home" },
     { name: "Auth" },
     { name: "Papers" },
     { name: "Search" },
@@ -249,6 +250,22 @@ export const openapiSpec = {
         tags: ["Health"],
         summary: "Liveness check",
         responses: { "200": { description: "OK" } },
+      },
+    },
+    "/api/v1/home/overview": {
+      get: {
+        tags: ["Home"],
+        summary: "Hybrid home overview for guest, signed-in user, or admin",
+        description:
+          "Public endpoint with optional bearer auth. Without a valid token it returns guest landing data. " +
+          "With a valid user token it adds workspace data. With an admin token it also adds system-health data.",
+        security: [{}, { bearerAuth: [] }],
+        responses: {
+          "200": {
+            description:
+              "OK — returns HomeOverview: { mode, summary, trends, recentPapers, workspace?, admin? }",
+          },
+        },
       },
     },
     "/api/v1/auth/register": {
