@@ -152,7 +152,7 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                       </div>
                       <button
                         type="button"
-                        aria-label="Bỏ bài khỏi danh sách so sánh"
+                        aria-label="Remove paper from comparison"
                         onClick={() => handleRemovePaper(paper.id)}
                         className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                       >
@@ -281,7 +281,7 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Đóng"
+                aria-label="Close"
                 className="h-9 w-9 rounded-lg text-slate-400 hover:text-slate-600"
                 onClick={() => onOpenChange(false)}
               >
@@ -322,6 +322,9 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               /* Render bảng so sánh khi có data */
               <div className="space-y-4">
                 <CompareTable comparison={comparisonData} />
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                  AI comparison uses structured paper knowledge when available, with abstract fallback.
+                </p>
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
                   <Button
                     variant="outline"

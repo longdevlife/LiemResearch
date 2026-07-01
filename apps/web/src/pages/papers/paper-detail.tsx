@@ -31,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
+import type { PaperAiAnalysis } from "@trend/shared-types";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -568,6 +569,9 @@ export function PaperDetailPage() {
             </div>
           </div>
 
+          {/* AI Structured Analysis */}
+          <AiStructuredAnalysisSection aiAnalysis={paper.aiAnalysis} />
+
           {/* AI quality evaluation — advisory only, does not affect tier/credits */}
           <AiEvaluation
             targetKind="paper"
@@ -939,3 +943,111 @@ function PaperReviewsList({
     </div>
   );
 }
+
+function AiStructuredAnalysisSection({ aiAnalysis }: { aiAnalysis?: PaperAiAnalysis }) {
+  if (!aiAnalysis) {
+    return (
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/10 px-5 py-4">
+        <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
+          Structured analysis is not available for this paper yet.
+        </p>
+      </div>
+    );
+  }
+
+  // Text fields (string | null)
+  const textFields = [
+    { label: "Summary", val: aiAnalysis.summary },
+    { label: "Methods", val: aiAnalysis.methods },
+    { label: "Dataset", val: aiAnalysis.dataset },
+  ].filter((f) => f.val && f.val.trim().length > 0);
+
+  // List fields (string[])
+  const listFields = [
+    { label: "Findings", val: aiAnalysis.findings },
+    { label: "Limitations", val: aiAnalysis.limitations },
+    { label: "Contributions", val: aiAnalysis.contributions },
+    { label: "Future Work", val: aiAnalysis.futureWork },
+  ].filter((f) => f.val && f.val.length > 0);
+
+  const hasKeyTerms = aiAnalysis.keyTerms && aiAnalysis.keyTerms.length > 0;
+
+  if (textFields.length === 0 && listFields.length === 0 && !hasKeyTerms) {
+    return (
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/10 px-5 py-4">
+        <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
+          Structured analysis is not available for this paper yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8">
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5" />
+          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            AI Structured Analysis
+          </h2>
+        </div>
+
+        {/* Content sections */}
+        <div className="space-y-5">
+          {/* Render Text Fields */}
+          {textFields.map((field) => (
+            <div key={field.label}>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                {field.label}
+              </h4>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed max-w-[65ch]">
+                {field.val}
+              </p>
+            </div>
+          ))}
+
+          {/* Render List Fields */}
+          {listFields.map((field) => (
+            <div key={field.label}>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                {field.label}
+              </h4>
+              <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-300 max-w-[65ch]">
+                {field.val.map((item, index) => (
+                  <li key={index} className="leading-relaxed">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {/* Key Terms Badges */}
+          {hasKeyTerms && (
+            <div>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Key Terms
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {aiAnalysis.keyTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                  >
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
