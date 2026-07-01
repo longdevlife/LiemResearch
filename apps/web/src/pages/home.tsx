@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -19,7 +18,6 @@ import {
   Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth";
 import { useHomeOverview } from "@/features/home/hooks/use-home-overview";
@@ -28,19 +26,8 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { HomeOverview } from "@trend/shared-types";
 
 export function HomePage() {
-  const navigate = useNavigate();
   const { data: me } = useCurrentUser();
   const { data, isLoading, isError } = useHomeOverview();
-
-  // Search input state at home page
-  const [localSearchQuery, setLocalSearchQuery] = useState("");
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = localSearchQuery.trim();
-    if (!q) return;
-    navigate(`/search?q=${encodeURIComponent(q)}`);
-  };
 
   if (isLoading) {
     return <HomeSkeleton />;
@@ -54,18 +41,9 @@ export function HomePage() {
     <div className="w-full space-y-10 select-none pb-10">
       {/* 1. Header / Hero Section based on Mode */}
       {data.mode === "guest" ? (
-        <GuestHero
-          query={localSearchQuery}
-          setQuery={setLocalSearchQuery}
-          submitSearch={handleSearchSubmit}
-        />
+        <GuestHero />
       ) : (
-        <UserHero
-          name={me?.user?.fullName || me?.user?.email || "Researcher"}
-          query={localSearchQuery}
-          setQuery={setLocalSearchQuery}
-          submitSearch={handleSearchSubmit}
-        />
+        <UserHero name={me?.user?.fullName || me?.user?.email || "Researcher"} />
       )}
 
       {/* 2. Admin Health summary (If Admin Mode) */}
@@ -104,15 +82,7 @@ export function HomePage() {
 // ==================== SUBCOMPONENTS ====================
 
 // 1. Guest Hero Section
-function GuestHero({
-  query,
-  setQuery,
-  submitSearch
-}: {
-  query: string;
-  setQuery: (val: string) => void;
-  submitSearch: (e: React.FormEvent) => void;
-}) {
+function GuestHero() {
   return (
     <div className="text-center py-12 md:py-20 space-y-6 max-w-4xl mx-auto">
       <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -123,28 +93,15 @@ function GuestHero({
         automatic trend intelligence, qualitative research gap detection, and evidence-backed RAG reports.
       </p>
 
-      {/* Simple prominent search input */}
-      <form onSubmit={submitSearch} className="max-w-2xl mx-auto relative flex items-center gap-2 px-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search research papers by concept, question or topic..."
-            className="w-full pl-11 pr-4 h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-card font-semibold"
-          />
-        </div>
-        <Button type="submit" size="lg" className="h-12 px-6 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-100 shadow-sm">
-          Search
-        </Button>
-      </form>
-
       {/* CTA Buttons */}
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
+          <Link to="/search">Search Papers</Link>
+        </Button>
         <Button variant="outline" size="sm" className="rounded-xl border border-slate-200 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 font-bold h-10 px-5 transition-all" asChild>
           <Link to="/trends">Explore Trends</Link>
         </Button>
-        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
+        <Button size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
           <Link to="/reports?create=true">Generate Report</Link>
         </Button>
         <Button variant="ghost" size="sm" className="rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold h-10 px-4" asChild>
@@ -156,25 +113,15 @@ function GuestHero({
 }
 
 // 2. Logged-in User Hero Section
-function UserHero({
-  name,
-  query,
-  setQuery,
-  submitSearch
-}: {
-  name: string;
-  query: string;
-  setQuery: (val: string) => void;
-  submitSearch: (e: React.FormEvent) => void;
-}) {
+function UserHero({ name }: { name: string }) {
   return (
-    <div className="py-6 border-b border-slate-100 dark:border-slate-900 space-y-6">
+    <div className="py-6 border-b border-slate-150 dark:border-slate-900 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Welcome back, {name}
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400 mt-0.5">
             Here is an overview of your research cockpit and system indicators today.
           </p>
         </div>
@@ -198,22 +145,6 @@ function UserHero({
           </Button>
         </div>
       </div>
-
-      {/* Simple search form for user cockpit */}
-      <form onSubmit={submitSearch} className="max-w-2xl relative flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search normalized corpus instantly..."
-            className="w-full pl-10 pr-4 h-10 rounded-lg border-slate-200 dark:border-slate-800 bg-card font-medium"
-          />
-        </div>
-        <Button type="submit" size="sm" className="h-10 px-4 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-100 shadow-sm">
-          Search
-        </Button>
-      </form>
     </div>
   );
 }
@@ -352,7 +283,7 @@ function PipelineSection() {
         <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-widest">
           Academic Intel Pipeline
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-550 dark:text-slate-400">
           How raw academic metadata is transformed into actionable research insights.
         </p>
       </div>
@@ -455,7 +386,7 @@ function CapabilityCards() {
                 <c.icon className="w-4 h-4 text-blue-600" />
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm">{c.title}</h4>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed">
                 {c.desc}
               </p>
             </div>
@@ -615,7 +546,7 @@ function LiveSignalsSection({
         {/* Publication Velocity Chart */}
         <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
           <div>
-            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+            <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest">
               Publication Velocity
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
