@@ -170,7 +170,7 @@ export function SearchPage() {
   const renderSearchBox = () => {
     return (
       <div className="relative w-full">
-        <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-1.5 shadow-md flex items-center gap-1">
+        <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-md flex flex-col gap-1.5">
           {/* Dropdown 1: Entity selection */}
           {/* Search Input */}
           <div className="flex-1 min-w-0 flex items-center px-2 py-1 gap-2">
