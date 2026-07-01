@@ -720,7 +720,7 @@ function LiveSignalsSection({
             {trends.risingKeywords.length === 0 ? (
               <li className="text-slate-400">No rising keywords.</li>
             ) : (
-              trends.risingKeywords.slice(0, 8).map((k: any, idx: number) => (
+              trends.risingKeywords.slice(0, 8).map((k, idx: number) => (
                 <li
                   key={`k-${idx}`}
                   onClick={() => navigate(`/search?q=${encodeURIComponent(k.keyword)}`)}
@@ -728,12 +728,12 @@ function LiveSignalsSection({
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-slate-800 dark:text-white">{k.keyword}</span>
-                    <span className="text-[10px] font-bold text-emerald-600">+{Math.round(k.momentum * 100)}%</span>
+                    <span className="text-[10px] font-bold text-emerald-600">+{Math.round(k.growthRatePct)}%</span>
                   </div>
-                  {k.warning && (
+                  {(k as any).warning && (
                     <div className="flex items-center gap-1 text-[9px] text-amber-600 font-mono">
                       <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-                      <span>{k.warning}</span>
+                      <span>{(k as any).warning}</span>
                     </div>
                   )}
                 </li>
