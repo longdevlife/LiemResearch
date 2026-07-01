@@ -125,6 +125,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 112 }}>
+        {/* Header */}
         <View className="flex-row justify-between items-center mb-5">
           <View className="flex-1 pr-4">
             <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">Hi, {user?.fullName?.split(" ")[0] || "Researcher"}</Text>
@@ -159,6 +160,7 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Search bar */}
         <View className="flex-row items-center bg-card dark:bg-[#1A2332] rounded-full px-4 h-12 mb-7 border border-border dark:border-[#26334A]">
           <Feather name="search" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
           <TextInput
@@ -172,6 +174,7 @@ export default function HomeScreen() {
           <Feather name="sliders" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
         </View>
 
+        {/* Trending topics */}
         <View className="mb-7">
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC]">Trending topics</Text>
@@ -198,6 +201,7 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Recent papers / Search results */}
         <View className="mb-7">
           <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC] mb-3">{hasQuery ? "Search results" : "Recent papers"}</Text>
           {papersLoading ? (
@@ -211,63 +215,62 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Quick actions — horizontal scroll */}
         <View>
           <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC] mb-3">Quick actions</Text>
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/submit-paper" as any)}
-            >
-              <View className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
-                <Feather name="upload-cloud" color="#06B6D4" size={18} />
-              </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Submit</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/reports" as any)}
-            >
-              <View className="w-10 h-10 rounded-full bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center mb-2">
-                <Ionicons name="sparkles" color="#A78BFA" size={18} />
-              </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>AI Reports</Text>
-            </TouchableOpacity>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
+            <View className="flex-row gap-2 pr-4">
+              <TouchableOpacity
+                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                onPress={() => router.push("/submit-paper" as any)}
+              >
+                <View className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
+                  <Feather name="upload-cloud" color="#06B6D4" size={18} />
+                </View>
+                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Submit</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/rankings" as any)}
-            >
-              <View className="w-10 h-10 rounded-full bg-[#1E1B4B] items-center justify-center mb-2">
-                <Feather name="award" color="#A5B4FC" size={18} />
-              </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Ranks</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                onPress={() => router.push("/reports" as any)}
+              >
+                <View className="w-10 h-10 rounded-full bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center mb-2">
+                  <Ionicons name="sparkles" color="#A78BFA" size={18} />
+                </View>
+                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>AI Reports</Text>
+              </TouchableOpacity>
 
-          <View className="flex-row gap-2 mt-2">
-            <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/trends" as any)}
-            >
-              <View className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-[#052E16] items-center justify-center mb-2">
-                <Feather name="trending-up" color="#22C55E" size={18} />
-              </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Trends</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                onPress={() => router.push("/rankings" as any)}
+              >
+                <View className="w-10 h-10 rounded-full bg-[#1E1B4B] items-center justify-center mb-2">
+                  <Feather name="award" color="#A5B4FC" size={18} />
+                </View>
+                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Ranks</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-              onPress={() => router.push("/gaps" as any)}
-            >
-              <View className="w-10 h-10 rounded-full bg-amber-50 dark:bg-[#2D1B00] items-center justify-center mb-2">
-                <Feather name="zap" color="#F59E0B" size={18} />
-              </View>
-              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Gaps</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                onPress={() => router.push("/trends" as any)}
+              >
+                <View className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-[#052E16] items-center justify-center mb-2">
+                  <Feather name="trending-up" color="#22C55E" size={18} />
+                </View>
+                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Trends</Text>
+              </TouchableOpacity>
 
-            <View className="flex-1" />
-          </View>
+              <TouchableOpacity
+                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                onPress={() => router.push("/gaps" as any)}
+              >
+                <View className="w-10 h-10 rounded-full bg-amber-50 dark:bg-[#2D1B00] items-center justify-center mb-2">
+                  <Feather name="zap" color="#F59E0B" size={18} />
+                </View>
+                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Gaps</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </SafeAreaView>
