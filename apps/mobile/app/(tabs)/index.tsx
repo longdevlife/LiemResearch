@@ -244,6 +244,30 @@ export default function HomeScreen() {
               <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Ranks</Text>
             </TouchableOpacity>
           </View>
+
+          <View className="flex-row gap-2 mt-2">
+            <TouchableOpacity
+              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+              onPress={() => router.push("/trends" as any)}
+            >
+              <View className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-[#052E16] items-center justify-center mb-2">
+                <Feather name="trending-up" color="#22C55E" size={18} />
+              </View>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Trends</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-1 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+              onPress={() => router.push("/gaps" as any)}
+            >
+              <View className="w-10 h-10 rounded-full bg-amber-50 dark:bg-[#2D1B00] items-center justify-center mb-2">
+                <Feather name="zap" color="#F59E0B" size={18} />
+              </View>
+              <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>Gaps</Text>
+            </TouchableOpacity>
+
+            <View className="flex-1" />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
