@@ -225,7 +225,7 @@ export function HomePage() {
                     cursor={{fill: 'transparent'}}
                     contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                   />
-                  <Bar dataKey="value" fill="#93c5fd" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
