@@ -260,37 +260,46 @@ export function SearchPage() {
               max="100"
               value={Math.round(aiScoreThreshold * 100)}
               onChange={(e) => { setAiScoreThreshold(parseInt(e.target.value, 10) / 100); resetPage(); }}
-              disabled={searchMode !== "semantic" || !hasQuery}
+              disabled={searchMode !== "semantic"}
               className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 disabled:opacity-50"
             />
             <div className="flex justify-between text-[10px] text-slate-400 mt-2 font-medium">
               <span>0.0</span>
               <span>1.0</span>
             </div>
+            {searchMode !== "semantic" && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-500 font-semibold mt-2">
+                Only available in Semantic Search mode.
+              </p>
+            )}
           </div>
         </div>
         {/* S3: AI Rerank */}
         <div className="mb-6 border-t border-slate-100 dark:border-slate-800 pt-4">
           <div
             onClick={() => {
-              if (searchMode === "semantic" && hasQuery) {
+              if (searchMode === "semantic") {
                 setRerank(prev => !prev); resetPage();
               }
             }}
-            className={`flex items-center justify-between select-none ${searchMode === "semantic" && hasQuery ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+            className={`flex items-center justify-between select-none ${searchMode === "semantic" ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
           >
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
               AI Rerank top results
             </span>
             {/* Custom toggle switch */}
             <div
-              className={`w-9 h-5 rounded-full relative transition-colors ${rerank ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
+              className={`w-9 h-5 rounded-full relative transition-colors ${rerank && searchMode === "semantic" ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
             >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${rerank ? "right-0.5" : "left-0.5"}`}></div>
+              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${rerank && searchMode === "semantic" ? "right-0.5" : "left-0.5"}`}></div>
             </div>
           </div>
           <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-2 leading-normal">
-            Reranking uses LLM to score relevance. It is slower and may consume AI quota.
+            {searchMode !== "semantic" ? (
+              <span className="text-amber-600 dark:text-amber-500 font-semibold">Only available in Semantic Search mode.</span>
+            ) : (
+              "Reranking uses LLM to score relevance. It is slower and may consume AI quota."
+            )}
           </p>
         </div>
       </aside>
