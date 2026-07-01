@@ -213,6 +213,14 @@ export function HomePage() {
             <div className="h-40 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={realVelocityData.length > 0 ? realVelocityData : mockVelocityData} barSize={24}>
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#94a3b8" 
+                    fontSize={11} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    dy={4}
+                  />
                   <Tooltip 
                     cursor={{fill: 'transparent'}}
                     contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
