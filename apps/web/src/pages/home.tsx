@@ -38,7 +38,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="w-full space-y-10 select-none pb-12">
+    <div className="w-full space-y-8 select-none pb-12">
       {/* 1. Header / Hero Section based on Mode */}
       {data.mode === "guest" ? (
         <GuestHero />
@@ -249,7 +249,7 @@ function WorkspaceSnapshot({ workspace }: { workspace: NonNullable<HomeOverview[
 function AdminHealthSummary({ admin }: { admin: NonNullable<HomeOverview["admin"]> }) {
   const reportsCount = (admin.reports?.queued || 0) + (admin.reports?.generating || 0);
   return (
-    <div className="rounded-2xl border border-dashed border-red-500/20 bg-red-550/5 dark:bg-red-950/5 p-5 space-y-4">
+    <div className="rounded-2xl border border-dashed border-red-500/20 bg-red-50/30 dark:bg-red-950/5 p-5 space-y-4">
       <div className="flex items-center justify-between border-b border-red-500/10 pb-3">
         <h3 className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
           <Activity className="w-4 h-4 animate-pulse" />
@@ -307,7 +307,7 @@ function PipelineSection() {
         <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
           Academic Intel Pipeline
         </h3>
-        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <p className="text-sm font-bold text-slate-850 dark:text-slate-200">
           How raw academic metadata is transformed into actionable research insights
         </p>
       </div>
@@ -348,7 +348,7 @@ function PipelineSection() {
 
         {/* Step 4 */}
         <div className="relative overflow-hidden bg-blue-50/30 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-bl-full pointer-events-none" />
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500/5 to-transparent rounded-bl-full pointer-events-none" />
           <div className="space-y-3 relative z-10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-600 to-blue-600 text-white font-extrabold flex items-center justify-center shadow-sm">4</div>
             <h4 className="font-extrabold text-blue-700 dark:text-blue-400 text-sm">Evidence Direction</h4>
@@ -428,7 +428,7 @@ function CapabilityCards() {
                 </div>
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">{c.title}</h4>
               </div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-405 leading-relaxed">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">
                 {c.desc}
               </p>
             </div>
@@ -451,50 +451,56 @@ function WorkspaceDetailGrid({ workspace }: { workspace: NonNullable<HomeOvervie
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Col 1: Recent Searches */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <History className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
+          <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600">
+            <History className="w-4 h-4" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
             Recent Searches
           </h3>
         </div>
 
         {workspace.recentSearches.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-2 select-none">
-            <Search className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-            <p className="font-medium">No recent searches yet.</p>
+            <Search className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
+            <p className="font-bold text-slate-400 mt-1">No recent searches yet.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+          <div className="space-y-2">
             {workspace.recentSearches.slice(0, 5).map((s, idx) => (
-              <li
+              <div
                 key={`s-${idx}`}
                 onClick={() => navigate(`/search?q=${encodeURIComponent(s.query)}`)}
-                className="py-3 flex items-center justify-between cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-950/10 px-2 rounded-xl transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
               >
                 <div className="flex items-center gap-2.5 truncate pr-2">
-                  <Search className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-blue-500 transition-colors" />
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={s.query}>
+                  <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" title={s.query}>
                     {s.query}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 shrink-0 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-105 dark:bg-slate-800 px-2 py-0.5 rounded">
                   {s.resultCount} res
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
       {/* Col 2: Latest Reports */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <FileText className="w-4 h-4 text-slate-400" />
-            Latest Reports
-          </h3>
+        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/60">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600">
+              <FileText className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              Latest Reports
+            </h3>
+          </div>
           {workspace.latestReports.length > 0 && (
-            <Link to="/reports" className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+            <Link to="/reports" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
               View All
             </Link>
           )}
@@ -502,50 +508,54 @@ function WorkspaceDetailGrid({ workspace }: { workspace: NonNullable<HomeOvervie
 
         {workspace.latestReports.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
-            <FileText className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-            <p className="font-medium">No reports generated yet.</p>
+            <FileText className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
+            <p className="font-bold text-slate-400">No reports generated yet.</p>
             <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
               <Link to="/reports?create=true">Generate First Report</Link>
             </Button>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+          <div className="space-y-2">
             {workspace.latestReports.slice(0, 5).map((r) => (
-              <li
+              <div
                 key={r.id}
                 onClick={() => navigate(`/reports/${r.id}`)}
-                className="py-3 flex items-center justify-between cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-950/10 px-2 rounded-xl transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
               >
                 <div className="truncate pr-2">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={r.topic || r.query}>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400" title={r.topic || r.query}>
                     {r.topic || r.query}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                  <span className="text-[10px] text-slate-400 mt-0.5 block font-semibold">
                     {new Date(r.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 border ${
-                  r.status === "ready" ? "bg-emerald-50/80 text-emerald-600 border-emerald-200/30 dark:bg-emerald-950/20 dark:text-emerald-400" :
-                  r.status === "failed" ? "bg-red-50/80 text-red-600 border-red-200/30 dark:bg-red-950/20 dark:text-red-400" :
-                  "bg-amber-50/80 text-amber-600 border-amber-200/30 dark:bg-amber-950/20 dark:text-amber-400 animate-pulse"
+                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border shrink-0 ${
+                  r.status === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40" :
+                  r.status === "failed" ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/40" :
+                  "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40 animate-pulse"
                 }`}>
                   {r.status}
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
       {/* Col 3: Latest Projects */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <FolderKanban className="w-4 h-4 text-slate-400" />
-            Latest Projects
-          </h3>
+        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/60">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 text-purple-600">
+              <FolderKanban className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              Latest Projects
+            </h3>
+          </div>
           {workspace.latestProjects.length > 0 && (
-            <Link to="/projects" className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+            <Link to="/projects" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
               View All
             </Link>
           )}
@@ -553,34 +563,34 @@ function WorkspaceDetailGrid({ workspace }: { workspace: NonNullable<HomeOvervie
 
         {workspace.latestProjects.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-slate-400 space-y-3 select-none">
-            <FolderKanban className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-            <p className="font-medium">No research projects created.</p>
+            <FolderKanban className="w-8 h-8 text-slate-350 dark:text-slate-700 stroke-[1.5]" />
+            <p className="font-bold text-slate-400">No research projects created.</p>
             <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs font-bold shadow-sm" asChild>
               <Link to="/projects">Create Project</Link>
             </Button>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+          <div className="space-y-2">
             {workspace.latestProjects.slice(0, 5).map((p) => (
-              <li
+              <div
                 key={p.id}
                 onClick={() => navigate(`/projects/${p.id}`)}
-                className="py-3 flex items-center justify-between cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-950/10 px-2 rounded-xl transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer transition-all duration-200 group"
               >
                 <div className="truncate pr-2">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={p.title}>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block group-hover:text-blue-600 dark:group-hover:text-blue-400" title={p.title}>
                     {p.title}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                  <span className="text-[10px] text-slate-400 mt-0.5 block font-semibold">
                     Updated: {new Date(p.updatedAt).toLocaleDateString()}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-105 dark:bg-slate-800 px-2 py-0.5 rounded shrink-0">
                   {p.paperCount} papers
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
@@ -644,7 +654,7 @@ function LiveSignalsSection({
 
         {/* Recent Papers */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-widest">
               Recent Indexed Papers
             </h3>
@@ -693,7 +703,7 @@ function LiveSignalsSection({
                   "bg-blue-50/80 text-blue-700 border-blue-200/50 hover:bg-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40",
                   "bg-emerald-50/80 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40",
                   "bg-purple-50/80 text-purple-700 border-purple-200/50 hover:bg-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40",
-                  "bg-slate-50/80 text-slate-700 border-slate-200/50 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/60"
+                  "bg-slate-50/80 text-slate-700 border-slate-200/50 hover:bg-slate-100 dark:bg-slate-850 dark:text-slate-300 dark:border-slate-700/60"
                 ];
                 const colorClass = colors[idx % colors.length];
                 return (
@@ -767,29 +777,28 @@ function KPICard({
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm flex items-center justify-between transition-all duration-300 select-none focus:outline-none focus:ring-1 focus:ring-ring ${
+      className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121212] p-5 shadow-sm transition-all duration-350 select-none focus:outline-none focus:ring-1 focus:ring-ring ${
         onClick
-          ? "cursor-pointer hover:bg-slate-50/30 dark:hover:bg-slate-900/10 hover:shadow-md hover:scale-[1.01] hover:border-slate-300 dark:hover:border-slate-700"
+          ? "cursor-pointer hover:bg-blue-50/10 dark:hover:bg-blue-950/10 hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300/60 dark:hover:border-blue-800"
           : ""
-      } group`}
+      }`}
     >
-      {/* Glow corner element */}
-      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500/5 to-transparent rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform duration-500" />
-
-      <div className="space-y-1 relative z-10">
-        <span className="text-[11px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest block group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
-          {title}
-        </span>
-        <span className="text-2xl font-bold text-slate-900 dark:text-white block font-mono">
-          {typeof value === "number" ? value.toLocaleString() : value}
-        </span>
-      </div>
-      <div className={`p-2.5 rounded-xl border shrink-0 relative z-10 transition-all duration-300 group-hover:scale-105 ${
-        isNeutral
-          ? "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700/60"
-          : "bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
-      }`}>
-        {icon}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">
+            {title}
+          </span>
+          <span className="text-3xl font-bold text-slate-900 dark:text-white block font-sans leading-none">
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </span>
+        </div>
+        <div className={`p-3 rounded-xl ${
+          isNeutral
+            ? "bg-slate-50 dark:bg-slate-800/80 text-slate-450 dark:text-slate-400"
+            : "bg-blue-50/80 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
+        } transition-all duration-300`}>
+          {icon}
+        </div>
       </div>
     </div>
   );
