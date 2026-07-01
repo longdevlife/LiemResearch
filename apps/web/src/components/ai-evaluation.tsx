@@ -96,7 +96,7 @@ interface Evaluation {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
-          <h3 className="font-bold text-slate-850 dark:text-slate-200 text-sm">AI Quality Evaluation</h3>
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">AI Quality Evaluation</h3>
           <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
             AI Advisory
           </span>
@@ -132,7 +132,7 @@ interface Evaluation {
           <div className="grid grid-cols-3 gap-2">
             {dims.map((d) => (
               <div key={d.label} className="rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100/50 dark:border-zinc-800/30 p-2 text-center">
-                <div className="text-base font-black text-slate-850 dark:text-slate-200">{d.value}/5</div>
+                <div className="text-base font-black text-slate-800 dark:text-slate-200">{d.value}/5</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">{d.label}</div>
               </div>
             ))}

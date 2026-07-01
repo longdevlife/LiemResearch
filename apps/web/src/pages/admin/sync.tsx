@@ -157,7 +157,7 @@ export function AdminSyncPage() {
               </Badge>
             </TooltipTrigger>
             {run.errorMessage && (
-              <TooltipContent className="max-w-xs bg-popover text-popover-foreground border border-border shadow-xs">
+              <TooltipContent className="max-w-xs bg-popover text-popover-foreground border border-border shadow-sm">
                 <p className="text-xs font-mono">{run.errorMessage}</p>
               </TooltipContent>
             )}

@@ -245,7 +245,7 @@ export function SearchPage() {
                   className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
                     activeFiltersCount > 0
                       ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
-                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -260,7 +260,7 @@ export function SearchPage() {
                 {isOpenMiniFilters && (
                   <div className="absolute left-0 mt-2 w-72 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl z-50 p-4 animate-fadeIn duration-150 select-none" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2 mb-3">
-                      <span className="text-xs font-extrabold text-slate-850 dark:text-slate-200">More Filters</span>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">More Filters</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -378,7 +378,7 @@ export function SearchPage() {
                   className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
                     journalTypes.length > 0
                       ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
-                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <FileText className={`w-3.5 h-3.5 shrink-0 ${journalTypes.length > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
@@ -427,7 +427,7 @@ export function SearchPage() {
                   className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
                     primaryProvider !== "all"
                       ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
-                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-655 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-655 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <Database className={`w-3.5 h-3.5 shrink-0 ${primaryProvider !== "all" ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />

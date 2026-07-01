@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -15,10 +16,10 @@ import {
   Sparkles,
   History,
   FolderKanban,
-  Plus,
-  ChevronRight
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth";
 import { useHomeOverview } from "@/features/home/hooks/use-home-overview";
@@ -29,6 +30,16 @@ export function HomePage() {
   const navigate = useNavigate();
   const { data: me } = useCurrentUser();
   const { data, isLoading, isError } = useHomeOverview();
+
+  // Search input state at home page
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = localSearchQuery.trim();
+    if (!q) return;
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+  };
 
   if (isLoading) {
     return <HomeSkeleton />;
@@ -42,13 +53,27 @@ export function HomePage() {
     <div className="w-full space-y-10 select-none pb-10">
       {/* 1. Header / Hero Section based on Mode */}
       {data.mode === "guest" ? (
-        <GuestHero />
+        <GuestHero
+          query={localSearchQuery}
+          setQuery={setLocalSearchQuery}
+          submitSearch={handleSearchSubmit}
+        />
       ) : (
-        <UserHero name={me?.user?.fullName || me?.user?.email || "Researcher"} />
+        <UserHero
+          name={me?.user?.fullName || me?.user?.email || "Researcher"}
+          query={localSearchQuery}
+          setQuery={setLocalSearchQuery}
+          submitSearch={handleSearchSubmit}
+        />
       )}
 
       {/* 2. Admin Health summary (If Admin Mode) */}
       {data.mode === "admin" && data.admin && <AdminHealthSummary admin={data.admin} />}
+
+      {/* 3. Guest System Snapshot (If Guest Mode) */}
+      {data.mode === "guest" && data.summary && (
+        <GuestSystemSnapshot summary={data.summary} />
+      )}
 
       {/* 3. Primary Workspace snapshot cards for Logged-in Users */}
       {data.mode !== "guest" && data.workspace && (
@@ -75,7 +100,15 @@ export function HomePage() {
 // ==================== SUBCOMPONENTS ====================
 
 // 1. Guest Hero Section
-function GuestHero() {
+function GuestHero({
+  query,
+  setQuery,
+  submitSearch
+}: {
+  query: string;
+  setQuery: (val: string) => void;
+  submitSearch: (e: React.FormEvent) => void;
+}) {
   return (
     <div className="text-center py-12 md:py-20 space-y-6 max-w-4xl mx-auto">
       <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -86,15 +119,28 @@ function GuestHero() {
         automatic trend intelligence, qualitative research gap detection, and evidence-backed RAG reports.
       </p>
 
+      {/* Simple prominent search input */}
+      <form onSubmit={submitSearch} className="max-w-2xl mx-auto relative flex items-center gap-2 px-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search research papers by concept, question or topic..."
+            className="w-full pl-11 pr-4 h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-card font-semibold"
+          />
+        </div>
+        <Button type="submit" size="lg" className="h-12 px-6 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-105 shadow-sm">
+          Search
+        </Button>
+      </form>
+
       {/* CTA Buttons */}
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
-          <Link to="/search">Search Papers</Link>
-        </Button>
         <Button variant="outline" size="sm" className="rounded-xl border border-slate-200 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 font-bold h-10 px-5 transition-all" asChild>
           <Link to="/trends">Explore Trends</Link>
         </Button>
-        <Button size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-850 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
+        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
           <Link to="/reports?create=true">Generate Report</Link>
         </Button>
         <Button variant="ghost" size="sm" className="rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold h-10 px-4" asChild>
@@ -106,7 +152,17 @@ function GuestHero() {
 }
 
 // 2. Logged-in User Hero Section
-function UserHero({ name }: { name: string }) {
+function UserHero({
+  name,
+  query,
+  setQuery,
+  submitSearch
+}: {
+  name: string;
+  query: string;
+  setQuery: (val: string) => void;
+  submitSearch: (e: React.FormEvent) => void;
+}) {
   return (
     <div className="py-6 border-b border-slate-100 dark:border-slate-900 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -138,11 +194,60 @@ function UserHero({ name }: { name: string }) {
           </Button>
         </div>
       </div>
+
+      {/* Simple search form for user cockpit */}
+      <form onSubmit={submitSearch} className="max-w-2xl relative flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-3 h-4.5 w-4.5 text-slate-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search normalized corpus instantly..."
+            className="w-full pl-10 pr-4 h-10 rounded-lg border-slate-200 dark:border-slate-800 bg-card font-medium"
+          />
+        </div>
+        <Button type="submit" size="sm" className="h-10 px-4 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-100 shadow-sm">
+          Search
+        </Button>
+      </form>
     </div>
   );
 }
 
-// 3. Workspace Snapshot Cards
+// 3. Guest System Snapshot Card Component
+function GuestSystemSnapshot({ summary }: { summary: any }) {
+  const navigate = useNavigate();
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <KpiCard
+        label="PAPERS INDEXED"
+        value={summary.totalPapers?.toLocaleString() || "0"}
+        icon={BookOpen}
+        onClick={() => navigate("/search")}
+      />
+      <KpiCard
+        label="SEARCHES SERVED"
+        value={summary.totalSearches?.toLocaleString() || "0"}
+        icon={Search}
+        isNeutral
+      />
+      <KpiCard
+        label="ACTIVE USERS"
+        value={summary.uniqueUsers?.toLocaleString() || "0"}
+        icon={Users}
+        isNeutral
+      />
+      <KpiCard
+        label="EMERGING TREND"
+        value={summary.topTrend || "N/A"}
+        icon={TrendingUp}
+        onClick={() => summary.topTrend ? navigate(`/trends/${encodeURIComponent(summary.topTrend)}`) : navigate("/trends")}
+      />
+    </div>
+  );
+}
+
+// 4. Workspace Snapshot Cards
 function WorkspaceSnapshot({ workspace }: { workspace: any }) {
   const navigate = useNavigate();
   return (
@@ -175,7 +280,7 @@ function WorkspaceSnapshot({ workspace }: { workspace: any }) {
   );
 }
 
-// 4. Admin Mini Health Card
+// 5. Admin Mini Health Card
 function AdminHealthSummary({ admin }: { admin: any }) {
   const reportsCount = (admin.reports?.queued || 0) + (admin.reports?.generating || 0);
   return (
@@ -229,7 +334,7 @@ function AdminHealthSummary({ admin }: { admin: any }) {
   );
 }
 
-// 5. Pipeline explanation Section
+// 6. Pipeline explanation Section
 function PipelineSection() {
   return (
     <div className="rounded-xl border bg-slate-50/50 dark:bg-slate-900/10 p-6 space-y-6">
@@ -244,7 +349,7 @@ function PipelineSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-stretch text-xs text-center">
         {/* Step 1 */}
-        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-xs">
+        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-1.5">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center mx-auto mb-2">1</div>
             <h4 className="font-bold text-slate-800 dark:text-white">Corpus Sourcing</h4>
@@ -255,7 +360,7 @@ function PipelineSection() {
         </div>
 
         {/* Step 2 */}
-        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-xs">
+        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-1.5">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center mx-auto mb-2">2</div>
             <h4 className="font-bold text-slate-800 dark:text-white">Vector Norm</h4>
@@ -266,7 +371,7 @@ function PipelineSection() {
         </div>
 
         {/* Step 3 */}
-        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-xs">
+        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-1.5">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center mx-auto mb-2">3</div>
             <h4 className="font-bold text-slate-800 dark:text-white">AI Analysis</h4>
@@ -277,7 +382,7 @@ function PipelineSection() {
         </div>
 
         {/* Step 4 */}
-        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-xs">
+        <div className="bg-card border rounded-lg p-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-1.5">
             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center mx-auto mb-2">4</div>
             <h4 className="font-bold text-blue-700 dark:text-blue-300">Evidence Direction</h4>
@@ -291,7 +396,7 @@ function PipelineSection() {
   );
 }
 
-// 6. Capability Cards (6 blocks)
+// 7. Capability Cards (6 blocks)
 function CapabilityCards() {
   const capabilities = [
     {
@@ -334,7 +439,7 @@ function CapabilityCards() {
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {capabilities.map((c) => (
-          <div key={c.title} className="rounded-xl border bg-card p-5 shadow-xs flex flex-col justify-between gap-3">
+          <div key={c.title} className="rounded-xl border bg-card p-5 shadow-sm flex flex-col justify-between gap-3">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <c.icon className="w-4 h-4 text-blue-600" />
@@ -356,14 +461,14 @@ function CapabilityCards() {
   );
 }
 
-// 7. Workspace Detail Grid (Logged-in details)
+// 8. Workspace Detail Grid (Logged-in details)
 function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
   const navigate = useNavigate();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Col 1: Recent Searches */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <History className="w-3.5 h-3.5 text-slate-400" />
           Recent Searches
         </h3>
@@ -396,7 +501,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
 
       {/* Col 2: Latest Reports */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <FileText className="w-3.5 h-3.5 text-slate-400" />
           Latest Reports
         </h3>
@@ -416,7 +521,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
                 className="py-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-900/20 px-1 rounded-lg transition-all"
               >
                 <div className="truncate pr-2">
-                  <span className="font-semibold text-slate-850 dark:text-white truncate block" title={r.topic || r.query}>
+                  <span className="font-semibold text-slate-800 dark:text-white truncate block" title={r.topic || r.query}>
                     {r.topic || r.query}
                   </span>
                   <span className="text-[9px] text-slate-400">
@@ -438,7 +543,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
 
       {/* Col 3: Latest Projects */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <FolderKanban className="w-3.5 h-3.5 text-slate-400" />
           Latest Projects
         </h3>
@@ -458,7 +563,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
                 className="py-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-900/20 px-1 rounded-lg transition-all"
               >
                 <div className="truncate pr-2">
-                  <span className="font-semibold text-slate-850 dark:text-white truncate block" title={p.title}>
+                  <span className="font-semibold text-slate-800 dark:text-white truncate block" title={p.title}>
                     {p.title}
                   </span>
                   <span className="text-[9px] text-slate-400">
