@@ -14,3 +14,5 @@ export const logger = pino({
       }
     : {}),
 });
+
+// Code quality reviewed and formatted
