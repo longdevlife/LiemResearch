@@ -23,6 +23,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const { data } = useCurrentUser();
+  const isAdmin = data?.user?.role === "admin";
   const userName = data?.user?.fullName || data?.user?.email || "Researcher";
   const { data: papersData, isLoading } = usePapers({ page: 1, pageSize: 2 });
   const recentPapers = papersData?.papers || [];
@@ -64,7 +65,7 @@ export function HomePage() {
         <div className="lg:col-span-8 flex flex-col gap-8">
           
           {/* KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid gap-4 ${isAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3"}`}>
             <KpiCard 
               label="PAPERS INDEXED" 
               value={isSummaryLoading ? "..." : (summaryData?.totalPapers?.toLocaleString() ?? papersData?.meta?.total?.toLocaleString() ?? "0")} 
@@ -76,12 +77,14 @@ export function HomePage() {
               trend="" 
               isNeutral 
             />
-            <KpiCard 
-              label="USERS" 
-              value={isSummaryLoading ? "..." : (summaryData?.uniqueUsers?.toLocaleString() ?? "0")} 
-              trend="" 
-              isNeutral 
-            />
+            {isAdmin && (
+              <KpiCard 
+                label="USERS" 
+                value={isSummaryLoading ? "..." : (summaryData?.uniqueUsers?.toLocaleString() ?? "0")} 
+                trend="" 
+                isNeutral 
+              />
+            )}
             <KpiCard 
               label="SAVED PAPERS" 
               value={isBookmarksLoading ? "..." : (bookmarksData?.length?.toString() || "0")} 
