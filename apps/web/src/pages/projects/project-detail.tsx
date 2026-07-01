@@ -467,9 +467,11 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
   const isCurrentUserOwner = currentUserId === ownerId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTitle, setSearchTitle] = useState("");
-  const [selectedPaper, setSelectedPaper] = useState<{ id: string; title: string; year: number } | null>(null);
+  const [selectedPaper, setSelectedPaper] = useState<{ id: string; title: string; year?: number; score?: number } | null>(null);
 
   const { data: searchResults, isLoading: isSearching } = useSearchPapers(searchTitle);
+  const getPaperScore = (p: any) => p.score ?? p.aiScore?.finalScore ?? p.dataQualityScore ?? 0;
+  const sortedSearchResults = searchResults ? [...searchResults].sort((a, b) => getPaperScore(b) - getPaperScore(a)) : [];
   const addPaper = useAddPaperToProject(projectId);
   const removePaper = useRemovePaperFromProject(projectId);
 
@@ -521,7 +523,10 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                     <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
                       <div className="text-sm">
                         <p className="font-medium line-clamp-2">{selectedPaper.title}</p>
-                        <p className="text-muted-foreground text-xs">Year: {selectedPaper.year}</p>
+                        <div className="flex gap-4 mt-1">
+                          <p className="text-muted-foreground text-xs">Year: {selectedPaper.year ?? "N/A"}</p>
+                          <p className="text-cyan-600 dark:text-cyan-400 text-xs font-semibold">Score: {selectedPaper.score?.toFixed(2) ?? "N/A"}</p>
+                        </div>
                       </div>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedPaper(null)}>Change</Button>
                     </div>
@@ -537,19 +542,27 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                         <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
                           {isSearching ? (
                             <div className="p-3 text-sm text-muted-foreground">Searching...</div>
-                          ) : searchResults?.length === 0 ? (
+                          ) : sortedSearchResults.length === 0 ? (
                             <div className="p-3 text-sm text-muted-foreground">Paper not found.</div>
                           ) : (
-                            searchResults?.map((p: any) => (
-                              <div
-                                key={p.id}
-                                className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
-                                onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.year })}
-                              >
-                                <p className="font-medium text-sm line-clamp-2">{p.title}</p>
-                                <p className="text-muted-foreground text-xs">Year: {p.year}</p>
-                              </div>
-                            ))
+                            sortedSearchResults.map((p: any) => {
+                              const score = getPaperScore(p);
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0 flex justify-between items-start"
+                                  onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.publicationYear ?? p.year, score })}
+                                >
+                                  <div>
+                                    <p className="font-medium text-sm line-clamp-2">{p.title}</p>
+                                    <p className="text-muted-foreground text-xs mt-1">Year: {p.publicationYear ?? p.year ?? "N/A"}</p>
+                                  </div>
+                                  <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 shrink-0 ml-2 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">
+                                    Score: {score.toFixed(2)}
+                                  </div>
+                                </div>
+                              );
+                            })
                           )}
                         </div>
                       )}

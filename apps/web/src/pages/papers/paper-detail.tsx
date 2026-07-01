@@ -19,8 +19,10 @@ import {
   Sparkles,
   Star,
   Scale,
+  FolderPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
 import { usePaper } from "@/features/papers";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-count";
@@ -347,6 +349,17 @@ export function PaperDetailPage() {
                   <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
                   {isBookmarked ? "Saved" : "Save"}
                 </Button>
+                
+                <AddToProjectDropdown paperId={id!}>
+                  <Button
+                    variant="outline"
+                    className="h-10 px-4 gap-2 font-bold rounded-lg text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                    Add to Project
+                  </Button>
+                </AddToProjectDropdown>
+
                 <Button
                   variant="outline"
                   className="h-10 px-4 gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-300 dark:border-slate-700 rounded-lg"

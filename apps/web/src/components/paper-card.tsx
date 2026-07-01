@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
+import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
 import { toast } from "sonner";
 
 export interface PaperCardProps {
@@ -93,6 +94,8 @@ export function PaperCard({
               <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
             </Button>
           )}
+
+          <AddToProjectDropdown paperId={id} />
 
           <div
             className={`flex flex-col items-center justify-center border rounded-lg px-2 py-1 shrink-0 ${badgeColors}`}
