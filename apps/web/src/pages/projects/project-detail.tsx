@@ -324,7 +324,15 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 }
 
 function GapsTab({ projectId }: { projectId: string }) {
-  const { data: gapsData, isLoading, refetch } = useGaps({ projectId, pageSize: 50 });
+  const [minConfidence, setMinConfidence] = useState(0);
+  const [debouncedConfidence, setDebouncedConfidence] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedConfidence(minConfidence), 300);
+    return () => clearTimeout(timer);
+  }, [minConfidence]);
+
+  const { data: gapsData, isLoading, refetch } = useGaps({ projectId, pageSize: 50, minConfidence: debouncedConfidence });
   const analyze = useAnalyzeGap();
 
   const [open, setOpen] = useState(false);
@@ -356,12 +364,28 @@ function GapsTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4 mt-2">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Research Gaps</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="rounded-full shadow-sm"><Sparkles className="w-4 h-4 mr-2" /> New Gap Analysis</Button>
-          </DialogTrigger>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10 shadow-sm">
+            <Zap className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-[140px]">Min Confidence: {Math.round(minConfidence * 100)}%</span>
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.1" 
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+              className="w-24 accent-emerald-500 cursor-pointer"
+            />
+          </div>
+
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="rounded-full shadow-sm shrink-0"><Sparkles className="w-4 h-4 mr-2" /> New Gap Analysis</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Gap Analysis</DialogTitle>
@@ -388,6 +412,7 @@ function GapsTab({ projectId }: { projectId: string }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {activeAnalysisId && (
