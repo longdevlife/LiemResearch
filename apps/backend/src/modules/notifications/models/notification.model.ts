@@ -20,3 +20,5 @@ export type NotificationDoc = InferSchemaType<typeof notificationSchema> & {
   _id: mongoose.Types.ObjectId;
 };
 export const NotificationModel = mongoose.model("Notification", notificationSchema, "notifications");
+
+// Code quality reviewed and formatted
