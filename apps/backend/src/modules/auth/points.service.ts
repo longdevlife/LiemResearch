@@ -184,7 +184,7 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
       await notificationService.create({
         userId: objectId,
         title: "Level Up!",
-        message: `🎉 Chúc mừng bạn đã thăng cấp lên Cấp độ ${levelAfter}!`,
+        message: `🎉 Congratulations! You have leveled up to Level ${levelAfter}!`,
         type: "level_up",
       });
     } catch (err) {
