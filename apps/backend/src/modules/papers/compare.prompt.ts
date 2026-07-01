@@ -4,6 +4,7 @@ import {
   UNTRUSTED_DATA_PREAMBLE,
   type GroundingEvidence,
 } from "../llm/grounding.js";
+import { buildPaperEvidenceText, type PaperStructuredAnalysis } from "./paper-structured-context.js";
 
 /**
  * Prompt construction for paper comparison — PURE functions, no I/O. The cache
@@ -16,6 +17,7 @@ export interface CompareCandidate {
   id: string;
   title: string;
   abstractText?: string;
+  aiAnalysis?: PaperStructuredAnalysis | null;
 }
 
 export interface CompareLlmOutput {
@@ -29,9 +31,9 @@ export const COMPARE_DIMENSIONS = ["method", "dataScope", "keyFinding", "limitat
 const MAX_ABSTRACT_CHARS = 1200;
 
 export const COMPARE_SYSTEM_PROMPT = [
-  "You compare academic papers ONLY from the title + abstract provided.",
+  "You compare academic papers ONLY from the title, abstract, and structured analysis provided.",
   UNTRUSTED_DATA_PREAMBLE,
-  'Do not invent facts not present in the abstracts. If an abstract lacks info for a dimension, write "not stated".',
+  'Do not invent facts not present in the provided evidence. If the evidence lacks info for a dimension, write "not stated".',
   `Compare across exactly these dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
   "Return ONLY valid JSON, no fences:",
   '{ "dimensions": [ { "name": "method", "perPaper": ["<paper1>", "<paper2>", ...] }, ... ] }',
@@ -43,7 +45,10 @@ export function buildComparePrompt(papers: CompareCandidate[]): string {
     papers.map((p): GroundingEvidence => ({
       id: p.id,
       title: p.title,
-      abstractText: p.abstractText,
+      abstractText: buildPaperEvidenceText({
+        abstractText: p.abstractText,
+        aiAnalysis: p.aiAnalysis,
+      }),
     })),
     { maxAbstractChars: MAX_ABSTRACT_CHARS },
   );

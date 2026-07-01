@@ -108,13 +108,18 @@ export function GapDirectionsPanel({
             </div>
           ))}
           <p className="text-[10px] text-slate-400">
-            Advisory suggestions only; does not affect approval.
+            Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.
           </p>
         </div>
       ) : (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          No suggestions yet. Click to generate 2-4 research directions for this gap.
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            No suggestions yet. Click to generate 2-4 research directions for this gap.
+          </p>
+          <p className="text-[10px] text-slate-400">
+            Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.
+          </p>
+        </div>
       )}
     </div>
   );

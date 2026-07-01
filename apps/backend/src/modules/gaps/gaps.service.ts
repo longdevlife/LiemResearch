@@ -13,6 +13,7 @@ import { ResearchGapModel } from "./models/research-gap.model.js";
 import { GapDirectionsModel, type GapDirectionsDoc } from "./models/gap-directions.model.js";
 import {
   buildDirectionsPrompt,
+  buildDirectionsEvidenceHash,
   sanitizeDirections,
   DIRECTIONS_PROMPT_VERSION,
   DIRECTIONS_SYSTEM_PROMPT,
@@ -415,15 +416,27 @@ export const gapsService = {
     const gap = await ResearchGapModel.findById(gapId).lean();
     if (!gap) throw AppError.notFound("Research gap not found");
 
-    const existing = await GapDirectionsModel.findOne({ gapId });
-    if (existing && !force && existing.promptVersion === DIRECTIONS_PROMPT_VERSION) {
-      return toDirectionsDto(existing as GapDirectionsDoc);
-    }
-
     const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
     const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
-      .select("title abstractText")
+      .select("title abstractText aiAnalysis")
       .lean();
+    const directionPapers = papers.map((p) => ({
+      id: String(p._id),
+      title: String(p.title),
+      abstractText: p.abstractText ? String(p.abstractText) : undefined,
+      aiAnalysis: p.aiAnalysis ?? null,
+    }));
+    const evidenceHash = buildDirectionsEvidenceHash(directionPapers);
+
+    const existing = await GapDirectionsModel.findOne({ gapId });
+    if (
+      existing &&
+      !force &&
+      existing.promptVersion === DIRECTIONS_PROMPT_VERSION &&
+      existing.evidenceHash === evidenceHash
+    ) {
+      return toDirectionsDto(existing as GapDirectionsDoc);
+    }
 
     let raw: DirectionsRaw;
     const prompt = buildDirectionsPrompt(
@@ -435,11 +448,7 @@ export const gapsService = {
         intersectionCount: gap.intersectionCount ?? undefined,
         parentTrend: gap.parentTrend as { topic: string; growthRatePct: number } | undefined,
       },
-      papers.map((p) => ({
-        id: String(p._id),
-        title: String(p.title),
-        abstractText: p.abstractText ? String(p.abstractText) : undefined,
-      })),
+      directionPapers,
     );
     try {
       raw = await cachedGenerateJSON<DirectionsRaw>({
@@ -481,6 +490,7 @@ export const gapsService = {
           directions,
           model: env.GEMINI_MODEL_FAST,
           promptVersion: DIRECTIONS_PROMPT_VERSION,
+          evidenceHash,
         },
       },
       { upsert: true, new: true },
