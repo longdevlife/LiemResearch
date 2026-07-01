@@ -31,4 +31,17 @@ export const adminApi = {
     const res = await api.get(API_ROUTES.admin.syncRuns);
     return res.data.data as ApiSyncRun[];
   },
+  async getEmbedStatus() {
+    const res = await api.get(API_ROUTES.admin.embedStatus);
+    return res.data.data as {
+      totalPapers: number;
+      embeddedPapers: number;
+      pendingPapers: number;
+      isEmbeddingActive?: boolean;
+    };
+  },
+  async triggerEmbedding() {
+    const res = await api.post(API_ROUTES.admin.triggerEmbed);
+    return res.data.data as { jobId: string; status: string };
+  },
 };

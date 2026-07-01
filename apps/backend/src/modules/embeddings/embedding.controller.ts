@@ -20,7 +20,14 @@ export const embeddingController = {
     ]);
     res.json({
       success: true,
-      data: { analyzable, embedded, pending: analyzable - embedded },
+      data: {
+        analyzable,
+        embedded,
+        pending: analyzable - embedded,
+        totalPapers: analyzable,
+        embeddedPapers: embedded,
+        pendingPapers: analyzable - embedded,
+      },
     });
   },
 };

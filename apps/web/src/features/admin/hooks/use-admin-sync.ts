@@ -23,3 +23,22 @@ export function useTriggerSync() {
     },
   });
 }
+
+export function useEmbedStatus(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "embed-status"],
+    queryFn: adminApi.getEmbedStatus,
+    refetchInterval: 10000,
+    enabled,
+  });
+}
+
+export function useTriggerEmbedding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.triggerEmbedding,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "embed-status"] });
+    },
+  });
+}

@@ -11,6 +11,9 @@ export const API_ROUTES = {
     me: "/auth/me",
     changePassword: "/auth/change-password",
   },
+  home: {
+    overview: "/home/overview",
+  },
   papers: {
     list: "/papers",
     detail: (id: string) => `/papers/${id}`,
@@ -48,6 +51,8 @@ export const API_ROUTES = {
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",
+    embedStatus: "/admin/embed/status",
+    triggerEmbed: "/admin/embed",
     users: "/admin/users",
     userRole: (id: string) => `/admin/users/${id}/role`,
     userStatus: (id: string) => `/admin/users/${id}/status`,

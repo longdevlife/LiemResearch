@@ -16,6 +16,8 @@ import { ProjectChatPanel } from "@/features/projects/components/project-chat-pa
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import type { ReportLanguage } from "@trend/shared-types";
+import { CompareTable } from "@/features/compare/components/compare-table";
+import { useComparePapers } from "@/features/compare/hooks/use-compare";
 function useSearchUsers(email: string) {
   return useQuery({
     queryKey: ["searchUsers", email],
@@ -48,6 +50,8 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading } = useProject(id);
   const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps" | "chat">("papers");
+  const [autoOpenReport, setAutoOpenReport] = useState(false);
+  const [autoOpenGap, setAutoOpenGap] = useState(false);
 
   if (isLoading) {
     return (
@@ -71,14 +75,14 @@ export function ProjectDetailPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0a0a0a]">
       <main className="container max-w-6xl py-10 space-y-10">
-        
+
         {/* Overview Dashboard Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="flex-1">
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-3">{project.title}</h1>
             <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-lg leading-relaxed">{project.description || "No description provided."}</p>
           </div>
-          
+
           <div className="flex gap-4 items-center shrink-0">
             <div className="flex flex-col items-center bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 min-w-[120px] shadow-sm transition-transform hover:-translate-y-1 duration-300">
               <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mb-1">{project.papers?.length || 0}</span>
@@ -104,7 +108,7 @@ export function ProjectDetailPage() {
               <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300">{project.papers?.length || 0}</Badge>
               {activeTab === "papers" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
             </button>
-            
+
             <button
               className={`pb-4 text-sm font-semibold transition-all relative ${
                 activeTab === "members" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -152,10 +156,39 @@ export function ProjectDetailPage() {
         </div>
 
         <div>
-          {activeTab === "papers" && <PapersTab projectId={project._id} papers={project.papers} currentUserId={currentUser?.id} ownerId={project.ownerId} />}
+          {activeTab === "papers" && (
+            <PapersTab
+              projectId={project._id}
+              papers={project.papers}
+              currentUserId={currentUser?.id}
+              ownerId={project.ownerId}
+              onNavigateToReports={() => {
+                setActiveTab("reports");
+                setAutoOpenReport(true);
+              }}
+              onNavigateToGaps={() => {
+                setActiveTab("gaps");
+                setAutoOpenGap(true);
+              }}
+            />
+          )}
           {activeTab === "members" && <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} currentUserId={currentUser?.id} />}
-          {activeTab === "reports" && <ReportsTab projectId={project._id} />}
-          {activeTab === "gaps" && <GapsTab projectId={project._id} />}
+          {activeTab === "reports" && (
+            <ReportsTab
+              projectId={project._id}
+              defaultTopic={project.title}
+              openOnInit={autoOpenReport}
+              onOpenChange={setAutoOpenReport}
+            />
+          )}
+          {activeTab === "gaps" && (
+            <GapsTab
+              projectId={project._id}
+              defaultTopic={project.title}
+              openOnInit={autoOpenGap}
+              onOpenChange={setAutoOpenGap}
+            />
+          )}
           {activeTab === "chat" && <ProjectChatPanel projectId={project._id} paperCount={project.papers?.length || 0} />}
         </div>
       </main>
@@ -163,27 +196,74 @@ export function ProjectDetailPage() {
   );
 }
 
-function ReportsTab({ projectId }: { projectId: string }) {
+function ReportsTab({
+  projectId,
+  defaultTopic,
+  openOnInit,
+  onOpenChange
+}: {
+  projectId: string;
+  defaultTopic?: string;
+  openOnInit?: boolean;
+  onOpenChange?: (open: boolean) => void
+}) {
   const { data: reports, isLoading } = useReports(projectId);
   const createReport = useCreateReport();
 
   const [open, setOpen] = useState(false);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(defaultTopic || "");
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<ReportLanguage>("auto");
+  const [yearFrom, setYearFrom] = useState<string>("");
+  const [yearTo, setYearTo] = useState<string>("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
+
+  // Sync openOnInit
+  useEffect(() => {
+    if (openOnInit) {
+      setOpen(true);
+      onOpenChange?.(false);
+    }
+  }, [openOnInit, onOpenChange]);
+
+  // Sync defaultTopic when dialog opens
+  useEffect(() => {
+    if (open && defaultTopic) {
+      setTopic(defaultTopic);
+    }
+  }, [open, defaultTopic]);
 
   const handleGenerate = async () => {
     if (!query.trim()) {
       toast.error("Please enter a question for the AI to analyze");
       return;
     }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
+    if (fromYear && toYear && fromYear > toYear) {
+      toast.error("Year From must be less than or equal to Year To");
+      return;
+    }
+
     try {
-      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, language, deepAnalysis, fast, projectId });
+      await createReport.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language,
+        deepAnalysis,
+        fast,
+        projectId,
+        yearFrom: fromYear,
+        yearTo: toYear
+      });
       setOpen(false);
-      setTopic("");
+      setTopic(defaultTopic || "");
       setQuery("");
+      setYearFrom("");
+      setYearTo("");
       setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
@@ -226,9 +306,60 @@ function ReportsTab({ projectId }: { projectId: string }) {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="What should the AI analyze?"
                   rows={4}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none font-medium"
                 />
+
+                {/* PR1: Template query actions */}
+                <div className="flex flex-wrap gap-1 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setQuery("Summarize the key trends and methodologies in these papers.")}
+                    className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded transition-colors"
+                  >
+                    Summarize Trends
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuery("Identify the major research gaps and literature scarcity in this project.")}
+                    className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded transition-colors"
+                  >
+                    Find Gaps
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuery("Suggest future research directions and potential next steps based on these findings.")}
+                    className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded transition-colors"
+                  >
+                    Next Steps
+                  </button>
+                </div>
               </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1 flex flex-col gap-2">
+                  <Label htmlFor="project-year-from">Year From</Label>
+                  <Input
+                    id="project-year-from"
+                    type="number"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                    placeholder="2020"
+                    className="h-10 text-center"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-2">
+                  <Label htmlFor="project-year-to">Year To</Label>
+                  <Input
+                    id="project-year-to"
+                    type="number"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                    placeholder="2026"
+                    className="h-10 text-center"
+                  />
+                </div>
+              </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="project-report-language">Report language</Label>
                 <select
@@ -247,11 +378,11 @@ function ReportsTab({ projectId }: { projectId: string }) {
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} className="rounded border-gray-300" />
-                <span className="font-medium">Fast Mode</span>
+                <span className="font-semibold">Fast Mode</span>
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={deepAnalysis} onChange={(e) => setDeepAnalysis(e.target.checked)} className="rounded border-gray-300" />
-                <span className="font-medium">Deep Analysis</span>
+                <span className="font-semibold">Deep Analysis</span>
               </label>
             </div>
             <DialogFooter>
@@ -282,8 +413,8 @@ function ReportsTab({ projectId }: { projectId: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                <Badge 
-                  variant={report.status === 'ready' ? 'default' : report.status === 'failed' ? 'destructive' : 'secondary'} 
+                <Badge
+                  variant={report.status === 'ready' ? 'default' : report.status === 'failed' ? 'destructive' : 'secondary'}
                   className={`rounded-full ${report.status === 'ready' ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-transparent' : ''}`}
                 >
                   {report.status}
@@ -342,7 +473,17 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
   );
 }
 
-function GapsTab({ projectId }: { projectId: string }) {
+function GapsTab({
+  projectId,
+  defaultTopic,
+  openOnInit,
+  onOpenChange
+}: {
+  projectId: string;
+  defaultTopic?: string;
+  openOnInit?: boolean;
+  onOpenChange?: (open: boolean) => void
+}) {
   const [minConfidence, setMinConfidence] = useState(0);
   const [debouncedConfidence, setDebouncedConfidence] = useState(0);
 
@@ -355,23 +496,55 @@ function GapsTab({ projectId }: { projectId: string }) {
   const analyze = useAnalyzeGap();
 
   const [open, setOpen] = useState(false);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(defaultTopic || "");
+  const [yearFrom, setYearFrom] = useState<string>("");
+  const [yearTo, setYearTo] = useState<string>("");
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
+
+  // Sync openOnInit
+  useEffect(() => {
+    if (openOnInit) {
+      setOpen(true);
+      onOpenChange?.(false);
+    }
+  }, [openOnInit, onOpenChange]);
+
+  // Sync defaultTopic when dialog opens
+  useEffect(() => {
+    if (open && defaultTopic) {
+      setTopic(defaultTopic);
+    }
+  }, [open, defaultTopic]);
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
       toast.error("Please enter a topic for gap analysis");
       return;
     }
-    analyze.mutate({ topic: topic.trim(), projectId }, {
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
+    if (fromYear && toYear && fromYear > toYear) {
+      toast.error("Year From must be less than or equal to Year To");
+      return;
+    }
+
+    analyze.mutate({
+      topic: topic.trim(),
+      projectId,
+      yearFrom: fromYear,
+      yearTo: toYear
+    }, {
       onSuccess: ({ analysisId }) => {
         setOpen(false);
-        setTopic("");
+        setTopic(defaultTopic || "");
+        setYearFrom("");
+        setYearTo("");
         setActiveAnalysisId(analysisId);
         toast.success("Gap analysis queued");
       },
-      onError: () => {
-        toast.error("Failed to start gap analysis");
+      onError: (err: any) => {
+        toast.error(err.response?.data?.error?.message || "Failed to start gap analysis");
       }
     });
   };
@@ -385,16 +558,16 @@ function GapsTab({ projectId }: { projectId: string }) {
     <div className="space-y-4 mt-2">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Research Gaps</h3>
-        
+
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10 shadow-sm">
             <Zap className="w-4 h-4 text-emerald-500" />
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-[140px]">Min Confidence: {Math.round(minConfidence * 100)}%</span>
-            <input 
-              type="range" 
-              min="0" 
-              max="1" 
-              step="0.1" 
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
               value={minConfidence}
               onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
               className="w-24 accent-emerald-500 cursor-pointer"
@@ -422,6 +595,31 @@ function GapsTab({ projectId }: { projectId: string }) {
                   placeholder="e.g. AI in Healthcare"
                 />
               </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1 flex flex-col gap-2">
+                  <Label htmlFor="gap-year-from">Year From</Label>
+                  <Input
+                    id="gap-year-from"
+                    type="number"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                    placeholder="2020"
+                    className="h-10 text-center"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-2">
+                  <Label htmlFor="gap-year-to">Year To</Label>
+                  <Input
+                    id="gap-year-to"
+                    type="number"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                    placeholder="2026"
+                    className="h-10 text-center"
+                  />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={analyze.isPending}>Cancel</Button>
@@ -448,14 +646,14 @@ function GapsTab({ projectId }: { projectId: string }) {
           {gapsData.data.map(gap => (
             <div key={gap.id} className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-cyan-500/10 hover:border-cyan-500/30 group">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              
+
               <div className="relative z-10 mb-5">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 transition-transform group-hover:scale-110 duration-500">
                     <Sparkles className="h-6 w-6" />
                   </div>
-                  <Badge 
-                    variant={gap.status === 'dismissed' ? 'secondary' : 'outline'} 
+                  <Badge
+                    variant={gap.status === 'dismissed' ? 'secondary' : 'outline'}
                     className={`text-[10px] rounded-full px-2.5 py-0.5 font-bold uppercase tracking-wider shrink-0 shadow-sm ${gap.status === 'active' ? 'text-slate-500 border-slate-200 dark:border-zinc-700' : gap.status === 'resolved' ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-transparent' : 'text-slate-500 border-slate-200 dark:border-zinc-700'}`}
                   >
                     {gap.status}
@@ -468,7 +666,7 @@ function GapsTab({ projectId }: { projectId: string }) {
                   {gap.description}
                 </p>
               </div>
-              
+
               {gap.evidenceConfidence !== undefined && (
                 <div className="relative z-10 pt-5 border-t border-slate-100 dark:border-zinc-800/50 mt-auto">
                   <div className="flex justify-between items-center mb-2">
@@ -478,8 +676,8 @@ function GapsTab({ projectId }: { projectId: string }) {
                     <span className="text-sm font-black text-slate-700 dark:text-slate-300">{Math.round(gap.evidenceConfidence * 100)}%</span>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden shadow-inner">
-                    <div 
-                      className="bg-gradient-to-r from-emerald-400 to-teal-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                    <div
+                      className="bg-gradient-to-r from-emerald-400 to-teal-500 h-2 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${Math.round(gap.evidenceConfidence * 100)}%` }}
                     />
                   </div>
@@ -507,7 +705,21 @@ function GapsTab({ projectId }: { projectId: string }) {
   );
 }
 
-function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: string; papers: any[]; currentUserId?: string; ownerId: string }) {
+function PapersTab({
+  projectId,
+  papers,
+  currentUserId,
+  ownerId,
+  onNavigateToReports,
+  onNavigateToGaps
+}: {
+  projectId: string;
+  papers: any[];
+  currentUserId?: string;
+  ownerId: string;
+  onNavigateToReports: () => void;
+  onNavigateToGaps: () => void;
+}) {
   const isCurrentUserOwner = currentUserId === ownerId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTitle, setSearchTitle] = useState("");
@@ -518,6 +730,25 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
   const sortedSearchResults = searchResults ? [...searchResults].sort((a, b) => getPaperScore(b) - getPaperScore(a)) : [];
   const addPaper = useAddPaperToProject(projectId);
   const removePaper = useRemovePaperFromProject(projectId);
+
+  // PR2: Checkbox selection states
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+
+  // PR2: Paper comparison states
+  const [comparePaperIds, setComparePaperIds] = useState<string[]>([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const { data: comparisonData, isLoading: isComparing, isError: isCompareError } = useComparePapers(isCompareOpen ? comparePaperIds : []);
+
+  // Clear selections when papers change
+  useEffect(() => {
+    setSelectedPaperIds([]);
+  }, [papers]);
+
+  const toggleSelectPaper = (paperId: string) => {
+    setSelectedPaperIds(prev =>
+      prev.includes(paperId) ? prev.filter(id => id !== paperId) : [...prev, paperId]
+    );
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -590,22 +821,22 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                             <div className="p-3 text-sm text-muted-foreground">Paper not found.</div>
                           ) : (
                             sortedSearchResults.map((p: any) => {
-                              const score = getPaperScore(p);
-                              return (
-                                <div
-                                  key={p.id}
-                                  className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0 flex justify-between items-start"
-                                  onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.publicationYear ?? p.year, score })}
-                                >
-                                  <div>
-                                    <p className="font-medium text-sm line-clamp-2">{p.title}</p>
-                                    <p className="text-muted-foreground text-xs mt-1">Year: {p.publicationYear ?? p.year ?? "N/A"}</p>
-                                  </div>
-                                  <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 shrink-0 ml-2 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">
-                                    Score: {score.toFixed(2)}
-                                  </div>
-                                </div>
-                              );
+                               const score = getPaperScore(p);
+                               return (
+                                 <div
+                                   key={p.id}
+                                   className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0 flex justify-between items-start"
+                                   onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.publicationYear ?? p.year, score })}
+                                 >
+                                   <div>
+                                     <p className="font-medium text-sm line-clamp-2">{p.title}</p>
+                                     <p className="text-muted-foreground text-xs mt-1">Year: {p.publicationYear ?? p.year ?? "N/A"}</p>
+                                   </div>
+                                   <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 shrink-0 ml-2 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">
+                                     Score: {score.toFixed(2)}
+                                   </div>
+                                 </div>
+                               );
                             })
                           )}
                         </div>
@@ -623,6 +854,76 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
             </DialogContent>
           </Dialog>
       </div>
+
+      {/* PR2: Bulk Action Bar */}
+      {selectedPaperIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-xl shadow-sm gap-4 transition-all duration-200">
+          <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400 tracking-wider uppercase font-mono">
+            {selectedPaperIds.length} paper{selectedPaperIds.length > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selectedPaperIds.length < 2 || selectedPaperIds.length > 4}
+              onClick={() => {
+                setComparePaperIds(selectedPaperIds);
+                setIsCompareOpen(true);
+              }}
+              className="h-8 text-xs font-bold gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Compare Selected
+            </Button>
+            <Button
+              size="sm"
+              onClick={onNavigateToReports}
+              className="h-8 text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              <FileText className="w-3.5 h-3.5" /> Generate Report
+            </Button>
+            <Button
+              size="sm"
+              onClick={onNavigateToGaps}
+              className="h-8 text-xs font-bold gap-1.5 bg-cyan-600 hover:bg-cyan-700 text-white border-0"
+            >
+              <Zap className="w-3.5 h-3.5" /> Analyze Gaps
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* PR2: Paper Comparison Dialog */}
+      <Dialog open={isCompareOpen} onOpenChange={setIsCompareOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
+              <Sparkles className="w-5 h-5 text-indigo-500" />
+              Cross-Paper AI Comparison
+            </DialogTitle>
+            <DialogDescription>
+              AI-generated comparison of key research findings, methodologies, and outcomes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isComparing ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+              <p className="text-sm text-slate-500 font-medium">Gemini is analyzing and cross-comparing papers...</p>
+            </div>
+          ) : isCompareError ? (
+            <div className="py-12 text-center text-red-500 font-medium">
+              Failed to load paper comparison. Please try again.
+            </div>
+          ) : comparisonData ? (
+            <div className="mt-4">
+              <CompareTable comparison={comparisonData} />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button onClick={() => setIsCompareOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!paperToDelete} onOpenChange={(open) => !open && setPaperToDelete(null)}>
         <DialogContent>
@@ -656,9 +957,25 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
           {papers.map((p) => {
             const paperObj = typeof p.targetId === 'object' && p.targetId !== null ? p.targetId : null;
             const paperId = paperObj ? paperObj._id : p.targetId;
+            const isSelected = selectedPaperIds.includes(paperId);
             return (
-              <div key={paperId} className="flex flex-row justify-between items-center rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-500/30 group">
-                <div className="flex items-start gap-4 flex-1 min-w-0 pr-4">
+              <div
+                key={paperId}
+                className={`flex flex-row justify-between items-center rounded-2xl border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 group relative ${
+                  isSelected ? "border-indigo-500 bg-indigo-50/10 dark:bg-indigo-950/5 ring-1 ring-indigo-500" : "border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 hover:border-indigo-500/30"
+                }`}
+              >
+                {/* Checkbox Selector */}
+                <div className="flex items-center pr-2 relative z-10">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelectPaper(paperId)}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-start gap-4 flex-1 min-w-0 pr-4 ml-2">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 transition-colors group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20">
                     <FileText className="w-5 h-5" />
                   </div>
@@ -851,7 +1168,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
             return (
               <div key={memberId} className="group relative flex flex-row justify-between items-center rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/10 hover:border-purple-500/30 overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-bl-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                
+
                 <div className="flex items-center gap-5 flex-1 overflow-hidden z-10">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-lg uppercase transition-all duration-500 group-hover:scale-110 shadow-sm border border-purple-200 dark:border-purple-500/20">
                     {memberObj ? memberObj.fullName.charAt(0) : <Users className="w-5 h-5" />}
@@ -861,11 +1178,11 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                       <>
                         <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">{memberObj.fullName || 'Unknown User'}</h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400 truncate flex items-center">
-                          {memberObj.email} 
-                          <span className="opacity-30 mx-2 text-xs">•</span> 
+                          {memberObj.email}
+                          <span className="opacity-30 mx-2 text-xs">•</span>
                           <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
                             {m.role === 'owner' ? 'Owner' : 'Member'}
-                          </span> 
+                          </span>
                           {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
@@ -877,7 +1194,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                         <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
                           <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
                             {m.role === 'owner' ? 'Owner' : 'Member'}
-                          </span> 
+                          </span>
                           {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>

@@ -52,8 +52,13 @@ export function MainLayout() {
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-8">
-            <Link to="/" className="text-xl font-bold text-[#001b69] dark:text-blue-400 tracking-tight shrink-0">
-              Publication Trend
+            <Link to="/" className="flex items-center gap-2 font-black text-lg tracking-tight shrink-0 select-none">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-sm">
+                <Award className="h-5 w-5 text-white stroke-[2.5]" />
+              </div>
+              <span className="text-slate-900 dark:text-white">
+                PubTrend
+              </span>
             </Link>
             
             <nav className="hidden md:flex items-center gap-1">
@@ -76,23 +81,6 @@ export function MainLayout() {
             </nav>
           </div>
 
-          <div className="flex-1 max-w-2xl hidden md:flex items-center mx-4">
-            <form
-              className="relative w-full"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-                if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-              }}
-            >
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                name="q"
-                className="w-full pl-9 rounded-full bg-slate-100 dark:bg-zinc-900 border-none h-10 focus-visible:ring-1"
-                placeholder="Search papers, authors, topics..."
-              />
-            </form>
-          </div>
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -167,19 +155,21 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 h-9 px-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+        <Button variant="ghost" size="sm" className="gap-2 h-12 pl-1.5 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
           {role !== "admin" ? (
             (() => {
               const currentLevel = getLevel(points);
               const levelAvatar = avatars[currentLevel];
               return (
-                <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
                   <img src={levelAvatar} alt={`Level ${currentLevel}`} className="w-full h-full object-contain rounded-full" />
                 </div>
               );
             })()
           ) : (
-            <User className="h-4 w-4 text-slate-500" />
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 shadow-sm">
+              <User className="h-4 w-4 text-slate-500" />
+            </div>
           )}
           <span className="hidden sm:inline font-semibold text-xs text-slate-700 dark:text-slate-300">{fullName}</span>
           {role !== "admin" && (

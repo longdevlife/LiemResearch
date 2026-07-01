@@ -23,14 +23,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
-import { usePaper } from "@/features/papers";
+import { usePaper, usePaperReferences } from "@/features/papers";
+import { useSearch } from "@/features/search";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-count";
 import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/services/api-client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
 import type { PaperAiAnalysis } from "@trend/shared-types";
@@ -42,7 +43,21 @@ export function PaperDetailPage() {
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
   const { data: reportCount, isLoading: isReportCountLoading } = usePaperReportCount(id);
+  const { data: refResponse, isLoading: isRefsLoading } = usePaperReferences(id);
+  const references = refResponse?.references;
+  const totalReferenced = refResponse?.totalReferenced;
+  const inCorpus = refResponse?.inCorpus;
   const queryClient = useQueryClient();
+
+  const { data: relatedData, isLoading: isRelatedLoading } = useSearch({
+    q: paper?.title || "",
+    pageSize: 5,
+  });
+
+  const relatedPapers = useMemo(() => {
+    if (!relatedData?.papers) return [];
+    return relatedData.papers.filter((p: any) => p.id !== id).slice(0, 4);
+  }, [relatedData, id]);
 
   const [ratingView, setRatingView] = useState<any>(null);
   const [ratingLoading, setRatingLoading] = useState(true);
@@ -582,6 +597,43 @@ export function PaperDetailPage() {
             </div>
           </div>
 
+          {/* P2: Topics & Keywords */}
+          {((paper.topics && paper.topics.length > 0) || (paper.keywords && paper.keywords.length > 0)) && (
+            <div className="mb-8 space-y-4 border-t border-slate-100 dark:border-slate-800/80 pt-6">
+              {paper.topics && paper.topics.length > 0 && (
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Topics</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {paper.topics.map((t) => (
+                      <Link
+                        key={t.topicId || t.topicName}
+                        to={`/trends/${encodeURIComponent(t.topicName)}`}
+                        className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors"
+                      >
+                        {t.topicName}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {paper.keywords && paper.keywords.length > 0 && (
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Keywords</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {paper.keywords.map((k) => (
+                      <span
+                        key={k.keywordId || k.keywordName}
+                        className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-800 px-2.5 py-1 rounded-full text-xs font-medium"
+                      >
+                        {k.keywordName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* AI Structured Analysis */}
           <AiStructuredAnalysisSection aiAnalysis={paper.aiAnalysis} />
 
@@ -593,6 +645,94 @@ export function PaperDetailPage() {
             disabledHint="This paper does not have an abstract for AI evaluation"
             className="mb-8"
           />
+
+          {/* P1: References in Corpus */}
+          <div className="mb-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
+            <div className="flex flex-col mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">References in Corpus</h3>
+              {typeof inCorpus === "number" && typeof totalReferenced === "number" && totalReferenced > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {inCorpus} of {totalReferenced} references are available in the corpus ({((inCorpus / totalReferenced) * 100).toFixed(0)}% coverage).
+                </p>
+              )}
+            </div>
+            {isRefsLoading ? (
+              <p className="text-sm text-slate-500">Loading references...</p>
+            ) : !references || references.length === 0 ? (
+              <p className="text-sm text-slate-500 italic bg-slate-50 dark:bg-zinc-900/30 rounded-xl p-4 border border-dashed border-slate-200 dark:border-zinc-800">
+                No referenced works from this paper are available in our corpus yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {references.map((ref) => (
+                  <div key={ref.id} className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 shadow-sm">
+                    <Link
+                      to={`/papers/${ref.id}`}
+                      className="font-bold text-blue-900 dark:text-blue-200 hover:text-blue-700 dark:hover:text-blue-300 text-sm block mb-1"
+                    >
+                      {ref.title}
+                    </Link>
+                    <div className="text-[11px] text-slate-500 flex flex-wrap gap-2 items-center">
+                      <span>{ref.publicationYear}</span>
+                      <span>•</span>
+                      <span>
+                        {ref.authors && ref.authors.length > 0
+                          ? ref.authors.map((a: any) => a.displayName).join(", ")
+                          : "Unknown Author"}
+                      </span>
+                      {(ref as any).doi && (
+                        <>
+                          <span>•</span>
+                          <a
+                            href={`https://doi.org/${(ref as any).doi}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:underline inline-flex items-center gap-0.5"
+                          >
+                            DOI <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* P3: Related Papers */}
+          <div className="mb-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Related Papers</h3>
+            {isRelatedLoading ? (
+              <p className="text-sm text-slate-500">Loading related papers...</p>
+            ) : relatedPapers.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">No similar papers found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {relatedPapers.map((p) => (
+                  <div key={p.id} className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <Link
+                      to={`/papers/${p.id}`}
+                      className="font-bold text-blue-900 dark:text-blue-200 hover:text-blue-700 dark:hover:text-blue-300 text-sm block mb-1.5 line-clamp-2"
+                    >
+                      {p.title}
+                    </Link>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                      {p.authors && p.authors.length > 0
+                        ? p.authors.slice(0, 2).map(a => a.displayName).join(", ") + (p.authors.length > 2 ? " et al." : "")
+                        : "Unknown Author"}
+                      {" • "}{p.publicationYear}
+                    </div>
+                    {p.score !== undefined && (
+                      <span className="bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900/50 uppercase tracking-wide">
+                        Match: {p.score.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Rating Section */}
           {!isAdmin && !isOwner && (

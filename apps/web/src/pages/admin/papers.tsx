@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/features/auth";
 
 interface AdminPaper {
   id: string;
@@ -53,6 +54,9 @@ const TIER_COLORS: Record<number, string> = { 0: "text-slate-500", 1: "text-blue
 const PAGE_SIZE = 15;
 
 export function AdminPapersPage() {
+  const { data: user, isLoading: isUserLoading } = useCurrentUser();
+  const isAdmin = user?.user?.role === "admin";
+
   const [papers, setPapers] = useState<AdminPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -67,6 +71,7 @@ export function AdminPapersPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const fetchPapers = async () => {
+    if (isUserLoading || !isAdmin) return;
     setLoading(true);
     try {
       const params: Record<string, string | number> = { adminView: "1", page, pageSize: PAGE_SIZE };
@@ -83,8 +88,12 @@ export function AdminPapersPage() {
   };
 
   useEffect(() => {
-    fetchPapers();
-  }, [statusFilter, search, page]);
+    if (!isUserLoading && isAdmin) {
+      fetchPapers();
+    } else if (!isUserLoading && !isAdmin) {
+      setLoading(false);
+    }
+  }, [statusFilter, search, page, isUserLoading, isAdmin]);
 
   const updateStatus = async (paperId: string, status: string, rejectionReason?: string) => {
     setUpdatingId(paperId);

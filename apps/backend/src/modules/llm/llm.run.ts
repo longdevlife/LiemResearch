@@ -2,7 +2,7 @@ import { env } from "../../config/env.js";
 import { cache, hashKey, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { generateJSON, generateText, type GenerateOptions } from "./gemini.client.js";
 
-export type LlmTask = "rerank" | "extract" | "chat" | "report" | "gap" | "judge" | "compare" | "directions";
+export type LlmTask = "rerank" | "extract" | "chat" | "report" | "gap" | "judge" | "compare" | "directions" | "trend";
 
 interface CachedGenerateBase<T> {
   task: LlmTask;
@@ -20,7 +20,7 @@ interface CachedGenerateBase<T> {
 
 export function routeLlmModel(task: LlmTask, override?: string): string {
   if (override) return override;
-  if (task === "report" || task === "gap") return env.GEMINI_MODEL_DEEP;
+  if (task === "report" || task === "gap" || task === "trend") return env.GEMINI_MODEL_DEEP;
   return env.GEMINI_MODEL_FAST;
 }
 

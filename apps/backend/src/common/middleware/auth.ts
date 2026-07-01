@@ -48,6 +48,33 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   }
 }
 
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    next();
+    return;
+  }
+
+  const token = header.slice("Bearer ".length);
+  let claims: AuthClaims;
+  try {
+    claims = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthClaims;
+  } catch {
+    next();
+    return;
+  }
+
+  try {
+    const user = await UserModel.findById(claims.sub).select("isActive role").lean();
+    if (user && user.isActive !== false) {
+      req.user = { ...claims, role: user.role };
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) return next(AppError.unauthorized());

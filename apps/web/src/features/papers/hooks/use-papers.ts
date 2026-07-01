@@ -15,3 +15,11 @@ export function usePaper(id: string | undefined) {
     enabled: !!id,
   });
 }
+
+export function usePaperReferences(id: string | undefined) {
+  return useQuery({
+    queryKey: ["paperReferences", id],
+    queryFn: () => papersApi.references(id!),
+    enabled: !!id,
+  });
+}

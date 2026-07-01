@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { FileText, Loader2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
@@ -13,16 +13,39 @@ export function ReportsListPage() {
   const createReport = useCreateReport();
   const deleteReport = useDeleteReport();
   const deleteBatchReports = useDeleteBatchReports();
-  
+
   const [open, setOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
   const [topic, setTopic] = useState("");
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<ReportLanguage>("auto");
+  const [yearFrom, setYearFrom] = useState<string>("");
+  const [yearTo, setYearTo] = useState<string>("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  React.useEffect(() => {
+    const isCreate = searchParams.get("create") === "true" || searchParams.has("topic");
+    if (isCreate) {
+      setOpen(true);
+      const urlTopic = searchParams.get("topic") || "";
+      const urlQuery = searchParams.get("query") || searchParams.get("q") || "";
+      if (urlTopic) setTopic(urlTopic);
+      if (urlQuery) setQuery(urlQuery);
+
+      // Clear URL params
+      setSearchParams(prev => {
+        prev.delete("create");
+        prev.delete("topic");
+        prev.delete("query");
+        prev.delete("q");
+        return prev;
+      });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleDeleteAll = () => {
     if (!reports || reports.length === 0) return;
@@ -60,11 +83,29 @@ export function ReportsListPage() {
       return;
     }
 
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
+    if (fromYear && toYear && fromYear > toYear) {
+      toast.error("Year From must be less than or equal to Year To");
+      return;
+    }
+
     try {
-      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, language, deepAnalysis, fast });
+      await createReport.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language,
+        deepAnalysis,
+        fast,
+        yearFrom: fromYear,
+        yearTo: toYear,
+      });
       setOpen(false);
       setTopic("");
       setQuery("");
+      setYearFrom("");
+      setYearTo("");
       setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
@@ -137,6 +178,31 @@ export function ReportsListPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     Choose English to force all headings, paragraphs, and gap explanations to English.
                   </span>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-1 flex flex-col gap-2">
+                    <label htmlFor="year-from" className="text-sm font-semibold text-slate-900 dark:text-white">Year From</label>
+                    <input
+                      id="year-from"
+                      type="number"
+                      value={yearFrom}
+                      onChange={(e) => setYearFrom(e.target.value)}
+                      placeholder="e.g. 2020"
+                      className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <label htmlFor="year-to" className="text-sm font-semibold text-slate-900 dark:text-white">Year To</label>
+                    <input
+                      id="year-to"
+                      type="number"
+                      value={yearTo}
+                      onChange={(e) => setYearTo(e.target.value)}
+                      placeholder="e.g. 2026"
+                      className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
+                    />
+                  </div>
                 </div>
 
                 {/* Fast mode toggle */}
@@ -215,12 +281,12 @@ export function ReportsListPage() {
                   <td className="px-6 py-4">
                     <Link to={`/reports/${report.id}`} className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
-                        (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-600 border-blue-200 dark:border-blue-900/30' : 
-                        report.status === 'failed' ? 'bg-red-50 text-red-600 border-red-200 dark:border-red-900/30' : 
+                        (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-600 border-blue-200 dark:border-blue-900/30' :
+                        report.status === 'failed' ? 'bg-red-50 text-red-600 border-red-200 dark:border-red-900/30' :
                         'bg-emerald-50 text-emerald-600 border-emerald-200 dark:border-emerald-900/30'
                       }`}>
-                        {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-                         report.status === 'failed' ? <XCircle className="w-4 h-4" /> : 
+                        {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                         report.status === 'failed' ? <XCircle className="w-4 h-4" /> :
                          <FileText className="w-4 h-4" />}
                       </div>
                       <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
@@ -235,11 +301,11 @@ export function ReportsListPage() {
                       report.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400' :
                       'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
                     }`}>
-                      {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-3 h-3 animate-spin" /> : 
-                       report.status === 'failed' ? <XCircle className="w-3 h-3" /> : 
+                      {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-3 h-3 animate-spin" /> :
+                       report.status === 'failed' ? <XCircle className="w-3 h-3" /> :
                        <CheckCircle2 className="w-3 h-3" />}
-                      {report.status === 'generating' ? 'Generating' : 
-                       report.status === 'queued' ? 'Queued' : 
+                      {report.status === 'generating' ? 'Generating' :
+                       report.status === 'queued' ? 'Queued' :
                        report.status === 'failed' ? 'Failed' : 'Ready'}
                     </span>
                   </td>
@@ -247,9 +313,9 @@ export function ReportsListPage() {
                     {new Date(report.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => handleDeleteSingle(report.id)}
                       disabled={deleteReport.isPending}
@@ -279,7 +345,7 @@ export function ReportsListPage() {
               Confirm Deletion
             </DialogTitle>
             <DialogDescription className="pt-3 text-slate-600 dark:text-slate-400">
-              Are you absolutely sure? This action cannot be undone. This will permanently delete 
+              Are you absolutely sure? This action cannot be undone. This will permanently delete
               {itemToDelete === 'ALL' ? ` all ${reports?.length} reports` : ' this report'} from our servers.
             </DialogDescription>
           </DialogHeader>

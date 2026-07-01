@@ -13,10 +13,12 @@ import { qualityRouter } from "../modules/quality/quality.routes.js";
 import { adminRouter } from "../modules/admin/admin.routes.js";
 import { notificationRouter } from "../modules/notifications/notification.routes.js";
 import { projectRouter } from "../modules/projects/project.routes.js";
+import { homeRouter } from "../modules/home/home.routes.js";
 
 export const apiRouter: Router = Router();
 
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/home", homeRouter);
 apiRouter.use("/projects", projectRouter);
 apiRouter.use("/papers", paperRouter);
 apiRouter.use("/search", searchRouter); // Phase B — semantic search

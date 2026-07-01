@@ -55,7 +55,7 @@ export function GapDirectionsPanel({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
-          <h3 className="font-bold text-slate-850 dark:text-slate-200 text-sm">Research Directions (AI)</h3>
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Research Directions (AI)</h3>
           <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">
             AI Advisory
           </span>
@@ -83,11 +83,11 @@ export function GapDirectionsPanel({
                 {i + 1}. {d.title}
               </div>
               {d.rationale && (
-                <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed">{d.rationale}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{d.rationale}</p>
               )}
               {d.suggestedApproach && (
-                <p className="text-[11px] text-slate-550 dark:text-slate-400">
-                  <span className="font-semibold text-slate-700 dark:text-slate-350">Approach: </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Approach: </span>
                   {d.suggestedApproach}
                 </p>
               )}
