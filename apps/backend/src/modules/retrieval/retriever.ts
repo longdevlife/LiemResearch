@@ -2,6 +2,7 @@ import mongoose, { type PipelineStage } from "mongoose";
 import type { DataSource, PaperKind, ScoredPaper } from "@trend/shared-types";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { PaperModel } from "../papers/models/paper.model.js";
+import type { PaperStructuredAnalysis } from "../papers/paper-structured-context.js";
 
 export const VECTOR_INDEX = "paper_vector_index";
 
@@ -37,6 +38,7 @@ export interface RetrievedPaper {
   citationCount?: number;
   authorNames: string[];
   score: number;
+  aiAnalysis?: PaperStructuredAnalysis | null;
 }
 
 export async function retrieve(opts: RetrieveOptions): Promise<RetrievedPaper[]> {
@@ -119,7 +121,7 @@ function toMongoId(id: string): mongoose.Types.ObjectId | string {
 
 function buildProjection(projection: RetrievalProjection): PipelineStage.Project {
   if (projection === "gap") {
-    return { $project: { title: 1, abstractText: 1, publicationYear: 1, score: 1 } };
+    return { $project: { title: 1, abstractText: 1, aiAnalysis: 1, publicationYear: 1, score: 1 } };
   }
   if (projection === "report") {
     return {
@@ -149,7 +151,7 @@ function buildProjection(projection: RetrievalProjection): PipelineStage.Project
 }
 
 export function toRetrievedPaper(d: Record<string, unknown>): RetrievedPaper {
-  return {
+  const paper: RetrievedPaper = {
     id: String(d._id),
     title: String(d.title ?? ""),
     abstractText: d.abstractText ? String(d.abstractText) : undefined,
@@ -161,6 +163,10 @@ export function toRetrievedPaper(d: Record<string, unknown>): RetrievedPaper {
       .filter(Boolean),
     score: Number(d.score ?? 0),
   };
+  if (d.aiAnalysis !== undefined) {
+    paper.aiAnalysis = d.aiAnalysis as PaperStructuredAnalysis | null;
+  }
+  return paper;
 }
 
 function toScoredPaper(d: Record<string, unknown>): ScoredPaper {

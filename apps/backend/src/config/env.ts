@@ -86,7 +86,7 @@ const EnvSchema = z.object({
   GAP_PARENT_RISING_MIN: z.coerce.number().default(0), // growthRatePct strictly above this = rising
   // v2 — paper comparison (one cached LLM call; capped to bound tokens).
   COMPARE_MAX_PAPERS: z.coerce.number().int().min(2).max(4).default(4),
-  COMPARE_PROMPT_VERSION: z.string().default("compare-v1"),
+  COMPARE_PROMPT_VERSION: z.string().default("compare-v2"),
   // Phase D — Function Calling
   DEEP_ANALYSIS_MAX_TURNS: z.coerce.number().int().min(1).max(10).default(5),
   DEEP_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),

@@ -3,9 +3,11 @@
  * no I/O (mirrors search.rerank.ts). The service in gaps.service.ts wires these
  * to the LLM client + Mongo. Bump DIRECTIONS_PROMPT_VERSION on any wording change.
  */
+import crypto from "node:crypto";
 import type { ResearchDirection } from "@trend/shared-types";
+import { buildPaperEvidenceText, type PaperStructuredAnalysis } from "../papers/paper-structured-context.js";
 
-export const DIRECTIONS_PROMPT_VERSION = "directions-v1";
+export const DIRECTIONS_PROMPT_VERSION = "directions-v2";
 
 export const DIRECTIONS_SYSTEM_PROMPT = [
   "You are a research advisor for an academic publication-trend platform.",
@@ -43,6 +45,7 @@ export interface DirectionPaper {
   id: string;
   title: string;
   abstractText?: string;
+  aiAnalysis?: PaperStructuredAnalysis | null;
 }
 
 /** Bound abstracts so a pathological one can't blow the token budget. */
@@ -57,7 +60,10 @@ function formatPapers(papers: DirectionPaper[]): string {
   return papers
     .map(
       (p, i) =>
-        `[${i + 1}] id=${p.id} "${p.title}"\n    ${(p.abstractText ?? "(no abstract)").slice(0, MAX_ABSTRACT_CHARS)}`,
+        `[${i + 1}] id=${p.id} "${p.title}"\n    ${buildPaperEvidenceText({
+          abstractText: p.abstractText ?? "(no abstract)",
+          aiAnalysis: p.aiAnalysis,
+        }).slice(0, MAX_ABSTRACT_CHARS)}`,
     )
     .join("\n\n");
 }
@@ -79,6 +85,16 @@ export function buildDirectionsPrompt(gap: DirectionGap, papers: DirectionPaper[
     `SUPPORTING PAPERS (${papers.length}):\n${formatPapers(papers)}`,
     "Propose 2-4 concrete next research directions as instructed. Return ONLY the JSON.",
   ].join("\n\n---\n\n");
+}
+
+export function buildDirectionsEvidenceHash(papers: DirectionPaper[]): string {
+  const canonical = papers.map((p) => ({
+    id: p.id,
+    title: p.title,
+    abstractText: p.abstractText ?? null,
+    aiAnalysis: p.aiAnalysis ?? null,
+  }));
+  return crypto.createHash("sha256").update(JSON.stringify(canonical)).digest("hex").slice(0, 40);
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   COMPARE_SYSTEM_PROMPT,
   type CompareLlmOutput,
 } from "./compare.prompt.js";
+import type { PaperStructuredAnalysis } from "./paper-structured-context.js";
 
 type Metric = PaperComparison["metrics"][number];
 
@@ -29,7 +30,7 @@ export async function comparePapers(ids: string[]): Promise<PaperComparison> {
 
   const docs = await PaperModel.find({ _id: { $in: unique } })
     .select(
-      "title publicationYear authors externalIds citationCount journalName openAccessUrl paperKind aiScore abstractText",
+      "title publicationYear authors externalIds citationCount journalName openAccessUrl paperKind aiScore abstractText aiAnalysis",
     )
     .lean();
   const byId = new Map(docs.map((d) => [String(d._id), d]));
@@ -68,6 +69,7 @@ export async function comparePapers(ids: string[]): Promise<PaperComparison> {
       id,
       title: String(o.title ?? ""),
       abstractText: o.abstractText ? String(o.abstractText) : undefined,
+      aiAnalysis: (o.aiAnalysis ?? null) as PaperStructuredAnalysis | null,
     };
   });
   const prompt = buildComparePrompt(candidates);
