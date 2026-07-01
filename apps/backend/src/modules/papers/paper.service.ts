@@ -365,7 +365,13 @@ export const paperService = {
     pageSize,
   }: AdminListPapersParams): Promise<ListPapersResult> {
     const filter: Record<string, unknown> = {};
-    if (status) filter.paperStatus = status;
+    if (status) {
+      filter.paperStatus = status;
+    } else {
+      filter.paperStatus = {
+        $in: ["pending", "not-downloaded", "downloaded", "rejected", "pending-requester-acceptance"],
+      };
+    }
     if (search) {
       const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filter.$or = [{ title: rx }, { "externalIds.doi": rx }];
