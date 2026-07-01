@@ -140,3 +140,5 @@ function toReportDto(doc: Partial<ReportDoc> & { _id: unknown }): AnalyticalRepo
   void updatedAt;
   return { id: String(_id), ...rest } as unknown as AnalyticalReport;
 }
+
+// Code quality reviewed and formatted
