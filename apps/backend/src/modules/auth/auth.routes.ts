@@ -60,12 +60,12 @@ authRouter.get("/search", requireAuth, async (req: Request, res: Response) => {
 authRouter.get("/rankings/top", validate(RankingsQuerySchema, "query"), async (req: Request, res: Response) => {
   const { page, limit } = req.query as unknown as RankingsQueryInput;
 
-  const total = await UserModel.countDocuments({ isActive: { $ne: false } });
+  const total = await UserModel.countDocuments({ isActive: { $ne: false }, role: { $ne: "admin" } });
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const currentPage = Math.min(page, totalPages);
   const skip = (currentPage - 1) * limit;
 
-  const users = await UserModel.find({ isActive: { $ne: false } })
+  const users = await UserModel.find({ isActive: { $ne: false }, role: { $ne: "admin" } })
     .select("fullName institution points credits role avatarUrl")
     .sort({ points: -1, credits: -1, fullName: 1 })
     .skip(skip)
@@ -108,8 +108,14 @@ authRouter.get("/rankings/me", requireAuth, async (req: Request, res: Response) 
     return;
   }
 
+  if (userDoc.role === "admin") {
+    res.json({ success: true, data: null });
+    return;
+  }
+
   const usersAhead = await UserModel.countDocuments({
     isActive: { $ne: false },
+    role: { $ne: "admin" },
     $or: [
       { points: { $gt: userDoc.points ?? 0 } },
       {
@@ -144,7 +150,7 @@ authRouter.get("/rankings/me", requireAuth, async (req: Request, res: Response) 
  */
 authRouter.get("/rankings", async (req: Request, res: Response) => {
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
-  const users = await UserModel.find({ isActive: { $ne: false } })
+  const users = await UserModel.find({ isActive: { $ne: false }, role: { $ne: "admin" } })
     .select("fullName institution points credits role avatarUrl")
     .sort({ points: -1, credits: -1 })
     .limit(limit)
