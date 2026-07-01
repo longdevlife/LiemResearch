@@ -9,6 +9,8 @@
     --navy: #0f172a; --ink: #1e293b; --muted: #475569;
     --line: #e2e8f0; --bg: #ffffff; --card: #f8fafc;
     --blue: #2563eb; --accent: #f1f5f9;
+    --green: #047857; --purple: #6d28d9; --cyan: #0891b2;
+    --amber: #b45309; --rose: #e11d48;
   }
   * { box-sizing: border-box; }
   body {
@@ -16,7 +18,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     line-height: 1.7; font-size: 16px;
   }
-  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
   header.hero {
     text-align: center;
     border-bottom: 2px solid var(--navy);
@@ -43,13 +45,19 @@
   .grid.c3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .grid.c4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
   .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px; background: var(--accent); color: var(--muted); border: 1px solid var(--line); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pill.done { background: #ecfdf5; color: var(--green); border-color: #a7f3d0; }
+  .pill.partial { background: #fffbeb; color: var(--amber); border-color: #fde68a; }
+  .pill.planned { background: #fef2f2; color: var(--rose); border-color: #fecaca; }
   
   /* flow diagram */
   .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; margin: 20px 0; }
-  .node { flex: 1 1 160px; min-width: 140px; background: #fff; border: 1px solid var(--navy); border-radius: 6px; padding: 16px; text-align: center; }
-  .node .t { font-weight: 600; font-size: 15px; color: var(--navy); }
-  .node .s { font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .arrow { align-self: center; font-size: 20px; color: var(--muted); padding: 0 8px; }
+  .node { flex: 1 1 120px; min-width: 100px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px 10px; text-align: center; }
+  .node .t { font-weight: 700; font-size: 13px; color: var(--navy); }
+  .node .s { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .node.highlight { border-color: var(--blue); background: #eff6ff; }
+  .node.ai { border-color: var(--purple); background: #faf5ff; }
+  .node.data { border-color: var(--green); background: #ecfdf5; }
+  .arrow { align-self: center; font-size: 18px; color: var(--muted); padding: 0 4px; flex-shrink: 0; }
   
   /* vertical pipeline */
   .pipe { margin: 20px 0; border-left: 2px solid var(--line); padding-left: 24px; }
@@ -68,16 +76,41 @@
   .stat .lbl { font-size: 14px; color: var(--muted); }
   
   .callout { background: var(--card); border-left: 4px solid var(--blue); padding: 16px 20px; margin: 24px 0; color: var(--ink); border-radius: 0 8px 8px 0; }
-  .callout.ok { border-left-color: var(--navy); }
+  .callout.ok { border-left-color: var(--green); }
+  .callout.warn { border-left-color: var(--amber); }
   .callout b { color: var(--navy); }
   
   footer { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 20px; margin-top: 40px; border-top: 1px solid var(--line); }
   .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
   
+  /* Feature matrix grid */
+  .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+  .feat-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; border-top: 3px solid var(--blue); }
+  .feat-card h4 { margin: 0 0 8px; font-size: 15px; color: var(--navy); }
+  .feat-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .feat-card .tech { font-size: 11px; color: var(--blue); margin-top: 10px; font-weight: 600; }
+  
+  /* Smart Reasoning Core box */
+  .src-box { border: 2px solid var(--purple); border-radius: 12px; padding: 24px; margin: 24px 0; background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); }
+  .src-box h3 { color: var(--purple); margin-top: 0; }
+  .src-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .src-item { background: #fff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; }
+  .src-item .label { font-size: 11px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .src-item h4 { margin: 0 0 6px; font-size: 14px; color: var(--navy); }
+  .src-item p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  
+  /* Ollama box */
+  .ollama-box { border: 2px solid var(--cyan); border-radius: 12px; padding: 24px; margin: 24px 0; background: linear-gradient(135deg, #ecfeff 0%, #f0fdfa 100%); }
+  .ollama-box h3 { color: var(--cyan); margin-top: 0; }
+  
+  /* Status legend */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; font-size: 13px; }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  
   @media print {
     body { font-size: 12pt; }
     .wrap { max-width: 100%; padding: 0; }
-    .card, .node { page-break-inside: avoid; break-inside: avoid; }
+    .card, .node, .feat-card, .src-item { page-break-inside: avoid; break-inside: avoid; }
   }
 </style>
 </head>
@@ -86,11 +119,13 @@
   <header class="hero">
     <h1>Báo cáo Tổng quan Dự án LiemResearch</h1>
     <p><b>Hệ thống phân tích xu hướng nghiên cứu khoa học bằng trí tuệ nhân tạo</b></p>
-    <p>Ứng dụng LLM, RAG, MCP và Vector Search — Đồ án WDP301, Đại học FPT</p>
-    <span class="tag">Kiến trúc: Frontend (Web + Mobile) — Backend (API + Workers) — AI (Gemini + MongoDB Vector)</span>
+    <p>Ứng dụng LLM, RAG, MCP, dữ liệu có cấu trúc và Vector Search — Đồ án WDP301, Đại học FPT</p>
+    <span class="tag">Kiến trúc: Frontend (Web + Mobile) — Backend (API + Workers) — AI/Data (Gemini + Ollama local + MongoDB Vector + Redis)</span>
   </header>
 
-  <!-- 1 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 1. GIỚI THIỆU -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
   <h2><span class="n">1.</span> Giới thiệu dự án</h2>
   <p class="lead">LiemResearch là một nền tảng hỗ trợ sinh viên, giảng viên và nhà nghiên cứu tra cứu bài báo khoa học theo ngữ nghĩa, phân tích xu hướng chủ đề và tự động tổng hợp báo cáo chuyên sâu. Mọi kết luận từ AI đều được đối chiếu với cơ sở dữ liệu học thuật thực tế để đảm bảo tính xác thực.</p>
   <div class="card">
@@ -106,229 +141,278 @@
       </div>
     </div>
   </div>
-  
-  <h3>Các tính năng cốt lõi</h3>
-  <div class="grid c2">
-    <div class="card">
-      <span class="pill">Semantic Search</span>
-      <h3>Tìm kiếm ngữ nghĩa</h3>
-      <p>Truy xuất tài liệu dựa trên sự tương đồng về ý nghĩa thông qua việc ánh xạ văn bản thành các vector không gian.</p>
-      <div style="font-size:13px; color:var(--muted); margin-top:8px;">Công nghệ: Gemini Embedding + MongoDB Vector Search</div>
-    </div>
-    <div class="card">
-      <span class="pill">Trends Dashboard</span>
-      <h3>Bảng điều khiển Xu hướng</h3>
-      <p>Phân tích chỉ số tăng trưởng theo thời gian (YoY, CAGR, Momentum) của các chủ đề nghiên cứu.</p>
-      <div style="font-size:13px; color:var(--muted); margin-top:8px;">Công nghệ: MongoDB Aggregation Pipeline</div>
-    </div>
-    <div class="card">
-      <span class="pill">AI Reports (RAG)</span>
-      <h3>Báo cáo tự động</h3>
-      <p>Mô hình ngôn ngữ lớn tổng hợp thông tin, phân tích cục diện và tạo báo cáo có chú thích trích dẫn cụ thể <code>[n]</code>.</p>
-      <div style="font-size:13px; color:var(--muted); margin-top:8px;">Công nghệ: Retrieval-Augmented Generation (RAG)</div>
-    </div>
-    <div class="card">
-      <span class="pill">Research Gaps</span>
-      <h3>Khoảng trống nghiên cứu</h3>
-      <p>AI phân tích các bài báo đã truy xuất để phát hiện các khía cạnh chưa được khai thác hoặc mâu thuẫn.</p>
-      <div style="font-size:13px; color:var(--muted); margin-top:8px;">Công nghệ: LLM + Evidence Grounding</div>
-    </div>
+
+  <h3>Chú thích trạng thái</h3>
+  <div class="legend">
+    <div class="item"><span class="pill done" style="margin:0">Implemented</span> Đã hoàn thiện, production-ready</div>
+    <div class="item"><span class="pill partial" style="margin:0">Partial</span> Có sẵn nhưng hạn chế / đang hoàn thiện</div>
+    <div class="item"><span class="pill planned" style="margin:0">Planned</span> Thiết kế sẵn, chưa triển khai</div>
   </div>
 
-  <!-- 2 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 2. KIẾN TRÚC 3 LỚP -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
   <h2><span class="n">2.</span> Kiến trúc hệ thống</h2>
   <p class="lead">Hệ thống được thiết kế theo mô hình 3 lớp, đảm bảo luồng dữ liệu thông suốt từ kho dữ liệu học thuật đến giao diện người dùng.</p>
   <div class="flow">
     <div class="node">
       <div class="t">Frontend</div>
-      <div class="s">Web (React) + Mobile (Expo)<br/>Tương tác người dùng</div>
+      <div class="s">Web (React 18 + Vite)<br/>Mobile (Expo + RN)<br/>shadcn/ui, TanStack Query</div>
     </div>
     <div class="arrow">⟷</div>
-    <div class="node">
+    <div class="node highlight">
       <div class="t">Backend</div>
-      <div class="s">Express API + Workers<br/>Điều phối & nghiệp vụ</div>
+      <div class="s">Express 5 API + BullMQ Workers<br/>JWT Auth, Rate Limiting<br/>TypeScript, Mongoose 8</div>
     </div>
     <div class="arrow">⟷</div>
-    <div class="node">
+    <div class="node ai">
       <div class="t">AI & Data</div>
-      <div class="s">Gemini + MongoDB Vector<br/>Embedding & Xử lý LLM</div>
+      <div class="s">Gemini (Embed + LLM)<br/>Ollama local (chat)<br/>MongoDB Vector Search<br/>Redis Cache</div>
     </div>
   </div>
-  
+
   <div class="grid c3">
     <div class="card">
       <h3>Frontend</h3>
       <p>Tập trung vào trải nghiệm người dùng, hiển thị dữ liệu và không chứa logic AI phức tạp.</p>
-      <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
-        <li>Web: React 18, Vite, shadcn/ui, TanStack Query</li>
+      <ul style="margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
+        <li>Web: React 18, Vite, shadcn/ui, Recharts</li>
         <li>Mobile: Expo, React Native, NativeWind</li>
-        <li>Giao tiếp: Typescript chung qua <code>@trend/shared-types</code></li>
+        <li>Type-safe qua <code>@trend/shared-types</code></li>
       </ul>
     </div>
     <div class="card">
       <h3>Backend</h3>
       <p>Điều phối trung tâm: xử lý xác thực, phân quyền, giao tiếp AI và xử lý các tác vụ nặng nền.</p>
-      <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
-        <li>Node.js, Express 5, TypeScript, Mongoose 8</li>
-        <li>Hàng đợi BullMQ cho tiến trình worker</li>
-        <li>Xác thực JWT (Access/Refresh Tokens)</li>
+      <ul style="margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
+        <li>19 modules: auth, papers, search, reports, gaps, trends, compare, projects, mcp, llm, retrieval, quality, scoring, embeddings...</li>
+        <li>5 BullMQ workers chạy riêng process</li>
+        <li>JWT Access/Refresh Tokens</li>
       </ul>
     </div>
     <div class="card">
       <h3>AI & Data</h3>
-      <p>Xử lý tính toán ngữ nghĩa và lập luận AI dựa trên cơ sở dữ liệu lớn.</p>
-      <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
-        <li>Mô hình Gemini (Embedding 768 chiều, Flash/Pro)</li>
-        <li>Cơ sở dữ liệu MongoDB Atlas (Vector Search)</li>
-        <li>Bộ đệm Redis Cache tối ưu hóa truy vấn</li>
+      <p>Xử lý tính toán ngữ nghĩa, truy xuất bằng chứng, cache phản hồi AI và chọn provider/model theo từng tác vụ.</p>
+      <ul style="margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
+        <li>Gemini Embedding 768d + Gemini Flash/Pro cho generate</li>
+        <li>Ollama local provider cho chat/demo</li>
+        <li>MongoDB Atlas Vector Search (cosine)</li>
+        <li>Redis Cache (Upstash) + prompt versioning</li>
       </ul>
     </div>
   </div>
 
-  <!-- 3 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 3. LUỒNG DỮ LIỆU END-TO-END -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
   <h2><span class="n">3.</span> Luồng dữ liệu End-to-End</h2>
-  <p class="lead">Mô tả quá trình xử lý từ kho dữ liệu OpenAlex (hơn 250 triệu bài báo) đến giao diện cuối.</p>
+  <p class="lead">Từ nguồn dữ liệu học thuật đến MongoDB, vector index, tri thức có cấu trúc và cuối cùng là các tính năng AI trên Web/Mobile.</p>
+
+  <h3>Tầng 1: Thu thập & Chuẩn hóa</h3>
   <div class="flow">
-    <div class="node"><div class="t">OpenAlex API</div><div class="s">Nguồn dữ liệu thô</div></div>
+    <div class="node data"><div class="t">OpenAlex API</div><div class="s">Nguồn dữ liệu thô<br/>250M+ works</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="t">Sync Worker</div><div class="s">Đồng bộ, làm sạch & chuẩn hóa</div></div>
+    <div class="node"><div class="t">Sync Worker</div><div class="s">BullMQ job<br/>Normalize fields</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="t">MongoDB</div><div class="s">Lưu trữ tài liệu</div></div>
+    <div class="node"><div class="t">Dedup</div><div class="s">Chống trùng DOI<br/>+ externalId</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="t">Quality Gate</div><div class="s">dataQualityScore ≥ 0.7<br/>title + abstract + DOI...</div></div>
+    <div class="arrow">→</div>
+    <div class="node highlight"><div class="t">MongoDB</div><div class="s">research_papers<br/>+ audit records</div></div>
+  </div>
+
+  <h3>Tầng 2: Vector hóa & Tri thức cấu trúc</h3>
+  <div class="flow">
+    <div class="node highlight"><div class="t">MongoDB</div><div class="s">Papers chờ embed</div></div>
+    <div class="arrow">→</div>
+    <div class="node ai"><div class="t">Embedding Worker</div><div class="s">Gemini Embedding<br/>title + abstract → 768d</div></div>
+    <div class="arrow">→</div>
+    <div class="node ai"><div class="t">Vector Index</div><div class="s">Atlas $vectorSearch<br/>Cosine similarity</div></div>
   </div>
   <div class="flow" style="margin-top: 0;">
-    <div class="node"><div class="t">MongoDB</div><div class="s">Tài liệu chờ xử lý</div></div>
+    <div class="node highlight"><div class="t">MongoDB</div><div class="s">Papers có abstract</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="t">Embedding Worker</div><div class="s">Chuyển hóa văn bản thành Vector</div></div>
+    <div class="node ai"><div class="t">Paper Analysis Worker</div><div class="s">Gemini LLM trích xuất<br/>aiAnalysis một lần/paper</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="t">Vector Index</div><div class="s">Chỉ mục tìm kiếm (Cosine)</div></div>
+    <div class="node ai"><div class="t">aiAnalysis</div><div class="s">summary, methods, dataset,<br/>findings, limitations,<br/>contributions, futureWork,<br/>keyTerms</div></div>
+  </div>
+
+  <h3>Tầng 3: Phục vụ AI Features</h3>
+  <div class="flow">
+    <div class="node ai"><div class="t">Shared Retriever</div><div class="s">Vector Search + filter<br/>Trả về papers + aiAnalysis</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="t">API phục vụ</div><div class="s">Truy xuất kết quả cho FE</div></div>
+    <div class="node"><div class="t">LLM Layer</div><div class="s">Gemini Flash/Pro<br/>+ Redis Cache<br/>+ Grounding Check</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="t">API Response</div><div class="s">JSON cho Frontend<br/>Reports, Gaps, Compare...</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="t">Web / Mobile</div><div class="s">Hiển thị kết quả<br/>cho người dùng</div></div>
   </div>
 
-  <!-- 4 -->
-  <h2><span class="n">4.</span> Cơ chế Embedding (Nhúng vector)</h2>
-  <p class="lead">Embedding là quá trình biểu diễn văn bản dưới dạng vector đa chiều, cho phép hệ thống tính toán độ tương đồng ngữ nghĩa giữa các tài liệu thay vì chỉ so khớp từ khóa.</p>
-  <div class="card">
-    <div class="flow">
-      <div class="node"><div class="t">Dữ liệu thô</div><div class="s">Tiêu đề + Tóm tắt</div></div>
-      <div class="arrow">→</div>
-      <div class="node"><div class="t">Mô hình AI</div><div class="s">Gemini Embedding</div></div>
-      <div class="arrow">→</div>
-      <div class="node"><div class="t">Vector hóa</div><div class="s">Mảng 768 chiều tọa độ</div></div>
-      <div class="arrow">→</div>
-      <div class="node"><div class="t">Lưu trữ</div><div class="s">Atlas Vector Index</div></div>
-    </div>
-    <div class="callout">
-      <b>Tối ưu chi phí và hiệu suất:</b> Hệ thống áp dụng màng lọc chất lượng nghiêm ngặt (điểm chất lượng ≥ 0.7 với các tiêu chí: tiêu đề, tóm tắt, DOI, năm xuất bản, v.v.) trước khi thực hiện embedding, nhằm tiết kiệm hạn ngạch API và tăng chất lượng dữ liệu tìm kiếm.
-    </div>
+  <div class="callout">
+    <b>Điểm quan trọng:</b> Dữ liệu không đi thẳng từ OpenAlex API vào Gemini. Nó đi qua normalize → dedup → quality check → MongoDB → embedding → vector index. Chỉ khi người dùng cần phân tích thì LLM mới được gọi trên một tập evidence đã lọc sẵn.
   </div>
 
-  <!-- 5 -->
-  <h2><span class="n">5.</span> Quy trình Semantic Search</h2>
-  <div class="pipe">
-    <div class="step"><div class="num">1</div><div class="body"><h4>Khởi tạo truy vấn</h4><p>Người dùng nhập câu hỏi hoặc chủ đề bằng ngôn ngữ tự nhiên (hỗ trợ đa ngôn ngữ, bao gồm Tiếng Việt).</p></div></div>
-    <div class="step"><div class="num">2</div><div class="body"><h4>Vector hóa câu hỏi</h4><p>Truy vấn được chuyển đổi thành vector 768 chiều sử dụng cùng mô hình embedding với dữ liệu nguồn.</p></div></div>
-    <div class="step"><div class="num">3</div><div class="body"><h4>Tìm kiếm không gian vector</h4><p>MongoDB thực thi <code>$vectorSearch</code> để tìm các tài liệu gần nhất dựa trên khoảng cách Cosine Similarity, kết hợp các bộ lọc meta (năm, trạng thái).</p></div></div>
-    <div class="step"><div class="num">4</div><div class="body"><h4>Đánh giá lại (Re-rank - Tùy chọn)</h4><p>Khi yêu cầu độ chính xác cao, LLM sẽ tham gia chấm điểm và sắp xếp lại nhóm kết quả đầu ra.</p></div></div>
-    <div class="step"><div class="num">5</div><div class="body"><h4>Phản hồi</h4><p>Danh sách bài báo được trả về cho Frontend hiển thị tức thời.</p></div></div>
-  </div>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 4. BA NHÓM NGUỒN DỮ LIỆU -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">4.</span> Ba nhóm nguồn dữ liệu</h2>
+  <table>
+    <tr><th>Nguồn</th><th>Mô tả</th><th>Trạng thái</th></tr>
+    <tr>
+      <td><b>1. Dữ liệu đã đồng bộ</b></td>
+      <td>Paper qua OpenAlex sync → normalize → dedup → quality gate → <code>research_papers</code>. Đây là nguồn chính cho search, trends, reports, gaps, compare.</td>
+      <td><span class="pill done" style="margin:0">Implemented</span></td>
+    </tr>
+    <tr>
+      <td><b>2. API/Provider search</b></td>
+      <td>Pipeline gọi provider bên ngoài, đưa paper mới vào hàng đợi sync rồi mới phân tích. Hiện OpenAlex là nguồn chính; các provider khác (Semantic Scholar, Crossref, arXiv) có interface sẵn (<code>DataSource</code> type) nhưng chưa triển khai đầy đủ.</td>
+      <td><span class="pill partial" style="margin:0">Partial</span></td>
+    </tr>
+    <tr>
+      <td><b>3. User uploads/requests</b></td>
+      <td>Model paper hỗ trợ luồng người dùng yêu cầu hoặc upload PDF (<code>paperStatus</code>, <code>requestedBy</code>, <code>uploadedBy</code>, <code>pdfPath</code>). Phần này phục vụ workflow cộng đồng, chưa thay thế nguồn OpenAlex cho toàn bộ AI pipeline.</td>
+      <td><span class="pill done" style="margin:0">Implemented</span></td>
+    </tr>
+  </table>
 
-  <!-- 6 -->
-  <h2><span class="n">6.</span> Báo cáo phân tích (RAG)</h2>
-  <p class="lead">Kiến trúc <b>Retrieval-Augmented Generation</b> đảm bảo báo cáo AI được tạo ra dựa trên các bằng chứng có thật, giảm thiểu rủi ro "ảo giác" (hallucination) của LLM.</p>
-  <div class="pipe">
-    <div class="step"><div class="num">1</div><div class="body"><h4>Nhận yêu cầu phân tích</h4><p>Hệ thống nhận truy vấn nghiên cứu cụ thể.</p></div></div>
-    <div class="step"><div class="num">2</div><div class="body"><h4>Truy xuất bằng chứng</h4><p>Tìm kiếm và trích xuất top các bài báo liên quan nhất làm nguồn tham khảo bắt buộc.</p></div></div>
-    <div class="step"><div class="num">3</div><div class="body"><h4>Xử lý bộ đệm</h4><p>Kiểm tra Redis Cache: nếu câu hỏi và tập tài liệu đã từng được phân tích, trả về kết quả lập tức mà không cần gọi LLM.</p></div></div>
-    <div class="step"><div class="num">4</div><div class="body"><h4>Sinh văn bản (Generation)</h4><p>Gemini LLM tổng hợp báo cáo chuyên sâu, yêu cầu bắt buộc trích dẫn các nguồn <code>[n]</code> từ tập tài liệu đã cho.</p></div></div>
-    <div class="step"><div class="num">5</div><div class="body"><h4>Kiểm định (Grounding Check)</h4><p>Hệ thống kiểm tra tính hợp lệ của mọi trích dẫn trong văn bản để đảm bảo không có nguồn giả mạo.</p></div></div>
-  </div>
-  <div class="callout ok">
-    <b>Chỉ số hiệu năng:</b><br/>
-    • Thời gian sinh báo cáo mới hoàn toàn: <b>~17.2 giây</b> (xử lý 8 bài báo, tạo markdown dài và trích xuất khoảng trống).<br/>
-    • Thời gian phản hồi từ Cache (khi lặp lại truy vấn): <b>~0.7 giây</b> (Tiết kiệm 100% quota API).
-  </div>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 5. SMART REASONING CORE (F1–F4) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">5.</span> Smart Reasoning Core (F1–F4)</h2>
+  <p class="lead">Bốn trụ cột xử lý AI, chia sẻ giữa tất cả tính năng. Mỗi feature gọi đúng trụ cần dùng thay vì tự implement lại.</p>
 
-  <!-- 7 -->
-  <h2><span class="n">7.</span> Phân tích khoảng trống nghiên cứu (Research Gaps)</h2>
-  <p>Hệ thống phân tích cơ sở dữ liệu để tìm ra các khía cạnh nghiên cứu còn thiếu sót hoặc có tiềm năng phát triển.</p>
-  <div class="grid c2" style="margin-top: 20px;">
-    <div>
-      <h3>Cách tiếp cận</h3>
-      <div class="pipe">
-        <div class="step"><div class="num">1</div><div class="body"><h4>Thu thập tài liệu</h4><p>Truy xuất bài báo liên quan đến chủ đề.</p></div></div>
-        <div class="step"><div class="num">2</div><div class="body"><h4>Đánh giá chéo</h4><p>AI tìm kiếm các giới hạn, mâu thuẫn phương pháp hoặc chủ đề ít được quan tâm.</p></div></div>
-        <div class="step"><div class="num">3</div><div class="body"><h4>Lưu trữ & Phân loại</h4><p>Hệ thống tính toán độ tin cậy và gán nhãn cho từng khoảng trống.</p></div></div>
+  <div class="src-box">
+    <h3>🧠 Smart Reasoning Core</h3>
+    <div class="src-grid">
+      <div class="src-item">
+        <div class="label">F1 — Shared Retriever</div>
+        <h4>Truy xuất ngữ nghĩa chung</h4>
+        <p>Module <code>retrieval/retriever.ts</code> — dùng chung cho search, report, gap, chat. Nhận query text → embed → <code>$vectorSearch</code> trên Atlas → trả <code>RetrievedPaper[]</code> kèm <code>aiAnalysis</code> nếu có.</p>
+        <p style="font-size:12px;color:var(--green);margin-top:8px"><b>4 projection modes:</b> search, report, gap, chat</p>
+      </div>
+      <div class="src-item">
+        <div class="label">F2 — Structured Paper Knowledge</div>
+        <h4>aiAnalysis — tri thức trích xuất 1 lần</h4>
+        <p><code>paper-analysis.worker.ts</code> chạy theo CRON, dùng Gemini trích xuất 8 trường từ title+abstract: summary, methods, dataset, findings, limitations, contributions, futureWork, keyTerms. Lưu vào <code>paper.aiAnalysis</code>, dùng lại cho mọi feature. <b>Fallback:</b> khi chưa có aiAnalysis → dùng <code>abstractText</code> gốc.</p>
+      </div>
+      <div class="src-item">
+        <div class="label">F3 — Grounding & Citation</div>
+        <h4>Kiểm định trích dẫn</h4>
+        <p>Module <code>llm/grounding.ts</code> — kiểm tra mọi trích dẫn <code>[n]</code> trong văn bản AI sinh ra có trỏ về bài báo thật trong tập evidence hay không. Loại bỏ nguồn giả mạo/hallucination.</p>
+      </div>
+      <div class="src-item">
+        <div class="label">F4 — Cached LLM + Model Routing</div>
+        <h4>Cache & chọn model thông minh</h4>
+        <p><code>llm.run.ts</code> + <code>llm.factory.ts</code> — cache response trong Redis theo <code>hash(query + paperIds + promptVersion + model)</code>. Factory pattern chọn Gemini hoặc Ollama qua <code>LLM_PROVIDER</code> env. Gemini Flash cho tác vụ nhanh, Pro cho deep analysis.</p>
       </div>
     </div>
-    <div class="card">
-      <h3>Phân luồng dữ liệu (Sources)</h3>
-      <p><b>Phân tích độc lập (Standalone):</b> Người dùng chủ động yêu cầu quét chuyên sâu một chủ đề cụ thể.</p>
-      <p><b>Kế thừa báo cáo (Fan-out):</b> Tự động trích xuất và rải các khoảng trống được tìm thấy trong các báo cáo RAG vào kho dữ liệu chung.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 6. AI FEATURE FLOWS -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">6.</span> Các tính năng AI — Feature Flows</h2>
+  <p class="lead">Mỗi tính năng sử dụng các trụ cột F1–F4 ở mức khác nhau. Bảng dưới cho thấy flow thực tế.</p>
+
+  <div class="feat-grid">
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>🔍 Semantic Search</h4>
+      <p>Query → <b>F1</b> Retriever (embed + $vectorSearch) → trả danh sách paper xếp theo cosine score. <b>Không gọi LLM</b>, 0 token.</p>
+      <div class="tech">F1 Retriever · Gemini Embedding · MongoDB Vector</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>📈 Trends Dashboard</h4>
+      <p>MongoDB Aggregation Pipeline tính YoY, CAGR, Momentum cho keywords/topics theo năm. <b>Deterministic</b>, không LLM. 3 cổng chống trend giả.</p>
+      <div class="tech">MongoDB Aggregation · Deterministic Compute</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>📄 RAG Reports</h4>
+      <p>Query → <b>F1</b> retrieve top-K → <b>F4</b> check cache → Gemini sinh markdown có <code>[n]</code> citations → <b>F3</b> grounding check → lưu + trả FE. Worker BullMQ xử lý nền.</p>
+      <div class="tech">F1 + F3 + F4 · Gemini Flash · BullMQ report.worker</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>🔬 Research Gaps</h4>
+      <p>2 luồng: (a) Standalone — user yêu cầu quét chủ đề; (b) Fan-out — tự trích từ report. <b>F1</b> retrieve → <b>F2</b> dùng aiAnalysis nếu có → Gemini phân tích gaps kèm confidence + evidence counting trên corpus.</p>
+      <div class="tech">F1 + F2 + F4 · Gemini Flash · gaps.worker</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>💡 Gap Directions</h4>
+      <p>Với mỗi gap, AI gợi ý 2–4 hướng nghiên cứu kèm rationale và relatedPaperIds. On-demand (lazy), không fetch khi mount. Cache force:false ở lần đầu.</p>
+      <div class="tech">F2 + F4 · Gemini Flash · Advisory only</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>⚖️ Paper Compare</h4>
+      <p>2–4 paper → bảng metrics (year, citation, aiScore) + LLM qualitative comparison (phương pháp, dữ liệu, kết quả, hạn chế). <b>F2</b> dùng aiAnalysis khi available, fallback abstractText.</p>
+      <div class="tech">F2 + F4 · Gemini Flash · compare.service</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>💬 Project Chat</h4>
+      <p>User hỏi đáp trên tập paper đã lưu trong project. <b>F1</b> retrieve trong scope project → LLM trả lời. Provider cắm rút: Gemini mặc định hoặc <b>Ollama local</b>.</p>
+      <div class="tech">F1 + F4 · Gemini hoặc Ollama · projects module</div>
+    </div>
+    <div class="feat-card">
+      <span class="pill done">Implemented</span>
+      <h4>🛠️ MCP / Deep Analysis</h4>
+      <p>Ở chế độ deep analysis, Gemini Pro có thể <b>gọi tool nội bộ</b> (search papers, lấy trend, đếm paper) qua MCP executor. AI tự bổ sung evidence trước khi viết report. Tool run logs lưu lại.</p>
+      <div class="tech">F1 + F3 + F4 · Gemini Pro · mcp.executor + mcp.tools</div>
     </div>
   </div>
 
-  <!-- 8 -->
-  <h2><span class="n">8.</span> Tối ưu hóa và Vận hành</h2>
-  <table>
-    <tr><th>Thành phần</th><th>Mô hình / Công nghệ</th><th>Nhiệm vụ</th></tr>
-    <tr><td>Embedding</td><td><code>gemini-embedding-2</code> (768d)</td><td>Biểu diễn ngữ nghĩa tài liệu và truy vấn</td></tr>
-    <tr><td>LLM Tốc độ cao</td><td>Gemini Flash</td><td>Xử lý nhanh, sinh báo cáo cơ bản, Re-rank</td></tr>
-    <tr><td>LLM Chuyên sâu</td><td>Gemini Pro</td><td>Phân tích cấu trúc sâu (Deep Analysis / MCP)</td></tr>
-    <tr><td>Vector Store</td><td>MongoDB Atlas Vector Search</td><td>Lưu trữ và tính toán khoảng cách vector</td></tr>
-    <tr><td>Caching</td><td>Redis (Upstash)</td><td>Bộ nhớ đệm phản hồi AI</td></tr>
-  </table>
-
-  <!-- 9 -->
-  <h2><span class="n">9.</span> Kiến trúc xử lý nền (Background Workers)</h2>
-  <p class="lead">Để đảm bảo trải nghiệm người dùng không bị gián đoạn, các tác vụ tính toán nặng được tách rời khỏi API chính và điều phối qua hàng đợi.</p>
-  <div class="flow">
-    <div class="node"><div class="t">API Server</div><div class="s">Tiếp nhận và đưa vào hàng đợi</div></div>
-    <div class="arrow">→</div>
-    <div class="node"><div class="t">Redis Queue</div><div class="s">Quản lý bằng BullMQ</div></div>
-    <div class="arrow">→</div>
-    <div class="node"><div class="t">Worker Processes</div><div class="s">Xử lý bất đồng bộ</div></div>
-  </div>
-  <div class="grid c4">
-    <div class="stat"><div class="big">Sync</div><div class="lbl">Thu thập dữ liệu</div></div>
-    <div class="stat"><div class="big">Embed</div><div class="lbl">Tạo Vector</div></div>
-    <div class="stat"><div class="big">Report</div><div class="lbl">Sinh báo cáo RAG</div></div>
-    <div class="stat"><div class="big">Gaps</div><div class="lbl">Phân tích Gaps</div></div>
-  </div>
-  <p style="color:var(--muted);font-size:14px;margin-top:16px;">Các worker được thiết lập cơ chế thử lại có khoảng lùi thời gian (Exponential Backoff) để chịu lỗi tự động.</p>
-
-  <!-- 10 -->
-  <h2><span class="n">10.</span> Thông số hệ thống</h2>
-  <div class="grid c4">
-    <div class="stat"><div class="big">15.000+</div><div class="lbl">Bài báo dữ liệu</div></div>
-    <div class="stat"><div class="big">768</div><div class="lbl">Chiều Vector</div></div>
-    <div class="stat"><div class="big">17.2s</div><div class="lbl">Thời gian tạo báo cáo</div></div>
-    <div class="stat"><div class="big">0.7s</div><div class="lbl">Tốc độ truy xuất Cache</div></div>
+  <div class="callout ok">
+    <b>aiAnalysis fallback:</b> Tất cả AI features (gaps, directions, compare, chat) ưu tiên dùng <code>paper.aiAnalysis</code> (structured knowledge). Khi paper chưa được phân tích bởi worker, hệ thống tự động fallback sang <code>abstractText</code> gốc — đảm bảo mọi paper đều có thể tham gia AI pipeline.
   </div>
 
-  <!-- 11 -->
-  <h2><span class="n">11.</span> Tổng hợp Công nghệ</h2>
-  <table>
-    <tr><th>Phân lớp</th><th>Công nghệ triển khai</th></tr>
-    <tr><td>Quản lý Mã nguồn</td><td>pnpm workspaces, Turborepo (Mono-repo)</td></tr>
-    <tr><td>Backend</td><td>Node.js 22, Express 5, TypeScript, Mongoose 8, BullMQ</td></tr>
-    <tr><td>Frontend Web</td><td>React 18, Vite, Tailwind CSS, shadcn/ui, TanStack Query</td></tr>
-    <tr><td>Frontend Mobile</td><td>Expo, React Native, NativeWind</td></tr>
-    <tr><td>Trí tuệ Nhân tạo</td><td>Google Gemini API (Embedding + LLM), MCP</td></tr>
-    <tr><td>Cơ sở Dữ liệu</td><td>MongoDB Atlas (Vector Search), Redis</td></tr>
-  </table>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 7. OLLAMA — LOCAL LLM PROVIDER -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">7.</span> Ollama — Local LLM Provider</h2>
 
-  <!-- 12 -->
-  <h2><span class="n">12.</span> Kiến trúc 2 tầng — "Không dồn mọi thứ vào Gemini"</h2>
-  <p class="lead">Nguyên tắc cốt lõi giúp hệ thống tiết kiệm token và vẫn minh bạch: <b>cái gì tính được bằng máy thì tính bằng máy</b>, mô hình ngôn ngữ chỉ đảm nhận phần diễn giải.</p>
+  <div class="ollama-box">
+    <h3>🦙 Vai trò của Ollama trong hệ thống</h3>
+    <div class="grid c2">
+      <div>
+        <h4 style="margin-top:0">Ollama là gì?</h4>
+        <p style="font-size:14px;color:var(--muted)">Ollama là một runtime chạy LLM <b>local trên máy backend</b>, tương thích OpenAI API format. Hệ thống implement <code>OllamaLlmProvider</code> (tuân thủ <code>LlmProvider</code> interface) để cắm vào cùng pipeline với Gemini.</p>
+        <p style="font-size:14px;color:var(--muted)">Khi <code>LLM_PROVIDER=ollama</code> trong .env, toàn bộ lệnh <code>generate()</code> chuyển sang Ollama thay vì gọi Gemini API — <b>giảm quota generate của Gemini</b> cho chat/demo.</p>
+      </div>
+      <div>
+        <h4 style="margin-top:0">Giới hạn quan trọng</h4>
+        <table style="margin:0;font-size:13px">
+          <tr><th>Khía cạnh</th><th>Ollama</th><th>Gemini</th></tr>
+          <tr><td><b>Text Generate</b></td><td>✅ Thay thế được</td><td>✅ Mặc định</td></tr>
+          <tr><td><b>Embedding</b></td><td>❌ Không thay thế</td><td>✅ Luôn dùng Gemini</td></tr>
+          <tr><td><b>MCP / Function Calling</b></td><td>❌ Không hỗ trợ</td><td>✅ Gemini Pro</td></tr>
+          <tr><td><b>Chất lượng output</b></td><td>Phụ thuộc model local</td><td>Cao, ổn định</td></tr>
+        </table>
+        <div class="callout warn" style="margin:12px 0 0;font-size:13px">
+          <b>Lưu ý:</b> Ollama chỉ thay thế phần <b>generate text</b> (chat, một số report đơn giản). Embedding vẫn luôn dùng Gemini vì vector index đã build trên Gemini 768d — chuyển embedding model sẽ phá index.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 8. KIẾN TRÚC 2 TẦNG -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">8.</span> Kiến trúc 2 tầng — "Không dồn mọi thứ vào Gemini"</h2>
+  <p class="lead">Nguyên tắc cốt lõi: <b>cái gì tính được bằng máy thì tính bằng máy</b>, LLM chỉ đảm nhận phần diễn giải.</p>
   <div class="grid c2">
     <div class="card" style="border-left:4px solid #047857">
       <span class="pill" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0">Tầng tính toán · KHÔNG LLM · 0 token</span>
       <h3>Deterministic Compute</h3>
       <ul style="margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--muted)">
         <li><b>Trend</b> → MongoDB Aggregation + công thức toán (YoY, CAGR, Momentum)</li>
-        <li><b>Điểm bài báo</b> → công thức <code>computePaperScore</code> (impact / recency / metadata)</li>
-        <li><b>Xếp hạng search</b> → vector cosine similarity</li>
+        <li><b>Điểm bài báo</b> → <code>computePaperScore</code> (impact / recency)</li>
+        <li><b>Search ranking</b> → vector cosine similarity</li>
+        <li><b>Quality gate</b> → dataQualityScore tính từ field-presence</li>
+        <li><b>Evidence counting</b> → đếm paper ở giao điểm topics trên MongoDB</li>
       </ul>
     </div>
     <div class="card" style="border-left:4px solid #6d28d9">
@@ -338,107 +422,153 @@
         <li><b>Báo cáo narrative</b> + <b>research gap</b> bằng RAG</li>
         <li>Mọi luận điểm có trích dẫn <code>[n]</code> trỏ về bài thật</li>
         <li>Chỉ nhận <b>vài bài đã lọc sẵn</b> từ tầng dưới, không nhận cả corpus</li>
+        <li><b>aiAnalysis</b> trích xuất 1 lần/paper, tái sử dụng vĩnh viễn</li>
       </ul>
     </div>
   </div>
-  <div class="callout ok">
-    <b>Câu chốt:</b> Con số <i>"chủ đề tăng 300%"</i> hay <i>"bài này điểm 0.85"</i> được tính bằng công thức toán trên MongoDB,
-    KHÔNG hỏi Gemini. LLM chỉ viết lời giải thích "tại sao" dựa trên vài bài đã lọc — nên token chỉ tốn ở một chỗ nhỏ nhất,
-    và mọi con số đều <b>tái lập được bằng tay</b>, không phải số đen từ AI.
-  </div>
+
   <h3>Năm cơ chế tiết kiệm token</h3>
   <table>
     <tr><th>Cơ chế</th><th>Tiết kiệm</th></tr>
-    <tr><td>Cache mọi report trong Redis — key = <code>hash(query+năm+model+prompt_version+ID bài)</code>, TTL 7 ngày</td><td>Câu giống hệt → <b>0 token</b> (demo lại miễn phí)</td></tr>
-    <tr><td>Search chỉ dùng vector cosine, KHÔNG gọi LLM</td><td>Search bao nhiêu lần cũng 0 token LLM</td></tr>
-    <tr><td>RAG chỉ gửi top-K bài liên quan nhất vào prompt, không gửi cả 15k bài</td><td>Prompt nhỏ → ít token mỗi lần</td></tr>
+    <tr><td>Cache mọi LLM response trong Redis — key = <code>hash(query + paperIds + model + prompt_version)</code>, TTL 7 ngày</td><td>Câu giống hệt → <b>0 token</b></td></tr>
+    <tr><td>Search chỉ dùng vector cosine, KHÔNG gọi LLM</td><td>Search bao nhiêu lần cũng 0 token</td></tr>
+    <tr><td>RAG chỉ gửi top-K bài liên quan nhất vào prompt</td><td>Prompt nhỏ → ít token mỗi lần</td></tr>
     <tr><td>Embed bài giá trị trước (sort theo citationCount giảm dần)</td><td>Quota embed phủ bài tốt nhất trước</td></tr>
-    <tr><td>Model rẻ <code>gemini-3.1-flash-lite</code> thay vì Pro</td><td>~10× rẻ hơn mỗi lượt</td></tr>
+    <tr><td>Ollama local cho chat/demo khi cần</td><td>Giảm quota Gemini generate</td></tr>
   </table>
 
-  <!-- 13 -->
-  <h2><span class="n">13.</span> Cơ chế chấm điểm bài báo <span style="font-size:14px;color:var(--blue)">(v2 — công bằng theo tuổi)</span></h2>
-  <p class="lead">Điểm bài báo là <b>điểm nội tại, tính bằng công thức cố định</b> — công khai, tái lập được, không phải số do AI sinh ra.</p>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 9. BACKGROUND WORKERS -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">9.</span> Background Workers (BullMQ)</h2>
+  <p class="lead">Các tác vụ nặng được tách khỏi API chính và điều phối qua hàng đợi Redis + BullMQ.</p>
+  <div class="flow">
+    <div class="node"><div class="t">API Server</div><div class="s">Tiếp nhận request<br/>→ đưa vào queue</div></div>
+    <div class="arrow">→</div>
+    <div class="node highlight"><div class="t">Redis Queue</div><div class="s">BullMQ<br/>Retry + Backoff</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="t">Worker Processes</div><div class="s">Xử lý bất đồng bộ<br/>Mỗi worker = 1 process</div></div>
+  </div>
+  <table>
+    <tr><th>Worker</th><th>File</th><th>Nhiệm vụ</th><th>Trigger</th></tr>
+    <tr><td><b>Sync</b></td><td><code>sync.worker.ts</code></td><td>Thu thập paper từ OpenAlex, normalize, dedup, quality gate</td><td>Admin trigger / CRON</td></tr>
+    <tr><td><b>Embedding</b></td><td><code>embedding.worker.ts</code></td><td>Gọi Gemini Embedding, chuyển title+abstract → vector 768d, lưu vào paper</td><td>CRON / after sync</td></tr>
+    <tr><td><b>Paper Analysis</b></td><td><code>paper-analysis.worker.ts</code></td><td>Trích xuất aiAnalysis (8 trường) từ title+abstract bằng Gemini, lưu vào <code>paper.aiAnalysis</code></td><td>CRON (<code>PAPER_ANALYSIS_CRON</code>)</td></tr>
+    <tr><td><b>Report</b></td><td><code>report.worker.ts</code></td><td>Sinh báo cáo RAG: retrieve → generate → grounding check → lưu markdown + research gaps</td><td>User request</td></tr>
+    <tr><td><b>Gaps</b></td><td><code>gaps.worker.ts</code></td><td>Phân tích research gaps cho 1 chủ đề: retrieve → LLM phân tích → evidence counting → lưu gaps</td><td>User request / report fan-out</td></tr>
+  </table>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 10. EMBEDDING -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">10.</span> Cơ chế Embedding (Nhúng vector)</h2>
+  <div class="card">
+    <div class="flow">
+      <div class="node"><div class="t">Dữ liệu thô</div><div class="s">Tiêu đề + Tóm tắt</div></div>
+      <div class="arrow">→</div>
+      <div class="node ai"><div class="t">Gemini Embedding</div><div class="s">gemini-embedding-2<br/>768 chiều</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="t">Vector hóa</div><div class="s">Mảng 768d tọa độ<br/>Cosine similarity</div></div>
+      <div class="arrow">→</div>
+      <div class="node highlight"><div class="t">Atlas Vector Index</div><div class="s">paper_vector_index<br/>$vectorSearch</div></div>
+    </div>
+    <div class="callout">
+      <b>Tối ưu chi phí:</b> Chỉ embed paper đạt quality gate (dataQualityScore ≥ 0.7). Sort theo citationCount giảm dần → quota embed phủ bài giá trị cao nhất trước.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 11. SCORING + QUALITY -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">11.</span> Cơ chế chấm điểm bài báo <span style="font-size:14px;color:var(--blue)">(v2 — công bằng theo tuổi)</span></h2>
+  <p class="lead">Điểm bài báo là <b>điểm nội tại, tính bằng công thức cố định</b> — tái lập được, không phải số do AI sinh ra.</p>
   <div class="callout">
     <b>finalScore = 0.60 × Impact + 0.40 × Recency</b>
   </div>
   <table>
     <tr><th>Tiêu chí</th><th>Trọng số</th><th>Công thức</th><th>Ý nghĩa</th></tr>
-    <tr><td><b>Impact</b></td><td>60%</td><td><code>log10(citations/tuổi + 1) / log10(101)</code></td><td>Ảnh hưởng <b>theo tuổi</b> — bài 2024 không bị thiệt vì chưa kịp tích citation như bài 2010</td></tr>
-    <tr><td><b>Recency</b></td><td>40%</td><td><code>1 − (năm nay − năm XB)/10</code></td><td>Độ mới — bài &gt; 10 năm = 0</td></tr>
+    <tr><td><b>Impact</b></td><td>60%</td><td><code>log10(citations/tuổi + 1) / log10(101)</code></td><td>Ảnh hưởng <b>theo tuổi</b> — bài 2024 không bị thiệt vì chưa kịp tích citation</td></tr>
+    <tr><td><b>Recency</b></td><td>40%</td><td><code>1 − (năm nay − năm XB)/10</code></td><td>Độ mới — bài > 10 năm = 0</td></tr>
   </table>
-  <p style="color:var(--muted);font-size:14px"><b>Độ đầy đủ dữ liệu</b> (7 trường: title, abstract ≥ 250 ký tự, DOI, journal, năm, tác giả, open-access) hiển thị RIÊNG, <b>không trộn vào điểm giá trị</b> — bài hay mà thiếu DOI không bị trừ điểm vô lý.</p>
-  <p style="color:var(--muted);font-size:14px">Ví dụ thật (đã backfill 15.081 bài): <i>"A Survey of Large Language Models"</i> (2026, 1405 trích dẫn) → Impact 1.0, Recency 1.0, <b>finalScore 1.0</b> — kiểm chứng được bằng tay.</p>
+  <p style="color:var(--muted);font-size:14px"><b>Độ đầy đủ dữ liệu</b> (7 trường) hiển thị RIÊNG, <b>không trộn vào điểm giá trị</b>.</p>
 
-  <h3 style="margin-top:28px">Bổ sung: AI thật chấm bài người dùng tải lên <span style="font-size:13px;color:var(--blue)">(on-demand)</span></h3>
-  <p style="color:var(--muted);font-size:14px">Điểm công thức ở trên là <b>tất định</b>. Riêng với bài do người dùng <b>tải lên</b>, hệ thống cho gọi <b>LLM (Gemini) chấm theo yêu cầu</b> — nút <i>"AI đánh giá chất lượng"</i> ở trang chi tiết bài. AI đọc <b>title + abstract</b> rồi chấm 3 chiều (1–5): <b>relevance</b> (chủ đề rõ / đúng phạm vi), <b>groundedness</b> (luận điểm có dẫn method / data / kết quả hay nói suông), <b>completeness</b> (đủ problem + method + result), kèm 1–3 câu lý giải.</p>
-  <div class="callout">
-    <b>Thuần tư vấn:</b> điểm AI hiển thị cạnh điểm công thức nhưng <b>KHÔNG đổi tier, KHÔNG đổi credit/reward, KHÔNG tự duyệt</b> — AI không bao giờ chạm tiền. Kết quả <b>cache theo từng bài</b> (chỉ lần đầu tốn token) và bị rate-limit 20 lượt/giờ/user.
-  </div>
+  <h3>Bổ sung: AI chấm bài on-demand</h3>
+  <p style="color:var(--muted);font-size:14px">Điểm công thức là <b>tất định</b>. Riêng với bài người dùng upload, hệ thống cho gọi <b>Gemini chấm theo yêu cầu</b> — 3 chiều (1–5): relevance, groundedness, completeness. <b>Thuần tư vấn:</b> KHÔNG đổi tier, KHÔNG đổi credit, KHÔNG tự duyệt. Cache theo từng bài, rate-limit 20 lượt/giờ/user.</p>
 
-  <h3 style="margin-top:28px">Đo độ tin của AI: dashboard “AI vs Người thật”</h3>
-  <p style="color:var(--muted);font-size:14px">Admin có bảng <b>so điểm LLM tự chấm với điểm trung bình người dùng chấm sao</b> (trên các mục có CẢ hai), tách theo report / gap / paper:</p>
-  <table>
-    <tr><th>Chỉ số</th><th>Ý nghĩa</th><th>Tốt khi</th></tr>
-    <tr><td><b>MAE</b></td><td>Sai số tuyệt đối trung bình <code>|điểm AI − điểm người|</code></td><td>càng <b>thấp</b></td></tr>
-    <tr><td><b>Trong ±1</b></td><td>% mục mà AI lệch người ≤ 1 điểm</td><td>càng <b>cao</b></td></tr>
-    <tr><td><b>Tương quan</b></td><td>Pearson giữa điểm AI và điểm người</td><td>càng <b>gần 1</b></td></tr>
-  </table>
-  <p style="color:var(--muted);font-size:14px">→ Trả lời thẳng câu hỏi <i>"AI chấm có đáng tin không?"</i> bằng SỐ chứ không phải lời hứa: AI càng khớp người, điểm AI càng đáng dùng để tham khảo.</p>
-
-  <!-- 14 -->
-  <h2><span class="n">14.</span> Làm sao biết một xu hướng là THẬT?</h2>
-  <p class="lead">Một chủ đề/keyword chỉ được xem là "đang lên" khi vượt qua <b>3 cổng chống trend giả</b> — tránh một cú nhảy ngẫu nhiên bị hiểu nhầm thành xu hướng.</p>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 12. TREND VALIDATION -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">12.</span> Làm sao biết một xu hướng là THẬT?</h2>
+  <p class="lead">Chủ đề chỉ được xem là "đang lên" khi vượt qua <b>3 cổng chống trend giả</b>.</p>
   <table>
     <tr><th>Cổng lọc</th><th>Chặn cái gì</th></tr>
     <tr><td><b>Base ≥ 2 bài năm trước</b> <span class="mono">(MIN_RISING_PREV_BASE)</span></td><td>Chặn <code>1 → 9 bài</code> = "+800%" giả, vô nghĩa</td></tr>
-    <tr><td><b>Bỏ năm hiện tại đang chạy dở</b> <span class="mono">(truncateToCompleteYears)</span></td><td>Năm chưa hết → chưa đủ dữ liệu → không lấy làm chuẩn tăng/giảm</td></tr>
+    <tr><td><b>Bỏ năm hiện tại đang chạy dở</b> <span class="mono">(truncateToCompleteYears)</span></td><td>Năm chưa hết → chưa đủ dữ liệu → không lấy làm chuẩn</td></tr>
     <tr><td><b>3 chỉ số độc lập</b> (YoY + CAGR + Momentum)</td><td>Trend thật phải đẹp ở cả 3, không chỉ spike 1 năm</td></tr>
   </table>
-  <div class="callout ok">
-    Trend thật = <b>tăng bền vững nhiều năm</b> (CAGR &amp; độ dốc hồi quy đều dương) + <b>base đủ lớn</b> + <b>chỉ tính năm đã hoàn chỉnh</b>.
-    Một cú spike ngẫu nhiên 1 năm sẽ bị 3 cổng này loại.
-  </div>
 
-  <!-- 15 -->
-  <h2><span class="n">15.</span> Giá trị so với OpenAlex</h2>
-  <p class="lead">OpenAlex là <b>kho dữ liệu thô</b>. Hệ thống này là <b>người trợ lý nghiên cứu</b> đứng trên kho đó — làm hộ người dùng những việc OpenAlex bắt tự làm thủ công.</p>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 13. SO SÁNH VS OPENALEX -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">13.</span> Giá trị so với OpenAlex</h2>
   <table>
     <tr><th></th><th>OpenAlex</th><th>LiemResearch</th></tr>
-    <tr><td><b>Search</b></td><td>Keyword + filter (khớp chữ)</td><td>Semantic — theo nghĩa (vector)</td></tr>
+    <tr><td><b>Search</b></td><td>Keyword + filter (khớp chữ)</td><td>Semantic — theo nghĩa (vector 768d)</td></tr>
     <tr><td><b>Trend</b></td><td>Trả count thô — tự tính</td><td>Tính sẵn growth + CAGR + momentum, đã lọc trend giả</td></tr>
     <tr><td><b>Giải thích</b></td><td>Không có</td><td>Báo cáo AI grounded, có trích dẫn [n] về bài thật</td></tr>
-    <tr><td><b>Research gap</b></td><td>Không có</td><td>Tự phát hiện khoảng trống nghiên cứu</td></tr>
-    <tr><td><b>Xếp hạng</b></td><td>Sort theo citation thô</td><td>Điểm tổng hợp impact + recency + metadata</td></tr>
-    <tr><td><b>Chất lượng</b></td><td>Cả rác lẫn vàng</td><td>Đã lọc — chỉ bài đủ abstract, AI-analyzable</td></tr>
-    <tr><td><b>Trải nghiệm</b></td><td>API thô, tự ghép</td><td>1 luồng: search → trend → report → gap</td></tr>
+    <tr><td><b>Research gap</b></td><td>Không có</td><td>Tự phát hiện + evidence counting + directions</td></tr>
+    <tr><td><b>Paper knowledge</b></td><td>Metadata thô</td><td>aiAnalysis 8 trường (summary, methods, findings...)</td></tr>
+    <tr><td><b>Compare</b></td><td>Không có</td><td>Bảng metrics + qualitative AI comparison</td></tr>
+    <tr><td><b>Chat</b></td><td>Không có</td><td>Project-scoped RAG chat (Gemini/Ollama)</td></tr>
   </table>
 
-  <!-- 16 -->
-  <h2><span class="n">16.</span> Nâng cấp v2 — biến "AI phán" thành "bằng chứng số"</h2>
-  <p class="lead">Trả lời trực tiếp góp ý của thầy: mọi kết luận phải có số chứng minh, không phải ý kiến của AI.</p>
-  <div class="grid c2">
-    <div class="card" style="border-left:4px solid var(--blue)">
-      <span class="pill">Research Gap có bằng chứng</span>
-      <h3>Khoảng trống được CHỨNG MINH bằng số</h3>
-      <p>AI đề xuất "X giao Y còn ít người làm" → hệ thống <b>tự đếm trên corpus</b>: số bài ở giao điểm + độ lớn từng nhánh + tốc độ tăng. Confidence là <b>số thật từ dữ liệu</b>, không phải AI tự khai.</p>
-      <div style="font-size:13px;color:var(--muted);margin-top:8px">VD thật: transformer ∩ education = 103 bài (transformer 881, education 1212) → đã khai thác nhiều, KHÔNG phải gap.</div>
-    </div>
-    <div class="card" style="border-left:4px solid var(--blue)">
-      <span class="pill">So sánh bài báo</span>
-      <h3>Đối chiếu 2–4 bài cạnh nhau</h3>
-      <p>Chọn vài bài → bảng so sánh: số liệu (năm, citation, điểm AI) + đối chiếu định tính do AI sinh (phương pháp / dữ liệu / kết quả / hạn chế), grounded từ abstract. Cái OpenAlex không có.</p>
-    </div>
-  </div>
-  <div class="callout">Điểm chấm cũng nâng lên <b>v2 công bằng theo tuổi</b> (mục 13): bài mới không bị thiệt so với bài cũ nhiều citation.</div>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 14. TỔNG HỢP CÔNG NGHỆ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">14.</span> Tổng hợp Công nghệ</h2>
+  <table>
+    <tr><th>Phân lớp</th><th>Công nghệ triển khai</th></tr>
+    <tr><td>Quản lý Mã nguồn</td><td>pnpm workspaces, Turborepo (Mono-repo)</td></tr>
+    <tr><td>Backend</td><td>Node.js 22, Express 5, TypeScript, Mongoose 8, BullMQ</td></tr>
+    <tr><td>Frontend Web</td><td>React 18, Vite, Tailwind CSS, shadcn/ui, TanStack Query, Recharts</td></tr>
+    <tr><td>Frontend Mobile</td><td>Expo, React Native, NativeWind</td></tr>
+    <tr><td>AI — Embedding</td><td>Google Gemini Embedding (<code>gemini-embedding-2</code>, 768d)</td></tr>
+    <tr><td>AI — LLM</td><td>Gemini Flash (tốc độ) + Gemini Pro (deep analysis/MCP)</td></tr>
+    <tr><td>AI — Local</td><td>Ollama (local LLM provider cho chat/demo)</td></tr>
+    <tr><td>Vector Store</td><td>MongoDB Atlas Vector Search (<code>$vectorSearch</code>, cosine)</td></tr>
+    <tr><td>Caching</td><td>Redis (Upstash) — LLM response cache, prompt versioning</td></tr>
+    <tr><td>Queue</td><td>BullMQ trên Redis — 5 workers (sync, embed, analysis, report, gaps)</td></tr>
+    <tr><td>MCP</td><td>Gemini Function Calling + <code>mcp.executor.ts</code> + <code>mcp.tools.ts</code></td></tr>
+    <tr><td>Shared Types</td><td><code>@trend/shared-types</code> — type-safe giữa BE/FE/Mobile</td></tr>
+  </table>
 
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 15. SỐ LIỆU -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <h2><span class="n">15.</span> Thông số hệ thống</h2>
+  <div class="grid c4">
+    <div class="stat"><div class="big">15.000+</div><div class="lbl">Bài báo đã sync</div></div>
+    <div class="stat"><div class="big">768</div><div class="lbl">Chiều Vector Embedding</div></div>
+    <div class="stat"><div class="big">~17s</div><div class="lbl">Thời gian tạo báo cáo mới</div></div>
+    <div class="stat"><div class="big">~0.7s</div><div class="lbl">Phản hồi từ Cache</div></div>
+  </div>
+  <div class="grid c4" style="margin-top:0">
+    <div class="stat"><div class="big">5</div><div class="lbl">BullMQ Workers</div></div>
+    <div class="stat"><div class="big">19</div><div class="lbl">Backend Modules</div></div>
+    <div class="stat"><div class="big">8</div><div class="lbl">Trường aiAnalysis</div></div>
+    <div class="stat"><div class="big">2</div><div class="lbl">LLM Providers<br/><small>(Gemini + Ollama)</small></div></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
   <div class="callout ok" style="margin-top:40px">
-    <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành dữ liệu không gian ngữ nghĩa thông qua mô hình Embedding. Hệ thống tận dụng công nghệ RAG và Vector Search để cung cấp khả năng tìm kiếm nâng cao, phân tích xu hướng chuyên sâu và báo cáo tự động có đối chiếu trực tiếp từ nguồn dữ liệu thật, mang lại độ tin cậy và tốc độ xử lý ưu việt.
+    <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp 8 tính năng AI (search, trends, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, và hỗ trợ cả Gemini cloud lẫn Ollama local.
   </div>
 </div>
 <footer>
   LiemResearch — Publication Trend System · WDP301, Đại học FPT<br/>
-  Báo cáo Kỹ thuật Tổng quan
+  Báo cáo Kỹ thuật Tổng quan · Branch: feature/ai-core-adoption-f2
 </footer>
 </body>
 </html>
