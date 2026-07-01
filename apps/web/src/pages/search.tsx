@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
 
 type FeSortKey = "relevance" | "date" | "citations";
@@ -104,6 +105,23 @@ export function SearchPage() {
     return new Map(bookmarks.filter(b => b.targetKind === "paper").map(b => [b.targetId, b.id]));
   }, [bookmarks]);
 
+  const yearlyDistribution = useMemo(() => {
+    const map = new Map<number, number>();
+    const from = parseInt(yearFrom, 10) || 2020;
+    const to = parseInt(yearTo, 10) || 2026;
+    for (let y = from; y <= to; y++) {
+      map.set(y, 0);
+    }
+    papers.forEach(p => {
+      if (p.publicationYear && p.publicationYear >= from && p.publicationYear <= to) {
+        map.set(p.publicationYear, (map.get(p.publicationYear) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([year, count]) => ({ year: String(year), count }))
+      .sort((a, b) => Number(a.year) - Number(b.year));
+  }, [papers, yearFrom, yearTo]);
+
   const handlePageChange = useCallback((newPage: number) => {
     setSearchParams(prev => {
       prev.set("page", newPage.toString());
@@ -120,6 +138,17 @@ export function SearchPage() {
     });
   }, [setSearchParams]);
 
+  const handleClearAll = useCallback(() => {
+    setYearFrom("2020");
+    setYearTo("2026");
+    setOpenAccessOnly(false);
+    setJournalTypes([]);
+    setPrimaryProvider("all");
+    setAiScoreThreshold(0);
+    setRerank(false);
+    resetPage();
+  }, [resetPage]);
+
   const handleJournalTypeToggle = (type: string) => {
     setJournalTypes(prev =>
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
@@ -131,9 +160,17 @@ export function SearchPage() {
     <div className="w-full flex flex-col md:flex-row gap-8 items-start">
       {/* LEFT SIDEBAR: Filters */}
       <aside className="w-full md:w-64 lg:w-72 shrink-0 bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm sticky top-24">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-blue-800 dark:text-blue-500 tracking-tight">Filters</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Refine your results</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-blue-800 dark:text-blue-500 tracking-tight">Filters</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Refine your results</p>
+          </div>
+          <button
+            onClick={handleClearAll}
+            className="text-[10px] font-bold text-blue-600 dark:text-blue-450 hover:underline cursor-pointer uppercase tracking-wider transition-colors"
+          >
+            Clear All
+          </button>
         </div>
 
         {/* Search Mode */}
@@ -179,6 +216,42 @@ export function SearchPage() {
               className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] text-center text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+
+          {yearlyDistribution.length > 0 && (
+            <div className="h-12 w-full mt-4 opacity-85 hover:opacity-100 transition-opacity">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={yearlyDistribution}
+                  margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                  onClick={(data) => {
+                    if (data && data.activeLabel) {
+                      const yr = data.activeLabel;
+                      setYearFrom(yr);
+                      setYearTo(yr);
+                      resetPage();
+                    }
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                    {yearlyDistribution.map((entry, index) => {
+                      const isSelected = yearFrom === entry.year && yearTo === entry.year;
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isSelected ? "#1d4ed8" : "#93c5fd"}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex justify-between text-[9px] text-slate-400 mt-1 font-semibold select-none px-1">
+                <span>{yearFrom}</span>
+                <span>{yearTo}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Open Access Only */}
