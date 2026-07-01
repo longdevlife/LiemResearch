@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search, SlidersHorizontal, Calendar, Unlock, FileText, Database, Sparkles, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
@@ -31,14 +31,28 @@ export function SearchPage() {
   const [sortBy, setSortBy] = useState<FeSortKey>("relevance");
   const [rerank, setRerank] = useState<boolean>(false); // S3: Rerank state
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (yearFrom !== "2020" || yearTo !== "2026") count += 1;
+    if (openAccessOnly) count += 1;
+    if (searchMode === "semantic" && aiScoreThreshold > 0) count += 1;
+    return count;
+  }, [yearFrom, yearTo, openAccessOnly, aiScoreThreshold, searchMode]);
+
   // Dropdown visibility states
   const [isOpenModeDropdown, setIsOpenModeDropdown] = useState<boolean>(false);
+  const [isOpenMiniFilters, setIsOpenMiniFilters] = useState<boolean>(false);
+  const [isOpenMiniType, setIsOpenMiniType] = useState<boolean>(false);
+  const [isOpenMiniSource, setIsOpenMiniSource] = useState<boolean>(false);
 
   const [localSearchQuery, setLocalSearchQuery] = useState(q);
 
   useEffect(() => {
     const handleGlobalClick = () => {
       setIsOpenModeDropdown(false);
+      setIsOpenMiniFilters(false);
+      setIsOpenMiniType(false);
+      setIsOpenMiniSource(false);
     };
     window.addEventListener("click", handleGlobalClick);
     return () => window.removeEventListener("click", handleGlobalClick);
@@ -166,15 +180,13 @@ export function SearchPage() {
     );
     resetPage();
   };
-
   const renderSearchBox = () => {
     return (
       <div className="relative w-full">
-        <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-md flex flex-col gap-1.5">
-          {/* Dropdown 1: Entity selection */}
+        <form onSubmit={handleSearchSubmit} className="w-full bg-white/90 dark:bg-[#121212]/90 backdrop-blur-md rounded-[24px] border border-slate-200/80 dark:border-slate-800/80 p-2 shadow-md hover:shadow-lg focus-within:shadow-xl focus-within:shadow-blue-500/5 focus-within:border-blue-500/40 transition-all duration-300 ease-out flex flex-col gap-1.5">
           {/* Search Input */}
-          <div className="flex-1 min-w-0 flex items-center px-2 py-1 gap-2">
-            <Search className="w-5 h-5 text-slate-400 shrink-0" />
+          <div className="flex-1 min-w-0 flex items-center px-3 py-1 gap-2.5">
+            <Search className="w-5 h-5 text-slate-400 dark:text-slate-550 shrink-0" />
             <input
               type="text"
               placeholder={
@@ -184,7 +196,7 @@ export function SearchPage() {
               }
               value={localSearchQuery}
               onChange={(e) => setLocalSearchQuery(e.target.value)}
-              className="w-full h-10 bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none placeholder-slate-400"
+              className="w-full h-10 bg-transparent text-sm font-semibold text-slate-900 dark:text-white focus:outline-none placeholder-slate-400/80"
             />
             {localSearchQuery && (
               <button
@@ -197,12 +209,255 @@ export function SearchPage() {
             )}
           </div>
 
-          <div className="h-px bg-slate-150 dark:bg-slate-800 my-1"></div>
+          <div className="h-px bg-slate-100 dark:bg-slate-800/60 my-0.5"></div>
 
           {/* Row 2: Search Options */}
-          <div className="flex items-center justify-between px-2 pt-1 select-none">
-            {/* Left side: Empty placeholder */}
-            <div></div>
+          <div className="flex items-center justify-between px-2 pt-0.5 pb-0.5 select-none">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 1. Integrated Filters Button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpenMiniFilters(prev => !prev);
+                    setIsOpenMiniType(false);
+                    setIsOpenMiniSource(false);
+                  }}
+                  className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
+                    activeFiltersCount > 0
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="flex items-center justify-center w-5 h-5 text-[10px] font-extrabold bg-blue-600 text-white rounded-full shrink-0">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+
+                {isOpenMiniFilters && (
+                  <div className="absolute left-0 mt-2 w-72 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl z-50 p-4 animate-fadeIn duration-150 select-none" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2 mb-3">
+                      <span className="text-xs font-extrabold text-slate-850 dark:text-slate-200">More Filters</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setYearFrom("2020");
+                          setYearTo("2026");
+                          setOpenAccessOnly(false);
+                          setAiScoreThreshold(0);
+                          resetPage();
+                        }}
+                        className="text-[10px] font-bold text-blue-600 dark:text-blue-450 hover:underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+
+                    {/* 1.1 Publication Year with Sliders */}
+                    <div className="mb-4">
+                      <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                        Publication Year
+                      </label>
+
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+                            <span>From Year</span>
+                            <span className="font-extrabold text-blue-700 dark:text-blue-450">{yearFrom}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="2020"
+                            max="2026"
+                            value={yearFrom}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setYearFrom(val);
+                              if (parseInt(val) > parseInt(yearTo)) {
+                                setYearTo(val);
+                              }
+                              resetPage();
+                            }}
+                            className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+                            <span>To Year</span>
+                            <span className="font-extrabold text-blue-700 dark:text-blue-450">{yearTo}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="2020"
+                            max="2026"
+                            value={yearTo}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setYearTo(val);
+                              if (parseInt(val) < parseInt(yearFrom)) {
+                                setYearFrom(val);
+                              }
+                              resetPage();
+                            }}
+                            className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 1.2 Open Access Only Toggle */}
+                    <div
+                      onClick={() => { setOpenAccessOnly(prev => !prev); resetPage(); }}
+                      className="mb-4 flex items-center justify-between cursor-pointer select-none py-1.5 border-t border-slate-100 dark:border-slate-800/60"
+                    >
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Open Access Only
+                      </span>
+                      <div className={`w-9 h-5 rounded-full relative transition-colors ${openAccessOnly ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"}`}>
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${openAccessOnly ? "translate-x-4" : "translate-x-0"}`}></div>
+                      </div>
+                    </div>
+
+                    {/* 1.3 AI Score Threshold (Only show in Semantic mode) */}
+                    {searchMode === "semantic" && (
+                      <div className="mb-2 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
+                        <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                          <span>AI Score Threshold</span>
+                          <span className="font-extrabold text-blue-700 dark:text-blue-450">{aiScoreThreshold.toFixed(2)}+</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={Math.round(aiScoreThreshold * 100)}
+                          onChange={(e) => {
+                            setAiScoreThreshold(parseInt(e.target.value, 10) / 100);
+                            resetPage();
+                          }}
+                          className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Journal Type Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpenMiniType(prev => !prev);
+                    setIsOpenMiniFilters(false);
+                    setIsOpenMiniSource(false);
+                  }}
+                  className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
+                    journalTypes.length > 0
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-650 dark:text-slate-355 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                  }`}
+                >
+                  <FileText className={`w-3.5 h-3.5 shrink-0 ${journalTypes.length > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span>Type{journalTypes.length > 0 ? `: ${journalTypes.length}` : ""}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </button>
+                {isOpenMiniType && (
+                  <div className="absolute left-0 mt-2 w-52 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl z-50 p-2.5 animate-fadeIn duration-150 select-none" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 py-1 mb-1 block select-none">
+                      Journal Type
+                    </div>
+                    <div className="flex flex-col gap-2 p-1">
+                      <label className="flex items-center gap-2 cursor-pointer" onClick={() => { handleJournalTypeToggle("proceedings"); resetPage(); }}>
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${journalTypes.includes("proceedings") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e]"}`}>
+                          {journalTypes.includes("proceedings") && <Check className="w-2.5 h-2.5" />}
+                        </div>
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Conference Proceedings</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer" onClick={() => { handleJournalTypeToggle("article"); resetPage(); }}>
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${journalTypes.includes("article") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e]"}`}>
+                          {journalTypes.includes("article") && <Check className="w-2.5 h-2.5" />}
+                        </div>
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Journal Article</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer" onClick={() => { handleJournalTypeToggle("preprint"); resetPage(); }}>
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${journalTypes.includes("preprint") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e]"}`}>
+                          {journalTypes.includes("preprint") && <Check className="w-2.5 h-2.5" />}
+                        </div>
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Preprint</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Source/Provider Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpenMiniSource(prev => !prev);
+                    setIsOpenMiniFilters(false);
+                    setIsOpenMiniType(false);
+                  }}
+                  className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-150 border active:scale-95 ${
+                    primaryProvider !== "all"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-400 font-extrabold shadow-sm"
+                      : "bg-slate-50/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800/60 text-slate-655 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-850 dark:hover:text-white"
+                  }`}
+                >
+                  <Database className={`w-3.5 h-3.5 shrink-0 ${primaryProvider !== "all" ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span>Source{primaryProvider !== "all" ? `: ${primaryProvider === "openalex" ? "OpenAlex" : "Crossref"}` : ""}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </button>
+                {isOpenMiniSource && (
+                  <div className="absolute left-0 mt-2 w-44 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl z-50 p-1.5 animate-fadeIn duration-150" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrimaryProvider("all");
+                        resetPage();
+                        setIsOpenMiniSource(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between transition-colors"
+                    >
+                      <span>All Sources</span>
+                      {primaryProvider === "all" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrimaryProvider("openalex");
+                        resetPage();
+                        setIsOpenMiniSource(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between transition-colors"
+                    >
+                      <span>OpenAlex</span>
+                      {primaryProvider === "openalex" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrimaryProvider("crossref");
+                        resetPage();
+                        setIsOpenMiniSource(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between transition-colors"
+                    >
+                      <span>Crossref</span>
+                      {primaryProvider === "crossref" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Right side: Real actions */}
             <div className="flex items-center gap-2">
@@ -214,14 +469,19 @@ export function SearchPage() {
                     e.stopPropagation();
                     setIsOpenModeDropdown(prev => !prev);
                   }}
-                  className="h-8 px-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors border border-slate-200/60 dark:border-slate-800 active:scale-98"
+                  className="h-8 px-3.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-all border border-slate-200/60 dark:border-slate-800 active:scale-95 shadow-sm"
                 >
+                  {searchMode === "semantic" ? (
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-pulse shrink-0" />
+                  ) : (
+                    <Search className="w-3.5 h-3.5 text-slate-455 shrink-0" />
+                  )}
                   <span>{searchMode === "semantic" ? "Semantic" : "Boolean"}</span>
                   <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${isOpenModeDropdown ? "rotate-180" : ""}`} />
                 </button>
 
                 {isOpenModeDropdown && (
-                  <div className="absolute right-0 mt-1.5 w-52 bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-1 animate-fadeIn duration-150">
+                  <div className="absolute right-0 mt-2 w-52 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl z-50 p-1 animate-fadeIn duration-150">
                     <button
                       type="button"
                       onClick={() => {
@@ -229,7 +489,7 @@ export function SearchPage() {
                         setIsOpenModeDropdown(false);
                         resetPage();
                       }}
-                      className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5"
+                      className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5 transition-colors"
                     >
                       <div className="flex items-center justify-between font-bold">
                         <span>Boolean</span>
@@ -244,7 +504,7 @@ export function SearchPage() {
                         setIsOpenModeDropdown(false);
                         resetPage();
                       }}
-                      className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5"
+                      className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5 transition-colors"
                     >
                       <div className="flex items-center justify-between font-bold">
                         <div className="flex items-center gap-1">
@@ -268,15 +528,16 @@ export function SearchPage() {
                     resetPage();
                   }
                 }}
-                className={`h-8 px-3 rounded-lg text-xs font-bold transition-all border ${
+                className={`h-8 px-3.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 active:scale-95 ${
                   rerank && searchMode === "semantic"
-                    ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-400"
-                    : "bg-transparent border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    ? "bg-gradient-to-r from-purple-500/10 to-indigo-50/10 border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-400 font-extrabold shadow-sm"
+                    : "bg-transparent border-slate-205 dark:border-slate-800 text-slate-455 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 }`}
                 title={searchMode === "semantic" ? "AI Rerank results for higher relevance" : "Rerank only available in Semantic mode"}
                 disabled={searchMode !== "semantic"}
               >
-                AI Rerank
+                <Cpu className={`w-3.5 h-3.5 ${rerank && searchMode === "semantic" ? "text-purple-600 dark:text-purple-400" : "text-slate-450"}`} />
+                <span>AI Rerank</span>
               </button>
             </div>
           </div>
@@ -325,7 +586,6 @@ export function SearchPage() {
       </div>
     );
   }
-
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 items-start">
       {/* LEFT SIDEBAR: Filters */}
@@ -343,52 +603,14 @@ export function SearchPage() {
           </button>
         </div>
 
-        {/* Search Mode */}
-        <div className="mb-6">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">
-            SEARCH MODE
-          </label>
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-            <button
-              className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-all ${searchMode === "semantic" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium"}`}
-              onClick={() => { setSearchMode("semantic"); resetPage(); }}
-            >
-              Semantic
-            </button>
-            <button
-              className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-all ${searchMode === "keyword" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium"}`}
-              onClick={() => { setSearchMode("keyword"); resetPage(); }}
-            >
-              Keyword
-            </button>
-          </div>
-        </div>
-
         {/* Publication Year */}
         <div className="mb-6">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
             PUBLICATION YEAR
           </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={yearFrom}
-              onChange={(e) => { setYearFrom(e.target.value); resetPage(); }}
-              placeholder="From"
-              className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] text-center text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <span className="text-slate-400">-</span>
-            <input
-              type="text"
-              value={yearTo}
-              onChange={(e) => { setYearTo(e.target.value); resetPage(); }}
-              placeholder="To"
-              className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] text-center text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
 
           {yearlyDistribution.length > 0 && (
-            <div className="h-12 w-full mt-4 opacity-85 hover:opacity-100 transition-opacity">
+            <div className="h-12 w-full mb-3 opacity-90 hover:opacity-100 transition-opacity">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={yearlyDistribution}
@@ -405,23 +627,66 @@ export function SearchPage() {
                 >
                   <Bar dataKey="count" radius={[2, 2, 0, 0]}>
                     {yearlyDistribution.map((entry, index) => {
-                      const isSelected = yearFrom === entry.year && yearTo === entry.year;
+                      const isSelected = parseInt(entry.year) >= parseInt(yearFrom) && parseInt(entry.year) <= parseInt(yearTo);
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isSelected ? "#1d4ed8" : "#93c5fd"}
+                          fill={isSelected ? "#1d4ed8" : "#e2e8f0"}
+                          className="transition-colors duration-150"
                         />
                       );
                     })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <div className="flex justify-between text-[9px] text-slate-400 mt-1 font-semibold select-none px-1">
-                <span>{yearFrom}</span>
-                <span>{yearTo}</span>
-              </div>
             </div>
           )}
+
+          {/* 2 Range Sliders for dynamic selection */}
+          <div className="space-y-3 pt-1 select-none">
+            <div>
+              <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                <span>From Year</span>
+                <span className="font-extrabold text-blue-700 dark:text-blue-400">{yearFrom}</span>
+              </div>
+              <input
+                type="range"
+                min="2020"
+                max="2026"
+                value={yearFrom}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setYearFrom(val);
+                  if (parseInt(val) > parseInt(yearTo)) {
+                    setYearTo(val);
+                  }
+                  resetPage();
+                }}
+                className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                <span>To Year</span>
+                <span className="font-extrabold text-blue-700 dark:text-blue-400">{yearTo}</span>
+              </div>
+              <input
+                type="range"
+                min="2020"
+                max="2026"
+                value={yearTo}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setYearTo(val);
+                  if (parseInt(val) < parseInt(yearFrom)) {
+                    setYearFrom(val);
+                  }
+                  resetPage();
+                }}
+                className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Open Access Only */}
@@ -436,7 +701,7 @@ export function SearchPage() {
           <div
             className={`w-9 h-5 rounded-full relative transition-colors ${openAccessOnly ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
           >
-            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${openAccessOnly ? "right-0.5" : "left-0.5"}`}></div>
+            <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${openAccessOnly ? "translate-x-4" : "translate-x-0"}`}></div>
           </div>
         </div>
 
@@ -517,41 +782,12 @@ export function SearchPage() {
             )}
           </div>
         </div>
-        {/* S3: AI Rerank */}
-        <div className="mb-6 border-t border-slate-100 dark:border-slate-800 pt-4">
-          <div
-            onClick={() => {
-              if (searchMode === "semantic") {
-                setRerank(prev => !prev); resetPage();
-              }
-            }}
-            className={`flex items-center justify-between select-none ${searchMode === "semantic" ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
-          >
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              AI Rerank top results
-            </span>
-            {/* Custom toggle switch */}
-            <div
-              className={`w-9 h-5 rounded-full relative transition-colors ${rerank && searchMode === "semantic" ? "bg-blue-700" : "bg-slate-200 dark:bg-slate-800"}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${rerank && searchMode === "semantic" ? "right-0.5" : "left-0.5"}`}></div>
-            </div>
-          </div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-2 leading-normal">
-            {searchMode !== "semantic" ? (
-              <span className="text-amber-600 dark:text-amber-500 font-semibold">Only available in Semantic Search mode.</span>
-            ) : (
-              "Reranking uses LLM to score relevance. It is slower and may consume AI quota."
-            )}
-          </p>
-        </div>
       </aside>
 
       {/* MAIN CONTENT: Search Results */}
       <main className="flex-1 w-full min-w-0">
-
-        {/* S1: Search Input */}
-        <div className="mb-6">
+        {/* S1: Integrated Search Input & Filters */}
+        <div className="mb-6 animate-fadeIn duration-150">
           {renderSearchBox()}
         </div>
 
@@ -573,66 +809,6 @@ export function SearchPage() {
                 Showing {papers.length > 0 ? ((safePage - 1) * PAGE_SIZE) + 1 : 0}–{Math.min(safePage * PAGE_SIZE, meta.total)} of {meta.total}{isSemanticSearchActive ? " top matches" : " papers"}
               </p>
             )}
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <span className="text-xs font-medium text-slate-500">Active:</span>
-              {(yearFrom || yearTo) && (
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium animate-fadeIn animate-duration-150">
-                  {yearFrom || "Min"} - {yearTo || "Max"}
-                  <X
-                    className="w-3 h-3 ml-1 cursor-pointer hover:text-red-500"
-                    onClick={() => { setYearFrom(""); setYearTo(""); resetPage(); }}
-                  />
-                </div>
-              )}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium capitalize animate-fadeIn animate-duration-150">
-                {searchMode} Mode
-              </div>
-              {openAccessOnly && (
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium animate-fadeIn animate-duration-150">
-                  Open Access
-                  <X
-                    className="w-3 h-3 ml-1 cursor-pointer hover:text-red-500"
-                    onClick={() => { setOpenAccessOnly(false); resetPage(); }}
-                  />
-                </div>
-              )}
-              {journalTypes.length > 0 && (
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium animate-fadeIn animate-duration-150">
-                  Kinds: {journalTypes.join(", ")}
-                  <X
-                    className="w-3 h-3 ml-1 cursor-pointer hover:text-red-500"
-                    onClick={() => { setJournalTypes([]); resetPage(); }}
-                  />
-                </div>
-              )}
-              {primaryProvider !== "all" && (
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-medium uppercase animate-fadeIn animate-duration-150">
-                  Source: {primaryProvider}
-                  <X
-                    className="w-3 h-3 ml-1 cursor-pointer hover:text-red-500"
-                    onClick={() => { setPrimaryProvider("all"); resetPage(); }}
-                  />
-                </div>
-              )}
-              <Button
-                variant="link"
-                className="text-blue-600 dark:text-blue-400 text-xs p-0 h-auto ml-2"
-                onClick={() => {
-                  setYearFrom("2020");
-                  setYearTo("2026");
-                  setSearchMode("semantic");
-                  setOpenAccessOnly(false);
-                  setJournalTypes([]);
-                  setPrimaryProvider("all");
-                  setAiScoreThreshold(0);
-                  setSortBy("relevance");
-                  setRerank(false);
-                  resetPage();
-                }}
-              >
-                Clear all
-              </Button>
-            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">

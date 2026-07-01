@@ -76,23 +76,6 @@ export function MainLayout() {
             </nav>
           </div>
 
-          <div className="flex-1 max-w-2xl hidden md:flex items-center mx-4">
-            <form
-              className="relative w-full"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-                if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-              }}
-            >
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                name="q"
-                className="w-full pl-9 rounded-full bg-slate-100 dark:bg-zinc-900 border-none h-10 focus-visible:ring-1"
-                placeholder="Search papers, authors, topics..."
-              />
-            </form>
-          </div>
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
