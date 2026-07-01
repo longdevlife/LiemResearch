@@ -1,4 +1,3 @@
-import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -17,15 +16,9 @@ import {
   History,
   FolderKanban,
   Plus,
-  ChevronRight,
-  ChevronDown,
-  SlidersHorizontal,
-  X,
-  Check,
-  Database
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth";
 import { useHomeOverview } from "@/features/home/hooks/use-home-overview";
@@ -36,56 +29,6 @@ export function HomePage() {
   const navigate = useNavigate();
   const { data: me } = useCurrentUser();
   const { data, isLoading, isError } = useHomeOverview();
-
-  // Search local states at Home
-  const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const [searchMode, setSearchMode] = useState<"semantic" | "keyword">("semantic");
-  const [yearFrom, setYearFrom] = useState<string>("2020");
-  const [yearTo, setYearTo] = useState<string>("2026");
-  const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(false);
-  const [journalTypes, setJournalTypes] = useState<string[]>([]);
-  const [primaryProvider, setPrimaryProvider] = useState<string>("all");
-  const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0);
-  const [rerank, setRerank] = useState<boolean>(false);
-
-  // Dropdown visibility states
-  const [isOpenModeDropdown, setIsOpenModeDropdown] = useState<boolean>(false);
-  const [isOpenMiniFilters, setIsOpenMiniFilters] = useState<boolean>(false);
-  const [isOpenMiniType, setIsOpenMiniType] = useState<boolean>(false);
-  const [isOpenMiniSource, setIsOpenMiniSource] = useState<boolean>(false);
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (yearFrom !== "2020" || yearTo !== "2026") count += 1;
-    if (openAccessOnly) count += 1;
-    if (searchMode === "semantic" && aiScoreThreshold > 0) count += 1;
-    return count;
-  }, [yearFrom, yearTo, openAccessOnly, aiScoreThreshold, searchMode]);
-
-  const handleJournalTypeToggle = (type: string) => {
-    setJournalTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = localSearchQuery.trim();
-    if (!q) return;
-
-    const params = new URLSearchParams();
-    params.set("q", q);
-    params.set("mode", searchMode);
-    params.set("yearFrom", yearFrom);
-    params.set("yearTo", yearTo);
-    if (openAccessOnly) params.set("openAccess", "true");
-    if (primaryProvider !== "all") params.set("provider", primaryProvider);
-    if (aiScoreThreshold > 0) params.set("minScore", aiScoreThreshold.toString());
-    if (rerank) params.set("rerank", "true");
-    journalTypes.forEach(t => params.append("type", t));
-
-    navigate(`/search?${params.toString()}`);
-  };
 
   if (isLoading) {
     return <HomeSkeleton />;
@@ -99,68 +42,9 @@ export function HomePage() {
     <div className="w-full space-y-10 select-none pb-10">
       {/* 1. Header / Hero Section based on Mode */}
       {data.mode === "guest" ? (
-        <GuestHero
-          query={localSearchQuery}
-          setQuery={setLocalSearchQuery}
-          submitSearch={handleSearchSubmit}
-          searchMode={searchMode}
-          setSearchMode={setSearchMode}
-          yearFrom={yearFrom}
-          setYearFrom={setYearFrom}
-          yearTo={yearTo}
-          setYearTo={setYearTo}
-          openAccessOnly={openAccessOnly}
-          setOpenAccessOnly={setOpenAccessOnly}
-          journalTypes={journalTypes}
-          handleJournalTypeToggle={handleJournalTypeToggle}
-          primaryProvider={primaryProvider}
-          setPrimaryProvider={setPrimaryProvider}
-          aiScoreThreshold={aiScoreThreshold}
-          setAiScoreThreshold={setAiScoreThreshold}
-          rerank={rerank}
-          setRerank={setRerank}
-          isOpenModeDropdown={isOpenModeDropdown}
-          setIsOpenModeDropdown={setIsOpenModeDropdown}
-          isOpenMiniFilters={isOpenMiniFilters}
-          setIsOpenMiniFilters={setIsOpenMiniFilters}
-          isOpenMiniType={isOpenMiniType}
-          setIsOpenMiniType={setIsOpenMiniType}
-          isOpenMiniSource={isOpenMiniSource}
-          setIsOpenMiniSource={setIsOpenMiniSource}
-          activeFiltersCount={activeFiltersCount}
-        />
+        <GuestHero />
       ) : (
-        <UserHero
-          name={me?.user?.fullName || me?.user?.email || "Researcher"}
-          query={localSearchQuery}
-          setQuery={setLocalSearchQuery}
-          submitSearch={handleSearchSubmit}
-          searchMode={searchMode}
-          setSearchMode={setSearchMode}
-          yearFrom={yearFrom}
-          setYearFrom={setYearFrom}
-          yearTo={yearTo}
-          setYearTo={setYearTo}
-          openAccessOnly={openAccessOnly}
-          setOpenAccessOnly={setOpenAccessOnly}
-          journalTypes={journalTypes}
-          handleJournalTypeToggle={handleJournalTypeToggle}
-          primaryProvider={primaryProvider}
-          setPrimaryProvider={setPrimaryProvider}
-          aiScoreThreshold={aiScoreThreshold}
-          setAiScoreThreshold={setAiScoreThreshold}
-          rerank={rerank}
-          setRerank={setRerank}
-          isOpenModeDropdown={isOpenModeDropdown}
-          setIsOpenModeDropdown={setIsOpenModeDropdown}
-          isOpenMiniFilters={isOpenMiniFilters}
-          setIsOpenMiniFilters={setIsOpenMiniFilters}
-          isOpenMiniType={isOpenMiniType}
-          setIsOpenMiniType={setIsOpenMiniType}
-          isOpenMiniSource={isOpenMiniSource}
-          setIsOpenMiniSource={setIsOpenMiniSource}
-          activeFiltersCount={activeFiltersCount}
-        />
+        <UserHero name={me?.user?.fullName || me?.user?.email || "Researcher"} />
       )}
 
       {/* 2. Admin Health summary (If Admin Mode) */}
@@ -190,391 +74,27 @@ export function HomePage() {
 
 // ==================== SUBCOMPONENTS ====================
 
-// 1. Guest Hero Section (With fully integrated filter search bar)
-interface SearchBarProps {
-  query: string;
-  setQuery: (val: string) => void;
-  submitSearch: (e: React.FormEvent) => void;
-  searchMode: "semantic" | "keyword";
-  setSearchMode: (val: "semantic" | "keyword") => void;
-  yearFrom: string;
-  setYearFrom: (val: string) => void;
-  yearTo: string;
-  setYearTo: (val: string) => void;
-  openAccessOnly: boolean;
-  setOpenAccessOnly: (val: boolean) => void;
-  journalTypes: string[];
-  handleJournalTypeToggle: (val: string) => void;
-  primaryProvider: string;
-  setPrimaryProvider: (val: string) => void;
-  aiScoreThreshold: number;
-  setAiScoreThreshold: (val: number) => void;
-  rerank: boolean;
-  setRerank: (val: boolean) => void;
-  isOpenModeDropdown: boolean;
-  setIsOpenModeDropdown: (val: boolean) => void;
-  isOpenMiniFilters: boolean;
-  setIsOpenMiniFilters: (val: boolean) => void;
-  isOpenMiniType: boolean;
-  setIsOpenMiniType: (val: boolean) => void;
-  isOpenMiniSource: boolean;
-  setIsOpenMiniSource: (val: boolean) => void;
-  activeFiltersCount: number;
-}
-
-function HomeSearchForm({ p }: { p: SearchBarProps }) {
+// 1. Guest Hero Section
+function GuestHero() {
   return (
-    <div className="relative w-full text-left" onClick={(e) => e.stopPropagation()}>
-      <form onSubmit={p.submitSearch} className="w-full bg-white dark:bg-[#121212] rounded-[24px] border border-slate-200 dark:border-slate-800 p-2 shadow-xs hover:shadow-sm focus-within:border-blue-500/40 transition-all flex flex-col gap-1.5">
-        {/* Search Input */}
-        <div className="flex-1 min-w-0 flex items-center px-3 py-1 gap-2.5">
-          <Search className="w-5 h-5 text-slate-400 shrink-0" />
-          <input
-            type="text"
-            placeholder={
-              p.searchMode === "semantic"
-                ? "Search research papers by concept, question or topic..."
-                : "Search papers by keywords in title or abstract..."
-            }
-            value={p.query}
-            onChange={(e) => p.setQuery(e.target.value)}
-            className="w-full h-10 bg-transparent text-sm font-semibold text-slate-900 dark:text-white focus:outline-none placeholder-slate-450"
-          />
-          {p.query && (
-            <button
-              type="button"
-              onClick={() => p.setQuery("")}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-650"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="h-px bg-slate-100 dark:bg-slate-800/60 my-0.5"></div>
-
-        {/* Row 2: Search Options */}
-        <div className="flex items-center justify-between px-2 pt-0.5 pb-0.5 select-none text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* 1. Filters Button */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  p.setIsOpenMiniFilters(!p.isOpenMiniFilters);
-                  p.setIsOpenMiniType(false);
-                  p.setIsOpenMiniSource(false);
-                  p.setIsOpenModeDropdown(false);
-                }}
-                className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all border active:scale-95 ${
-                  p.activeFiltersCount > 0
-                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 font-extrabold shadow-xs"
-                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>Filters</span>
-                {p.activeFiltersCount > 0 && (
-                  <span className="flex items-center justify-center w-5 h-5 text-[10px] font-extrabold bg-blue-600 text-white rounded-full shrink-0">
-                    {p.activeFiltersCount}
-                  </span>
-                )}
-              </button>
-
-              {p.isOpenMiniFilters && (
-                <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-4 select-none" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between border-b pb-2 mb-3 border-slate-100 dark:border-slate-800">
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">More Filters</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        p.setYearFrom("2020");
-                        p.setYearTo("2026");
-                        p.setOpenAccessOnly(false);
-                        p.setAiScoreThreshold(0);
-                      }}
-                      className="text-[10px] font-bold text-blue-600 hover:underline"
-                    >
-                      Reset
-                    </button>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-                      Publication Year
-                    </label>
-                    <div className="space-y-2.5">
-                      <div>
-                        <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-450 mb-0.5">
-                          <span>From Year</span>
-                          <span className="font-extrabold text-blue-700 dark:text-blue-400">{p.yearFrom}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="2020"
-                          max="2026"
-                          value={p.yearFrom}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            p.setYearFrom(val);
-                            if (parseInt(val) > parseInt(p.yearTo)) {
-                              p.setYearTo(val);
-                            }
-                          }}
-                          className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700"
-                        />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-450 mb-0.5">
-                          <span>To Year</span>
-                          <span className="font-extrabold text-blue-700 dark:text-blue-400">{p.yearTo}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="2020"
-                          max="2026"
-                          value={p.yearTo}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            p.setYearTo(val);
-                            if (parseInt(val) < parseInt(p.yearFrom)) {
-                              p.setYearFrom(val);
-                            }
-                          }}
-                          className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    onClick={() => p.setOpenAccessOnly(!p.openAccessOnly)}
-                    className="mb-4 flex items-center justify-between cursor-pointer select-none py-1.5 border-t border-slate-100 dark:border-slate-800"
-                  >
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Open Access Only
-                    </span>
-                    <div className={`w-9 h-5 rounded-full relative transition-colors ${p.openAccessOnly ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"}`}>
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-xs transition-transform duration-200 ${p.openAccessOnly ? "translate-x-4" : "translate-x-0"}`}></div>
-                    </div>
-                  </div>
-
-                  {p.searchMode === "semantic" && (
-                    <div className="mb-2 border-t border-slate-100 dark:border-slate-800 pt-2.5">
-                      <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
-                        <span>AI Score Threshold</span>
-                        <span className="font-extrabold text-blue-700 dark:text-blue-400">{p.aiScoreThreshold.toFixed(2)}+</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={Math.round(p.aiScoreThreshold * 100)}
-                        onChange={(e) => p.setAiScoreThreshold(parseInt(e.target.value, 10) / 100)}
-                        className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Type Filter */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  p.setIsOpenMiniType(!p.isOpenMiniType);
-                  p.setIsOpenMiniFilters(false);
-                  p.setIsOpenMiniSource(false);
-                  p.setIsOpenModeDropdown(false);
-                }}
-                className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all border active:scale-95 ${
-                  p.journalTypes.length > 0
-                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 font-extrabold shadow-xs"
-                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-400" />
-                <span>Type{p.journalTypes.length > 0 ? `: ${p.journalTypes.length}` : ""}</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-              {p.isOpenMiniType && (
-                <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-2.5 select-none" onClick={(e) => e.stopPropagation()}>
-                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 py-1 mb-1 block">
-                    Journal Type
-                  </div>
-                  <div className="flex flex-col gap-2 p-1">
-                    <label className="flex items-center gap-2 cursor-pointer" onClick={() => p.handleJournalTypeToggle("proceedings")}>
-                      <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${p.journalTypes.includes("proceedings") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-card"}`}>
-                        {p.journalTypes.includes("proceedings") && <Check className="w-2.5 h-2.5" />}
-                      </div>
-                      <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Conference Proceedings</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer" onClick={() => p.handleJournalTypeToggle("article")}>
-                      <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${p.journalTypes.includes("article") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-card"}`}>
-                        {p.journalTypes.includes("article") && <Check className="w-2.5 h-2.5" />}
-                      </div>
-                      <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Journal Article</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer" onClick={() => p.handleJournalTypeToggle("preprint")}>
-                      <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${p.journalTypes.includes("preprint") ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700 bg-card"}`}>
-                        {p.journalTypes.includes("preprint") && <Check className="w-2.5 h-2.5" />}
-                      </div>
-                      <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Preprint</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 3. Source Filter */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  p.setIsOpenMiniSource(!p.isOpenMiniSource);
-                  p.setIsOpenMiniFilters(false);
-                  p.setIsOpenMiniType(false);
-                  p.setIsOpenModeDropdown(false);
-                }}
-                className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all border active:scale-95 ${
-                  p.primaryProvider !== "all"
-                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 font-extrabold shadow-xs"
-                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <Database className="w-3.5 h-3.5 text-slate-400" />
-                <span>Source{p.primaryProvider !== "all" ? `: ${p.primaryProvider === "openalex" ? "OpenAlex" : "Crossref"}` : ""}</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-              {p.isOpenMiniSource && (
-                <div className="absolute left-0 mt-2 w-44 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1.5" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    onClick={() => { p.setPrimaryProvider("all"); p.setIsOpenMiniSource(false); }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center justify-between"
-                  >
-                    <span>All Sources</span>
-                    {p.primaryProvider === "all" && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { p.setPrimaryProvider("openalex"); p.setIsOpenMiniSource(false); }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center justify-between"
-                  >
-                    <span>OpenAlex</span>
-                    {p.primaryProvider === "openalex" && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { p.setPrimaryProvider("crossref"); p.setIsOpenMiniSource(false); }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center justify-between"
-                  >
-                    <span>Crossref</span>
-                    {p.primaryProvider === "crossref" && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Semantic / Boolean Mode selector */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  p.setIsOpenModeDropdown(!p.isOpenModeDropdown);
-                  p.setIsOpenMiniFilters(false);
-                  p.setIsOpenMiniType(false);
-                  p.setIsOpenMiniSource(false);
-                }}
-                className="h-8 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-all border border-slate-200/60 dark:border-slate-855 active:scale-95 shadow-xs"
-              >
-                {p.searchMode === "semantic" ? (
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-pulse" />
-                ) : (
-                  <Search className="w-3.5 h-3.5 text-slate-400" />
-                )}
-                <span>{p.searchMode === "semantic" ? "Semantic" : "Boolean"}</span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
-              </button>
-              {p.isOpenModeDropdown && (
-                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => { p.setSearchMode("keyword"); p.setIsOpenModeDropdown(false); }}
-                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-lg flex flex-col gap-0.5"
-                  >
-                    <div className="flex items-center justify-between font-bold">
-                      <span>Boolean</span>
-                      {p.searchMode === "keyword" && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                    </div>
-                    <span className="text-[10px] text-slate-400">Keyword search with operators</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { p.setSearchMode("semantic"); p.setIsOpenModeDropdown(false); }}
-                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-855 rounded-lg flex flex-col gap-0.5"
-                  >
-                    <div className="flex items-center justify-between font-bold">
-                      <span>Semantic</span>
-                      {p.searchMode === "semantic" && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                    </div>
-                    <span className="text-[10px] text-slate-400">AI conceptual meaning search</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* AI Rerank */}
-            <button
-              type="button"
-              onClick={() => { if (p.searchMode === "semantic") p.setRerank(!p.rerank); }}
-              className={`h-8 px-3.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 active:scale-95 ${
-                p.rerank && p.searchMode === "semantic"
-                  ? "bg-purple-500/10 border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-400 font-extrabold shadow-xs"
-                  : "bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700"
-              }`}
-              disabled={p.searchMode !== "semantic"}
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span>AI Rerank</span>
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function GuestHero(p: SearchBarProps) {
-  return (
-    <div className="text-center py-12 md:py-20 space-y-6 max-w-4xl mx-auto select-none">
+    <div className="text-center py-12 md:py-20 space-y-6 max-w-4xl mx-auto">
       <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-        All the world's research,<br />
-        <span className="bg-gradient-to-r from-blue-700 to-indigo-650 bg-clip-text text-transparent">connected and open.</span>
+        AI-assisted publication trend analysis
       </h1>
-      <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
-        Analyze millions of scholarly works, mapping concepts, citations, and emerging research directions in an open database.
+      <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        Unlock deep scientific insights. Norm and embed literature corpora with hybrid AI search,
+        automatic trend intelligence, qualitative research gap detection, and evidence-backed RAG reports.
       </p>
-
-      {/* Prominent Search bar with filters */}
-      <div className="max-w-2xl mx-auto px-2">
-        <HomeSearchForm p={p} />
-      </div>
 
       {/* CTA Buttons */}
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
+          <Link to="/search">Search Papers</Link>
+        </Button>
         <Button variant="outline" size="sm" className="rounded-xl border border-slate-200 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 font-bold h-10 px-5 transition-all" asChild>
           <Link to="/trends">Explore Trends</Link>
         </Button>
-        <Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
+        <Button size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-850 text-white font-bold h-10 px-5 shadow-sm transition-all" asChild>
           <Link to="/reports?create=true">Generate Report</Link>
         </Button>
         <Button variant="ghost" size="sm" className="rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold h-10 px-4" asChild>
@@ -586,17 +106,13 @@ function GuestHero(p: SearchBarProps) {
 }
 
 // 2. Logged-in User Hero Section
-interface UserHeroProps extends SearchBarProps {
-  name: string;
-}
-
-function UserHero(p: UserHeroProps) {
+function UserHero({ name }: { name: string }) {
   return (
     <div className="py-6 border-b border-slate-100 dark:border-slate-900 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Welcome back, {p.name}
+            Welcome back, {name}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Here is an overview of your research cockpit and system indicators today.
@@ -605,6 +121,9 @@ function UserHero(p: UserHeroProps) {
 
         {/* Quick action buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-slate-200 dark:border-slate-800 bg-card h-8" asChild>
+            <Link to="/search">Search Papers</Link>
+          </Button>
           <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-slate-200 dark:border-slate-800 bg-card h-8" asChild>
             <Link to="/trends">Explore Trends</Link>
           </Button>
@@ -618,11 +137,6 @@ function UserHero(p: UserHeroProps) {
             <Link to="/reports?create=true" className="flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Create Report</Link>
           </Button>
         </div>
-      </div>
-
-      {/* Prominent search form for user cockpit */}
-      <div className="max-w-2xl">
-        <HomeSearchForm p={p} />
       </div>
     </div>
   );
@@ -963,7 +477,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
   );
 }
 
-// 8. Live Signals Section (Publication Velocity + Trending Topics + Rising Keywords)
+// 8. Live Research Signals (Publication Velocity + Trending Topics + Rising Keywords)
 function LiveSignalsSection({ trends, recentPapers }: { trends: any; recentPapers: any[] }) {
   const navigate = useNavigate();
 
