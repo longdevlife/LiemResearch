@@ -167,19 +167,21 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 h-9 px-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+        <Button variant="ghost" size="sm" className="gap-2 h-10 pl-1.5 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
           {role !== "admin" ? (
             (() => {
               const currentLevel = getLevel(points);
               const levelAvatar = avatars[currentLevel];
               return (
-                <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
                   <img src={levelAvatar} alt={`Level ${currentLevel}`} className="w-full h-full object-contain rounded-full" />
                 </div>
               );
             })()
           ) : (
-            <User className="h-4 w-4 text-slate-500" />
+            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 shadow-sm">
+              <User className="h-4 w-4 text-slate-500" />
+            </div>
           )}
           <span className="hidden sm:inline font-semibold text-xs text-slate-700 dark:text-slate-300">{fullName}</span>
           {role !== "admin" && (
