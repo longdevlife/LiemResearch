@@ -31,8 +31,9 @@
     "worker:paper-analysis": "tsx src/workers/paper-analysis.worker.ts",
     "worker:report": "tsx src/workers/report.worker.ts",
     "worker:gaps": "tsx src/workers/gaps.worker.ts",
-    "dev:all": "concurrently -n api,report,gaps -c blue,magenta,yellow \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\"",
-    "dev:all+sync": "concurrently -n api,report,gaps,sync -c blue,magenta,yellow,cyan \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:sync\""
+    "worker:notifications": "tsx src/workers/notification.worker.ts",
+    "dev:all": "concurrently -n api,report,gaps,notif -c blue,magenta,yellow,green \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\"",
+    "dev:all+sync": "concurrently -n api,report,gaps,notif,sync -c blue,magenta,yellow,green,cyan \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:sync\""
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

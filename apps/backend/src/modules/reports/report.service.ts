@@ -2,6 +2,7 @@ import type { AnalyticalReport, ReportListItem } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import { reportQueue } from "../../infrastructure/queue.js";
+import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
 import { paperService } from "../papers/paper.service.js";
 import { ReportModel, type ReportDoc } from "./models/report.model.js";
 import type { CreateReportInput, ListReportsQuery } from "./dto/report.schema.js";
@@ -110,11 +111,13 @@ export const reportService = {
     if (result.deletedCount === 0) {
       throw AppError.notFound("Report not found or not owned by you");
     }
+    await BookmarkModel.deleteMany({ userId, targetKind: "report", targetId: id });
   },
 
   /** Delete multiple reports by IDs. */
   async deleteBatch(userId: string, ids: string[]): Promise<void> {
     await ReportModel.deleteMany({ _id: { $in: ids }, userId });
+    await BookmarkModel.deleteMany({ userId, targetKind: "report", targetId: { $in: ids } });
   },
 
   /** Count completed reports that ground on a given paper. Public — no auth. */

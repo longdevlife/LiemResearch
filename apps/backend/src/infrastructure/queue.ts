@@ -27,6 +27,7 @@ export const QUEUE_NAMES = {
   paperAnalysis: "paper-analysis",
   report: "report",
   gaps: "gaps", // Phase D
+  notifications: "notifications",
 } as const;
 
 export const apiSyncQueue = new Queue(QUEUE_NAMES.apiSync, {
@@ -50,6 +51,11 @@ export const reportQueue = new Queue(QUEUE_NAMES.report, {
 });
 
 export const gapsQueue = new Queue(QUEUE_NAMES.gaps, {
+  connection: makeConnection(),
+  defaultJobOptions,
+});
+
+export const notificationQueue = new Queue(QUEUE_NAMES.notifications, {
   connection: makeConnection(),
   defaultJobOptions,
 });
