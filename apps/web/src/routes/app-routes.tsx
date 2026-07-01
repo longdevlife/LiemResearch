@@ -66,6 +66,7 @@ export function AppRoutes() {
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="papers" element={<AdminPapersPage />} />
             <Route path="sync" element={<AdminSyncPage />} />
+            <Route path="analytics" element={<DashboardPage />} />
           </Route>
         </Route>
 

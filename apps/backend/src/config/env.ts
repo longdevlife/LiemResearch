@@ -119,6 +119,8 @@ const EnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+
+  INITIAL_USER_CREDITS: z.coerce.number().int().nonnegative().default(1000),
 });
 
 const rawEnv = { ...process.env };

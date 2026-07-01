@@ -1,4 +1,5 @@
 import mongoose, { type InferSchemaType, Schema } from "mongoose";
+import { env } from "../../../config/env.js";
 
 const userSchema = new Schema(
   {
@@ -17,7 +18,7 @@ const userSchema = new Schema(
     researchInterests: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
     points: { type: Number, default: 0 },
-    credits: { type: Number, default: 0 },
+    credits: { type: Number, default: () => env.INITIAL_USER_CREDITS },
     penaltyPoints: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },

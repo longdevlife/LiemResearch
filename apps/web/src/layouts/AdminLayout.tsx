@@ -8,7 +8,7 @@ const NAV = [
   { to: "/admin/users", end: false, label: "Users", icon: Users },
   { to: "/admin/papers", end: false, label: "Paper Requests", icon: FileText },
   { to: "/admin/sync", end: false, label: "Sync", icon: RefreshCw },
-  { to: "/dashboard", end: false, label: "Analytics", icon: BarChart3 },
+  { to: "/admin/analytics", end: false, label: "Analytics", icon: BarChart3 },
 ];
 
 

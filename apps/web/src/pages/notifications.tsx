@@ -48,7 +48,8 @@ export function NotificationsPage() {
     id: string, 
     isRead: boolean, 
     targetKind: string | null, 
-    targetId: string | null
+    targetId: string | null,
+    type: string
   ) => {
     if (!isRead) {
       try {
@@ -56,6 +57,11 @@ export function NotificationsPage() {
       } catch (err) {
         console.error("Failed to mark read:", err);
       }
+    }
+
+    if (type === "level_up") {
+      navigate("/rankings");
+      return;
     }
 
     if (targetKind && targetId) {
@@ -209,7 +215,7 @@ export function NotificationsPage() {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => handleNotificationClick(item.id, item.isRead, item.targetKind, item.targetId)}
+                    onClick={() => handleNotificationClick(item.id, item.isRead, item.targetKind, item.targetId, item.type)}
                     className={`border rounded-xl p-5 relative cursor-pointer transition-all hover:border-slate-300 dark:hover:border-zinc-700 ${
                       item.isRead
                         ? "bg-white dark:bg-[#121212] border-slate-200 dark:border-slate-800"
