@@ -3,6 +3,9 @@ import { UserModel } from "./models/user.model.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { PaperDownloadModel } from "../papers/models/paper-download.model.js";
 import { UserRatingModel } from "../quality/models/user-rating.model.js";
+import { notificationService } from "../notifications/notification.service.js";
+import { logger } from "../../infrastructure/logger.js";
+import { getLevel } from "@trend/shared-types";
 
 // ── Constants (mirrored from Legacy) ────────────────────────────────────────
 export const REQUEST_PAPER_COST = 100;   // Credits deducted when creating a request
@@ -157,8 +160,8 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
       { $group: { _id: { targetKind: "$targetKind", targetId: "$targetId" } } },
       { $count: "count" },
     ]),
-    // Get penalty points from user document
-    UserModel.findById(objectId).select("penaltyPoints").lean(),
+    // Get penalty points and current points from user document
+    UserModel.findById(objectId).select("points penaltyPoints").lean(),
   ]);
 
   const uploadReward = uploadStats[0]?.totalReward ?? 0;
@@ -170,7 +173,26 @@ export async function syncUserPoints(userId: string | mongoose.Types.ObjectId): 
     penaltyPoints: penalty,
   });
 
+  const oldPoints = userDoc?.points ?? 0;
+  const levelBefore = getLevel(oldPoints);
+  const levelAfter = getLevel(points);
+
   await UserModel.findByIdAndUpdate(objectId, { $set: { points } });
+
+  if (levelAfter > levelBefore) {
+    try {
+      await notificationService.create({
+        userId: objectId,
+        title: "Level Up!",
+        message: `🎉 Chúc mừng bạn đã thăng cấp lên Cấp độ ${levelAfter}!`,
+        type: "level_up",
+      });
+    } catch (err) {
+      // Không để lỗi thông báo phá vỡ việc đồng bộ điểm đã hoàn tất
+      logger.error({ err, userId: String(objectId) }, "Failed to send level-up notification");
+    }
+  }
+
   return points;
 }
 

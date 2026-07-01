@@ -32,6 +32,17 @@ const EnvSchema = z.object({
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
+  // Project Chat — only the project chatbot uses this pluggable provider for now.
+  LLM_PROVIDER: z.enum(["gemini", "ollama"]).default("gemini"),
+  OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
+  OLLAMA_MODEL: z.string().default("llama3.1"),
+  CHAT_MAX_PER_HOUR: z.coerce.number().int().positive().default(40),
+  CHAT_CONTEXT_PAPERS: z.coerce.number().int().min(1).max(50).default(12),
+  CHAT_HISTORY_TURNS: z.coerce.number().int().min(0).max(20).default(6),
+  CHAT_MAX_PROMPT_CHARS: z.coerce.number().int().positive().default(12000),
+  CHAT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(604800),
+  CHAT_ABSTRACT_MAX_CHARS: z.coerce.number().int().positive().default(800),
+
   OPENALEX_MAILTO: z.string().email().optional(),
   SEMANTIC_SCHOLAR_API_KEY: z.string().optional(),
   CROSSREF_MAILTO: z.string().email().optional(),
@@ -51,6 +62,13 @@ const EnvSchema = z.object({
   EMBED_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   EMBED_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(1000),
 
+  // F2 — structured paper knowledge extraction. Runs offline in a worker so
+  // user-facing search/chat/report requests never wait on one-call-per-paper LLM work.
+  PAPER_ANALYSIS_CRON: z.string().default("0 4 * * *"),
+  PAPER_ANALYSIS_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
+  PAPER_ANALYSIS_MAX_PAPERS_PER_RUN: z.coerce.number().int().positive().default(100),
+  PAPER_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1024),
+
   // Phase C — RAG analytical reports.
   REPORT_TOP_K: z.coerce.number().int().min(1).max(10).default(8),
   REPORT_MAX_PENDING_PER_USER: z.coerce.number().int().positive().default(2),
@@ -68,7 +86,7 @@ const EnvSchema = z.object({
   GAP_PARENT_RISING_MIN: z.coerce.number().default(0), // growthRatePct strictly above this = rising
   // v2 — paper comparison (one cached LLM call; capped to bound tokens).
   COMPARE_MAX_PAPERS: z.coerce.number().int().min(2).max(4).default(4),
-  COMPARE_PROMPT_VERSION: z.string().default("compare-v1"),
+  COMPARE_PROMPT_VERSION: z.string().default("compare-v2"),
   // Phase D — Function Calling
   DEEP_ANALYSIS_MAX_TURNS: z.coerce.number().int().min(1).max(10).default(5),
   DEEP_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),

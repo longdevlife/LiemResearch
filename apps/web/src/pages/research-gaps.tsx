@@ -23,10 +23,10 @@ function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: bool
   
   return (
     <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-      <div className="w-28 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+      <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
         <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""}>
+      <span className={value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>
         {pct}% {isEvidence ? "Evidence Confidence" : "Confidence"}
       </span>
     </div>
@@ -192,7 +192,7 @@ export function ResearchGapsPage() {
           <div>
             <h3 className="text-red-800 dark:text-red-400 font-bold mb-1">Failed to fetch research gaps</h3>
             <p className="text-red-600 dark:text-red-500 text-sm">
-              Không tải được danh sách research gaps. Vui lòng thử lại sau.
+              Could not load research gaps. Please try again later.
             </p>
           </div>
         </div>
@@ -228,9 +228,11 @@ export function ResearchGapsPage() {
             </p>
             
             {gap.rationale && (
-              <div className="bg-slate-50 dark:bg-[#15171c] border border-slate-100 dark:border-slate-800 p-4 rounded-xl mb-4 relative shadow-inner">
-                <p className="text-[13.5px] text-slate-600 dark:text-slate-400 italic leading-relaxed">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 not-italic block mb-1.5 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-amber-500" /> Rationale:</span>
+              <div className="border-l-2 border-amber-500/40 pl-3.5 py-0.5 mb-4">
+                <span className="font-bold text-slate-700 dark:text-slate-350 text-xs block mb-1 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" /> Rationale:
+                </span>
+                <p className="text-[13px] text-slate-600 dark:text-slate-450 italic leading-relaxed">
                   {gap.rationale}
                 </p>
               </div>
@@ -238,21 +240,21 @@ export function ResearchGapsPage() {
 
             {/* Evidence Block (Bằng chứng thực tế từ v2) */}
             {gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null && gap.probe && gap.parentTrend && (
-              <div className="bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-xl mb-4 relative shadow-inner">
-                <div className="text-[13px] text-emerald-800 dark:text-emerald-400 leading-relaxed">
-                  <span className="font-bold text-emerald-950 dark:text-emerald-300 block mb-1 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Bằng chứng thực tế (Evidence):
-                  </span>
-                  Chỉ có <strong className="text-emerald-950 dark:text-emerald-200">{gap.intersectionCount ?? 0}</strong> bài báo ở giao điểm <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicA}"</code> × <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.probe.topicB}"</code> — trong khi <code className="bg-emerald-100/50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-xs font-semibold">"{gap.parentTrend.topic}"</code> có <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> bài, đang tăng trưởng <strong className="text-emerald-950 dark:text-emerald-200">{gap.parentTrend.growthRatePct >= 0 ? "+" : ""}{Math.round(gap.parentTrend.growthRatePct)}%/năm</strong>.
+              <div className="border-l-2 border-emerald-500/40 pl-3.5 py-0.5 mb-4">
+                <span className="font-bold text-emerald-800 dark:text-emerald-350 text-xs block mb-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Empirical Evidence:
+                </span>
+                <div className="text-[12.5px] text-slate-600 dark:text-slate-450 leading-relaxed">
+                  Only <strong className="text-slate-800 dark:text-slate-200">{gap.intersectionCount ?? 0}</strong> papers exist at the intersection of <code className="bg-slate-100 dark:bg-slate-850 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.probe.topicA}"</code> × <code className="bg-slate-100 dark:bg-slate-850 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.probe.topicB}"</code> — whereas <code className="bg-slate-100 dark:bg-slate-850 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.parentTrend.topic}"</code> has <strong className="text-slate-800 dark:text-slate-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> papers and is growing at <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{gap.parentTrend.growthRatePct >= 0 ? "+" : ""}{Math.round(gap.parentTrend.growthRatePct)}%/year</strong>.
                 </div>
               </div>
             )}
             
             {gap.supportingPaperIds && gap.supportingPaperIds.length > 0 && (
-               <div className="flex flex-wrap gap-2 mb-4 relative">
+               <div className="flex flex-wrap gap-1.5 mb-4 relative">
                  {gap.supportingPaperIds.map((id) => (
                    <Link key={id} to={`/papers/${id}`}>
-                     <Badge variant="secondary" className="text-[11px] font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5">
+                     <Badge variant="secondary" className="text-[10px] font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350 px-2 py-0.5 border-transparent">
                        Paper #{id.slice(-6)}
                      </Badge>
                    </Link>
@@ -260,7 +262,7 @@ export function ResearchGapsPage() {
                </div>
             )}
             
-            <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800 mt-auto relative">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto relative">
               <ConfidenceBar 
                 value={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null ? gap.evidenceConfidence : gap.confidence} 
                 isEvidence={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null}
@@ -296,11 +298,13 @@ export function ResearchGapsPage() {
                   </Button>
                 )}
               </div>
-
-              <AiEvaluation targetKind="gap" targetId={gap.id} lazy className="mt-4" />
             </div>
 
-            <GapDirectionsPanel gapId={gap.id} className="mt-4" />
+            {/* AI Assistant blocks embedded seamlessly without box-in-box border clutter */}
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
+              <AiEvaluation targetKind="gap" targetId={gap.id} lazy variant="flat" />
+              <GapDirectionsPanel gapId={gap.id} variant="flat" />
+            </div>
           </div>
         ))}
       </div>

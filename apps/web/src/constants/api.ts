@@ -70,5 +70,9 @@ export const API_ROUTES = {
     removePaper: (id: string, paperId: string) => `/projects/${id}/papers/${paperId}`,
     addMember: (id: string) => `/projects/${id}/members`,
     removeMember: (id: string, memberId: string) => `/projects/${id}/members/${memberId}`,
+    chat: {
+      send: (id: string) => `/projects/${id}/chat`,
+      history: (id: string) => `/projects/${id}/chat`,
+    },
   }
 } as const;

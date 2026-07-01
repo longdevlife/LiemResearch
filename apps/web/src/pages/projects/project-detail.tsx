@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api-client";
 import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
 import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
+import { ProjectChatPanel } from "@/features/projects/components/project-chat-panel";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 function useSearchUsers(email: string) {
@@ -38,14 +39,14 @@ function useSearchPapers(query: string) {
   });
 }
 import { toast } from "sonner";
-import { FileText, Users, Trash2, Plus, Loader2, CheckCircle2, XCircle, Sparkles, Zap, Search, ListFilter } from "lucide-react";
+import { FileText, Users, Trash2, Plus, Loader2, CheckCircle2, XCircle, Sparkles, Zap, Search, ListFilter, MessageSquare } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function ProjectDetailPage() {
   const currentUser = useAuthStore(s => s.user);
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading } = useProject(id);
-  const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps">("papers");
+  const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps" | "chat">("papers");
 
   if (isLoading) {
     return (
@@ -133,6 +134,19 @@ export function ProjectDetailPage() {
               Gaps
               {activeTab === "gaps" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
             </button>
+
+            <button
+              className={`pb-4 text-sm font-semibold transition-all relative ${
+                activeTab === "chat" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              onClick={() => setActiveTab("chat")}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <MessageSquare className="h-4 w-4" />
+                Chat
+              </span>
+              {activeTab === "chat" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+            </button>
           </div>
         </div>
 
@@ -141,6 +155,7 @@ export function ProjectDetailPage() {
           {activeTab === "members" && <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} currentUserId={currentUser?.id} />}
           {activeTab === "reports" && <ReportsTab projectId={project._id} />}
           {activeTab === "gaps" && <GapsTab projectId={project._id} />}
+          {activeTab === "chat" && <ProjectChatPanel projectId={project._id} paperCount={project.papers?.length || 0} />}
         </div>
       </main>
     </div>
@@ -185,9 +200,9 @@ function ReportsTab({ projectId }: { projectId: string }) {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Generate AI Report</DialogTitle>
+              <DialogTitle>Create AI Report</DialogTitle>
               <DialogDescription>
-                Create a comprehensive report attached to this project.
+                Generate a comprehensive analysis report for this project.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -206,7 +221,7 @@ function ReportsTab({ projectId }: { projectId: string }) {
                   id="query"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="What should AI analyze?"
+                  placeholder="What should the AI analyze?"
                   rows={4}
                   className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
@@ -223,7 +238,7 @@ function ReportsTab({ projectId }: { projectId: string }) {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={createReport.isPending}>Cancel</Button>
               <Button onClick={handleGenerate} disabled={createReport.isPending}>
-                {createReport.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Generate
+                {createReport.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Create
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -266,9 +281,9 @@ function ReportsTab({ projectId }: { projectId: string }) {
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
             <FileText className="h-6 w-6 text-muted-foreground/60" />
           </div>
-          <h4 className="text-lg font-semibold tracking-tight mb-2">No reports generated yet</h4>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No reports yet</h4>
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
-            Generate AI reports to analyze papers and extract insights for this project.
+            Generate an AI report to analyze papers and extract useful insights for this project.
           </p>
           <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full shadow-sm">
             <Plus className="w-4 h-4 mr-2" />
@@ -302,7 +317,7 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
     <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900 p-4 rounded-lg flex items-center gap-3 mb-4 shadow-sm">
       <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
       <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-        {data?.status === "analyzing" ? "Analyzing documents with AI…" : "Analysis job queued…"}
+        {data?.status === "analyzing" ? "Analyzing documents with AI..." : "Queued for analysis..."}
       </p>
     </div>
   );
@@ -349,9 +364,9 @@ function GapsTab({ projectId }: { projectId: string }) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Generate Gap Analysis</DialogTitle>
+              <DialogTitle>Gap Analysis</DialogTitle>
               <DialogDescription>
-                Discover research opportunities and missing literature for this project.
+                Discover research opportunities and missing literature for the project.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -368,7 +383,7 @@ function GapsTab({ projectId }: { projectId: string }) {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={analyze.isPending}>Cancel</Button>
               <Button onClick={handleGenerate} disabled={analyze.isPending}>
-                {analyze.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Generate
+                {analyze.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Analyze
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -413,9 +428,9 @@ function GapsTab({ projectId }: { projectId: string }) {
               {gap.evidenceConfidence !== undefined && (
                 <div className="relative z-10 pt-5 border-t border-slate-100 dark:border-zinc-800/50 mt-auto">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                       <Zap className="w-3.5 h-3.5 text-emerald-500" /> Confidence
-                    </span>
+                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-emerald-500" /> Confidence
+                     </span>
                     <span className="text-sm font-black text-slate-700 dark:text-slate-300">{Math.round(gap.evidenceConfidence * 100)}%</span>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden shadow-inner">
@@ -436,11 +451,11 @@ function GapsTab({ projectId }: { projectId: string }) {
           </div>
           <h4 className="text-lg font-semibold tracking-tight mb-2">No research gaps yet</h4>
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
-            Generate gap analyses to discover research opportunities and missing literature for this project.
+            Run gap analysis to discover research opportunities and missing literature.
           </p>
           <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full shadow-sm">
             <Sparkles className="w-4 h-4 mr-2 text-cyan-500" />
-            Generate first gap analysis
+            Run first analysis
           </Button>
         </div>
       )}
@@ -497,11 +512,11 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Paper</DialogTitle>
-                <DialogDescription>Enter the Paper Object ID to add it to this project.</DialogDescription>
+                <DialogDescription>Search and add papers to this project.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAdd} className="space-y-4 pt-4">
                 <div className="space-y-2 relative">
-                  <Label>Search Paper by Title</Label>
+                  <Label>Search paper by title</Label>
                   {selectedPaper ? (
                     <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
                       <div className="text-sm">
@@ -523,7 +538,7 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                           {isSearching ? (
                             <div className="p-3 text-sm text-muted-foreground">Searching...</div>
                           ) : searchResults?.length === 0 ? (
-                            <div className="p-3 text-sm text-muted-foreground">No papers found.</div>
+                            <div className="p-3 text-sm text-muted-foreground">Paper not found.</div>
                           ) : (
                             searchResults?.map((p: any) => (
                               <div
@@ -574,9 +589,9 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm mb-4">
             <FileText className="h-6 w-6 text-muted-foreground/60" />
           </div>
-          <h4 className="text-lg font-semibold tracking-tight mb-2">No papers collected yet</h4>
+          <h4 className="text-lg font-semibold tracking-tight mb-2">No papers yet</h4>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Add relevant literature to this workspace for AI analysis and reference.
+            Add relevant papers to the project for AI analysis and reference.
           </p>
         </div>
       ) : (
@@ -674,7 +689,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Member</DialogTitle>
-                <DialogDescription>Add a User or Expert to this project.</DialogDescription>
+                <DialogDescription>Add a user or expert to the project.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAdd} className="space-y-4 pt-4">
                 <div className="grid grid-cols-1 gap-4">
@@ -691,7 +706,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                   </div>
                 </div>
                 <div className="space-y-2 relative">
-                  <Label>Search User by Email</Label>
+                  <Label>Search user by email</Label>
                   {selectedUser ? (
                     <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
                       <div className="text-sm">
@@ -713,7 +728,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                           {isSearching ? (
                             <div className="p-3 text-sm text-muted-foreground">Searching...</div>
                           ) : searchResults?.length === 0 ? (
-                            <div className="p-3 text-sm text-muted-foreground">No users found.</div>
+                            <div className="p-3 text-sm text-muted-foreground">User not found.</div>
                           ) : (
                             searchResults?.map((u: any) => (
                               <div
@@ -748,7 +763,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove this member from the project? They will lose access to add papers and create reports.
+              Are you sure you want to remove this member? They will lose permissions to add papers and generate reports.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -767,7 +782,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
           </div>
           <h4 className="text-lg font-semibold tracking-tight mb-2">No members yet</h4>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Invite colleagues or experts to collaborate on this project.
+            Invite colleagues or experts to collaborate on the project.
           </p>
         </div>
       ) : (
@@ -787,7 +802,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                       <>
                         <h4 className="text-base font-semibold truncate text-foreground">{memberObj.fullName || 'Unknown User'}</h4>
                         <p className="text-sm text-muted-foreground truncate">
-                          {memberObj.email} <span className="opacity-50 mx-1">•</span> <span className="capitalize font-medium text-foreground">{m.role}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                          {memberObj.email} <span className="opacity-50 mx-1">•</span> <span className="capitalize font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
                         </p>
                       </>
                     ) : (
@@ -796,7 +811,7 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                           {m.targetKind} (ID: <span className="font-mono text-muted-foreground text-xs">{memberId}</span>)
                         </h4>
                         <p className="text-sm text-muted-foreground capitalize">
-                          Role: <span className="font-medium text-foreground">{m.role}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                          Role: <span className="font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
                         </p>
                       </>
                     )}

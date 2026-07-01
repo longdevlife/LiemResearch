@@ -22,6 +22,7 @@ const gapDirectionsSchema = new Schema(
     directions: { type: [directionItemSchema], default: [] },
     model: { type: String, default: "" },
     promptVersion: { type: String, default: "" },
+    evidenceHash: { type: String, default: "" },
   },
   { timestamps: true },
 );

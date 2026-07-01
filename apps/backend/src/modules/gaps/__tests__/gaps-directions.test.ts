@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDirectionsEvidenceHash,
   buildDirectionsPrompt,
   sanitizeDirections,
   DIRECTIONS_SYSTEM_PROMPT,
@@ -28,12 +29,63 @@ describe("buildDirectionsPrompt", () => {
   it("renders (no abstract) for a paper without one", () => {
     expect(buildDirectionsPrompt(GAP, [{ id: "a", title: "T" }])).toContain("(no abstract)");
   });
+
+  it("includes structured paper knowledge when available", () => {
+    const prompt = buildDirectionsPrompt(GAP, [
+      {
+        id: "a",
+        title: "Structured",
+        abstractText: "raw abstract",
+        aiAnalysis: {
+          summary: "Summarizes LLM feedback studies.",
+          methods: "Design science",
+          dataset: null,
+          findings: ["Students revised more deeply"],
+          limitations: ["No longitudinal evaluation"],
+          contributions: ["Reusable evaluation rubric"],
+          futureWork: ["Run multi-semester trials"],
+          keyTerms: ["LLM feedback"],
+        },
+      } as any,
+    ]);
+
+    expect(prompt).toContain("Structured analysis:");
+    expect(prompt).toContain("Future work: Run multi-semester trials");
+    expect(prompt).toContain("Contributions: Reusable evaluation rubric");
+  });
 });
 
 describe("DIRECTIONS_SYSTEM_PROMPT", () => {
   it("asks for JSON directions and forbids inventing papers", () => {
     expect(DIRECTIONS_SYSTEM_PROMPT).toContain("directions");
     expect(DIRECTIONS_SYSTEM_PROMPT.toLowerCase()).toContain("json");
+  });
+});
+
+describe("buildDirectionsEvidenceHash", () => {
+  it("changes when structured paper knowledge changes", () => {
+    const before = buildDirectionsEvidenceHash([
+      { id: "a", title: "T", abstractText: "raw" },
+    ]);
+    const after = buildDirectionsEvidenceHash([
+      {
+        id: "a",
+        title: "T",
+        abstractText: "raw",
+        aiAnalysis: {
+          summary: null,
+          methods: null,
+          dataset: null,
+          findings: [],
+          limitations: [],
+          contributions: ["New contribution"],
+          futureWork: ["New future work"],
+          keyTerms: [],
+        },
+      },
+    ]);
+
+    expect(after).not.toBe(before);
   });
 });
 

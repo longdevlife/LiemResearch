@@ -4,6 +4,7 @@ import {
   buildCompareCacheKey,
   parseComparison,
   COMPARE_DIMENSIONS,
+  COMPARE_SYSTEM_PROMPT,
 } from "../compare.prompt.js";
 
 const papers = [
@@ -17,6 +18,38 @@ describe("compare.prompt", () => {
     expect(p).toContain("[1]");
     expect(p).toContain("[2]");
     expect(p).toContain("Attention Is All You Need");
+  });
+
+  it("includes structured paper knowledge when available", () => {
+    const p = buildComparePrompt([
+      {
+        id: "a",
+        title: "Structured A",
+        abstractText: "raw a",
+        aiAnalysis: {
+          summary: "Compares transformer feedback.",
+          methods: "Controlled classroom study",
+          dataset: "45 assignments",
+          findings: ["Faster draft revision"],
+          limitations: ["Small sample"],
+          contributions: ["Feedback taxonomy"],
+          futureWork: [],
+          keyTerms: ["LLM feedback"],
+        },
+      } as any,
+      { id: "b", title: "Structured B", abstractText: "raw b" },
+    ]);
+
+    expect(p).toContain("Structured analysis:");
+    expect(p).toContain("Methods: Controlled classroom study");
+    expect(p).toContain("Dataset: 45 assignments");
+    expect(p).toContain("Limitations: Small sample");
+  });
+
+  it("allows facts grounded in structured analysis, not only abstracts", () => {
+    expect(COMPARE_SYSTEM_PROMPT).toContain("structured analysis");
+    expect(COMPARE_SYSTEM_PROMPT).toContain("not present in the provided evidence");
+    expect(COMPARE_SYSTEM_PROMPT).not.toContain("not present in the abstracts");
   });
 
   it("cache key is ORDER-INSENSITIVE on paper ids (a comparison set is unordered)", () => {

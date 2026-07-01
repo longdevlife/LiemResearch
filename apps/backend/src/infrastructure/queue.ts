@@ -24,6 +24,7 @@ const defaultJobOptions: QueueOptions["defaultJobOptions"] = {
 export const QUEUE_NAMES = {
   apiSync: "api-sync",
   embedding: "embedding",
+  paperAnalysis: "paper-analysis",
   report: "report",
   gaps: "gaps", // Phase D
   notifications: "notifications",
@@ -35,6 +36,11 @@ export const apiSyncQueue = new Queue(QUEUE_NAMES.apiSync, {
 });
 
 export const embeddingQueue = new Queue(QUEUE_NAMES.embedding, {
+  connection: makeConnection(),
+  defaultJobOptions,
+});
+
+export const paperAnalysisQueue = new Queue(QUEUE_NAMES.paperAnalysis, {
   connection: makeConnection(),
   defaultJobOptions,
 });

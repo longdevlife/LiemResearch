@@ -446,7 +446,7 @@ function ReportRatingWidget({ reportId }: { reportId: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      toast.error("Please select a star rating");
+      toast.error("Please select a rating");
       return;
     }
     setSubmitting(true);
@@ -458,7 +458,7 @@ function ReportRatingWidget({ reportId }: { reportId: string }) {
         comment: comment.trim() || undefined,
       });
       if (res.data.success) {
-        toast.success("Rating submitted! +5 contribution points earned.");
+        toast.success("Feedback submitted! +5 contribution points earned.");
         setRating(0);
         setComment("");
         

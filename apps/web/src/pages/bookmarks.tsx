@@ -22,7 +22,7 @@ export function BookmarksPage() {
   const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
 
-  const handleOpenEditNote = (id: string, note?: string) => {
+  const handleOpenEditNote = (id: string, note?: string | null) => {
     setEditingBookmarkId(id);
     setEditingNoteValue(note || "");
   };
@@ -37,7 +37,7 @@ export function BookmarksPage() {
           setEditingBookmarkId(null);
         },
         onError: () => {
-          toast.error("Failed to update note.");
+          toast.error("Failed to update bookmark note.");
         },
       }
     );
@@ -49,10 +49,10 @@ export function BookmarksPage() {
         { id, targetKind, targetId },
         {
           onSuccess: () => {
-            toast.success("Item removed from bookmarks.");
+            toast.success("Removed from library.");
           },
           onError: () => {
-            toast.error("Failed to remove item.");
+            toast.error("Failed to remove from library.");
           },
         }
       );
@@ -99,7 +99,7 @@ export function BookmarksPage() {
     <main className="container py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <PageHeader
         title="My Library"
-        description="Access and manage your saved publications and AI-generated trends reports."
+        description="Manage saved papers and AI reports."
       />
 
       {/* Toolbar / Filters */}
@@ -114,7 +114,7 @@ export function BookmarksPage() {
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
-            All Items ({validBookmarks.length})
+            All ({validBookmarks.length})
           </button>
           <button
             onClick={() => setActiveTab("paper")}
@@ -191,7 +191,7 @@ export function BookmarksPage() {
                   </CardHeader>
                   <CardContent className="pb-3 flex-grow">
                     <p className="text-xs text-slate-500 line-clamp-3 mb-4 text-justify">
-                      {paper.abstractText || "No abstract available for this publication."}
+                      {paper.abstractText || "No abstract available for this paper."}
                     </p>
 
                     <div className="flex flex-wrap gap-1 mb-2">
@@ -202,14 +202,14 @@ export function BookmarksPage() {
                       ))}
                       {paper.authors.length > 4 && (
                         <Badge variant="secondary" className="text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          +{paper.authors.length - 4} more
+                          +{paper.authors.length - 4} others
                         </Badge>
                       )}
                     </div>
 
                     {note && (
                       <div className="mt-3 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 italic flex flex-col gap-1">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-500 not-italic">My Note:</span>
+                        <span className="font-bold text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-500 not-italic">Note:</span>
                         <p className="whitespace-pre-wrap">{note}</p>
                       </div>
                     )}
@@ -232,7 +232,7 @@ export function BookmarksPage() {
                         onClick={() => handleDeleteBookmark(id, "paper", targetId)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Remove
+                        Delete
                       </Button>
                     </div>
 
@@ -249,7 +249,7 @@ export function BookmarksPage() {
                         </Button>
                       )}
                       <Button asChild size="sm" className="h-8 text-[11px] font-bold bg-blue-800 hover:bg-blue-900 text-white">
-                        <Link to={`/papers/${paper.id}`}>View details</Link>
+                        <Link to={`/papers/${paper.id}`}>View Details</Link>
                       </Button>
                     </div>
                   </CardFooter>
@@ -277,7 +277,7 @@ export function BookmarksPage() {
                       <Link to={`/reports/${report.id}`}>{report.topic || "AI Research Analysis"}</Link>
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <span>{report.topic || "Analytical report"}</span>
+                      <span>{report.topic || "Analysis Report"}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pb-3 flex-grow">
@@ -288,7 +288,7 @@ export function BookmarksPage() {
 
                     {note && (
                       <div className="mt-3 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 italic flex flex-col gap-1">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-500 not-italic">My Note:</span>
+                        <span className="font-bold text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-500 not-italic">Note:</span>
                         <p className="whitespace-pre-wrap">{note}</p>
                       </div>
                     )}
@@ -311,7 +311,7 @@ export function BookmarksPage() {
                         onClick={() => handleDeleteBookmark(id, "report", targetId)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Remove
+                        Delete
                       </Button>
                     </div>
 
@@ -332,16 +332,16 @@ export function BookmarksPage() {
           <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-600 flex items-center justify-center mx-auto mb-6">
             <Bookmark className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Your library is empty</h3>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Library is empty</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto mb-8">
             {searchQuery
-              ? `No saved items match your search term "${searchQuery}".`
-              : "Bookmark publications or AI-generated reports to keep them organized here for easy access later."}
+              ? `No items found matching "${searchQuery}".`
+              : "Save papers or AI reports here for quick access."}
           </p>
           {!searchQuery && (
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild size="sm" className="font-bold bg-blue-800 hover:bg-blue-900 text-white rounded-lg">
-                <Link to="/search">Explore Publications</Link>
+                <Link to="/search">Explore Papers</Link>
               </Button>
               <Button asChild variant="outline" size="sm" className="font-bold border-slate-300 dark:border-slate-700 rounded-lg">
                 <Link to="/trends">Analyze Trends</Link>
@@ -355,16 +355,16 @@ export function BookmarksPage() {
       <Dialog open={editingBookmarkId !== null} onOpenChange={(open) => !open && setEditingBookmarkId(null)}>
         <DialogContent className="max-w-md border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">Edit Bookmark Note</DialogTitle>
+            <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">Edit Note</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Add a personal description, tags, or annotations to this bookmark.
+              Add a description, tags, or annotation to your saved item.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
             <textarea
               className="w-full h-32 p-3 text-xs border border-slate-200 dark:border-slate-800 bg-transparent dark:bg-slate-950/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-              placeholder="Write your private note here (max 500 characters)..."
+              placeholder="Write personal notes (max 500 characters)..."
               maxLength={500}
               value={editingNoteValue}
               onChange={(e) => setEditingNoteValue(e.target.value)}

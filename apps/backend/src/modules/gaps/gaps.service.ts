@@ -1,11 +1,11 @@
-import type { PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../infrastructure/logger.js";
-import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
 import { AppError } from "../../common/exceptions/app-error.js";
 import type { GapProbe, GapDirections } from "@trend/shared-types";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
-import { generateJSON, LlmContentError } from "../llm/gemini.client.js";
+import { LlmContentError } from "../llm/gemini.client.js";
+import { cachedGenerateJSON } from "../llm/llm.run.js";
+import { retrieve } from "../retrieval/retriever.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { computeGapEvidence } from "./gap-evidence.js";
 import { fillMissingYears, truncateToCompleteYears, yoyGrowthPct } from "../trends/trend.formulas.js";
@@ -13,6 +13,7 @@ import { ResearchGapModel } from "./models/research-gap.model.js";
 import { GapDirectionsModel, type GapDirectionsDoc } from "./models/gap-directions.model.js";
 import {
   buildDirectionsPrompt,
+  buildDirectionsEvidenceHash,
   sanitizeDirections,
   DIRECTIONS_PROMPT_VERSION,
   DIRECTIONS_SYSTEM_PROMPT,
@@ -29,9 +30,6 @@ import {
   type GapsLlmOutput,
 } from "./gaps.prompt.js";
 import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
-
-/** Atlas Vector Search index — same one the /search and /reports endpoints use. */
-const VECTOR_INDEX = "paper_vector_index";
 
 export interface GapJob {
   analysisId: string;
@@ -215,25 +213,34 @@ export const gapsService = {
       retrievedPaperIds: papers.map((p) => p.id),
     });
 
-    let output = await cache.get<GapsLlmOutput>(cacheKey);
-    const cacheHit = output !== null;
-
-    // ④ Generate on cache miss
-    if (!output) {
-      output = await generateJSON<GapsLlmOutput>(buildGapsPrompt(analysis.topic, papers), {
-        model,
+    let cacheHit = false;
+    const output = await cachedGenerateJSON<GapsLlmOutput>({
+      task: "gap",
+      promptVersion: GAP_PROMPT_VERSION,
+      keyParts: {
+        legacyCacheKey: cacheKey,
+        normalizedTopic,
+        yearFrom: analysis.yearFrom ?? null,
+        yearTo: analysis.yearTo ?? null,
+        retrievedPaperIds: papers.map((p) => p.id),
+      },
+      model,
+      prompt: buildGapsPrompt(analysis.topic, papers),
+      onCacheHit: () => {
+        cacheHit = true;
+      },
+      validate: (candidate) => {
+        if (!candidate || !Array.isArray(candidate.gaps) || candidate.gaps.length === 0) {
+          throw new LlmContentError("LLM returned empty gaps output");
+        }
+        return candidate;
+      },
+      options: {
         system: GAPS_SYSTEM_PROMPT,
         temperature: 0.2,
         maxOutputTokens: env.GAPS_MAX_OUTPUT_TOKENS,
-      });
-
-      if (!output || !Array.isArray(output.gaps) || output.gaps.length === 0) {
-        // Empty/malformed output won't self-heal on retry → fail fast.
-        throw new LlmContentError("LLM returned empty gaps output");
-      }
-
-      await cache.set(cacheKey, output, LLM_CACHE_TTL_SECONDS);
-    }
+      },
+    });
 
     // ⑤ Persist gaps (map 1-based evidence numbers back to real paper ids).
     //    IDEMPOTENT: clear this analysis's prior gaps first, so a retried job (after a
@@ -409,41 +416,61 @@ export const gapsService = {
     const gap = await ResearchGapModel.findById(gapId).lean();
     if (!gap) throw AppError.notFound("Research gap not found");
 
+    const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
+    const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
+      .select("title abstractText aiAnalysis")
+      .lean();
+    const directionPapers = papers.map((p) => ({
+      id: String(p._id),
+      title: String(p.title),
+      abstractText: p.abstractText ? String(p.abstractText) : undefined,
+      aiAnalysis: p.aiAnalysis ?? null,
+    }));
+    const evidenceHash = buildDirectionsEvidenceHash(directionPapers);
+
     const existing = await GapDirectionsModel.findOne({ gapId });
-    if (existing && !force && existing.promptVersion === DIRECTIONS_PROMPT_VERSION) {
+    if (
+      existing &&
+      !force &&
+      existing.promptVersion === DIRECTIONS_PROMPT_VERSION &&
+      existing.evidenceHash === evidenceHash
+    ) {
       return toDirectionsDto(existing as GapDirectionsDoc);
     }
 
-    const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
-    const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
-      .select("title abstractText")
-      .lean();
-
     let raw: DirectionsRaw;
+    const prompt = buildDirectionsPrompt(
+      {
+        topic: gap.topic,
+        title: gap.title,
+        description: gap.description,
+        rationale: gap.rationale,
+        intersectionCount: gap.intersectionCount ?? undefined,
+        parentTrend: gap.parentTrend as { topic: string; growthRatePct: number } | undefined,
+      },
+      directionPapers,
+    );
     try {
-      raw = await generateJSON<DirectionsRaw>(
-        buildDirectionsPrompt(
-          {
-            topic: gap.topic,
-            title: gap.title,
-            description: gap.description,
-            rationale: gap.rationale,
-            intersectionCount: gap.intersectionCount ?? undefined,
-            parentTrend: gap.parentTrend as { topic: string; growthRatePct: number } | undefined,
-          },
-          papers.map((p) => ({
-            id: String(p._id),
-            title: String(p.title),
-            abstractText: p.abstractText ? String(p.abstractText) : undefined,
-          })),
-        ),
-        {
-          model: env.GEMINI_MODEL_FAST,
+      raw = await cachedGenerateJSON<DirectionsRaw>({
+        task: "directions",
+        promptVersion: DIRECTIONS_PROMPT_VERSION,
+        keyParts: { gapId, allowedPaperIds },
+        model: env.GEMINI_MODEL_FAST,
+        bypassCache: force,
+        prompt,
+        validate: (candidate) => {
+          const directions = sanitizeDirections(candidate, allowedPaperIds);
+          if (directions.length === 0) {
+            throw new LlmContentError("LLM returned no valid research directions");
+          }
+          return candidate;
+        },
+        options: {
           system: DIRECTIONS_SYSTEM_PROMPT,
           temperature: 0.4,
           maxOutputTokens: 1024,
         },
-      );
+      });
     } catch (err) {
       logger.warn({ err, gapId }, "gap directions generation failed");
       throw AppError.serviceUnavailable(
@@ -463,6 +490,7 @@ export const gapsService = {
           directions,
           model: env.GEMINI_MODEL_FAST,
           promptVersion: DIRECTIONS_PROMPT_VERSION,
+          evidenceHash,
         },
       },
       { upsert: true, new: true },
@@ -489,31 +517,12 @@ async function retrieveGapEvidence(
   queryVector: number[],
   filters: { yearFrom?: number; yearTo?: number },
 ): Promise<GapEvidencePaper[]> {
-  const filter: Record<string, unknown> = { dataStatus: "active" };
-  if (filters.yearFrom !== undefined || filters.yearTo !== undefined) {
-    filter.publicationYear = {
-      ...(filters.yearFrom !== undefined ? { $gte: filters.yearFrom } : {}),
-      ...(filters.yearTo !== undefined ? { $lte: filters.yearTo } : {}),
-    };
-  }
-  const pipeline = [
-    {
-      $vectorSearch: {
-        index: VECTOR_INDEX,
-        path: "embedding",
-        queryVector,
-        numCandidates: 80,
-        limit: env.GAPS_TOP_K,
-        filter,
-      },
-    },
-    { $project: { title: 1, abstractText: 1, publicationYear: 1 } },
-  ];
-  const docs = await PaperModel.aggregate(pipeline as unknown as PipelineStage[]);
-  return docs.map((d) => ({
-    id: String(d._id),
-    title: String(d.title),
-    abstractText: d.abstractText ? String(d.abstractText) : undefined,
-    publicationYear: d.publicationYear as number | undefined,
-  }));
+  return retrieve({
+    queryVector,
+    topK: env.GAPS_TOP_K,
+    poolSize: env.GAPS_TOP_K,
+    numCandidates: 80,
+    filters,
+    projection: "gap",
+  });
 }
