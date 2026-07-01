@@ -16,24 +16,42 @@ function getTopicMetric(topic: {
   return topic.momentum;
 }
 
-function CustomBarTooltip({ active, payload }: any) {
+function CustomBarTooltip({ active, payload, sortBy }: { active?: boolean, payload?: any[], sortBy: "momentum" | "growth" | "total" }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const formatValue = (val: number) => {
+    const formatValue = () => {
+      const val = data.value;
       if (typeof val !== 'number') return '-';
-      return val > 0 ? `+${val.toFixed(1)}` : val.toFixed(1);
+      if (sortBy === "total") {
+        return `${val.toLocaleString()} papers`;
+      }
+      if (sortBy === "growth") {
+        return `${val > 0 ? '+' : ''}${val.toFixed(1)}%`;
+      }
+      return `${val > 0 ? '+' : ''}${val.toFixed(2)} papers/year`;
     };
+
+    const formatGrowth = (pct: number) => {
+      if (typeof pct !== 'number') return '-';
+      return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+    };
+
+    const formatMomentum = (mom: number) => {
+      if (typeof mom !== 'number') return '-';
+      return `${mom > 0 ? '+' : ''}${mom.toFixed(2)} papers/year`;
+    };
+
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-lg text-xs select-none">
         <p className="font-extrabold text-slate-900 dark:text-white mb-2">{data.topic}</p>
         <div className="space-y-1.5 text-slate-600 dark:text-slate-400 font-medium">
           <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            Value: {formatValue(data.value)}
+            Value: {formatValue()}
           </p>
           <p>Total papers: <span className="text-slate-900 dark:text-white font-bold">{data.totalPapers}</span></p>
-          <p>Growth: <span className="text-slate-900 dark:text-white font-bold">+{data.growthRatePct.toFixed(1)}%</span></p>
-          <p>Momentum: <span className="text-slate-900 dark:text-white font-bold">+{data.momentum.toFixed(2)} papers/year</span></p>
+          <p>Growth: <span className="text-slate-900 dark:text-white font-bold">{formatGrowth(data.growthRatePct)}</span></p>
+          <p>Momentum: <span className="text-slate-900 dark:text-white font-bold">{formatMomentum(data.momentum)}</span></p>
         </div>
       </div>
     );
@@ -313,7 +331,7 @@ export function TrendsPage() {
                 />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
-                  content={<CustomBarTooltip />}
+                  content={<CustomBarTooltip sortBy={sortBy} />}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
                   {barChartData.map((entry, index) => (
