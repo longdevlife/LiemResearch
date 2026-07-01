@@ -10,10 +10,20 @@ export const API_ROUTES = {
     logout: "/auth/logout",
     me: "/auth/me",
     changePassword: "/auth/change-password",
+    rankingsTop: "/auth/rankings/top",
+    rankingsMe: "/auth/rankings/me",
   },
   papers: {
     list: "/papers",
+    create: "/papers",
     detail: (id: string) => `/papers/${id}`,
+    references: (id: string) => `/papers/${id}/references`,
+    myRequests: "/papers/my-requests",
+    uploadPdf: (id: string) => `/papers/${id}/upload-pdf`,
+    acceptPdf: (id: string) => `/papers/${id}/accept-pdf`,
+    rejectPdf: (id: string) => `/papers/${id}/reject-pdf`,
+    cancel: (id: string) => `/papers/${id}/cancel`,
+    update: (id: string) => `/papers/${id}`,
   },
   search: {
     semantic: "/search", 
@@ -26,6 +36,7 @@ export const API_ROUTES = {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
+    delete: (id: string) => `/reports/${id}`,
   },
   bookmarks: {
     list: "/bookmarks",
@@ -33,6 +44,12 @@ export const API_ROUTES = {
     delete: (id: string) => `/bookmarks/${id}`,
     check: "/bookmarks/check",
     updateNote: (id: string) => `/bookmarks/${id}`,
+  },
+  notifications: {
+    list: "/notifications",
+    registerDeviceToken: "/notifications/device-token",
+    markRead: (id: string) => `/notifications/${id}/read`,
+    markAllRead: "/notifications/read-all",
   },
   analytics: {
     summary: "/analytics/search/summary",

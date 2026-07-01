@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
+import { notificationQueue } from "../../infrastructure/queue.js";
 import { NotificationModel } from "./models/notification.model.js";
+import { DeviceTokenModel } from "./models/device-token.model.js";
+import type { RegisterDeviceTokenInput } from "./dto/device-token.schema.js";
 
 export const notificationService = {
   async create({
@@ -21,16 +24,46 @@ export const notificationService = {
     targetKind?: "paper" | "report" | "gap" | "project";
     targetId?: string | mongoose.Types.ObjectId;
   }) {
-    return await NotificationModel.create({
+    const resolvedTargetKind = targetKind ?? (paperId ? "paper" : undefined);
+    const resolvedTargetId = targetId ?? paperId;
+
+    const notification = await NotificationModel.create({
       userId: userId ? new mongoose.Types.ObjectId(userId) : undefined,
       role,
       title,
       message,
       type,
       paperId: paperId ? new mongoose.Types.ObjectId(paperId) : undefined,
-      targetKind,
-      targetId: targetId ? new mongoose.Types.ObjectId(targetId) : undefined,
+      targetKind: resolvedTargetKind,
+      targetId: resolvedTargetId ? new mongoose.Types.ObjectId(resolvedTargetId) : undefined,
     });
+
+    if (notification.userId) {
+      await notificationQueue.add(
+        "send-push",
+        { notificationId: notification._id.toString() },
+        { jobId: notification._id.toString() },
+      );
+    }
+
+    return notification;
+  },
+
+  async registerDeviceToken(userId: string, input: RegisterDeviceTokenInput) {
+    return DeviceTokenModel.findOneAndUpdate(
+      { token: input.token },
+      {
+        $set: {
+          userId: new mongoose.Types.ObjectId(userId),
+          token: input.token,
+          platform: input.platform,
+          deviceName: input.deviceName,
+          lastSeenAt: new Date(),
+          disabledAt: null,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
   },
 
   async list(userId: string, role: string) {
@@ -93,8 +126,8 @@ export const notificationService = {
         message,
         type: doc.type,
         paperId: doc.paperId ? doc.paperId.toString() : null,
-        targetKind: doc.targetKind || null,
-        targetId: doc.targetId ? doc.targetId.toString() : null,
+        targetKind: doc.targetKind ?? (doc.paperId ? "paper" : null),
+        targetId: doc.targetId ? doc.targetId.toString() : doc.paperId ? doc.paperId.toString() : null,
         isRead,
         createdAt: doc.createdAt,
       };

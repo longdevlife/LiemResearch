@@ -24,3 +24,15 @@ export function useCreateReport() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reports"] }),
   });
 }
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reportsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmark-status"] });
+    },
+  });
+}

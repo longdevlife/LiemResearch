@@ -4,11 +4,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import type { Bookmark, BookmarkTargetKind } from "@trend/shared-types";
+import type { Bookmark, BookmarkTargetKind, ReportListItem, ReportStatus } from "@trend/shared-types";
+import { Swipeable } from "react-native-gesture-handler";
 
 import { useBookmarks, useDeleteBookmark } from "@/features/bookmarks";
+import { useDeleteReport, useReports } from "@/features/reports";
 
 type Filter = "all" | BookmarkTargetKind;
+
+function statusColor(status: ReportStatus) {
+  if (status === "ready") return "text-emerald-500";
+  if (status === "failed") return "text-red-500";
+  if (status === "generating") return "text-amber-500";
+  return "text-[#06B6D4]";
+}
 
 function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
@@ -38,9 +47,28 @@ function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
     ]);
   };
 
+  const renderRightActions = () => (
+    <TouchableOpacity
+      className="w-16 items-center justify-center bg-[#DC2626]"
+      onPress={confirmDelete}
+      disabled={deleteBookmark.isPending}
+    >
+      {deleteBookmark.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Feather name="trash-2" size={20} color="#FFFFFF" />}
+    </TouchableOpacity>
+  );
+
   return (
-    <View className="mb-3 flex-row overflow-hidden rounded-2xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332]">
-      <TouchableOpacity className="flex-1 p-4" activeOpacity={0.88} onPress={openItem}>
+    <Swipeable
+      overshootRight={false}
+      friction={2}
+      renderRightActions={renderRightActions}
+      containerStyle={{ marginBottom: 12, borderRadius: 16, overflow: "hidden" }}
+    >
+      <TouchableOpacity
+        className="rounded-2xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-4"
+        activeOpacity={0.88}
+        onPress={openItem}
+      >
         <View className="flex-row items-start">
           <View className="mr-3 mt-0.5 h-8 w-8 rounded-lg bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center">
             <Feather name={bookmark.targetKind === "paper" ? "file-text" : "bar-chart-2"} size={15} color="#06B6D4" />
@@ -55,10 +83,79 @@ function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
           </View>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity className="w-16 items-center justify-center bg-[#DC2626]" onPress={confirmDelete} disabled={deleteBookmark.isPending}>
-        {deleteBookmark.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Feather name="trash-2" size={20} color="#FFFFFF" />}
+    </Swipeable>
+  );
+}
+
+function ReportRow({ report }: { report: ReportListItem }) {
+  const router = useRouter();
+  const deleteReport = useDeleteReport();
+
+  const openReport = () => {
+    if (report.status === "ready") {
+      router.push(`/report/${report.id}` as any);
+      return;
+    }
+    router.push("/reports" as any);
+  };
+
+  const confirmDelete = () => {
+    Alert.alert("Delete report", "Delete this report?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          deleteReport.mutate(report.id, {
+            onError: (error: any) => {
+              Alert.alert("Delete failed", error?.response?.data?.error?.message ?? "Could not delete report.");
+            },
+          }),
+      },
+    ]);
+  };
+
+  const renderRightActions = () => (
+    <TouchableOpacity
+      className="w-16 items-center justify-center bg-[#DC2626]"
+      onPress={confirmDelete}
+      disabled={deleteReport.isPending}
+    >
+      {deleteReport.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Feather name="trash-2" size={20} color="#FFFFFF" />}
+    </TouchableOpacity>
+  );
+
+  return (
+    <Swipeable
+      overshootRight={false}
+      friction={2}
+      renderRightActions={renderRightActions}
+      containerStyle={{ marginBottom: 12, borderRadius: 16, overflow: "hidden" }}
+    >
+      <TouchableOpacity
+        className="rounded-2xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-4"
+        activeOpacity={0.88}
+        onPress={openReport}
+      >
+        <View className="flex-row items-start">
+          <View className="mr-3 mt-0.5 h-8 w-8 rounded-lg bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center">
+            <Ionicons name="sparkles" size={16} color="#8B5CF6" />
+          </View>
+          <View className="flex-1">
+            <View className="mb-2 self-start rounded-md bg-muted dark:bg-[#26334A] px-2 py-1">
+              <Text className="text-[10px] font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">report</Text>
+            </View>
+            <Text className="text-sm font-bold leading-5 text-foreground dark:text-[#F8FAFC]" numberOfLines={2}>
+              {report.topic || report.query}
+            </Text>
+            <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]" numberOfLines={1}>
+              {report.query}
+            </Text>
+            <Text className={`mt-2 text-xs font-bold uppercase ${statusColor(report.status)}`}>{report.status}</Text>
+          </View>
+        </View>
       </TouchableOpacity>
-    </View>
+    </Swipeable>
   );
 }
 
@@ -67,16 +164,19 @@ export default function BookmarksScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const bookmarksQuery = useBookmarks();
+  const reportsQuery = useReports({ page: 1, pageSize: 50 });
   const bookmarks = bookmarksQuery.data ?? [];
-  const filtered = useMemo(
-    () => (filter === "all" ? bookmarks : bookmarks.filter((bookmark) => bookmark.targetKind === filter)),
-    [bookmarks, filter],
-  );
+  const reports = reportsQuery.data?.reports ?? [];
+  const paperBookmarks = useMemo(() => bookmarks.filter((bookmark) => bookmark.targetKind === "paper"), [bookmarks]);
+  const filteredPaperBookmarks = filter === "paper" || filter === "all" ? paperBookmarks : [];
+  const showReports = filter === "report" || filter === "all";
+  const isLoading = bookmarksQuery.isLoading || (showReports && reportsQuery.isLoading);
+  const isRefetching = bookmarksQuery.isRefetching || reportsQuery.isRefetching;
 
   const filters: { label: string; value: Filter }[] = [
-    { label: `All (${bookmarks.length})`, value: "all" },
-    { label: "Papers", value: "paper" },
-    { label: "Reports", value: "report" },
+    { label: `All (${paperBookmarks.length + reports.length})`, value: "all" },
+    { label: `Papers (${paperBookmarks.length})`, value: "paper" },
+    { label: `Reports (${reports.length})`, value: "report" },
   ];
 
   return (
@@ -84,7 +184,16 @@ export default function BookmarksScreen() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
-        refreshControl={<RefreshControl refreshing={bookmarksQuery.isRefetching} onRefresh={() => bookmarksQuery.refetch()} tintColor="#06B6D4" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => {
+              bookmarksQuery.refetch();
+              reportsQuery.refetch();
+            }}
+            tintColor="#06B6D4"
+          />
+        }
       >
         <View className="mb-5 flex-row items-center justify-between">
           <View>
@@ -108,15 +217,24 @@ export default function BookmarksScreen() {
           ))}
         </ScrollView>
 
-        {bookmarksQuery.isLoading ? (
+        {isLoading ? (
           <View className="py-24"><ActivityIndicator color="#06B6D4" /></View>
-        ) : filtered.length > 0 ? (
-          filtered.map((bookmark) => <BookmarkRow key={bookmark.id} bookmark={bookmark} />)
+        ) : filteredPaperBookmarks.length > 0 || (showReports && reports.length > 0) ? (
+          <>
+            {filteredPaperBookmarks.map((bookmark) => <BookmarkRow key={bookmark.id} bookmark={bookmark} />)}
+            {showReports ? reports.map((report) => <ReportRow key={report.id} report={report} />) : null}
+          </>
         ) : (
           <View className="mt-8 rounded-2xl border border-dashed border-border dark:border-[#26334A] bg-card dark:bg-[#111C2E] p-10 items-center">
             <Ionicons name="bookmark-outline" size={38} color={isDark ? "#64748B" : "#94A3B8"} />
-            <Text className="mt-4 text-center text-base font-bold text-foreground dark:text-[#F8FAFC]">No saved items yet</Text>
-            <Text className="mt-2 text-center text-sm text-muted-foreground dark:text-[#94A3B8]">Save papers from Home or Paper Detail to build your research library.</Text>
+            <Text className="mt-4 text-center text-base font-bold text-foreground dark:text-[#F8FAFC]">
+              {filter === "report" ? "No reports yet" : "No saved items yet"}
+            </Text>
+            <Text className="mt-2 text-center text-sm text-muted-foreground dark:text-[#94A3B8]">
+              {filter === "report"
+                ? "Create AI reports from the Reports screen to keep them here."
+                : "Save papers from Home or Paper Detail to build your research library."}
+            </Text>
           </View>
         )}
       </ScrollView>

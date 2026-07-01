@@ -6,7 +6,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
-import { usePaper } from "@/features/papers";
+import { usePaper, usePaperReferences } from "@/features/papers";
 
 export default function PaperDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,6 +16,7 @@ export default function PaperDetailScreen() {
   const [activeTab, setActiveTab] = useState<"abstract" | "topics" | "references">("abstract");
 
   const paperQuery = usePaper(id);
+  const referencesQuery = usePaperReferences(id, activeTab === "references");
   const statusQuery = useBookmarkStatus("paper", id);
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
@@ -153,8 +154,47 @@ export default function PaperDetailScreen() {
                 <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm italic">No topics available.</Text>
               )}
             </View>
+          ) : referencesQuery.isLoading ? (
+            <View className="py-6 items-center">
+              <ActivityIndicator color="#06B6D4" />
+            </View>
+          ) : referencesQuery.data?.references.length ? (
+            <View className="gap-3">
+              <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs">
+                Showing {referencesQuery.data.inCorpus} of {referencesQuery.data.totalReferenced} cited works found in this library.
+              </Text>
+              {referencesQuery.data.references.map((reference) => {
+                const authors = reference.authors?.map((author) => author.displayName).filter(Boolean).slice(0, 3).join(", ");
+                return (
+                  <TouchableOpacity
+                    key={reference.id}
+                    className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl p-3"
+                    onPress={() => router.push(`/paper/${reference.id}` as any)}
+                  >
+                    <Text className="text-foreground dark:text-[#F8FAFC] font-bold text-sm leading-5" numberOfLines={2}>
+                      {reference.title}
+                    </Text>
+                    {!!authors && (
+                      <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs mt-1" numberOfLines={1}>
+                        {authors}
+                      </Text>
+                    )}
+                    <View className="flex-row items-center mt-2">
+                      <Text className="text-[#06B6D4] text-xs font-bold">{reference.publicationYear || "Unknown year"}</Text>
+                      {!!reference.doi && (
+                        <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs ml-2" numberOfLines={1}>
+                          DOI: {reference.doi}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           ) : (
-            <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm">References will appear when citation graph data is added.</Text>
+            <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm">
+              No in-library references found yet. {referencesQuery.data?.totalReferenced ? `${referencesQuery.data.totalReferenced} cited works exist, but none are in this library.` : "Citation graph data is not available for this paper."}
+            </Text>
           )}
         </ScrollView>
       )}
