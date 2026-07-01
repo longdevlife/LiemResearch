@@ -55,6 +55,7 @@ export function NotificationsPage() {
 
     // Navigate based on role and notification type
     if (type === "level_up") {
+      navigate("/rankings");
       return;
     }
 
