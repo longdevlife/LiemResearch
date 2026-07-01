@@ -25,6 +25,7 @@ import { useCurrentUser } from "@/features/auth";
 import { useHomeOverview } from "@/features/home/hooks/use-home-overview";
 import { PaperCard } from "@/components/paper-card";
 import { Bar, BarChart, ResponsiveContainer, Tooltip } from "recharts";
+import type { HomeOverview } from "@trend/shared-types";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -72,7 +73,10 @@ export function HomePage() {
 
       {/* 3. Guest System Snapshot (If Guest Mode) */}
       {data.mode === "guest" && data.summary && (
-        <GuestSystemSnapshot summary={data.summary} />
+        <GuestSystemSnapshot
+          summary={data.summary}
+          topTrend={data.trends?.topics?.[0]?.topic}
+        />
       )}
 
       {/* 3. Primary Workspace snapshot cards for Logged-in Users */}
@@ -130,7 +134,7 @@ function GuestHero({
             className="w-full pl-11 pr-4 h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-card font-semibold"
           />
         </div>
-        <Button type="submit" size="lg" className="h-12 px-6 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-105 shadow-sm">
+        <Button type="submit" size="lg" className="h-12 px-6 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold active:scale-[0.98] transition-transform duration-100 shadow-sm">
           Search
         </Button>
       </form>
@@ -198,7 +202,7 @@ function UserHero({
       {/* Simple search form for user cockpit */}
       <form onSubmit={submitSearch} className="max-w-2xl relative flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 h-4.5 w-4.5 text-slate-400" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -215,64 +219,70 @@ function UserHero({
 }
 
 // 3. Guest System Snapshot Card Component
-function GuestSystemSnapshot({ summary }: { summary: any }) {
+function GuestSystemSnapshot({
+  summary,
+  topTrend
+}: {
+  summary: HomeOverview["summary"];
+  topTrend: string | undefined;
+}) {
   const navigate = useNavigate();
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <KpiCard
         label="PAPERS INDEXED"
-        value={summary.totalPapers?.toLocaleString() || "0"}
+        value={summary.totalPapers}
         icon={BookOpen}
         onClick={() => navigate("/search")}
       />
       <KpiCard
         label="SEARCHES SERVED"
-        value={summary.totalSearches?.toLocaleString() || "0"}
+        value={summary.totalSearches}
         icon={Search}
         isNeutral
       />
       <KpiCard
         label="ACTIVE USERS"
-        value={summary.uniqueUsers?.toLocaleString() || "0"}
+        value={summary.uniqueUsers}
         icon={Users}
         isNeutral
       />
       <KpiCard
         label="EMERGING TREND"
-        value={summary.topTrend || "N/A"}
+        value={topTrend || "N/A"}
         icon={TrendingUp}
-        onClick={() => summary.topTrend ? navigate(`/trends/${encodeURIComponent(summary.topTrend)}`) : navigate("/trends")}
+        onClick={() => topTrend ? navigate(`/trends/${encodeURIComponent(topTrend)}`) : navigate("/trends")}
       />
     </div>
   );
 }
 
 // 4. Workspace Snapshot Cards
-function WorkspaceSnapshot({ workspace }: { workspace: any }) {
+function WorkspaceSnapshot({ workspace }: { workspace: NonNullable<HomeOverview["workspace"]> }) {
   const navigate = useNavigate();
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <KpiCard
         label="SAVED PAPERS"
-        value={workspace.bookmarkCount.toLocaleString()}
+        value={workspace.bookmarkCount}
         icon={Bookmark}
         onClick={() => navigate("/bookmarks")}
       />
       <KpiCard
         label="AI REPORTS"
-        value={workspace.reportCount.toLocaleString()}
+        value={workspace.reportCount}
         icon={FileText}
         onClick={() => navigate("/reports")}
       />
       <KpiCard
         label="PROJECTS"
-        value={workspace.projectCount.toLocaleString()}
+        value={workspace.projectCount}
         icon={FolderKanban}
         onClick={() => navigate("/projects")}
       />
       <KpiCard
         label="RECENT SEARCHES"
-        value={workspace.recentSearches.length.toString()}
+        value={workspace.recentSearches.length}
         icon={History}
         isNeutral
       />
@@ -281,7 +291,7 @@ function WorkspaceSnapshot({ workspace }: { workspace: any }) {
 }
 
 // 5. Admin Mini Health Card
-function AdminHealthSummary({ admin }: { admin: any }) {
+function AdminHealthSummary({ admin }: { admin: NonNullable<HomeOverview["admin"]> }) {
   const reportsCount = (admin.reports?.queued || 0) + (admin.reports?.generating || 0);
   return (
     <div className="rounded-xl border border-dashed border-red-500/20 bg-red-500/5 dark:bg-red-950/5 p-4 space-y-3">
@@ -462,13 +472,13 @@ function CapabilityCards() {
 }
 
 // 8. Workspace Detail Grid (Logged-in details)
-function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
+function WorkspaceDetailGrid({ workspace }: { workspace: NonNullable<HomeOverview["workspace"]> }) {
   const navigate = useNavigate();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Col 1: Recent Searches */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <History className="w-3.5 h-3.5 text-slate-400" />
           Recent Searches
         </h3>
@@ -501,7 +511,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
 
       {/* Col 2: Latest Reports */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <FileText className="w-3.5 h-3.5 text-slate-400" />
           Latest Reports
         </h3>
@@ -543,7 +553,7 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
 
       {/* Col 3: Latest Projects */}
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
           <FolderKanban className="w-3.5 h-3.5 text-slate-400" />
           Latest Projects
         </h3>
@@ -583,7 +593,13 @@ function WorkspaceDetailGrid({ workspace }: { workspace: any }) {
 }
 
 // 8. Live Research Signals (Publication Velocity + Trending Topics + Rising Keywords)
-function LiveSignalsSection({ trends, recentPapers }: { trends: any; recentPapers: any[] }) {
+function LiveSignalsSection({
+  trends,
+  recentPapers
+}: {
+  trends: HomeOverview["trends"];
+  recentPapers: HomeOverview["recentPapers"];
+}) {
   const navigate = useNavigate();
 
   // Xử lý dữ liệu Velocity và gán YTD nếu cần
@@ -739,7 +755,7 @@ function KpiCard({
   onClick
 }: {
   label: string;
-  value: string;
+  value: string | number;
   icon: any;
   isNeutral?: boolean;
   onClick?: () => void;
@@ -754,11 +770,11 @@ function KpiCard({
       }`}
     >
       <div className="space-y-1">
-        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">
+        <span className="text-[9px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">
           {label}
         </span>
         <span className="text-2xl font-extrabold text-slate-900 dark:text-white block font-mono">
-          {value}
+          {typeof value === "number" ? value.toLocaleString() : value}
         </span>
       </div>
       <div className={`p-2 rounded-xl border shrink-0 ${isNeutral ? "bg-slate-50/50 dark:bg-slate-900/20 border-slate-200/20" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/20"}`}>

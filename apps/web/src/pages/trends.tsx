@@ -734,7 +734,7 @@ export function TrendsPage() {
           {/* Comparison View */}
           {selectedTopics.length < 2 ? (
             <div className="py-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 bg-slate-50/20 dark:bg-slate-900/5 select-none">
-              <p className="text-sm font-semibold text-slate-550 dark:text-slate-400">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                 Please select at least 2 topics (and up to 5) to generate comparison analysis.
               </p>
               <p className="text-xs text-slate-455 dark:text-slate-500 mt-1">

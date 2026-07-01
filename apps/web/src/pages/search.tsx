@@ -204,7 +204,7 @@ export function SearchPage() {
         <form onSubmit={handleSearchSubmit} className="w-full bg-white/90 dark:bg-[#121212]/90 backdrop-blur-md rounded-[24px] border border-slate-200/80 dark:border-slate-800/80 p-2 shadow-md hover:shadow-lg focus-within:shadow-xl focus-within:shadow-blue-500/5 focus-within:border-blue-500/40 transition-all duration-300 ease-out flex flex-col gap-1.5">
           {/* Search Input */}
           <div className="flex-1 min-w-0 flex items-center px-3 py-1 gap-2.5">
-            <Search className="w-5 h-5 text-slate-400 dark:text-slate-550 shrink-0" />
+            <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0" />
             <input
               type="text"
               placeholder={

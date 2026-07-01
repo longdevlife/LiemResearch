@@ -54,7 +54,7 @@ export function MainLayout() {
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2 font-black text-lg tracking-tight shrink-0 select-none">
               <div className="w-8 h-8 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-sm">
-                <Award className="h-4.5 w-4.5 text-white stroke-[2.5]" />
+                <Award className="h-5 w-5 text-white stroke-[2.5]" />
               </div>
               <span className="bg-gradient-to-r from-blue-750 to-indigo-850 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
                 PubTrend
