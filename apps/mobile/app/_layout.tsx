@@ -96,6 +96,30 @@ function AppStack() {
           }}
         />
         <Stack.Screen
+          name="projects"
+          options={{
+            title: "Projects",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="project/[id]"
+          options={{
+            title: "Project detail",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="keyword/[keyword]"
+          options={{
+            title: "Keyword papers",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="report/[id]"
           options={{
             title: "Report detail",

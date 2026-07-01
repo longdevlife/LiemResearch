@@ -123,6 +123,7 @@ export default function ProfileScreen() {
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
             <SettingsRow icon="upload-cloud" label="Submit Paper" onPress={() => router.push("/submit-paper" as any)} />
             <SettingsRow icon="file-text" label="My Papers" onPress={() => router.push("/my-papers" as any)} />
+            <SettingsRow icon="folder" label="Projects" onPress={() => router.push("/projects" as any)} />
             <SettingsRow icon="award" label="Rankings" onPress={() => router.push("/rankings" as any)} />
             <SettingsRow icon="bell" label="Notifications" onPress={() => router.push("/notifications" as any)} />
           </View>

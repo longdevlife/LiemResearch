@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,21 +16,21 @@ import { LEVEL_IMAGES, getLevel } from "@/features/rankings";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
-const ITEM_WIDTH = 118;
-const ITEM_GAP = 8;
-const ITEM_STRIDE = ITEM_WIDTH + ITEM_GAP;
+const HOME_MENU_ACTIONS = [
+  { label: "Submit Paper", icon: "upload-cloud", route: "/submit-paper", color: "#06B6D4" },
+  { label: "AI Reports", icon: "file-text", route: "/reports", color: "#A78BFA" },
+  { label: "Ranks", icon: "award", route: "/rankings", color: "#A5B4FC" },
+  { label: "Trends", icon: "trending-up", route: "/trends", color: "#22C55E" },
+  { label: "Gaps", icon: "zap", route: "/gaps", color: "#F59E0B" },
+  { label: "Projects", icon: "folder", route: "/projects", color: "#06B6D4" },
+  { label: "My Papers", icon: "archive", route: "/my-papers", color: "#38BDF8" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+  route: string;
+  color: string;
+}>;
 
-const QUICK_ACTIONS = [
-  { key: "submit",  label: "Submit",     route: "/submit-paper", icon: "upload-cloud", iconLib: "feather",   bg: "#0B2B45", bgLight: "#ECFEFF", color: "#06B6D4" },
-  { key: "reports", label: "AI Reports", route: "/reports",      icon: "sparkles",    iconLib: "ionicons",  bg: "#1E1B4B", bgLight: "#F5F3FF", color: "#A78BFA" },
-  { key: "ranks",   label: "Ranks",      route: "/rankings",     icon: "award",       iconLib: "feather",   bg: "#1E1B4B", bgLight: "#EEF2FF", color: "#A5B4FC" },
-  { key: "trends",  label: "Trends",     route: "/trends",       icon: "trending-up", iconLib: "feather",   bg: "#052E16", bgLight: "#ECFDF5", color: "#22C55E" },
-  { key: "gaps",    label: "Gaps",       route: "/gaps",         icon: "zap",         iconLib: "feather",   bg: "#2D1B00", bgLight: "#FFFBEB", color: "#F59E0B" },
-] as const;
-
-// Triple for infinite loop: [copy1, copy2, copy3] — start scrolled to copy2
-const LOOPED_ACTIONS = [...QUICK_ACTIONS, ...QUICK_ACTIONS, ...QUICK_ACTIONS];
-const COUNT = QUICK_ACTIONS.length;
 function Sparkline({ points }: { points: { year: number; count: number }[] }) {
   const max = Math.max(...points.map((p) => p.count), 1);
   return (
@@ -93,7 +93,7 @@ function PaperCard({ paper }: { paper: Paper | ScoredPaper }) {
 
       <View className="mt-3 flex-row items-center gap-2">
         <Text className="flex-1 text-muted-foreground dark:text-[#94A3B8] text-[11px]" numberOfLines={1}>
-          {paper.journalName ? `${paper.journalName} · ` : ""}{paper.publicationYear} · {paper.citationCount ?? 0} cites
+          {paper.journalName ? `${paper.journalName} - ` : ""}{paper.publicationYear} - {paper.citationCount ?? 0} cites
         </Text>
         <View className="shrink-0 rounded-md bg-cyan-50 dark:bg-[#083344] px-2 py-1 flex-row items-center">
           <Ionicons name="sparkles" color="#06B6D4" size={12} />
@@ -114,12 +114,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === "dark";
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const quickActionsRef = useRef<FlatList>(null);
-
-  // Scroll to middle copy on mount (silent)
-  useEffect(() => {
-    quickActionsRef.current?.scrollToOffset({ offset: COUNT * ITEM_STRIDE, animated: false });
-  }, []);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 400);
@@ -146,8 +141,14 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-[#0F1B2D]" edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 112 }}>
-        {/* Header */}
         <View className="flex-row justify-between items-center mb-5">
+          <TouchableOpacity
+            className="w-11 h-11 rounded-full bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] items-center justify-center mr-3"
+            onPress={() => setMenuOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="menu" size={20} color={isDark ? "#F8FAFC" : "#0F172A"} />
+          </TouchableOpacity>
           <View className="flex-1 pr-4">
             <Text className="text-2xl font-bold text-foreground dark:text-[#F8FAFC]">Hi, {user?.fullName?.split(" ")[0] || "Researcher"}</Text>
             <Text className="text-sm text-muted-foreground dark:text-[#94A3B8] mt-1">What are you researching today?</Text>
@@ -157,7 +158,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* System Stats AI Widget */}
         <View className="mb-5 bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl p-4 flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
             <View className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center">
@@ -168,7 +168,7 @@ export default function HomeScreen() {
               <Text className="text-[11px] text-muted-foreground dark:text-[#94A3B8] mt-0.5">
                 {statsQuery.isLoading
                   ? "Loading metrics..."
-                  : `${statsQuery.data?.totalPapers || 0} papers · ${statsQuery.data?.totalSearches || 0} searches · ${statsQuery.data?.uniqueUsers || 0} users`}
+                  : `${statsQuery.data?.totalPapers || 0} papers - ${statsQuery.data?.totalSearches || 0} searches - ${statsQuery.data?.uniqueUsers || 0} users`}
               </Text>
             </View>
           </View>
@@ -181,7 +181,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Search bar */}
         <View className="flex-row items-center bg-card dark:bg-[#1A2332] rounded-full px-4 h-12 mb-7 border border-border dark:border-[#26334A]">
           <Feather name="search" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
           <TextInput
@@ -195,7 +194,6 @@ export default function HomeScreen() {
           <Feather name="sliders" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
         </View>
 
-        {/* Trending topics */}
         <View className="mb-7">
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC]">Trending topics</Text>
@@ -222,7 +220,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Recent papers / Search results */}
         <View className="mb-7">
           <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC] mb-3">{hasQuery ? "Search results" : "Recent papers"}</Text>
           {papersLoading ? (
@@ -235,54 +232,37 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-
-        {/* Quick actions — infinite loop carousel */}
-        <View>
-          <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC] mb-3">Quick actions</Text>
-          <FlatList
-            ref={quickActionsRef}
-            data={LOOPED_ACTIONS}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, i) => String(i)}
-            contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}
-            ItemSeparatorComponent={() => <View style={{ width: ITEM_GAP }} />}
-            getItemLayout={(_, index) => ({ length: ITEM_WIDTH, offset: ITEM_STRIDE * index, index })}
-            onMomentumScrollEnd={(e) => {
-              const offset = e.nativeEvent.contentOffset.x;
-              const index = Math.round(offset / ITEM_STRIDE);
-              if (index < COUNT) {
-                // jumped into copy1 → silently jump to same position in copy2
-                quickActionsRef.current?.scrollToOffset({ offset: (index + COUNT) * ITEM_STRIDE, animated: false });
-              } else if (index >= COUNT * 2) {
-                // jumped into copy3 → silently jump to same position in copy2
-                quickActionsRef.current?.scrollToOffset({ offset: (index - COUNT) * ITEM_STRIDE, animated: false });
-              }
-            }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={{ width: ITEM_WIDTH }}
-                className="bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
-                onPress={() => router.push(item.route as any)}
-              >
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mb-2"
-                  style={{ backgroundColor: isDark ? item.bg : item.bgLight }}
-                >
-                  {item.iconLib === "ionicons" ? (
-                    <Ionicons name={item.icon as any} color={item.color} size={18} />
-                  ) : (
-                    <Feather name={item.icon as any} color={item.color} size={18} />
-                  )}
-                </View>
-                <Text className="text-foreground dark:text-[#F8FAFC] text-xs font-semibold text-center" numberOfLines={1}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
       </ScrollView>
+
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity className="flex-1 bg-black/40 justify-end" activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View className="rounded-t-3xl bg-background dark:bg-[#0F1B2D] border-t border-border dark:border-[#26334A] p-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-lg font-bold text-foreground dark:text-[#F8FAFC]">Menu</Text>
+              <TouchableOpacity className="p-2" onPress={() => setMenuOpen(false)}>
+                <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
+              </TouchableOpacity>
+            </View>
+            {HOME_MENU_ACTIONS.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                className="flex-row items-center py-4 border-b border-border dark:border-[#26334A]"
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push(item.route as any);
+                }}
+                activeOpacity={0.8}
+              >
+                <View className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-[#083344] items-center justify-center mr-3">
+                  <Feather name={item.icon} size={17} color={item.color} />
+                </View>
+                <Text className="flex-1 font-semibold text-foreground dark:text-[#F8FAFC]">{item.label}</Text>
+                <Feather name="chevron-right" size={18} color={isDark ? "#64748B" : "#94A3B8"} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
