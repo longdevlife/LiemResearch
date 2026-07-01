@@ -221,7 +221,7 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
             <View className="flex-row gap-2 pr-4">
               <TouchableOpacity
-                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                className="w-[118px] bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
                 onPress={() => router.push("/submit-paper" as any)}
               >
                 <View className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-[#0B2B45] items-center justify-center mb-2">
@@ -231,7 +231,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                className="w-[118px] bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
                 onPress={() => router.push("/reports" as any)}
               >
                 <View className="w-10 h-10 rounded-full bg-violet-50 dark:bg-[#1E1B4B] items-center justify-center mb-2">
@@ -241,7 +241,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                className="w-[118px] bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
                 onPress={() => router.push("/rankings" as any)}
               >
                 <View className="w-10 h-10 rounded-full bg-[#1E1B4B] items-center justify-center mb-2">
@@ -251,7 +251,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                className="w-[118px] bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
                 onPress={() => router.push("/trends" as any)}
               >
                 <View className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-[#052E16] items-center justify-center mb-2">
@@ -261,7 +261,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="w-24 bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
+                className="w-[118px] bg-card dark:bg-[#1A2332] rounded-2xl p-3 items-center border border-border dark:border-[#26334A]"
                 onPress={() => router.push("/gaps" as any)}
               >
                 <View className="w-10 h-10 rounded-full bg-amber-50 dark:bg-[#2D1B00] items-center justify-center mb-2">
