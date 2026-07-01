@@ -20,6 +20,7 @@ import { cn } from "@/utils/cn";
 import { avatars, getLevel } from "@/utils/level";
 
 const navItems = [
+  { to: "/search", label: "Search" },
   { to: "/trends", label: "Trends" },
   { to: "/reports", label: "Reports" },
   { to: "/research-gaps", label: "Research Gaps" },

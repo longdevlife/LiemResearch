@@ -20,16 +20,34 @@ export function SearchPage() {
   const page = parseInt(searchParams.get("page") || "1", 10);
   const currentUser = useAuthStore((s) => s.user);
 
-  // Filter States
-  const [searchMode, setSearchMode] = useState<"semantic" | "keyword">("semantic");
-  const [yearFrom, setYearFrom] = useState<string>("2020");
-  const [yearTo, setYearTo] = useState<string>("2026");
-  const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(false);
-  const [journalTypes, setJournalTypes] = useState<string[]>([]); // S2: Default to empty array (All types)
-  const [primaryProvider, setPrimaryProvider] = useState<string>("all");
-  const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<FeSortKey>("relevance");
-  const [rerank, setRerank] = useState<boolean>(false); // S3: Rerank state
+  // Filter States initialized from URL search params for seamless home redirection
+  const [searchMode, setSearchMode] = useState<"semantic" | "keyword">(
+    () => (searchParams.get("mode") as "semantic" | "keyword") || "semantic"
+  );
+  const [yearFrom, setYearFrom] = useState<string>(
+    () => searchParams.get("yearFrom") || "2020"
+  );
+  const [yearTo, setYearTo] = useState<string>(
+    () => searchParams.get("yearTo") || "2026"
+  );
+  const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(
+    () => searchParams.get("openAccess") === "true"
+  );
+  const [journalTypes, setJournalTypes] = useState<string[]>(
+    () => searchParams.getAll("type")
+  );
+  const [primaryProvider, setPrimaryProvider] = useState<string>(
+    () => searchParams.get("provider") || "all"
+  );
+  const [aiScoreThreshold, setAiScoreThreshold] = useState<number>(
+    () => parseFloat(searchParams.get("minScore") || "0")
+  );
+  const [sortBy, setSortBy] = useState<FeSortKey>(
+    () => (searchParams.get("sort") as FeSortKey) || "relevance"
+  );
+  const [rerank, setRerank] = useState<boolean>(
+    () => searchParams.get("rerank") === "true"
+  );
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
