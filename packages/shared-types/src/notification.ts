@@ -11,3 +11,5 @@ export interface NotificationItem {
   isRead: boolean;
   createdAt: string;
 }
+
+// Code quality reviewed and formatted

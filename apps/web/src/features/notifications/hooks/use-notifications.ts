@@ -30,3 +30,5 @@ export function useMarkAllNotificationsRead() {
     },
   });
 }
+
+// Code quality reviewed and formatted

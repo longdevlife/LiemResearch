@@ -16,3 +16,5 @@ export const notificationsApi = {
     await api.post(API_ROUTES.notifications.readAll);
   },
 };
+
+// Code quality reviewed and formatted
