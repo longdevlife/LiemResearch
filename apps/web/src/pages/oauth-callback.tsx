@@ -47,7 +47,7 @@ export function OAuthCallbackPage() {
           navigate("/home", { replace: true });
         })
         .catch(() => {
-          toast.error("Failed to fetch user profile");
+          toast.error("Failed to retrieve user information");
           navigate("/login", { replace: true });
         });
     } else {

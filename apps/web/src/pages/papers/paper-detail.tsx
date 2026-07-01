@@ -31,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
+import type { PaperAiAnalysis } from "@trend/shared-types";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -105,7 +106,7 @@ export function PaperDetailPage() {
       const { downloadUrl, cost } = res.data.data;
       window.open(downloadUrl, "_blank");
       if (cost > 0) {
-        toast.success(`PDF downloaded. ${cost} credits deducted.`);
+        toast.success(`Downloaded PDF. Deducted ${cost} points.`);
         // Instant credit update on UI!
         try {
           const resMe = await api.get("/auth/me");
@@ -117,36 +118,36 @@ export function PaperDetailPage() {
           queryClient.invalidateQueries({ queryKey: ["current-user"] });
         }
       } else {
-        toast.success("PDF download started.");
+        toast.success("Downloading PDF...");
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(error.response?.data?.error?.message || "Failed to download PDF");
+      toast.error(error.response?.data?.error?.message || "Failed to load PDF");
     } finally {
       setDownloading(false);
     }
   };
 
   const handleAcceptPdf = async () => {
-    if (!confirm("Are you sure you want to accept this PDF?")) return;
+    if (!confirm("Are you sure you want to approve this PDF?")) return;
     setAccepting(true);
     try {
       await api.patch(`/papers/${id}/accept-pdf`);
-      toast.success("PDF accepted successfully!");
+      toast.success("PDF approved successfully!");
       refetch();
     } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || "Failed to accept PDF");
+      toast.error(error.response?.data?.error?.message || "Failed to approve PDF");
     } finally {
       setAccepting(false);
     }
   };
 
   const handleRejectPdf = async () => {
-    if (!confirm("Are you sure you want to reject this PDF? This will remove the PDF and deduct penalty points from uploader.")) return;
+    if (!confirm("Are you sure you want to reject this PDF? The file will be deleted and the uploader will lose points.")) return;
     setRejecting(true);
     try {
       await api.patch(`/papers/${id}/reject-pdf`);
-      toast.success("PDF rejected and removed.");
+      toast.success("PDF rejected and deleted.");
       refetch();
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || "Failed to reject PDF");
@@ -156,7 +157,7 @@ export function PaperDetailPage() {
   };
 
   const handleDeletePdf = async () => {
-    if (!confirm("Are you sure you want to delete this PDF? This is an admin operation.")) return;
+    if (!confirm("Are you sure you want to delete this PDF? This is an admin action.")) return;
     setDeletingPdf(true);
     try {
       await api.delete(`/papers/${id}/pdf`);
@@ -213,17 +214,17 @@ export function PaperDetailPage() {
     if (!paper) return;
     const authorString = paper.authors.length > 0
       ? paper.authors.map(a => a.displayName).join(", ")
-      : "Unknown Authors";
+      : "Unknown Author";
     const titleString = paper.title.endsWith(".") ? paper.title : `${paper.title}.`;
     const journalString = paper.journalName ? `${paper.journalName}` : "";
     const citation = `${authorString} (${paper.publicationYear}). ${titleString}${journalString ? ` ${journalString}.` : ""}`;
 
     navigator.clipboard.writeText(citation).then(
       () => {
-        toast.success("APA Citation copied to clipboard!");
+        toast.success("APA citation copied to clipboard!");
       },
       () => {
-        toast.error("Failed to copy citation.");
+        toast.error("Could not copy citation.");
       }
     );
   };
@@ -499,7 +500,7 @@ export function PaperDetailPage() {
                   AI Analysis Summary
                 </h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-semibold">Điểm giá trị (Academic Value):</span>
+                  <span className="text-xs text-slate-500 font-semibold">Academic Value:</span>
                   <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 px-2 py-0.5 rounded">
                     Overall {paper.aiScore.finalScore.toFixed(2)}
                   </span>
@@ -511,7 +512,7 @@ export function PaperDetailPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-end">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Ảnh hưởng theo tuổi</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Citation Impact</span>
                       <span className="text-[9px] text-slate-400 dark:text-slate-500">Citations per year (normalized)</span>
                     </div>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
@@ -527,7 +528,7 @@ export function PaperDetailPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-end">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Độ mới</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Recency</span>
                       <span className="text-[9px] text-slate-400 dark:text-slate-500">Recency score</span>
                     </div>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
@@ -543,7 +544,7 @@ export function PaperDetailPage() {
                 <div className="space-y-2 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800/80 pt-4 md:pt-0 md:pl-8">
                   <div className="flex justify-between items-end">
                     <div>
-                      <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider block">Độ đầy đủ dữ liệu</span>
+                      <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider block">Data Completeness</span>
                       <span className="text-[9px] text-slate-400 dark:text-slate-500">Data completeness</span>
                     </div>
                     <span className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 leading-none">
@@ -568,12 +569,15 @@ export function PaperDetailPage() {
             </div>
           </div>
 
+          {/* AI Structured Analysis */}
+          <AiStructuredAnalysisSection aiAnalysis={paper.aiAnalysis} />
+
           {/* AI quality evaluation — advisory only, does not affect tier/credits */}
           <AiEvaluation
             targetKind="paper"
             targetId={id || ""}
             enabled={!!paper.abstractText?.trim()}
-            disabledHint="Bài chưa có abstract để AI chấm"
+            disabledHint="This paper does not have an abstract for AI evaluation"
             className="mb-8"
           />
 
@@ -698,7 +702,7 @@ function PaperRatingWidget({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      toast.error("Please select a star rating");
+      toast.error("Please select a rating");
       return;
     }
     setSubmitting(true);
@@ -750,12 +754,12 @@ function PaperRatingWidget({
       <div>
         <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
           <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          Rate this Research Paper
+          Rate this publication
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           {alreadyRated
-            ? "You've already rated this paper (points awarded). You can update your rating below."
-            : "Help the community gauge document quality! Earn +5 contribution points for your feedback."}
+            ? "You have already rated this paper (points awarded). You can update your rating below."
+            : "Help the community rate document quality! Earn +5 contribution points."}
         </p>
       </div>
 
@@ -789,7 +793,7 @@ function PaperRatingWidget({
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Write an optional comment about the methodology, data quality, or general feedback..."
+            placeholder="Write comments about methodology, data quality, or general feedback (optional)..."
             className="w-full text-sm bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 h-24 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-white resize-none"
             maxLength={1000}
           />
@@ -802,7 +806,7 @@ function PaperRatingWidget({
             className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-11 px-6 gap-2 rounded-xl"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {alreadyRated ? "Update rating" : "Submit Feedback (+5 pts)"}
+            {alreadyRated ? "Update Rating" : "Submit Rating (+5 pts)"}
           </Button>
         </div>
       </form>
@@ -865,7 +869,7 @@ function PaperReviewsList({
     <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
       <div className="flex flex-col gap-2">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
-          User Ratings & Reviews
+          Ratings & Reviews
         </h3>
 
         {totalRatings > 0 ? (
@@ -874,11 +878,11 @@ function PaperReviewsList({
               ★ {averageRating.toFixed(1)}
             </span>
             <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span>{totalRatings} user {totalRatings === 1 ? "rating" : "ratings"}</span>
+            <span>{totalRatings} {totalRatings === 1 ? "rating" : "ratings"}</span>
           </div>
         ) : (
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            No ratings yet. Be the first to review this research paper!
+            No ratings yet. Be the first to review this publication!
           </p>
         )}
       </div>
@@ -939,3 +943,111 @@ function PaperReviewsList({
     </div>
   );
 }
+
+function AiStructuredAnalysisSection({ aiAnalysis }: { aiAnalysis?: PaperAiAnalysis }) {
+  if (!aiAnalysis) {
+    return (
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/10 px-5 py-4">
+        <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
+          Structured analysis is not available for this paper yet.
+        </p>
+      </div>
+    );
+  }
+
+  // Text fields (string | null)
+  const textFields = [
+    { label: "Summary", val: aiAnalysis.summary },
+    { label: "Methods", val: aiAnalysis.methods },
+    { label: "Dataset", val: aiAnalysis.dataset },
+  ].filter((f) => f.val && f.val.trim().length > 0);
+
+  // List fields (string[])
+  const listFields = [
+    { label: "Findings", val: aiAnalysis.findings },
+    { label: "Limitations", val: aiAnalysis.limitations },
+    { label: "Contributions", val: aiAnalysis.contributions },
+    { label: "Future Work", val: aiAnalysis.futureWork },
+  ].filter((f) => f.val && f.val.length > 0);
+
+  const hasKeyTerms = aiAnalysis.keyTerms && aiAnalysis.keyTerms.length > 0;
+
+  if (textFields.length === 0 && listFields.length === 0 && !hasKeyTerms) {
+    return (
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/10 px-5 py-4">
+        <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
+          Structured analysis is not available for this paper yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8">
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5" />
+          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            AI Structured Analysis
+          </h2>
+        </div>
+
+        {/* Content sections */}
+        <div className="space-y-5">
+          {/* Render Text Fields */}
+          {textFields.map((field) => (
+            <div key={field.label}>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                {field.label}
+              </h4>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed max-w-[65ch]">
+                {field.val}
+              </p>
+            </div>
+          ))}
+
+          {/* Render List Fields */}
+          {listFields.map((field) => (
+            <div key={field.label}>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                {field.label}
+              </h4>
+              <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-300 max-w-[65ch]">
+                {field.val.map((item, index) => (
+                  <li key={index} className="leading-relaxed">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {/* Key Terms Badges */}
+          {hasKeyTerms && (
+            <div>
+              <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Key Terms
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {aiAnalysis.keyTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                  >
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

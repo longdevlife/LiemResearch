@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { buildGapsPrompt } from "../gaps.prompt.js";
 import { computeGapEvidence } from "../gap-evidence.js";
 
 const T = { scarceAbs: 5, scarcePct: 0.02, parentRisingMin: 0 };
@@ -40,5 +41,33 @@ describe("computeGapEvidence", () => {
     );
     expect(e.scarcityScore).toBe(1);
     expect(e.confirmed).toBe(true);
+  });
+});
+
+describe("buildGapsPrompt", () => {
+  it("includes structured paper knowledge when available", () => {
+    const prompt = buildGapsPrompt("LLM feedback gaps", [
+      {
+        id: "p1",
+        title: "Structured gap evidence",
+        publicationYear: 2025,
+        abstractText: "raw abstract",
+        aiAnalysis: {
+          summary: "Studies LLM feedback adoption.",
+          methods: "Survey",
+          dataset: null,
+          findings: ["Teachers used feedback inconsistently"],
+          limitations: ["Only one institution"],
+          contributions: ["Adoption framework"],
+          futureWork: ["Evaluate longitudinal outcomes"],
+          keyTerms: ["LLM feedback"],
+        },
+      } as any,
+    ]);
+
+    expect(prompt).toContain("Structured analysis:");
+    expect(prompt).toContain("Limitations: Only one institution");
+    expect(prompt).toContain("Findings: Teachers used feedback inconsistently");
+    expect(prompt).toContain("Future work: Evaluate longitudinal outcomes");
   });
 });

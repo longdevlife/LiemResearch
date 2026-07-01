@@ -29,7 +29,7 @@ export const bookmarkService = {
       userId,
       targetKind: input.targetKind,
       targetId: input.targetId,
-      note: input.note,
+      note: input.note?.trim() || null,
     });
 
     const [created] = await this.populateDetails([doc]);
@@ -61,7 +61,9 @@ export const bookmarkService = {
       throw AppError.forbidden("You do not own this bookmark");
     }
 
-    bookmark.note = input.note || undefined;
+    if (input.note !== undefined) {
+      bookmark.note = input.note?.trim() || null;
+    }
     await bookmark.save();
 
     const [updated] = await this.populateDetails([bookmark]);
@@ -102,7 +104,7 @@ export const bookmarkService = {
         userId,
         targetKind: doc.targetKind,
         targetId,
-        note: doc.note ?? undefined,
+        note: doc.note === null ? null : (doc.note ?? undefined),
         createdAt: doc.createdAt.toISOString(),
         updatedAt: doc.updatedAt.toISOString(),
       };

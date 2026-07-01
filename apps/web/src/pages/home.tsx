@@ -146,7 +146,7 @@ export function HomePage() {
                     date={paper.publicationDate ? new Date(paper.publicationDate).toLocaleDateString() : paper.publicationYear.toString()}
                     title={paper.title}
                     abstract={paper.abstractText || "No abstract available"}
-                    authors={paper.authors?.map((a) => a.displayName).join(", ") || "Unknown Authors"}
+                    authors={paper.authors?.map((a) => a.displayName).join(", ") || "Unknown Author"}
                     score={paper.dataQualityScore?.toFixed(2) || "N/A"}
                   />
                 ))

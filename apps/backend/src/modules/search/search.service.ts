@@ -1,15 +1,14 @@
-import type { PipelineStage } from "mongoose";
 import type { ScoredPaper } from "@trend/shared-types";
 import { env } from "../../config/env.js";
-import { cache, LLM_CACHE_TTL_SECONDS } from "../../infrastructure/cache.js";
+import { cache, hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
-import { PaperModel } from "../papers/models/paper.model.js";
-import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { generateJSON } from "../llm/gemini.client.js";
+import { cachedGenerate } from "../llm/llm.run.js";
+import { retrieveScored } from "../retrieval/retriever.js";
 import type { SearchSortKey } from "../papers/dto/paper-filters.schema.js";
 import {
-  buildRerankCacheKey,
   buildRerankPrompt,
+  RERANK_PROMPT_VERSION,
   RERANK_SYSTEM_PROMPT,
   toScoreMap,
   type RerankCandidate,
@@ -40,8 +39,6 @@ export interface SemanticSearchResult {
   reranked: boolean;
 }
 
-/** Atlas Vector Search index — created in Phase 0 against research_papers. */
-const VECTOR_INDEX = "paper_vector_index";
 /** Negative-cache TTL for a deterministically-failing rerank (truncation/parse). */
 const RERANK_FAIL_TTL_SECONDS = 600;
 /**
@@ -69,19 +66,16 @@ export const searchService = {
    */
   async semantic(params: SemanticSearchParams): Promise<SemanticSearchResult> {
     const { q, page, pageSize, sort = "relevance", rerank } = params;
-    const queryVector = await getEmbeddingProvider().embed(q);
-    const vectorFilter = buildVectorFilter(params);
-    const postMatch = buildPostMatch(params);
 
     if (rerank) {
-      return rerankedSearch({ q, page, pageSize, params, queryVector, vectorFilter, postMatch });
+      return rerankedSearch({ q, page, pageSize, params });
     }
 
     // Plain semantic path: pull a FIXED-size filtered pool, sort, paginate in
     // memory. Pool size does NOT grow with `page` — so `total` is stable and a
     // deep `page` can't push $vectorSearch limit past numCandidates (Atlas 500).
     const poolSize = Math.min(MAX_POOL, env.SEARCH_FILTER_POOL);
-    const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
+    const pool = await fetchScoredPool(q, params, poolSize);
     const sorted = sortPapers(pool, sort);
     const { items, total } = slicePage(sorted, page, pageSize);
     return { papers: items, total, reranked: false };
@@ -98,18 +92,15 @@ async function rerankedSearch(args: {
   page: number;
   pageSize: number;
   params: SemanticSearchParams;
-  queryVector: number[];
-  vectorFilter: Record<string, unknown>;
-  postMatch: Record<string, unknown> | null;
 }): Promise<SemanticSearchResult> {
-  const { q, page, pageSize, params, queryVector, vectorFilter, postMatch } = args;
+  const { q, page, pageSize, params } = args;
 
   // FIXED candidate pool (covers a full first page of any pageSize, but does NOT
   // grow with `page`) — so a deep `page` can't inflate the Gemini prompt / token
   // cost, and `total` stays deterministic. Rerank refines the head; paginating
   // past the head is meaningless and is clamped in paginatePool.
   const poolSize = Math.min(MAX_POOL, Math.max(env.RERANK_CANDIDATES, pageSize));
-  const pool = await fetchScoredPool(queryVector, vectorFilter, postMatch, poolSize);
+  const pool = await fetchScoredPool(q, params, poolSize);
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
   const candidates: RerankCandidate[] = pool.map((p) => ({
@@ -119,39 +110,52 @@ async function rerankedSearch(args: {
   }));
 
   const model = env.GEMINI_MODEL_FAST;
-  // candidateIds already encode the active filters (the pool is post-filtered),
-  // so the cache key differentiates filtered vs unfiltered runs automatically.
-  const cacheKey = buildRerankCacheKey({
-    query: q,
-    yearFrom: params.yearFrom,
-    yearTo: params.yearTo,
-    model,
-    candidateIds: candidates.map((c) => c.id),
-  });
-
-  // Score map is {paperId → 0..1}. Cache hit reuses it; a degraded LLM call
-  // falls back to the vector ordering rather than failing the search.
-  let scoreMap = await cache.get<Record<string, number>>(cacheKey);
-  if (!scoreMap) {
-    try {
-      const output = await generateJSON<RerankLlmOutput>(buildRerankPrompt(q, candidates), {
-        model,
-        system: RERANK_SYSTEM_PROMPT,
-        temperature: 0,
-        // ~RERANK_CANDIDATES score objects + flash's reasoning headroom; 1024
-        // truncates at 20 candidates (caught live by the MAX_TOKENS guard).
-        maxOutputTokens: 4096,
-      });
-      scoreMap = toScoreMap(output, candidates);
-      await cache.set(cacheKey, scoreMap, LLM_CACHE_TTL_SECONDS);
-    } catch (err) {
-      // Re-rank is an enhancement, not a hard dependency — degrade gracefully.
-      // Negative-cache the failure briefly so an identical (deterministically
-      // failing) query doesn't re-burn Gemini quota on every request.
-      logger.warn({ err }, "rerank LLM call failed; falling back to vector order");
-      await cache.set(cacheKey, {}, RERANK_FAIL_TTL_SECONDS);
-      return paginatePool(pool, page, pageSize, false);
-    }
+  const failKey = `rerank-fail:${hashKey({
+    query: q.trim().toLowerCase(),
+    filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+    candidateIds: candidates.map((c) => c.id).sort(),
+  })}`;
+  if (await cache.get<Record<string, never>>(failKey)) {
+    return paginatePool(pool, page, pageSize, false);
+  }
+  const prompt = buildRerankPrompt(q, candidates);
+  let scoreMap: Record<string, number>;
+  try {
+    scoreMap = await cachedGenerate<Record<string, number>>({
+      task: "rerank",
+      promptVersion: RERANK_PROMPT_VERSION,
+      keyParts: {
+        query: q.trim().toLowerCase(),
+        filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+        candidateIds: candidates.map((c) => c.id).sort(),
+      },
+      model,
+      inputHash: prompt,
+      validate: (candidate) => {
+        if (Object.keys(candidate).length === 0) {
+          throw new Error("Rerank returned no valid scores");
+        }
+        return candidate;
+      },
+      generate: async (routedModel) => {
+        const output = await generateJSON<RerankLlmOutput>(prompt, {
+          model: routedModel,
+          system: RERANK_SYSTEM_PROMPT,
+          temperature: 0,
+          // ~RERANK_CANDIDATES score objects + flash's reasoning headroom; 1024
+          // truncates at 20 candidates (caught live by the MAX_TOKENS guard).
+          maxOutputTokens: 4096,
+        });
+        return toScoreMap(output, candidates);
+      },
+    });
+  } catch (err) {
+    // Re-rank is an enhancement, not a hard dependency — degrade gracefully.
+    // Negative-cache the failure briefly so an identical (deterministically
+    // failing) query doesn't re-burn Gemini quota on every request.
+    logger.warn({ err }, "rerank LLM call failed; falling back to vector order");
+    await cache.set(failKey, {}, RERANK_FAIL_TTL_SECONDS);
+    return paginatePool(pool, page, pageSize, false);
   }
 
   // Attach LLM scores. A paper the LLM OMITTED is NOT "scored 0" (= irrelevant)
@@ -189,38 +193,6 @@ function slicePage<T>(items: T[], page: number, pageSize: number): { items: T[];
   return { items: items.slice(start, start + pageSize), total };
 }
 
-function buildVectorFilter(f: { yearFrom?: number; yearTo?: number }): Record<string, unknown> {
-  // $vectorSearch filter may only reference fields indexed as `filter` on
-  // paper_vector_index (dataStatus, publicationYear, topics).
-  const filter: Record<string, unknown> = { dataStatus: "active" };
-  if (f.yearFrom !== undefined || f.yearTo !== undefined) {
-    filter.publicationYear = {
-      ...(f.yearFrom !== undefined ? { $gte: f.yearFrom } : {}),
-      ...(f.yearTo !== undefined ? { $lte: f.yearTo } : {}),
-    };
-  }
-  return filter;
-}
-
-/**
- * Post-vector $match for filters the vector index can't apply. Runs AFTER
- * $addFields adds `score`, so `minScore` can filter on cosine similarity.
- * Returns null when there is nothing to filter (skips the stage).
- */
-function buildPostMatch(f: {
-  paperKinds?: string[];
-  openAccess?: boolean;
-  provider?: string;
-  minScore?: number;
-}): Record<string, unknown> | null {
-  const m: Record<string, unknown> = {};
-  if (f.paperKinds && f.paperKinds.length) m.paperKind = { $in: f.paperKinds };
-  if (f.openAccess) m.openAccessUrl = { $type: "string", $ne: "" };
-  if (f.provider) m.primaryProvider = f.provider;
-  if (f.minScore && f.minScore > 0) m.score = { $gte: f.minScore };
-  return Object.keys(m).length ? m : null;
-}
-
 function sortPapers(papers: ScoredPaper[], sort: SearchSortKey): ScoredPaper[] {
   const arr = [...papers];
   if (sort === "year") {
@@ -234,23 +206,22 @@ function sortPapers(papers: ScoredPaper[], sort: SearchSortKey): ScoredPaper[] {
 }
 
 async function fetchScoredPool(
-  queryVector: number[],
-  vectorFilter: Record<string, unknown>,
-  postMatch: Record<string, unknown> | null,
+  queryText: string,
+  params: SemanticSearchParams,
   poolSize: number,
 ): Promise<ScoredPaper[]> {
-  const numCandidates = Math.min(1000, Math.max(100, poolSize * 10));
-  const pipeline = [
-    { $vectorSearch: { index: VECTOR_INDEX, path: "embedding", queryVector, numCandidates, limit: poolSize, filter: vectorFilter } },
-    { $addFields: { score: { $meta: "vectorSearchScore" } } },
-    ...(postMatch ? [{ $match: postMatch }] : []),
-    { $project: { embedding: 0, __v: 0 } },
-  ];
-  const docs = await PaperModel.aggregate(pipeline as unknown as PipelineStage[]);
-  return docs.map(toScoredPaper);
-}
-
-function toScoredPaper(d: Record<string, unknown>): ScoredPaper {
-  const { _id, score, ...rest } = d;
-  return { id: String(_id), score: Number(score), ...rest } as unknown as ScoredPaper;
+  return retrieveScored({
+    queryText,
+    topK: poolSize,
+    poolSize,
+    filters: {
+      yearFrom: params.yearFrom,
+      yearTo: params.yearTo,
+      paperKinds: params.paperKinds,
+      openAccess: params.openAccess,
+      provider: params.provider,
+      minScore: params.minScore,
+    },
+    projection: "search",
+  });
 }

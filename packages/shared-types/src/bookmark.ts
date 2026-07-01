@@ -9,7 +9,7 @@ export interface Bookmark {
   userId: string;
   targetKind: BookmarkTargetKind;
   targetId: string;
-  note?: string;
+  note?: string | null;
   paperDetail?: Paper;
   reportDetail?: AnalyticalReport;
   createdAt: ISODateString;
@@ -19,5 +19,5 @@ export interface Bookmark {
 export interface CreateBookmarkRequest {
   targetKind: BookmarkTargetKind;
   targetId: string;
-  note?: string;
+  note?: string | null;
 }

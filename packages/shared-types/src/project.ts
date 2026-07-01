@@ -39,3 +39,28 @@ export interface AddProjectMemberRequest {
 export interface AddProjectPaperRequest {
   paperId: string;
 }
+
+export type ProjectChatRole = "user" | "assistant";
+
+export interface ProjectChatMessage {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: ProjectChatRole;
+  content: string;
+  citedPaperIds: string[];
+  createdAt: string;
+}
+
+export interface SendProjectChatMessageRequest {
+  message: string;
+}
+
+export interface SendProjectChatMessageResponse {
+  answer: string;
+  citedPaperIds: string[];
+}
+
+export interface ProjectChatHistoryResponse {
+  messages: ProjectChatMessage[];
+}

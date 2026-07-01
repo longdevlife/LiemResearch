@@ -4,18 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { api } from '@/services/api-client';
 import { useAuthStore } from '@/stores/auth-store';
 
-import lv1 from '@/imports/lv1.png';
-import lv2 from '@/imports/lv2.png';
-import lv3 from '@/imports/lv3.png';
-import lv4 from '@/imports/lv4.png';
-import lv5 from '@/imports/lv5.png';
-import lv6 from '@/imports/lv6.png';
-import lv7 from '@/imports/lv7.png';
-import lv8 from '@/imports/lv8.png';
-import lv9 from '@/imports/lv9.png';
-import lv10 from '@/imports/lv10.png';
-
-const avatars: Record<number, string> = { 1: lv1, 2: lv2, 3: lv3, 4: lv4, 5: lv5, 6: lv6, 7: lv7, 8: lv8, 9: lv9, 10: lv10 };
+import { avatars, getLevel, getLevelProgress, getNextLevelPoints } from '@/utils/level';
 
 interface RankingUser {
   rank: number;
@@ -50,32 +39,6 @@ interface MyRanking {
   rank: number;
   user: { id: string; name: string; university: string; role: string; avatarUrl: string | null };
   stats: MyRankingStats;
-}
-
-function getLevel(points: number): number {
-  if (points >= 3000) return 10;
-  if (points >= 2000) return 9;
-  if (points >= 1500) return 8;
-  if (points >= 1000) return 7;
-  if (points >= 600) return 6;
-  if (points >= 300) return 5;
-  if (points >= 150) return 4;
-  if (points >= 75) return 3;
-  if (points >= 25) return 2;
-  return 1;
-}
-
-const LEVEL_THRESHOLDS = [0, 25, 75, 150, 300, 600, 1000, 1500, 2000, 3000, Infinity];
-
-function getLevelProgress(points: number, level: number): number {
-  const currentThreshold = LEVEL_THRESHOLDS[level - 1] ?? 0;
-  const nextThreshold = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[10]!;
-  if (nextThreshold === Infinity) return 100;
-  return Math.min(100, Math.round(((points - currentThreshold) / (nextThreshold - currentThreshold)) * 100));
-}
-
-function getNextLevelPoints(level: number): number {
-  return LEVEL_THRESHOLDS[level] === Infinity ? LEVEL_THRESHOLDS[9]! : (LEVEL_THRESHOLDS[level] ?? 9999);
 }
 
 // ────────────────────────── Particle Background ──────────────────────────────
@@ -315,13 +278,13 @@ export function RankingsPage() {
   if (error && rankings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
-        <p className="font-bold text-slate-700 dark:text-slate-200">Không tải được bảng xếp hạng.</p>
-        <p className="text-sm text-slate-400">Vui lòng thử lại sau.</p>
+        <p className="font-bold text-slate-700 dark:text-slate-200">Failed to load rankings.</p>
+        <p className="text-sm text-slate-400">Please try again later.</p>
         <button
           onClick={() => void fetchRankings(1)}
           className="mt-2 px-5 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm"
         >
-          Thử lại
+          Retry
         </button>
       </div>
     );
@@ -704,11 +667,11 @@ export function RankingsPage() {
               </h3>
               <div className="space-y-2">
                 {([
-                  { lv: 10, label: 'Legendary', pts: '3000+', img: lv10, color: 'text-yellow-500' },
-                  { lv: 7, label: 'Expert', pts: '1000+', img: lv7, color: 'text-purple-500' },
-                  { lv: 5, label: 'Advanced', pts: '300+', img: lv5, color: 'text-blue-500' },
-                  { lv: 3, label: 'Scholar', pts: '75+', img: lv3, color: 'text-emerald-500' },
-                  { lv: 1, label: 'Novice', pts: '0+', img: lv1, color: 'text-slate-400' },
+                  { lv: 10, label: 'Legendary', pts: '3000+', img: avatars[10], color: 'text-yellow-500' },
+                  { lv: 7, label: 'Expert', pts: '1000+', img: avatars[7], color: 'text-purple-500' },
+                  { lv: 5, label: 'Advanced', pts: '300+', img: avatars[5], color: 'text-blue-500' },
+                  { lv: 3, label: 'Scholar', pts: '75+', img: avatars[3], color: 'text-emerald-500' },
+                  { lv: 1, label: 'Novice', pts: '0+', img: avatars[1], color: 'text-slate-400' },
                 ] as const).map((tier) => {
                   const isCurrentTier = activeTier === tier.label;
                   return (

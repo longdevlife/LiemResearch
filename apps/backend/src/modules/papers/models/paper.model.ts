@@ -39,6 +39,23 @@ const paperTopicSchema = new Schema(
   { _id: false },
 );
 
+const paperAiAnalysisSchema = new Schema(
+  {
+    summary: { type: String, default: null },
+    methods: { type: String, default: null },
+    dataset: { type: String, default: null },
+    findings: { type: [String], default: [] },
+    limitations: { type: [String], default: [] },
+    contributions: { type: [String], default: [] },
+    futureWork: { type: [String], default: [] },
+    keyTerms: { type: [String], default: [] },
+    extractedBy: { type: String, enum: ["llm"], default: "llm" },
+    analysisPromptVersion: { type: String, required: true },
+    extractedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const paperSchema = new Schema(
   {
     externalIds: {
@@ -137,6 +154,10 @@ const paperSchema = new Schema(
       ),
       default: undefined,
     },
+    aiAnalysis: {
+      type: paperAiAnalysisSchema,
+      default: undefined,
+    },
   },
   { timestamps: true },
 );
@@ -145,6 +166,7 @@ const paperSchema = new Schema(
 paperSchema.index({ "topics.topicName": 1, publicationYear: -1 });
 paperSchema.index({ publicationYear: -1, citationCount: -1 });
 paperSchema.index({ "aiScore.finalScore": -1 });
+paperSchema.index({ isAiAnalyzable: 1, dataStatus: 1, "aiAnalysis.analysisPromptVersion": 1 });
 
 /** Lean (plain-object) type — use for `.lean()` reads. */
 export type PaperDoc = InferSchemaType<typeof paperSchema> & { _id: mongoose.Types.ObjectId };

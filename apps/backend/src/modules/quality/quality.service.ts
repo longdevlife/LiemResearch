@@ -9,7 +9,7 @@ import type {
 } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
-import { generateJSON } from "../llm/gemini.client.js";
+import { cachedGenerateJSON } from "../llm/llm.run.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ReportModel } from "../reports/models/report.model.js";
 import { ResearchGapModel } from "../gaps/models/research-gap.model.js";
@@ -137,11 +137,33 @@ export const qualityService = {
 
     let raw: JudgeRaw;
     try {
-      raw = await generateJSON<JudgeRaw>(prompt, {
+      raw = await cachedGenerateJSON<JudgeRaw>({
+        task: "judge",
+        promptVersion: QUALITY_PROMPT_VERSION,
+        keyParts: { targetKind, targetId },
         model: env.GEMINI_MODEL_FAST,
-        system: QUALITY_JUDGE_SYSTEM_PROMPT,
-        temperature: 0.2,
-        maxOutputTokens: 512,
+        bypassCache: force,
+        prompt,
+        validate: (candidate) => {
+          if (!candidate || typeof candidate !== "object") {
+            throw new Error("Quality judge returned non-object output");
+          }
+          for (const field of ["relevance", "groundedness", "completeness"] as const) {
+            const value = Number(candidate[field]);
+            if (!Number.isFinite(value) || value < 1 || value > 5) {
+              throw new Error(`Quality judge returned invalid ${field}`);
+            }
+          }
+          if (typeof candidate.rationale !== "string" || candidate.rationale.trim().length === 0) {
+            throw new Error("Quality judge returned empty rationale");
+          }
+          return candidate;
+        },
+        options: {
+          system: QUALITY_JUDGE_SYSTEM_PROMPT,
+          temperature: 0.2,
+          maxOutputTokens: 512,
+        },
       });
     } catch {
       throw AppError.serviceUnavailable("AI evaluation is temporarily unavailable. Please try again.");

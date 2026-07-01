@@ -101,14 +101,14 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                 Comparing scientific articles
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-500 dark:text-slate-400">
-                Chọn tối đa 3 bài viết khác để tiến hành phân tích, đối chiếu định lượng và so sánh định tính bằng AI.
+                Select up to 3 papers to analyze quantitative metrics and perform qualitative comparison using AI.
               </DialogDescription>
             </DialogHeader>
 
             {/* Bài viết hiện tại (Cố định ở vị trí đầu tiên) */}
             <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
-                Bài viết hiện tại (Gốc)
+                Current Paper (Original)
               </span>
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm line-clamp-1">
                 {currentPaper.title}
@@ -122,18 +122,18 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Danh sách so sánh ({selectedPapers.length}/3 bài viết thêm)
+                  Comparison List ({selectedPapers.length}/3 additional papers)
                 </span>
                 {selectedPapers.length >= 3 && (
                   <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                    Đã đạt giới hạn số lượng bài viết so sánh
+                    Reached comparison limit
                   </span>
                 )}
               </div>
 
               {selectedPapers.length === 0 ? (
                 <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center text-xs text-slate-400 bg-slate-50/20">
-                  Chưa chọn bài viết nào. Hãy tìm kiếm ở dưới để thêm bài viết vào danh sách.
+                  No papers selected. Search below to add papers to the comparison list.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -152,7 +152,7 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                       </div>
                       <button
                         type="button"
-                        aria-label="Bỏ bài khỏi danh sách so sánh"
+                        aria-label="Remove paper from comparison"
                         onClick={() => handleRemovePaper(paper.id)}
                         className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                       >
@@ -164,15 +164,15 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               )}
             </div>
 
-            {/* Thanh Tìm Kiếm */}
+            {/* Search Section */}
             <div className="space-y-3">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                Tìm kiếm bài viết
+                Search Papers
               </span>
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
-                  placeholder="Nhập tên bài báo, tác giả hoặc từ khóa để tìm kiếm..."
+                  placeholder="Enter paper title, author, or keyword to search..."
                   className="pl-9 h-10 bg-slate-50/50 focus-visible:ring-indigo-500 dark:bg-slate-900/30 dark:border-slate-800"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -184,11 +184,11 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                 {isSearching ? (
                   <div className="flex items-center justify-center py-8 text-xs text-slate-500 gap-1.5">
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                    Đang tìm kiếm bài viết...
+                    Searching for papers...
                   </div>
                 ) : debouncedQuery && searchResults?.papers.length === 0 ? (
                   <div className="text-center py-8 text-xs text-slate-400 border border-slate-100 dark:border-slate-900 rounded-xl">
-                    Không tìm thấy bài viết nào phù hợp.
+                    No matching papers found.
                   </div>
                 ) : (
                   (searchResults?.papers || [])
@@ -229,7 +229,7 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                             onClick={() => handleAddPaper(paper)}
                             disabled={isAdded || selectedPapers.length >= 3}
                           >
-                            <Plus className="w-3 h-3" /> Thêm
+                            <Plus className="w-3 h-3" /> Add
                           </Button>
                         </div>
                       );
@@ -238,21 +238,21 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               </div>
             </div>
 
-            {/* Nút hành động */}
+            {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
               <Button
                 variant="ghost"
                 className="h-10 text-slate-600 dark:text-slate-400 font-semibold"
                 onClick={() => onOpenChange(false)}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 rounded-lg shadow-sm"
                 disabled={selectedPapers.length === 0}
                 onClick={() => setViewMode("result")}
               >
-                Tiến hành so sánh ({selectedPapers.length + 1} bài viết)
+                Compare ({selectedPapers.length + 1} papers)
               </Button>
             </div>
           </div>
@@ -271,17 +271,17 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                 </Button>
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
-                    Kết quả phân tích & đối chiếu
+                    Analysis & Comparison Results
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    So sánh đối sánh {comparePaperIds.length} bài viết khoa học
+                    Cross-comparing {comparePaperIds.length} scientific papers
                   </p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Đóng"
+                aria-label="Close"
                 className="h-9 w-9 rounded-lg text-slate-400 hover:text-slate-600"
                 onClick={() => onOpenChange(false)}
               >
@@ -294,10 +294,10 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
                 <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    Đang xử lý phân tích và so sánh bằng AI...
+                    Analyzing and comparing papers with AI...
                   </p>
                   <p className="text-xs text-slate-400 max-w-sm">
-                    Phần đánh giá định tính định hướng mô hình LLM có thể mất từ 1-3 giây để tải nếu dữ liệu chưa được lưu trong bộ nhớ đệm cache.
+                    The qualitative analysis by the LLM model may take 1-3 seconds to load if not cached.
                   </p>
                 </div>
               </div>
@@ -305,36 +305,39 @@ export function CompareDialog({ open, onOpenChange, currentPaper }: CompareDialo
               <div className="py-12 px-6 border border-red-100 dark:border-red-950/30 rounded-2xl bg-red-50/30 dark:bg-red-950/10 flex flex-col items-center justify-center text-center gap-3 max-w-xl mx-auto">
                 <AlertCircle className="w-10 h-10 text-red-500" />
                 <h4 className="font-bold text-red-800 dark:text-red-400 text-sm">
-                  Gặp lỗi trong quá trình so sánh
+                  An error occurred during comparison
                 </h4>
                 <p className="text-xs text-red-600 dark:text-red-500/80 leading-relaxed">
-                  {compareError instanceof Error ? compareError.message : "Backend API trả về lỗi không xác định."}
+                  {compareError instanceof Error ? compareError.message : "The backend API returned an unknown error."}
                 </p>
                 <Button
                   variant="outline"
                   className="mt-2 text-xs font-semibold text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100/30"
                   onClick={() => setViewMode("picker")}
                 >
-                  Quay lại chỉnh sửa danh sách
+                  Go back and edit selection
                 </Button>
               </div>
             ) : comparisonData ? (
               /* Render bảng so sánh khi có data */
               <div className="space-y-4">
                 <CompareTable comparison={comparisonData} />
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                  AI comparison uses structured paper knowledge when available, with abstract fallback.
+                </p>
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
                   <Button
                     variant="outline"
                     className="h-10 text-slate-700 dark:text-slate-300 font-semibold border-slate-200 dark:border-slate-800 rounded-lg"
                     onClick={() => setViewMode("picker")}
                   >
-                    Chỉnh sửa danh sách so sánh
+                    Edit comparison list
                   </Button>
                   <Button
                     className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 rounded-lg shadow-sm"
                     onClick={() => onOpenChange(false)}
                   >
-                    Đóng bảng so sánh
+                    Close comparison
                   </Button>
                 </div>
               </div>

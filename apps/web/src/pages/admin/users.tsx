@@ -62,7 +62,7 @@ export function AdminUsersPage() {
     updateRole.mutate(
       { id, role },
       {
-        onSuccess: () => toast.success("Role updated."),
+        onSuccess: () => toast.success("Role updated successfully."),
         onError: (e) => toast.error(apiErr(e)),
       },
     );
@@ -80,7 +80,7 @@ export function AdminUsersPage() {
 
   return (
     <main className="space-y-6">
-      <PageHeader title="User management" description="Assign roles and lock accounts." />
+      <PageHeader title="User Management" description="Manage user roles and accounts." />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input

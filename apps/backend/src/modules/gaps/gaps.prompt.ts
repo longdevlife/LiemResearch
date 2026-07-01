@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
+import { buildPaperEvidenceText, type PaperStructuredAnalysis } from "../papers/paper-structured-context.js";
 
 /**
  * Prompt construction for standalone research-gap analysis — PURE functions, no
  * I/O. GAP_PROMPT_VERSION is part of the Redis cache key (CLAUDE.md §6): bump it
  * on ANY wording change so a stale cached result is never served for a new prompt.
  */
-export const GAP_PROMPT_VERSION = "gaps-v2";
+export const GAP_PROMPT_VERSION = "gaps-v3";
 
 /** Max characters of abstract quoted per paper (keeps the prompt within budget). */
 const MAX_ABSTRACT_CHARS = 800;
@@ -16,6 +17,7 @@ export interface GapEvidencePaper {
   title: string;
   abstractText?: string;
   publicationYear?: number;
+  aiAnalysis?: PaperStructuredAnalysis | null;
 }
 
 /** What we ask Gemini to return (parsed by generateJSON). */
@@ -53,11 +55,14 @@ export function buildGapsPrompt(topic: string, papers: GapEvidencePaper[]): stri
   const evidence = papers
     .map((p, i) => {
       const n = i + 1;
-      const abstract = (p.abstractText ?? "(no abstract available)").slice(0, MAX_ABSTRACT_CHARS);
+      const evidenceText = buildPaperEvidenceText({
+        abstractText: p.abstractText ?? "(no abstract available)",
+        aiAnalysis: p.aiAnalysis,
+      }).slice(0, MAX_ABSTRACT_CHARS);
       return [
         `[${n}] "${p.title}" (${p.publicationYear ?? "n.d."})`,
         `    Abstract: <<<ABSTRACT_${n}`,
-        `    ${abstract}`,
+        `    ${evidenceText}`,
         `    ABSTRACT_${n}>>>`,
       ].join("\n");
     })
