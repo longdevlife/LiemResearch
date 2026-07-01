@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
@@ -155,6 +155,76 @@ export function SearchPage() {
     );
     resetPage();
   };
+
+  if (!hasQuery) {
+    return (
+      <div className="w-full min-h-[65vh] flex flex-col items-center justify-center px-4 select-none">
+        <div className="max-w-2xl w-full text-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight mb-4">
+            All the world's research,<br />
+            <span className="bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">connected and open.</span>
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-lg mx-auto leading-relaxed">
+            Analyze millions of scholarly works, mapping concepts, citations, and emerging research directions in an open database.
+          </p>
+
+          <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-lg shadow-slate-100 dark:shadow-none mb-6 flex gap-2 items-center">
+            <div className="flex-1 pl-4 relative flex items-center">
+              <Search className="w-5 h-5 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder={searchMode === "semantic" ? "Search 480M scholarly works by concept..." : "Search papers by keywords in title or abstract..."}
+                value={localSearchQuery}
+                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                className="w-full h-12 pl-3 pr-4 bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none placeholder-slate-400"
+              />
+            </div>
+            <Button type="submit" className="h-12 bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 rounded-xl shadow-md transition-all active:scale-95 duration-150 shrink-0">
+              Search
+            </Button>
+          </form>
+
+          {/* Search Options & Suggestions */}
+          <div className="flex flex-col items-center gap-4 text-xs">
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-lg">
+              <button
+                className={`px-4 py-1.5 rounded-md font-bold transition-all ${searchMode === "semantic" ? "bg-blue-700 text-white shadow" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
+                onClick={() => setSearchMode("semantic")}
+              >
+                Semantic Search
+              </button>
+              <button
+                className={`px-4 py-1.5 rounded-md font-bold transition-all ${searchMode === "keyword" ? "bg-blue-700 text-white shadow" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
+                onClick={() => setSearchMode("keyword")}
+              >
+                Keyword Search
+              </button>
+            </div>
+
+            <div className="text-slate-450 dark:text-slate-500 font-medium">
+              Try searching:{" "}
+              {["medicine", "deep learning", "carbon nanotube", "economics"].map((term) => (
+                <button
+                  key={term}
+                  onClick={() => {
+                    setLocalSearchQuery(term);
+                    setSearchParams(prev => {
+                      prev.set("q", term);
+                      prev.set("page", "1");
+                      return prev;
+                    });
+                  }}
+                  className="mx-1 text-blue-600 dark:text-blue-450 hover:underline cursor-pointer font-bold capitalize"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 items-start">
