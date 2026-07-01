@@ -636,7 +636,7 @@ export function RankingsPage() {
               </h3>
               <div className="space-y-3">
                 {[
-                  { icon: <Upload className="w-4 h-4" />, color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', label: 'Successful PDF Upload', value: '+30–150 pts' },
+                  { icon: <Upload className="w-4 h-4" />, color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', label: 'Successful PDF Upload', value: '+60–180 pts' },
                   { icon: <Star className="w-4 h-4" />, color: 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400', label: 'Rate a Paper / Report', value: '+5 pts each' },
                   { icon: <Award className="w-4 h-4" />, color: 'bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400', label: 'Download a Paper', value: 'Credits used' },
                 ].map((item) => (
