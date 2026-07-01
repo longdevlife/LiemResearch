@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
@@ -31,7 +31,27 @@ export function SearchPage() {
   const [sortBy, setSortBy] = useState<FeSortKey>("relevance");
   const [rerank, setRerank] = useState<boolean>(false); // S3: Rerank state
 
+  // OpenAlex-style Search Box Options States
+  const [entityType, setEntityType] = useState<"works" | "authors" | "institutions" | "sources">("works");
+  const [searchField, setSearchField] = useState<"title" | "title_abstract" | "fulltext">("title_abstract");
+  const [enableStemming, setEnableStemming] = useState<boolean>(true);
+
+  // Dropdown visibility states
+  const [isOpenEntityDropdown, setIsOpenEntityDropdown] = useState<boolean>(false);
+  const [isOpenSettingsDropdown, setIsOpenSettingsDropdown] = useState<boolean>(false);
+  const [isOpenModeDropdown, setIsOpenModeDropdown] = useState<boolean>(false);
+
   const [localSearchQuery, setLocalSearchQuery] = useState(q);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setIsOpenEntityDropdown(false);
+      setIsOpenSettingsDropdown(false);
+      setIsOpenModeDropdown(false);
+    };
+    window.addEventListener("click", handleGlobalClick);
+    return () => window.removeEventListener("click", handleGlobalClick);
+  }, []);
 
   useEffect(() => {
     setLocalSearchQuery(q);
@@ -156,70 +176,276 @@ export function SearchPage() {
     resetPage();
   };
 
+  const renderSearchBox = () => {
+    return (
+      <div className="relative w-full">
+        <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-1.5 shadow-md flex items-center gap-1">
+          {/* Dropdown 1: Entity selection */}
+          <div className="relative shrink-0 select-none">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpenEntityDropdown(prev => !prev);
+                setIsOpenSettingsDropdown(false);
+                setIsOpenModeDropdown(false);
+              }}
+              className="h-10 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors border border-transparent active:scale-98"
+            >
+              <span className="capitalize">{entityType}</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isOpenEntityDropdown ? "rotate-180" : ""}`} />
+            </button>
+
+            {isOpenEntityDropdown && (
+              <div className="absolute left-0 mt-2 w-44 bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-1.5 animate-fadeIn duration-150">
+                {(["works", "authors", "institutions", "sources"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setEntityType(type);
+                      setIsOpenEntityDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between transition-colors"
+                  >
+                    <span className="capitalize">{type}</span>
+                    {entityType === type && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-850 shrink-0 mx-1"></div>
+
+          {/* Search Input */}
+          <div className="flex-1 min-w-0 flex items-center px-2">
+            <input
+              type="text"
+              placeholder={
+                entityType !== "works"
+                  ? `Search ${entityType}... (Mockup option)`
+                  : searchMode === "semantic"
+                  ? "Search 480M scholarly works by concept, question or topic..."
+                  : "Search papers by keywords in title or abstract..."
+              }
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              className="w-full h-10 bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none placeholder-slate-400"
+            />
+          </div>
+
+          {/* Right Area Options */}
+          <div className="flex items-center gap-1.5 shrink-0 select-none">
+            {/* Dropdown 2: Settings (Filters/Stemming) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpenSettingsDropdown(prev => !prev);
+                  setIsOpenEntityDropdown(false);
+                  setIsOpenModeDropdown(false);
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors border border-transparent ${isOpenSettingsDropdown ? "bg-slate-100 dark:bg-slate-800 text-blue-700 dark:text-blue-505" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                title="Search fields and settings"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+              </button>
+
+              {isOpenSettingsDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-2 animate-fadeIn duration-150">
+                  <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider px-2.5 py-1 mb-1 block select-none">
+                    Search fields
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchField("title");
+                      setIsOpenSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between"
+                  >
+                    <span>Title</span>
+                    {searchField === "title" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchField("title_abstract");
+                      setIsOpenSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between"
+                  >
+                    <span>Title & abstract</span>
+                    {searchField === "title_abstract" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchField("fulltext");
+                      setIsOpenSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between"
+                  >
+                    <span>Title, abstract, & fulltext</span>
+                    {searchField === "fulltext" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+
+                  <div className="h-px bg-slate-100 dark:bg-slate-805 my-1.5"></div>
+
+                  <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider px-2.5 py-1 mb-1 block select-none">
+                    Stemming
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnableStemming(true);
+                      setIsOpenSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between font-medium"
+                  >
+                    <div>
+                      <div>Enable stemming</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">looking = look, looker, etc.</div>
+                    </div>
+                    {enableStemming && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnableStemming(false);
+                      setIsOpenSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex items-center justify-between font-medium"
+                  >
+                    <span>Disable stemming</span>
+                    {!enableStemming && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Dropdown 3: Mode selection (Boolean/Semantic) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpenModeDropdown(prev => !prev);
+                  setIsOpenEntityDropdown(false);
+                  setIsOpenSettingsDropdown(false);
+                }}
+                className="h-10 px-3 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors border border-transparent active:scale-98"
+              >
+                <span>{searchMode === "semantic" ? "Semantic" : "Boolean"}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isOpenModeDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {isOpenModeDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-1.5 animate-fadeIn duration-150">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchMode("keyword");
+                      setIsOpenModeDropdown(false);
+                      resetPage();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5 transition-colors"
+                  >
+                    <div className="flex items-center justify-between font-bold">
+                      <span>Boolean</span>
+                      {searchMode === "keyword" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    </div>
+                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">Keyword search with operators</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchMode("semantic");
+                      setIsOpenModeDropdown(false);
+                      resetPage();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5 transition-colors"
+                  >
+                    <div className="flex items-center justify-between font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <span>Semantic</span>
+                        <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold px-1 rounded">BETA</span>
+                      </div>
+                      {searchMode === "semantic" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    </div>
+                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">AI-powered meaning search</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Expansion toggle (xpac / AI Rerank toggle) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (searchMode === "semantic") {
+                  setRerank(prev => !prev);
+                  resetPage();
+                }
+              }}
+              className={`h-10 px-3.5 rounded-xl text-xs font-bold transition-all border ${
+                rerank && searchMode === "semantic"
+                  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-400"
+                  : "bg-transparent border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              }`}
+              title={searchMode === "semantic" ? "AI Rerank (xpac)" : "AI Rerank only available in Semantic mode"}
+              disabled={searchMode !== "semantic"}
+            >
+              xpac
+            </button>
+
+            {/* Main Submit Button */}
+            <Button type="submit" className="h-10 bg-blue-700 hover:bg-blue-800 text-white font-bold px-5 rounded-xl shadow transition-all active:scale-95 duration-150 shrink-0">
+              Search
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   if (!hasQuery) {
     return (
-      <div className="w-full min-h-[65vh] flex flex-col items-center justify-center px-4 select-none">
-        <div className="max-w-2xl w-full text-center">
+      <div className="w-full min-h-[65vh] flex flex-col items-center justify-center px-4 select-none animate-fadeIn duration-300">
+        <div className="max-w-3xl w-full text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight mb-4">
             All the world's research,<br />
             <span className="bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">connected and open.</span>
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-lg mx-auto leading-relaxed">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-lg mx-auto leading-relaxed font-medium">
             Analyze millions of scholarly works, mapping concepts, citations, and emerging research directions in an open database.
           </p>
 
-          <form onSubmit={handleSearchSubmit} className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-lg shadow-slate-100 dark:shadow-none mb-6 flex gap-2 items-center">
-            <div className="flex-1 pl-4 relative flex items-center">
-              <Search className="w-5 h-5 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder={searchMode === "semantic" ? "Search 480M scholarly works by concept..." : "Search papers by keywords in title or abstract..."}
-                value={localSearchQuery}
-                onChange={(e) => setLocalSearchQuery(e.target.value)}
-                className="w-full h-12 pl-3 pr-4 bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none placeholder-slate-400"
-              />
-            </div>
-            <Button type="submit" className="h-12 bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 rounded-xl shadow-md transition-all active:scale-95 duration-150 shrink-0">
-              Search
-            </Button>
-          </form>
+          <div className="mb-6 max-w-2xl mx-auto">
+            {renderSearchBox()}
+          </div>
 
-          {/* Search Options & Suggestions */}
-          <div className="flex flex-col items-center gap-4 text-xs">
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-lg">
+          {/* Search Suggestions */}
+          <div className="text-xs text-slate-450 dark:text-slate-500 font-semibold select-none">
+            Try searching:{" "}
+            {["medicine", "deep learning", "carbon nanotube", "economics"].map((term) => (
               <button
-                className={`px-4 py-1.5 rounded-md font-bold transition-all ${searchMode === "semantic" ? "bg-blue-700 text-white shadow" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
-                onClick={() => setSearchMode("semantic")}
+                key={term}
+                onClick={() => {
+                  setLocalSearchQuery(term);
+                  setSearchParams(prev => {
+                    prev.set("q", term);
+                    prev.set("page", "1");
+                    return prev;
+                  });
+                }}
+                className="mx-1.5 text-blue-600 dark:text-blue-450 hover:underline cursor-pointer font-bold capitalize"
               >
-                Semantic Search
+                {term}
               </button>
-              <button
-                className={`px-4 py-1.5 rounded-md font-bold transition-all ${searchMode === "keyword" ? "bg-blue-700 text-white shadow" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
-                onClick={() => setSearchMode("keyword")}
-              >
-                Keyword Search
-              </button>
-            </div>
-
-            <div className="text-slate-450 dark:text-slate-500 font-medium">
-              Try searching:{" "}
-              {["medicine", "deep learning", "carbon nanotube", "economics"].map((term) => (
-                <button
-                  key={term}
-                  onClick={() => {
-                    setLocalSearchQuery(term);
-                    setSearchParams(prev => {
-                      prev.set("q", term);
-                      prev.set("page", "1");
-                      return prev;
-                    });
-                  }}
-                  className="mx-1 text-blue-600 dark:text-blue-450 hover:underline cursor-pointer font-bold capitalize"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -451,19 +677,8 @@ export function SearchPage() {
       <main className="flex-1 w-full min-w-0">
 
         {/* S1: Search Input */}
-        <div className="mb-6 bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <input
-              type="text"
-              placeholder={searchMode === "semantic" ? "Search research papers by concept, question or topic..." : "Search papers by keywords in title or abstract..."}
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              className="flex-1 h-10 rounded-md border border-slate-350 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] px-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <Button type="submit" className="h-10 bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 rounded-md shadow-sm transition-all active:scale-95 duration-150">
-              Search
-            </Button>
-          </form>
+        <div className="mb-6">
+          {renderSearchBox()}
         </div>
 
         {/* Header Row */}
