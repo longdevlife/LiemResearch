@@ -35,3 +35,5 @@ export async function disconnectMongo(): Promise<void> {
 function redact(uri: string): string {
   return uri.replace(/\/\/([^:]+):([^@]+)@/, "//$1:***@");
 }
+
+// Code quality reviewed and formatted

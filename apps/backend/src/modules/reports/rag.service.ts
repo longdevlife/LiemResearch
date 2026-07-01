@@ -20,7 +20,9 @@ import {
   buildReportPrompt,
   PROMPT_VERSION,
   REPORT_SYSTEM_PROMPT,
+  resolveReportLanguage,
   type EvidencePaper,
+  type ReportLanguage,
   type ReportLlmOutput,
 } from "./report.prompt.js";
 
@@ -83,9 +85,26 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   // and standard (Pro) outputs never collide.
   const model =
     !report.deepAnalysis && report.fast ? env.GEMINI_MODEL_FAST : env.GEMINI_MODEL_DEEP;
-  const prompt = buildReportPrompt(report.query, papers);
+  const language = (report.language ?? "auto") as ReportLanguage;
+  const resolvedLanguage = resolveReportLanguage(language, report.query, report.topic ?? undefined);
+  const prompt = buildReportPrompt(report.query, papers, {
+    topic: report.topic ?? undefined,
+    language,
+  });
+  logger.info(
+    {
+      reportId: String(report._id),
+      promptVersion: PROMPT_VERSION,
+      language,
+      resolvedLanguage,
+    },
+    "report prompt prepared",
+  );
   const keyParts = {
     query: report.query,
+    topic: report.topic ?? null,
+    language,
+    resolvedLanguage,
     yearFrom: report.yearFrom ?? null,
     yearTo: report.yearTo ?? null,
     deepAnalysis: Boolean(report.deepAnalysis),

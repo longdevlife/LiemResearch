@@ -15,6 +15,7 @@ import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
 import { ProjectChatPanel } from "@/features/projects/components/project-chat-panel";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import type { ReportLanguage } from "@trend/shared-types";
 function useSearchUsers(email: string) {
   return useQuery({
     queryKey: ["searchUsers", email],
@@ -169,6 +170,7 @@ function ReportsTab({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState<ReportLanguage>("auto");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
 
@@ -178,10 +180,11 @@ function ReportsTab({ projectId }: { projectId: string }) {
       return;
     }
     try {
-      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, deepAnalysis, fast, projectId });
+      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, language, deepAnalysis, fast, projectId });
       setOpen(false);
       setTopic("");
       setQuery("");
+      setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
       toast.success("Report generation started");
@@ -225,6 +228,22 @@ function ReportsTab({ projectId }: { projectId: string }) {
                   rows={4}
                   className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="project-report-language">Report language</Label>
+                <select
+                  id="project-report-language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="auto">Auto-detect from topic and question</option>
+                  <option value="en">English</option>
+                  <option value="vi">Vietnamese</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Choose English to force all report sections and research gaps to English.
+                </p>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} className="rounded border-gray-300" />
@@ -324,7 +343,15 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 }
 
 function GapsTab({ projectId }: { projectId: string }) {
-  const { data: gapsData, isLoading, refetch } = useGaps({ projectId, pageSize: 50 });
+  const [minConfidence, setMinConfidence] = useState(0);
+  const [debouncedConfidence, setDebouncedConfidence] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedConfidence(minConfidence), 300);
+    return () => clearTimeout(timer);
+  }, [minConfidence]);
+
+  const { data: gapsData, isLoading, refetch } = useGaps({ projectId, pageSize: 50, minConfidence: debouncedConfidence });
   const analyze = useAnalyzeGap();
 
   const [open, setOpen] = useState(false);
@@ -356,12 +383,28 @@ function GapsTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4 mt-2">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Research Gaps</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="rounded-full shadow-sm"><Sparkles className="w-4 h-4 mr-2" /> New Gap Analysis</Button>
-          </DialogTrigger>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10 shadow-sm">
+            <Zap className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-[140px]">Min Confidence: {Math.round(minConfidence * 100)}%</span>
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.1" 
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+              className="w-24 accent-emerald-500 cursor-pointer"
+            />
+          </div>
+
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="rounded-full shadow-sm shrink-0"><Sparkles className="w-4 h-4 mr-2" /> New Gap Analysis</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Gap Analysis</DialogTitle>
@@ -388,6 +431,7 @@ function GapsTab({ projectId }: { projectId: string }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {activeAnalysisId && (
@@ -467,9 +511,11 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
   const isCurrentUserOwner = currentUserId === ownerId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTitle, setSearchTitle] = useState("");
-  const [selectedPaper, setSelectedPaper] = useState<{ id: string; title: string; year: number } | null>(null);
+  const [selectedPaper, setSelectedPaper] = useState<{ id: string; title: string; year?: number; score?: number } | null>(null);
 
   const { data: searchResults, isLoading: isSearching } = useSearchPapers(searchTitle);
+  const getPaperScore = (p: any) => p.score ?? p.aiScore?.finalScore ?? p.dataQualityScore ?? 0;
+  const sortedSearchResults = searchResults ? [...searchResults].sort((a, b) => getPaperScore(b) - getPaperScore(a)) : [];
   const addPaper = useAddPaperToProject(projectId);
   const removePaper = useRemovePaperFromProject(projectId);
 
@@ -521,7 +567,10 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                     <div className="flex items-center justify-between p-2 border rounded-md bg-secondary/20">
                       <div className="text-sm">
                         <p className="font-medium line-clamp-2">{selectedPaper.title}</p>
-                        <p className="text-muted-foreground text-xs">Year: {selectedPaper.year}</p>
+                        <div className="flex gap-4 mt-1">
+                          <p className="text-muted-foreground text-xs">Year: {selectedPaper.year ?? "N/A"}</p>
+                          <p className="text-cyan-600 dark:text-cyan-400 text-xs font-semibold">Score: {selectedPaper.score?.toFixed(2) ?? "N/A"}</p>
+                        </div>
                       </div>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedPaper(null)}>Change</Button>
                     </div>
@@ -537,19 +586,27 @@ function PapersTab({ projectId, papers, currentUserId, ownerId }: { projectId: s
                         <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-md max-h-60 overflow-auto">
                           {isSearching ? (
                             <div className="p-3 text-sm text-muted-foreground">Searching...</div>
-                          ) : searchResults?.length === 0 ? (
+                          ) : sortedSearchResults.length === 0 ? (
                             <div className="p-3 text-sm text-muted-foreground">Paper not found.</div>
                           ) : (
-                            searchResults?.map((p: any) => (
-                              <div
-                                key={p.id}
-                                className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0"
-                                onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.year })}
-                              >
-                                <p className="font-medium text-sm line-clamp-2">{p.title}</p>
-                                <p className="text-muted-foreground text-xs">Year: {p.year}</p>
-                              </div>
-                            ))
+                            sortedSearchResults.map((p: any) => {
+                              const score = getPaperScore(p);
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="p-3 hover:bg-secondary cursor-pointer border-b last:border-0 flex justify-between items-start"
+                                  onClick={() => setSelectedPaper({ id: p.id, title: p.title, year: p.publicationYear ?? p.year, score })}
+                                >
+                                  <div>
+                                    <p className="font-medium text-sm line-clamp-2">{p.title}</p>
+                                    <p className="text-muted-foreground text-xs mt-1">Year: {p.publicationYear ?? p.year ?? "N/A"}</p>
+                                  </div>
+                                  <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 shrink-0 ml-2 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">
+                                    Score: {score.toFixed(2)}
+                                  </div>
+                                </div>
+                              );
+                            })
                           )}
                         </div>
                       )}
@@ -792,26 +849,36 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
             const memberId = memberObj ? memberObj._id : m.targetId;
             const isPrimaryOwner = memberId === ownerId;
             return (
-              <div key={memberId} className="flex flex-row justify-between items-center rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
-                <div className="flex items-center gap-4 flex-1 overflow-hidden">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground font-medium uppercase">
+              <div key={memberId} className="group relative flex flex-row justify-between items-center rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/10 hover:border-purple-500/30 overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-bl-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                <div className="flex items-center gap-5 flex-1 overflow-hidden z-10">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-lg uppercase transition-all duration-500 group-hover:scale-110 shadow-sm border border-purple-200 dark:border-purple-500/20">
                     {memberObj ? memberObj.fullName.charAt(0) : <Users className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     {memberObj ? (
                       <>
-                        <h4 className="text-base font-semibold truncate text-foreground">{memberObj.fullName || 'Unknown User'}</h4>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {memberObj.email} <span className="opacity-50 mx-1">•</span> <span className="capitalize font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">{memberObj.fullName || 'Unknown User'}</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate flex items-center">
+                          {memberObj.email} 
+                          <span className="opacity-30 mx-2 text-xs">•</span> 
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                            {m.role === 'owner' ? 'Owner' : 'Member'}
+                          </span> 
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     ) : (
                       <>
-                        <h4 className="text-base font-semibold truncate text-foreground">
-                          {m.targetKind} (ID: <span className="font-mono text-muted-foreground text-xs">{memberId}</span>)
+                        <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">
+                          {m.targetKind} <span className="font-mono text-slate-400 text-xs font-normal ml-2">(ID: {memberId})</span>
                         </h4>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          Role: <span className="font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                            {m.role === 'owner' ? 'Owner' : 'Member'}
+                          </span> 
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     )}

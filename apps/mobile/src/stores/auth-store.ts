@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import type { AuthTokens, User } from "@trend/shared-types";
 
@@ -34,3 +35,15 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+export function useAuthHydrated() {
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    const unsubscribe = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    setHydrated(useAuthStore.persist.hasHydrated());
+    return unsubscribe;
+  }, []);
+
+  return hydrated;
+}

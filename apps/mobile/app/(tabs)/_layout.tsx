@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useColorScheme } from "nativewind";
 
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthHydrated, useAuthStore } from "@/stores/auth-store";
 
 /**
  * Custom Bottom Tab Bar - Floating Capsule with sliding animation
@@ -138,7 +138,12 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
+  const authHydrated = useAuthHydrated();
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
+
+  if (!authHydrated) {
+    return null;
+  }
 
   if (!accessToken) {
     return <Redirect href={"/login" as Href} />;

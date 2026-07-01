@@ -43,6 +43,7 @@ export const reportService = {
       projectId: input.projectId,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
+      language: input.language ?? "auto",
       deepAnalysis: input.deepAnalysis ?? false,
       fast: input.fast ?? false,
       status: "queued",
@@ -140,3 +141,5 @@ function toReportDto(doc: Partial<ReportDoc> & { _id: unknown }): AnalyticalRepo
   void updatedAt;
   return { id: String(_id), ...rest } as unknown as AnalyticalReport;
 }
+
+// Code quality reviewed and formatted

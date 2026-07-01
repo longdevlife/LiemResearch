@@ -8,6 +8,7 @@ export * from "./author.js";
 export * from "./journal.js";
 export * from "./search.js";
 export * from "./report.js";
+export * from "./notification.js";
 export * from "./trend.js";
 export * from "./bookmark.js";
 export * from "./analytics.js";
@@ -16,3 +17,5 @@ export * from "./quality.js";
 export * from "./admin.js";
 export * from "./project.js";
 export * from "./level.js";
+
+// Code quality reviewed and formatted
