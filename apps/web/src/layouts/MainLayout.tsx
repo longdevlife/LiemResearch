@@ -56,7 +56,7 @@ export function MainLayout() {
               <div className="w-8 h-8 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-sm">
                 <Award className="h-5 w-5 text-white stroke-[2.5]" />
               </div>
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-900 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
+              <span className="text-slate-900 dark:text-white">
                 PubTrend
               </span>
             </Link>
