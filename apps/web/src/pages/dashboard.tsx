@@ -19,7 +19,8 @@ import {
   totalSearchVolume,
   averageSearchesPerDay,
   getTopQueryLabel,
-  buildSearchTarget
+  buildSearchTarget,
+  fillMissingDays
 } from "./dashboard.helpers";
 import type { TopQuery, VolumeByDay } from "@trend/shared-types";
 
@@ -77,8 +78,12 @@ export function DashboardPage() {
   }, [dash]);
 
   const avgSearchesDay = useMemo(() => {
-    return dash?.volumeByDay ? averageSearchesPerDay(dash.volumeByDay) : 0;
-  }, [dash]);
+    return dash?.volumeByDay ? averageSearchesPerDay(dash.volumeByDay, days) : 0;
+  }, [dash, days]);
+
+  const filledVolumeByDay = useMemo(() => {
+    return dash?.volumeByDay ? fillMissingDays(dash.volumeByDay, days) : [];
+  }, [dash, days]);
 
   const topQueryLabel = useMemo(() => {
     return dash?.topQueries ? getTopQueryLabel(dash.topQueries) : "No query yet";
@@ -222,7 +227,7 @@ export function DashboardPage() {
                           {h.mode}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right font-medium text-slate-650 dark:text-slate-400">
+                      <td className="px-6 py-4 text-right font-medium text-slate-600 dark:text-slate-400">
                         {h.resultCount.toLocaleString()} papers
                       </td>
                       <td className="px-6 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
@@ -323,12 +328,12 @@ export function DashboardPage() {
               {/* Volume By Day Line Chart */}
               <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                 <div className="mb-6">
-                  <h3 className="text-base font-extrabold text-slate-850 dark:text-white leading-tight">Search volume by day</h3>
+                  <h3 className="text-base font-extrabold text-slate-800 dark:text-white leading-tight">Search volume by day</h3>
                   <p className="text-xs text-slate-500 mt-1">Number of searches logged in the selected time range.</p>
                 </div>
                 <div className="h-[220px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dash?.volumeByDay ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <LineChart data={filledVolumeByDay} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.2}/>
@@ -369,7 +374,7 @@ export function DashboardPage() {
               {/* Top Queries Bar Chart */}
               <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                 <div className="mb-6">
-                  <h3 className="text-base font-extrabold text-slate-850 dark:text-white leading-tight">Top repeated queries</h3>
+                  <h3 className="text-base font-extrabold text-slate-800 dark:text-white leading-tight">Top repeated queries</h3>
                   <p className="text-xs text-slate-500 mt-1">Most frequently searched text across users, useful for understanding research demand.</p>
                 </div>
                 <div className="h-[240px] w-full">
@@ -442,7 +447,7 @@ function ActionCard({
         {icon}
       </div>
       <div className="mt-3">
-        <p className="text-sm font-extrabold text-slate-850 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{title}</p>
+        <p className="text-sm font-extrabold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{title}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{description}</p>
       </div>
     </button>

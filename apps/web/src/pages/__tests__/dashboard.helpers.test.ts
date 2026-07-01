@@ -13,7 +13,8 @@ describe("dashboard helpers", () => {
       { date: "2026-06-30", count: 4 },
     ];
     expect(totalSearchVolume(points)).toBe(6);
-    expect(averageSearchesPerDay(points)).toBe(3);
+    expect(averageSearchesPerDay(points, 2)).toBe(3);
+    expect(averageSearchesPerDay(points, 7)).toBe(0.9);
   });
 
   it("falls back when there is no top query", () => {
