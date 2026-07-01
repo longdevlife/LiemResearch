@@ -8,6 +8,8 @@ const notificationSchema = new Schema(
     message: { type: String, required: true },
     type: { type: String, required: true }, // e.g. "submission_pending", "submission_approved", "submission_rejected"
     paperId: { type: Schema.Types.ObjectId, ref: "Paper" },
+    targetKind: { type: String, enum: ["paper", "report", "gap", "project"] },
+    targetId: { type: Schema.Types.ObjectId },
     readBy: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
     isRead: { type: Boolean, default: false },
   },

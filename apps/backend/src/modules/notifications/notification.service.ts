@@ -9,6 +9,8 @@ export const notificationService = {
     message,
     type,
     paperId,
+    targetKind,
+    targetId,
   }: {
     userId?: string | mongoose.Types.ObjectId;
     role?: string;
@@ -16,6 +18,8 @@ export const notificationService = {
     message: string;
     type: string;
     paperId?: string | mongoose.Types.ObjectId;
+    targetKind?: "paper" | "report" | "gap" | "project";
+    targetId?: string | mongoose.Types.ObjectId;
   }) {
     return await NotificationModel.create({
       userId: userId ? new mongoose.Types.ObjectId(userId) : undefined,
@@ -24,6 +28,8 @@ export const notificationService = {
       message,
       type,
       paperId: paperId ? new mongoose.Types.ObjectId(paperId) : undefined,
+      targetKind,
+      targetId: targetId ? new mongoose.Types.ObjectId(targetId) : undefined,
     });
   },
 
@@ -87,6 +93,8 @@ export const notificationService = {
         message,
         type: doc.type,
         paperId: doc.paperId ? doc.paperId.toString() : null,
+        targetKind: doc.targetKind || null,
+        targetId: doc.targetId ? doc.targetId.toString() : null,
         isRead,
         createdAt: doc.createdAt,
       };

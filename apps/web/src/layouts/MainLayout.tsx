@@ -189,7 +189,7 @@ function UserMenu() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 z-[9999]">
+      <DropdownMenuContent align="end" className="w-56 z-[9999] bg-white dark:bg-zinc-950 shadow-xl border border-slate-200 dark:border-slate-800">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none text-slate-900 dark:text-white truncate">{fullName}</p>
