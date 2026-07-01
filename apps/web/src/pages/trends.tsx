@@ -537,17 +537,17 @@ function InsightCard({
   onAction: () => void;
 }) {
   return (
-    <div className="relative overflow-hidden bg-white/70 dark:bg-[#121212]/70 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-98 transition-all duration-300 group flex flex-col justify-between h-36">
+    <div className="relative overflow-hidden bg-white/70 dark:bg-[#121212]/70 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-300 group flex flex-col justify-between h-36">
       <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/10 dark:to-indigo-500/10 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform duration-500" />
       <div>
         <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{label}</p>
-        <p className="mt-2.5 text-base font-extrabold text-slate-850 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={value}>{value}</p>
+        <p className="mt-2.5 text-base font-extrabold text-slate-800 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={value}>{value}</p>
         <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{detail}</p>
       </div>
       <button
         type="button"
         onClick={onAction}
-        className="mt-3 text-xs font-extrabold text-blue-700 dark:text-blue-450 hover:text-blue-800 hover:underline flex items-center gap-1 w-fit transition-colors"
+        className="mt-3 text-xs font-extrabold text-blue-700 dark:text-blue-400 hover:text-blue-800 hover:underline flex items-center gap-1 w-fit transition-colors"
       >
         <span>{actionLabel}</span>
         <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
