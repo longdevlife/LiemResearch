@@ -4,6 +4,7 @@ import { makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
 import { ReportModel } from "../modules/reports/models/report.model.js";
 import { markReportFailed, runRagPipeline, type ReportJob } from "../modules/reports/rag.service.js";
+import { PROMPT_VERSION } from "../modules/reports/report.prompt.js";
 
 /**
  * Standalone report worker — a SEPARATE Node process from the API.
@@ -78,7 +79,7 @@ async function main() {
     }
   });
 
-  logger.info("report worker listening on report queue");
+  logger.info({ promptVersion: PROMPT_VERSION }, "report worker listening on report queue");
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "report worker shutting down");

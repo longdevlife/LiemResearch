@@ -2,16 +2,19 @@ import type { ISODateString } from "./common.js";
 import type { PaperRef } from "./paper.js";
 
 export type ReportStatus = "queued" | "generating" | "ready" | "failed";
+export type ReportLanguage = "auto" | "en" | "vi";
 
 /** Body of POST /api/v1/reports. */
 export interface CreateReportRequest {
-  /** The analytical question. The report mirrors its language (VN → VN). */
+  /** The analytical question. The report language is controlled by `language`. */
   query: string;
   projectId?: string;
   /** Optional display label, e.g. the topic the user clicked on the Trends page. */
   topic?: string;
   yearFrom?: number;
   yearTo?: number;
+  /** auto detects from query + topic; en/vi force all report and gap text. */
+  language?: ReportLanguage;
   deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode (Pro + tools, slowest)
   fast?: boolean; // Fast mode — use the Flash model (faster, lighter). Ignored if deepAnalysis.
 }
@@ -21,6 +24,7 @@ export interface GapProbe {
   topicB: string;
   yearFrom?: number;
   yearTo?: number;
+  language?: ReportLanguage;
 }
 
 export interface ResearchGap {

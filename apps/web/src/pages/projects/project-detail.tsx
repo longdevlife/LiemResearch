@@ -15,6 +15,7 @@ import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
 import { ProjectChatPanel } from "@/features/projects/components/project-chat-panel";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import type { ReportLanguage } from "@trend/shared-types";
 function useSearchUsers(email: string) {
   return useQuery({
     queryKey: ["searchUsers", email],
@@ -169,6 +170,7 @@ function ReportsTab({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState<ReportLanguage>("auto");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
 
@@ -178,10 +180,11 @@ function ReportsTab({ projectId }: { projectId: string }) {
       return;
     }
     try {
-      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, deepAnalysis, fast, projectId });
+      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, language, deepAnalysis, fast, projectId });
       setOpen(false);
       setTopic("");
       setQuery("");
+      setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
       toast.success("Report generation started");
@@ -225,6 +228,22 @@ function ReportsTab({ projectId }: { projectId: string }) {
                   rows={4}
                   className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="project-report-language">Report language</Label>
+                <select
+                  id="project-report-language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="auto">Auto-detect from topic and question</option>
+                  <option value="en">English</option>
+                  <option value="vi">Vietnamese</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Choose English to force all report sections and research gaps to English.
+                </p>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} className="rounded border-gray-300" />

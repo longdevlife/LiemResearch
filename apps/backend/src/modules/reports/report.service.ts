@@ -43,6 +43,7 @@ export const reportService = {
       projectId: input.projectId,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
+      language: input.language ?? "auto",
       deepAnalysis: input.deepAnalysis ?? false,
       fast: input.fast ?? false,
       status: "queued",

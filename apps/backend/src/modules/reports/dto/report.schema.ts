@@ -8,6 +8,7 @@ export const CreateReportSchema = z
     projectId: z.string().optional(),
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+    language: z.enum(["auto", "en", "vi"]).default("auto"),
     deepAnalysis: z.boolean().optional(), // Phase D — opt-in Gemini function-calling mode
     fast: z.boolean().optional(), // Fast mode — Flash model (ignored when deepAnalysis is true)
   })

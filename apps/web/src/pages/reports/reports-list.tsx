@@ -6,6 +6,7 @@ import { FileText, Loader2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { useReports, useCreateReport, useDeleteReport, useDeleteBatchReports } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
+import type { ReportLanguage } from "@trend/shared-types";
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
@@ -18,6 +19,7 @@ export function ReportsListPage() {
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
   const [topic, setTopic] = useState("");
   const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState<ReportLanguage>("auto");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
   const navigate = useNavigate();
@@ -59,10 +61,11 @@ export function ReportsListPage() {
     }
 
     try {
-      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, deepAnalysis, fast });
+      await createReport.mutateAsync({ query: query.trim(), topic: topic.trim() || undefined, language, deepAnalysis, fast });
       setOpen(false);
       setTopic("");
       setQuery("");
+      setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
     } catch (error) {
@@ -117,6 +120,23 @@ export function ReportsListPage() {
                     rows={4}
                     className="flex w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2 resize-none"
                   />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="report-language" className="text-sm font-semibold text-slate-900 dark:text-white">Report language</label>
+                  <select
+                    id="report-language"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
+                    className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#001b69] focus:ring-offset-2"
+                  >
+                    <option value="auto">Auto-detect from topic and question</option>
+                    <option value="en">English</option>
+                    <option value="vi">Vietnamese</option>
+                  </select>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Choose English to force all headings, paragraphs, and gap explanations to English.
+                  </span>
                 </div>
 
                 {/* Fast mode toggle */}

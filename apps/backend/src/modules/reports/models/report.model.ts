@@ -39,6 +39,7 @@ const reportSchema = new Schema(
     cacheKey: { type: String, index: true },
     yearFrom: { type: Number },
     yearTo: { type: Number },
+    language: { type: String, enum: ["auto", "en", "vi"], default: "auto" },
     deepAnalysis: { type: Boolean, default: false },
     fast: { type: Boolean, default: false },
     errorMessage: { type: String },
