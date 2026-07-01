@@ -97,7 +97,7 @@ export function MainLayout() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             {isAuthed && (
-              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400" asChild>
                 <Link to="/bookmarks" aria-label="Bookmarks">
                   <Bookmark className="h-5 w-5" />
                   {validBookmarksCount > 0 && (
@@ -108,7 +108,7 @@ export function MainLayout() {
                 </Link>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative" asChild>
+            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400" asChild>
               <Link to="/notifications" aria-label="Notifications">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
