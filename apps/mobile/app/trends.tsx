@@ -133,10 +133,22 @@ export default function TrendsScreen() {
 
             <Text className="mb-3 mt-3 text-lg font-bold text-foreground dark:text-[#F8FAFC]">Rising keywords</Text>
             {(overviewQuery.data?.risingKeywords ?? []).slice(0, 8).map((keyword) => (
-              <View key={keyword.keyword} className="mb-2 rounded-xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-3">
-                <Text className="font-bold text-foreground dark:text-[#F8FAFC]">{keyword.keyword}</Text>
-                <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]">{keyword.totalPapers} papers · {Math.round(keyword.growthRatePct)}% growth</Text>
-              </View>
+              <TouchableOpacity
+                key={keyword.keyword}
+                className="mb-2 rounded-xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-3"
+                activeOpacity={0.86}
+                onPress={() => router.push(`/keyword/${encodeURIComponent(keyword.keyword)}` as any)}
+              >
+                <View className="flex-row items-center justify-between gap-3">
+                  <View className="flex-1">
+                    <Text className="font-bold text-foreground dark:text-[#F8FAFC]">{keyword.keyword}</Text>
+                    <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]">
+                      {keyword.totalPapers} papers · {Math.round(keyword.growthRatePct)}% growth
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={isDark ? "#64748B" : "#94A3B8"} />
+                </View>
+              </TouchableOpacity>
             ))}
           </>
         )}

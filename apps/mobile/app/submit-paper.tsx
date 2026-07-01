@@ -121,8 +121,6 @@ export default function SubmitPaperScreen() {
     const authorList = csv(authors);
     const keywordList = csv(keywords);
     const topicList = csv(topics);
-    const hasExistingPdf = Boolean(editingPaper?.pdfPath);
-
     if (title.trim().length < 8 || countWords(title) < 3) {
       Alert.alert("Check title", "Title must be at least 8 characters and 3 words.");
       return;
@@ -147,15 +145,6 @@ export default function SubmitPaperScreen() {
       Alert.alert("Missing metadata", "At least one author and one keyword are required.");
       return;
     }
-    if (!isEditing && !pdf) {
-      Alert.alert("PDF required", "Please attach the paper PDF before submitting.");
-      return;
-    }
-    if (isEditing && !pdf && !hasExistingPdf) {
-      Alert.alert("PDF required", "Please attach a PDF for this resubmission.");
-      return;
-    }
-
     const input = {
       title,
       doi,
