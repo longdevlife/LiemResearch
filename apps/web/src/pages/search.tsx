@@ -201,10 +201,8 @@ export function SearchPage() {
 
           {/* Row 2: Search Options */}
           <div className="flex items-center justify-between px-2 pt-1 select-none">
-            {/* Left side: Entity label (Works) */}
-            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">
-              Search Papers
-            </div>
+            {/* Left side: Empty placeholder */}
+            <div></div>
 
             {/* Right side: Real actions */}
             <div className="flex items-center gap-2">
