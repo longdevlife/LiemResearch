@@ -830,26 +830,36 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
             const memberId = memberObj ? memberObj._id : m.targetId;
             const isPrimaryOwner = memberId === ownerId;
             return (
-              <div key={memberId} className="flex flex-row justify-between items-center rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
-                <div className="flex items-center gap-4 flex-1 overflow-hidden">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground font-medium uppercase">
+              <div key={memberId} className="group relative flex flex-row justify-between items-center rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/10 hover:border-purple-500/30 overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-bl-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                <div className="flex items-center gap-5 flex-1 overflow-hidden z-10">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-lg uppercase transition-all duration-500 group-hover:scale-110 shadow-sm border border-purple-200 dark:border-purple-500/20">
                     {memberObj ? memberObj.fullName.charAt(0) : <Users className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     {memberObj ? (
                       <>
-                        <h4 className="text-base font-semibold truncate text-foreground">{memberObj.fullName || 'Unknown User'}</h4>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {memberObj.email} <span className="opacity-50 mx-1">•</span> <span className="capitalize font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">{memberObj.fullName || 'Unknown User'}</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate flex items-center">
+                          {memberObj.email} 
+                          <span className="opacity-30 mx-2 text-xs">•</span> 
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                            {m.role === 'owner' ? 'Owner' : 'Member'}
+                          </span> 
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     ) : (
                       <>
-                        <h4 className="text-base font-semibold truncate text-foreground">
-                          {m.targetKind} (ID: <span className="font-mono text-muted-foreground text-xs">{memberId}</span>)
+                        <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">
+                          {m.targetKind} <span className="font-mono text-slate-400 text-xs font-normal ml-2">(ID: {memberId})</span>
                         </h4>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          Role: <span className="font-medium text-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</span> {isPrimaryOwner && <span className="text-xs ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">Creator</span>}
+                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                            {m.role === 'owner' ? 'Owner' : 'Member'}
+                          </span> 
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     )}
