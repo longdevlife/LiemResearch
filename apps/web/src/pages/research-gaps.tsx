@@ -213,14 +213,30 @@ export function ResearchGapsPage() {
             {/* Subtle background decoration */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-50 dark:bg-cyan-900/10 rounded-bl-full -mr-10 -mt-10 opacity-50 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/20 transition-colors pointer-events-none" />
             
-            <div className="flex items-start justify-between gap-4 mb-4 relative">
-              <h3 className="font-bold text-[17px] text-slate-900 dark:text-white leading-snug flex items-start gap-2">
+            <div className="mb-4 relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                    <Search className="w-3 h-3" /> {gap.topic}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {gap.sourceReportId && (
+                    <Link to={`/reports/${gap.sourceReportId}`}>
+                      <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 px-2 py-0.5 border-transparent">
+                        View Report
+                      </Badge>
+                    </Link>
+                  )}
+                  <Badge variant="outline" className="shrink-0 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800 font-semibold px-2 py-0.5 shadow-sm text-[10px] uppercase">
+                    {gap.source === "report" ? "Report" : "Standalone"}
+                  </Badge>
+                </div>
+              </div>
+              <h3 className="font-bold text-[17px] text-slate-900 dark:text-white leading-snug flex items-start gap-2 mt-3">
                 <Sparkles className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
                 {gap.title}
               </h3>
-              <Badge variant="outline" className="shrink-0 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800 font-semibold px-2.5 py-0.5 shadow-sm">
-                {gap.source === "report" ? "Report" : "Standalone"}
-              </Badge>
             </div>
             
             <p className="text-[14.5px] text-slate-700 dark:text-slate-300 leading-relaxed mb-5 flex-1 relative">
