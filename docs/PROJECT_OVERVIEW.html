@@ -279,6 +279,9 @@
     <a href="#sec-14" class="sidebar-item">14. Tổng hợp Công nghệ</a>
     <a href="#sec-15" class="sidebar-item">15. Thông số hệ thống</a>
     <a href="#sec-16" class="sidebar-item">16. Cơ chế chịu lỗi</a>
+    <a href="#sec-17" class="sidebar-item">17. Deploy & Runtime</a>
+    <a href="#sec-18" class="sidebar-item">18. Giới hạn hiện tại</a>
+    <a href="#sec-19" class="sidebar-item">19. Evaluation / Acceptance</a>
   </nav>
 </aside>
 
@@ -286,14 +289,14 @@
   <div class="wrap">
     <header class="hero">
       <h1>Báo cáo Tổng quan Dự án LiemResearch</h1>
-      <p><b>Hệ thống phân tích xu hướng nghiên cứu khoa học bằng trí tuệ nhân tạo</b></p>
+      <p><b>Hệ thống hybrid phân tích xu hướng nghiên cứu khoa học với AI hỗ trợ</b></p>
       <p>Ứng dụng LLM, RAG, MCP, dữ liệu có cấu trúc và Vector Search — Đồ án WDP301, Đại học FPT</p>
-      <span class="tag">Kiến trúc: Frontend (Web + Mobile) — Backend (API + Workers) — AI/Data (Gemini + Ollama local + MongoDB Vector + Redis)</span>
+      <span class="tag">Kiến trúc hybrid: Frontend (Web + Mobile) — Backend deterministic (API + Workers) — AI/Data layer (Gemini + Ollama local + MongoDB Vector + Redis)</span>
     </header>
 
     <!-- 1. GIỚI THIỆU -->
     <h2 id="sec-1"><span class="n">1.</span> Giới thiệu dự án</h2>
-    <p class="lead">LiemResearch là một nền tảng hỗ trợ sinh viên, giảng viên và nhà nghiên cứu tra cứu bài báo khoa học theo ngữ nghĩa, phân tích xu hướng chủ đề và tự động tổng hợp báo cáo chuyên sâu. Mọi kết luận từ AI đều được đối chiếu với cơ sở dữ liệu học thuật thực tế để đảm bảo tính xác thực.</p>
+    <p class="lead">LiemResearch là một nền tảng hỗ trợ sinh viên, giảng viên và nhà nghiên cứu tra cứu bài báo khoa học theo ngữ nghĩa, phân tích xu hướng chủ đề và tự động tổng hợp báo cáo chuyên sâu. Hệ thống dùng AI như lớp hỗ trợ suy luận và diễn giải; các phép tính, quyền hạn, trạng thái dữ liệu và quyết định nghiệp vụ vẫn do backend deterministic kiểm soát.</p>
     <div class="card">
       <h3>Giải quyết vấn đề thực tiễn</h3>
       <div class="grid c2">
@@ -350,13 +353,13 @@
         <p>Điều phối trung tâm: xử lý xác thực, phân quyền, giao tiếp AI và xử lý các tác vụ nặng nền.</p>
         <ul style="margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
           <li>19 modules: auth, papers, search, reports, gaps, trends, compare, projects, mcp, llm, retrieval, quality, scoring, embeddings...</li>
-          <li>5 BullMQ workers chạy riêng process</li>
+          <li>6 BullMQ workers chạy riêng process</li>
           <li>JWT Access/Refresh Tokens</li>
         </ul>
       </div>
       <div class="card">
         <h3>AI & Data</h3>
-        <p>Xử lý tính toán ngữ nghĩa, truy xuất bằng chứng, cache phản hồi AI và chọn provider/model theo từng tác vụ.</p>
+        <p>Xử lý ngữ nghĩa, truy xuất bằng chứng, cache phản hồi AI và chọn provider/model theo từng tác vụ; không thay thế rule nghiệp vụ của backend.</p>
         <ul style="margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
           <li>Gemini Embedding 768d + Gemini Flash/Pro cho generate</li>
           <li>Ollama local provider cho chat/demo</li>
@@ -368,7 +371,7 @@
 
     <!-- 2b. RANH GIỚI HYBRID LOGIC -->
     <h2 id="sec-2b"><span class="n">2b.</span> AI không thay Backend: Hybrid Logic Boundary</h2>
-    <p class="lead">Một trong những điểm cốt lõi trong thiết kế của LiemResearch là việc phân định rõ ranh giới trách nhiệm giữa <b>AI (Generative/Semantic)</b> và <b>Backend (Deterministic Rule/Aggregation)</b>. Hệ thống không phó mặc toàn bộ nghiệp vụ cho LLM nhằm tối ưu chi phí token, tăng tốc độ phản hồi và loại bỏ hoàn toàn hiện tượng ảo giác (hallucination) trong các phép tính toán số liệu học thuật.</p>
+    <p class="lead">Một trong những điểm cốt lõi trong thiết kế của LiemResearch là việc phân định rõ ranh giới trách nhiệm giữa <b>AI (Generative/Semantic)</b> và <b>Backend (Deterministic Rule/Aggregation)</b>. Hệ thống không phó mặc toàn bộ nghiệp vụ cho LLM nhằm tối ưu chi phí token, tăng tốc độ phản hồi và ngăn hallucination can thiệp vào các phép tính số liệu học thuật.</p>
 
     <div class="card">
       <h3>Bảng phân định ranh giới trách nhiệm (Boundary Matrix)</h3>
@@ -501,6 +504,50 @@
     <!-- 5. SMART REASONING CORE -->
     <h2 id="sec-5"><span class="n">5.</span> Smart Reasoning Core (F1–F4)</h2>
     <p class="lead">Bốn trụ cột xử lý AI, chia sẻ giữa tất cả tính năng. Mỗi feature gọi đúng trụ cần dùng thay vì tự implement lại.</p>
+
+    <div class="card">
+      <h3>AI Core vẫn là kiến trúc Hybrid, không phải "LLM quyết định tất cả"</h3>
+      <p style="font-size:14px;color:var(--muted);margin-top:-6px">Smart Reasoning Core chỉ gom các năng lực ngữ nghĩa dùng chung. Nó không thay thế business logic của backend. Backend vẫn giữ quyền quyết định dữ liệu, trạng thái, quyền hạn, điểm số và các phép tính học thuật; AI chỉ được dùng để biểu diễn ngữ nghĩa, trích xuất tri thức, tổng hợp và diễn giải trên evidence đã được kiểm soát.</p>
+      <div style="overflow-x:auto">
+        <table style="margin: 12px 0 0; font-size: 14px; min-width: 720px;">
+          <thead>
+            <tr>
+              <th>Core</th>
+              <th>Phần deterministic / backend kiểm soát</th>
+              <th>Phần AI được phép làm</th>
+              <th>Guardrail chống sai lệch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>F1 Shared Retriever</b></td>
+              <td>Filter, projection mode, pagination, score threshold, MongoDB <code>$vectorSearch</code>, fallback khi re-rank lỗi.</td>
+              <td>Tạo embedding cho query; optional LLM re-rank nếu user bật.</td>
+              <td>Search mặc định không gọi LLM generate; re-rank fail thì trả vector ranking gốc.</td>
+            </tr>
+            <tr>
+              <td><b>F2 Structured Paper Knowledge</b></td>
+              <td>Lưu <code>abstractText</code> gốc, version extraction, chỉ dùng paper đã qua quality gate.</td>
+              <td>Trích xuất <code>summary</code>, <code>methods</code>, <code>findings</code>, <code>limitations</code>, <code>futureWork</code> từ title + abstract.</td>
+              <td>Prompt yêu cầu grounded extraction; thiếu thông tin thì trả <code>null</code>/<code>[]</code>, không đoán; downstream luôn fallback abstract gốc.</td>
+            </tr>
+            <tr>
+              <td><b>F3 Grounding & Citation</b></td>
+              <td>Validate citation index, sanitize output, reject citation nằm ngoài evidence set.</td>
+              <td>Không sinh nội dung mới; chỉ kiểm tra output do LLM sinh.</td>
+              <td>Không cho AI tự tạo nguồn giả; mọi citation <code>[n]</code> phải map về paper thật.</td>
+            </tr>
+            <tr>
+              <td><b>F4 Cached LLM + Routing</b></td>
+              <td>Prompt version, cache key, model routing, rate limiting, negative cache, fallback path.</td>
+              <td>Gemini/Ollama sinh explanation, report, gap, direction, chat answer.</td>
+              <td>Cache theo <code>paperIds + promptVersion + model</code>; provider fail thì fallback hoặc báo lỗi có kiểm soát.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:12px 0 0"><b>Quy tắc bảo vệ:</b> AI không tự duyệt bài, không tự đổi credit, không tự sửa role/user permission, không tự ghi đè điểm/tier, không tự bịa số liệu trend. Mọi output AI chỉ là lớp phân tích trên dữ liệu đã được backend retrieve, validate và lưu vết.</p>
+    </div>
 
     <div class="src-box">
       <h3>Smart Reasoning Core</h3>
@@ -737,6 +784,7 @@
       <tr><td><b>Paper Analysis</b></td><td><code>paper-analysis.worker.ts</code></td><td>Trích xuất aiAnalysis (8 trường) từ title+abstract bằng Gemini, lưu vào <code>paper.aiAnalysis</code></td><td>CRON (<code>PAPER_ANALYSIS_CRON</code>)</td></tr>
       <tr><td><b>Report</b></td><td><code>report.worker.ts</code></td><td>Sinh báo cáo RAG: retrieve → generate → grounding check → lưu markdown + research gaps</td><td>User request</td></tr>
       <tr><td><b>Gaps</b></td><td><code>gaps.worker.ts</code></td><td>Phân tích research gaps cho 1 chủ đề: retrieve → LLM phân tích → evidence counting → lưu gaps</td><td>User request / report fan-out</td></tr>
+      <tr><td><b>Notifications</b></td><td><code>notification.worker.ts</code></td><td>Gửi thông báo nền cho người dùng, tách khỏi request chính để không làm chậm API</td><td>Queue event</td></tr>
     </table>
 
     <!-- 10. EMBEDDING -->
@@ -849,7 +897,7 @@
       <tr><td>AI — Local</td><td>Ollama (local LLM provider cho chat/demo)</td></tr>
       <tr><td>Vector Store</td><td>MongoDB Atlas Vector Search (<code>$vectorSearch</code>, cosine)</td></tr>
       <tr><td>Caching</td><td>Redis (Upstash) — LLM response cache, prompt versioning</td></tr>
-      <tr><td>Queue</td><td>BullMQ trên Redis — 5 workers (sync, embed, analysis, report, gaps)</td></tr>
+      <tr><td>Queue</td><td>BullMQ trên Redis — 6 workers (sync, embed, analysis, report, gaps, notifications)</td></tr>
       <tr><td>MCP</td><td>Gemini Function Calling + <code>mcp.executor.ts</code> + <code>mcp.tools.ts</code></td></tr>
       <tr><td>Shared Types</td><td><code>@trend/shared-types</code> — type-safe giữa BE/FE/Mobile</td></tr>
     </table>
@@ -863,7 +911,7 @@
       <div class="stat"><div class="big">~0.7s</div><div class="lbl">Phản hồi từ Cache</div></div>
     </div>
     <div class="grid c4" style="margin-top:0">
-      <div class="stat"><div class="big">5</div><div class="lbl">BullMQ Workers</div></div>
+      <div class="stat"><div class="big">6</div><div class="lbl">BullMQ Workers</div></div>
       <div class="stat"><div class="big">19</div><div class="lbl">Backend Modules</div></div>
       <div class="stat"><div class="big">8</div><div class="lbl">Trường aiAnalysis</div></div>
       <div class="stat"><div class="big">2</div><div class="lbl">LLM Providers<br/><small>(Gemini + Ollama)</small></div></div>
@@ -906,13 +954,198 @@
       </tr>
     </table>
 
+    <!-- 17. DEPLOYMENT -->
+    <h2 id="sec-17"><span class="n">17.</span> Production Deployment & Runtime Topology</h2>
+    <p class="lead">Khi deploy, hệ thống không chạy như một server đơn lẻ. Frontend, API backend và worker nền là các runtime riêng, giao tiếp qua HTTPS, MongoDB Atlas và Redis/BullMQ.</p>
+
+    <div class="flow">
+      <div class="node">
+        <div class="t">Vercel Web</div>
+        <div class="s">React/Vite static app<br/>SPA fallback qua vercel.json</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node highlight">
+        <div class="t">Render API</div>
+        <div class="s">Express production server<br/>/health + /api/v1</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node data">
+        <div class="t">MongoDB Atlas</div>
+        <div class="s">research_papers<br/>metadata + vectors</div>
+      </div>
+      <div class="arrow">↔</div>
+      <div class="node highlight">
+        <div class="t">Upstash Redis</div>
+        <div class="s">BullMQ queues<br/>LLM/cache keys</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="t">Render Workers</div>
+        <div class="s">report, gaps, embedding,<br/>analysis, sync, notifications</div>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>Runtime</th><th>Platform</th><th>Build / Start</th><th>Env quan trọng</th></tr>
+      <tr>
+        <td><b>Web Frontend</b></td>
+        <td>Vercel</td>
+        <td><code>pnpm --filter web build</code> → static output</td>
+        <td><code>VITE_API_BASE=https://liemresearch.onrender.com/api/v1</code></td>
+      </tr>
+      <tr>
+        <td><b>Backend API</b></td>
+        <td>Render Web Service</td>
+        <td><code>pnpm --filter backend start</code></td>
+        <td><code>MONGODB_URI</code>, <code>REDIS_URL</code>, <code>JWT_*</code>, <code>GEMINI_API_KEY</code>, <code>CORS_ORIGIN</code></td>
+      </tr>
+      <tr>
+        <td><b>Background Workers</b></td>
+        <td>Render Background Workers / local demo</td>
+        <td><code>pnpm --filter backend worker:report</code>, <code>worker:gaps</code>, <code>worker:embedding</code>, <code>worker:paper-analysis</code>, <code>worker:notifications</code>, optional <code>worker:sync</code></td>
+        <td>Cùng Mongo/Redis/Gemini env với API để consume cùng queues</td>
+      </tr>
+      <tr>
+        <td><b>Local AI Provider</b></td>
+        <td>Máy chạy backend / Docker local</td>
+        <td><code>ollama serve</code> hoặc Ollama Docker runtime</td>
+        <td><code>LLM_PROVIDER=ollama</code>, <code>OLLAMA_BASE_URL</code>; production cloud vẫn nên dùng Gemini mặc định nếu không có máy chạy Ollama ổn định</td>
+      </tr>
+    </table>
+
+    <div class="callout warn">
+      <b>Điểm dễ nhầm khi deploy:</b> Vercel chỉ chạy web tĩnh, không tự chạy backend API hoặc BullMQ workers. FE phải trỏ đúng <code>VITE_API_BASE</code>; Render API phải cho phép domain Vercel trong <code>CORS_ORIGIN</code>; các worker muốn xử lý report/gap/embed thật thì phải có process riêng đang chạy cùng Redis queue.
+    </div>
+
+    <table>
+      <tr><th>Smoke test production</th><th>Kỳ vọng</th></tr>
+      <tr><td><code>GET https://liemresearch.onrender.com/health</code></td><td>Backend trả health OK</td></tr>
+      <tr><td><code>GET https://liemresearch.onrender.com/api/v1/home/overview</code></td><td>API envelope <code>{ success: true, data: ... }</code></td></tr>
+      <tr><td>Vercel web gọi search/trends/reports</td><td>Không bị 404 route, không bị CORS, request đi về Render API</td></tr>
+      <tr><td>Tạo report/gap</td><td>API enqueue job, worker consume queue, trạng thái chuyển từ queued/processing sang completed hoặc failed có lý do</td></tr>
+    </table>
+
+    <!-- 18. CURRENT LIMITS -->
+    <h2 id="sec-18"><span class="n">18.</span> Giới hạn hiện tại & phần cần nói rõ khi demo</h2>
+    <p class="lead">Đây là các điểm hệ thống đã thiết kế hoặc có nền tảng, nhưng cần nói trung thực khi báo cáo để tránh hiểu nhầm là mọi thứ đã hoàn thiện ở mức production scale.</p>
+
+    <table>
+      <tr><th>Chủ đề</th><th>Trạng thái hiện tại</th><th>Cách trình bày đúng</th></tr>
+      <tr>
+        <td><b>Nguồn dữ liệu ngoài OpenAlex</b></td>
+        <td>OpenAlex là provider chính đã chạy. Semantic Scholar, Crossref, arXiv mới ở mức interface/thiết kế mở rộng hoặc partial, chưa phải nguồn đồng bộ đầy đủ như OpenAlex.</td>
+        <td>Nói hệ thống có kiến trúc multi-provider, nhưng MVP production data hiện dựa chủ yếu trên OpenAlex.</td>
+      </tr>
+      <tr>
+        <td><b>Neo4j / Graph Database</b></td>
+        <td>Hệ thống hiện có topic relationship/co-occurrence graph bằng MongoDB aggregation. Chưa có runtime Neo4j bắt buộc trong stack hiện tại.</td>
+        <td>Nếu thầy hỏi Neo4j, giải thích Neo4j là hướng mở rộng cho knowledge graph sâu hơn; bản hiện tại biểu diễn graph analytics bằng dữ liệu MongoDB.</td>
+      </tr>
+      <tr>
+        <td><b>Ollama production</b></td>
+        <td>Ollama hữu ích cho local/demo hoặc máy backend riêng. Nếu deploy cloud không có máy chạy Ollama ổn định, provider mặc định vẫn nên là Gemini.</td>
+        <td>Không hứa Ollama chạy trên Vercel/Render free. Nói rõ Ollama là local LLM provider có thể bật bằng env khi hạ tầng hỗ trợ.</td>
+      </tr>
+      <tr>
+        <td><b>Worker production cost</b></td>
+        <td>API web service có thể chạy độc lập, nhưng report/gap/embed/analysis cần worker process riêng để xử lý queue thật.</td>
+        <td>Demo tiết kiệm có thể chạy worker local/manual; deploy chuẩn cần Render Background Workers hoặc nền tảng queue worker tương đương.</td>
+      </tr>
+      <tr>
+        <td><b>Mobile deployment</b></td>
+        <td>Mobile nằm trong kiến trúc monorepo nhưng không thuộc phạm vi deploy web hiện tại.</td>
+        <td>Khi nói deploy, tách rõ: web dùng Vercel, backend/workers dùng Render, mobile là hạng mục riêng.</td>
+      </tr>
+      <tr>
+        <td><b>AI accuracy</b></td>
+        <td>AI output đã có grounding, citation check, cache và fallback, nhưng vẫn là lớp phân tích hỗ trợ chứ không phải nguồn sự thật tuyệt đối.</td>
+        <td>Nhấn mạnh source of truth là corpus + deterministic metrics; AI giúp đọc hiểu và tổng hợp trên evidence.</td>
+      </tr>
+    </table>
+
+    <!-- 19. EVALUATION -->
+    <h2 id="sec-19"><span class="n">19.</span> Evaluation / Acceptance — Cách chứng minh hệ thống đúng</h2>
+    <p class="lead">Vì hệ thống là hybrid, cách chứng minh cũng phải hybrid: phần deterministic chứng minh bằng công thức, dữ liệu mẫu và test tái lập; phần AI chứng minh bằng grounding, citation, schema validation và human review. Không đánh đồng "AI trả lời nghe hợp lý" với "hệ thống đúng".</p>
+
+    <div class="callout">
+      <b>Nguyên tắc kiểm chứng:</b> dữ liệu và con số phải tái lập được từ database; AI chỉ được chấp nhận khi câu trả lời bám vào evidence đã retrieve. Nếu một kết quả không thể truy ngược về paper, metric, formula hoặc log chạy nền thì không được xem là kết quả đáng tin cậy.
+    </div>
+
+    <table>
+      <tr><th>Nhóm chức năng</th><th>Đúng nghĩa là gì?</th><th>Cách chứng minh / acceptance evidence</th><th>Dấu hiệu fail</th></tr>
+      <tr>
+        <td><b>Data Sync & Dedup</b></td>
+        <td>Paper từ OpenAlex được normalize đúng field, không tạo bản trùng khi cùng DOI/OpenAlex ID xuất hiện ở nhiều query.</td>
+        <td>Chạy sync trên sample topic; kiểm số paper unique theo DOI/OpenAlex ID; audit vài paper rawMetadata ↔ research_papers; log số created/updated/skipped.</td>
+        <td>Cùng DOI sinh nhiều paper; thiếu title/year/abstract dù raw source có; sync run không có thống kê rõ.</td>
+      </tr>
+      <tr>
+        <td><b>Quality Gate</b></td>
+        <td>Chỉ paper đủ metadata và giá trị học thuật mới thành active/analyzable; paper thiếu dữ liệu bị hạ quality hoặc loại khỏi pipeline phân tích.</td>
+        <td>Dùng bộ paper mẫu có/không có DOI, abstract, year, source; tính tay expected qualityScore rồi so với output; kiểm boundary quanh ngưỡng <code>dataQualityScore >= 0.7</code>.</td>
+        <td>Paper thiếu abstract vẫn được embed/report như paper tốt; điểm chất lượng thay đổi không giải thích được.</td>
+      </tr>
+      <tr>
+        <td><b>Semantic Search</b></td>
+        <td>Kết quả liên quan về nghĩa, không chỉ khớp chữ; filter/sort không làm sai tập kết quả.</td>
+        <td>Tạo golden queries như "large language model evaluation", "retrieval augmented generation"; kiểm top-K có title/abstract liên quan; so sánh với keyword baseline; verify filter year/openAccess/provider/minScore.</td>
+        <td>Top results không chứa khái niệm liên quan; filter trả paper ngoài điều kiện; rerank fail làm mất toàn bộ kết quả thay vì fallback vector ranking.</td>
+      </tr>
+      <tr>
+        <td><b>Trend Metrics</b></td>
+        <td>Yearly counts, YoY growth, CAGR, momentum, citation trend và rising keywords khớp công thức đã định nghĩa.</td>
+        <td>Dùng dataset nhỏ tự tạo theo năm; tính tay expected counts/growth/momentum; so với API output; kiểm rule bỏ năm hiện tại YTD và rule chặn base nhỏ.</td>
+        <td>Trend tăng mạnh do <code>1 -> 9</code> paper vẫn được gọi là rising; năm hiện tại chưa đủ dữ liệu vẫn dùng để tính growth; tổng theo biểu đồ không khớp aggregation.</td>
+      </tr>
+      <tr>
+        <td><b>Research Gaps</b></td>
+        <td>Gap phải có evidence từ corpus, có scarcity/parent rising logic, không chỉ là nhận xét do LLM tự nghĩ.</td>
+        <td>Với gap được sinh, kiểm relatedPaperIds tồn tại; tự đếm intersection topicA/topicB; so sánh evidenceConfidence với công thức <code>scarcityScore</code> + parent rising; human review 3-5 gap top đầu.</td>
+        <td>Gap không có paper chứng minh; confidence cao nhưng intersection nhiều; gap title nghe hay nhưng không truy được về corpus.</td>
+      </tr>
+      <tr>
+        <td><b>Reports / RAG</b></td>
+        <td>Báo cáo trả lời đúng topic/question, mọi luận điểm chính có citation trỏ về paper thật, ngôn ngữ output theo lựa chọn user.</td>
+        <td>Kiểm citation <code>[n]</code> map đúng evidence set; chạy cùng promptVersion + paperIds để kiểm cache; test language <code>en/vi/auto</code>; review markdown có đủ summary, evidence, gaps/directions.</td>
+        <td>Citation out-of-range; report nói nội dung không có trong evidence; chọn English nhưng output tiếng Việt; retry lặp lại cùng lỗi non-retryable.</td>
+      </tr>
+      <tr>
+        <td><b>Structured Paper Knowledge (F2)</b></td>
+        <td><code>aiAnalysis</code> làm giàu dữ liệu nhưng không làm mất abstract gốc; field thiếu phải là null/empty thay vì bịa.</td>
+        <td>Chọn paper có abstract rõ methods/dataset và paper không nêu methods; so sánh aiAnalysis với abstract; kiểm fallback abstractText khi chưa có aiAnalysis.</td>
+        <td>methods/dataset xuất hiện dù abstract không nói; downstream crash khi aiAnalysis null; summary thay thế mất abstract gốc.</td>
+      </tr>
+      <tr>
+        <td><b>AI Safety / Grounding</b></td>
+        <td>AI output bị giới hạn bởi evidence, schema và guardrail; lỗi provider không làm crash toàn pipeline.</td>
+        <td>Test citation invalid bị sanitize/reject; test malformed JSON sinh <code>LlmContentError</code>; test truncation sinh fallback hoặc fail có kiểm soát; kiểm Redis cache key có promptVersion.</td>
+        <td>AI bịa nguồn vẫn lọt; output malformed được lưu như thành công; provider fail làm job retry vô ích nhiều lần.</td>
+      </tr>
+      <tr>
+        <td><b>Production Runtime</b></td>
+        <td>FE gọi đúng API deploy, backend health OK, worker consume queue, CORS/env đúng.</td>
+        <td>Smoke test Vercel → Render API; tạo report/gap và xem job chuyển trạng thái; kiểm worker log; kiểm env <code>VITE_API_BASE</code> và <code>CORS_ORIGIN</code>.</td>
+        <td>FE 404 SPA route; request bị CORS; report mãi queued do không có worker; Vercel gọi localhost thay vì Render API.</td>
+      </tr>
+    </table>
+
+    <h3>Acceptance checklist khi demo</h3>
+    <table>
+      <tr><th>Bước demo</th><th>Bằng chứng cần show</th></tr>
+      <tr><td>1. Search một topic</td><td>Hiển thị query, filters, số kết quả, top papers có title/abstract liên quan và score/sort rõ ràng.</td></tr>
+      <tr><td>2. Mở Trends</td><td>Show công thức/tooltip: momentum, growth, YTD exclusion, small-base warning; giải thích được vì sao keyword được gọi là rising.</td></tr>
+      <tr><td>3. Tạo report</td><td>Show trạng thái queued/processing/completed, markdown có citations, language đúng option, citation click được về paper thật.</td></tr>
+      <tr><td>4. Sinh research gaps</td><td>Show gap có evidence papers, confidence, intersection/scarcity explanation và suggested directions.</td></tr>
+      <tr><td>5. Kiểm soát AI</td><td>Show một ví dụ fallback/cache/grounding: AI không tự quyết định con số, không tự tạo source, không tự thay đổi dữ liệu nghiệp vụ.</td></tr>
+    </table>
+
     <div class="callout ok" style="margin-top:40px">
-      <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp <b>9 tính năng AI</b> (search, trends overview, <b>trend AI explain</b>, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, hỗ trợ cả Gemini cloud lẫn Ollama local, với hệ thống chịu lỗi không đốt quota vô ích.
+      <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp <b>9 tính năng AI-assisted/hybrid</b> (search, trends overview, <b>trend AI explain</b>, reports, gaps, directions, compare, chat, deep analysis) — tất cả chạy trên nền deterministic controls của backend, grounded trên dữ liệu thật, cache thông minh, hỗ trợ cả Gemini cloud lẫn Ollama local, với hệ thống chịu lỗi không đốt quota vô ích.
     </div>
   </div>
   <footer>
     LiemResearch — Publication Trend System · WDP301, Đại học FPT<br/>
-    Báo cáo Kỹ thuật Tổng quan · Branch: feature/ai-core-adoption-f2
+    Báo cáo Kỹ thuật Tổng quan · Updated 2026-07-02 · Hybrid AI architecture
   </footer>
 </main>
 
