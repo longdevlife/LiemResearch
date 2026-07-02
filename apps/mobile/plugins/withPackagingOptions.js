@@ -15,7 +15,7 @@ android {
     }
 }
 `;
-    if (!buildGradle.includes('packagingOptions')) {
+    if (!buildGradle.includes('libworklets.so')) {
       config.modResults.contents = buildGradle + packagingOptions;
     }
     return config;
