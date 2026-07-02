@@ -115,21 +115,21 @@ function GuestHero() {
       </p>
 
       {/* CTA Buttons */}
-      <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-        <Button size="default" className="rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold h-11 px-6 shadow-md transition-all gap-2" asChild>
+      <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 pt-2 w-full">
+        <Button size="default" className="w-full sm:w-auto rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold h-11 px-6 shadow-md transition-all gap-2" asChild>
           <Link to="/search">
             <Search className="w-4 h-4" />
             Search Papers
           </Link>
         </Button>
-        <Button variant="outline" size="default" className="rounded-xl border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 hover:bg-slate-50 dark:hover:bg-slate-950 active:scale-[0.98] font-bold h-11 px-6 shadow-sm transition-all" asChild>
+        <Button variant="outline" size="default" className="w-full sm:w-auto rounded-xl border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 hover:bg-slate-50 dark:hover:bg-slate-950 active:scale-[0.98] font-bold h-11 px-6 shadow-sm transition-all" asChild>
           <Link to="/trends">Explore Trends</Link>
         </Button>
-        <Button size="default" className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold h-11 px-6 shadow-md transition-all dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-[0.98]" asChild>
+        <Button size="default" className="w-full sm:w-auto rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold h-11 px-6 shadow-md transition-all dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-[0.98]" asChild>
           <Link to="/reports?create=true">Generate Report</Link>
         </Button>
-        <Button variant="ghost" size="default" className="rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold h-11 px-4" asChild>
-          <Link to="/login" className="flex items-center gap-1">
+        <Button variant="ghost" size="default" className="w-full sm:w-auto rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold h-11 px-4" asChild>
+          <Link to="/login" className="flex items-center justify-center gap-1">
             Sign in <ArrowRight className="ml-1.5 h-4 w-4" />
           </Link>
         </Button>
@@ -166,7 +166,7 @@ function UserHero({ name }: { name: string }) {
           </p>
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="text-left sm:text-right shrink-0">
           <span className="text-xs font-bold text-slate-450 dark:text-slate-550 block">TODAY</span>
           <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 block mt-0.5">{formattedDate}</span>
         </div>
