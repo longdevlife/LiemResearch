@@ -265,20 +265,21 @@ export function ReportsListPage() {
             <p className="text-slate-500">Loading reports...</p>
           </div>
         ) : (
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/50 dark:bg-[#181818] text-slate-500 text-xs uppercase font-semibold tracking-wider">
-              <tr>
-                <th className="px-6 py-4">Report Topic</th>
-                <th className="px-6 py-4 hidden md:table-cell">Query</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Date</th>
-                <th className="px-6 py-4 w-16"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left whitespace-nowrap sm:whitespace-normal">
+              <thead className="bg-slate-50/50 dark:bg-[#181818] text-slate-500 text-xs uppercase font-semibold tracking-wider">
+                <tr>
+                  <th className="px-4 sm:px-6 py-4">Report Topic</th>
+                  <th className="px-4 sm:px-6 py-4 hidden md:table-cell">Query</th>
+                  <th className="px-4 sm:px-6 py-4 text-center">Status</th>
+                  <th className="px-4 sm:px-6 py-4 text-right">Date</th>
+                  <th className="px-4 sm:px-6 py-4 w-16"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
               {reports?.map((report) => (
                 <tr key={report.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1c1f26] transition-colors group">
-                  <td className="px-6 py-4">
+                  <td className="px-4 sm:px-6 py-4">
                     <Link to={`/reports/${report.id}`} className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
                         (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-600 border-blue-200 dark:border-blue-900/30' :
@@ -289,13 +290,13 @@ export function ReportsListPage() {
                          report.status === 'failed' ? <XCircle className="w-4 h-4" /> :
                          <FileText className="w-4 h-4" />}
                       </div>
-                      <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                      <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors whitespace-normal max-w-[200px] sm:max-w-none">
                         {report.topic || 'AI Report'}
                       </span>
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-slate-500 font-medium hidden md:table-cell truncate max-w-xs">{report.query}</td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium hidden md:table-cell truncate max-w-xs">{report.query}</td>
+                  <td className="px-4 sm:px-6 py-4 text-center">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
                       (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-400' :
                       report.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400' :
@@ -309,10 +310,10 @@ export function ReportsListPage() {
                        report.status === 'failed' ? 'Failed' : 'Ready'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-slate-500 font-medium whitespace-nowrap">
+                  <td className="px-4 sm:px-6 py-4 text-right text-slate-500 font-medium whitespace-nowrap">
                     {new Date(report.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 sm:px-6 py-4 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -333,7 +334,8 @@ export function ReportsListPage() {
                 </tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
       </div>
 

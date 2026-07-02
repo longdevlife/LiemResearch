@@ -96,10 +96,10 @@ export function ProjectDetailPage() {
         </div>
 
         {/* Underline Tabs */}
-        <div className="border-b border-slate-200 dark:border-white/10">
-          <div className="flex gap-8">
+        <div className="border-b border-slate-200 dark:border-white/10 overflow-x-auto">
+          <div className="flex gap-6 sm:gap-8 min-w-max pb-1">
             <button
-              className={`pb-4 text-sm font-semibold transition-all relative ${
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "papers" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={() => setActiveTab("papers")}
@@ -110,7 +110,7 @@ export function ProjectDetailPage() {
             </button>
 
             <button
-              className={`pb-4 text-sm font-semibold transition-all relative ${
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "members" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={() => setActiveTab("members")}
@@ -121,7 +121,7 @@ export function ProjectDetailPage() {
             </button>
 
             <button
-              className={`pb-4 text-sm font-semibold transition-all relative ${
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "reports" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={() => setActiveTab("reports")}
@@ -131,7 +131,7 @@ export function ProjectDetailPage() {
             </button>
 
             <button
-              className={`pb-4 text-sm font-semibold transition-all relative ${
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "gaps" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={() => setActiveTab("gaps")}
@@ -141,7 +141,7 @@ export function ProjectDetailPage() {
             </button>
 
             <button
-              className={`pb-4 text-sm font-semibold transition-all relative ${
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "chat" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={() => setActiveTab("chat")}
@@ -400,19 +400,19 @@ function ReportsTab({
       ) : reports && reports.length > 0 ? (
         <div className="rounded-2xl border bg-card divide-y divide-border/50">
           {reports.map(report => (
-            <div key={report.id} className="p-5 flex items-center justify-between group hover:bg-muted/30 transition-colors">
-              <div className="flex items-start gap-4">
+            <div key={report.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/30 transition-colors">
+              <div className="flex items-start gap-4 w-full sm:w-auto">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <Link to={`/reports/${report.id}`} className="font-semibold hover:text-primary transition-colors">
+                <div className="min-w-0">
+                  <Link to={`/reports/${report.id}`} className="font-semibold hover:text-primary transition-colors block truncate">
                     {report.topic || 'AI Report'}
                   </Link>
                   <p className="text-sm text-muted-foreground line-clamp-1 mt-1 max-w-xl">{report.query}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-6 w-full sm:w-auto sm:justify-end ml-14 sm:ml-0">
                 <Badge
                   variant={report.status === 'ready' ? 'default' : report.status === 'failed' ? 'destructive' : 'secondary'}
                   className={`rounded-full ${report.status === 'ready' ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-transparent' : ''}`}
@@ -961,7 +961,7 @@ function PapersTab({
             return (
               <div
                 key={paperId}
-                className={`flex flex-row justify-between items-center rounded-2xl border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 group relative ${
+                className={`flex flex-row justify-between items-center rounded-2xl border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 group relative overflow-hidden ${
                   isSelected ? "border-indigo-500 bg-indigo-50/10 dark:bg-indigo-950/5 ring-1 ring-indigo-500" : "border-slate-200/60 dark:border-white/10 bg-white dark:bg-zinc-900 hover:border-indigo-500/30"
                 }`}
               >
@@ -1177,13 +1177,13 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                     {memberObj ? (
                       <>
                         <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">{memberObj.fullName || 'Unknown User'}</h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate flex items-center">
-                          {memberObj.email}
-                          <span className="opacity-30 mx-2 text-xs">•</span>
-                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                          <span className="truncate max-w-full">{memberObj.email}</span>
+                          <span className="opacity-30 text-xs hidden sm:inline">•</span>
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md shrink-0 ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
                             {m.role === 'owner' ? 'Owner' : 'Member'}
                           </span>
-                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black shrink-0 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     ) : (
@@ -1191,11 +1191,11 @@ function MembersTab({ projectId, members, ownerId, currentUserId }: { projectId:
                         <h4 className="text-[16px] font-bold truncate text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-tight mb-1">
                           {m.targetKind} <span className="font-mono text-slate-400 text-xs font-normal ml-2">(ID: {memberId})</span>
                         </h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
-                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                          <span className={`capitalize font-bold text-xs px-2 py-0.5 rounded-md shrink-0 ${m.role === 'owner' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50'}`}>
                             {m.role === 'owner' ? 'Owner' : 'Member'}
                           </span>
-                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black ml-2 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
+                          {isPrimaryOwner && <span className="text-[10px] uppercase font-black shrink-0 bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">Creator</span>}
                         </p>
                       </>
                     )}
