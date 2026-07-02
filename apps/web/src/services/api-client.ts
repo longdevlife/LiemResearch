@@ -1,9 +1,14 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth-store";
 
-const baseURL = import.meta.env.VITE_API_BASE ?? "/api/v1";
+const rawBaseURL = import.meta.env.VITE_API_BASE?.trim();
+export const API_BASE_URL = rawBaseURL && rawBaseURL.length > 0 ? rawBaseURL : "/api/v1";
 
-export const api = axios.create({ baseURL });
+export const api = axios.create({ baseURL: API_BASE_URL });
+
+if (import.meta.env.DEV) {
+  console.info("[api] Base URL resolved to:", API_BASE_URL);
+}
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().tokens?.accessToken;
@@ -38,7 +43,7 @@ api.interceptors.response.use(
 
 async function refreshAccessToken(refreshToken: string): Promise<string | null> {
   try {
-    const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+    const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
     const tokens = res.data?.data;
     if (tokens) {
       useAuthStore.getState().setTokens(tokens);

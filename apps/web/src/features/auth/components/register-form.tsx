@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { API_BASE_URL } from "@/services/api-client";
 import { registerSchema, useRegister, type RegisterFormValues } from "@/features/auth";
 
 export function RegisterForm() {
@@ -54,8 +55,7 @@ export function RegisterForm() {
         className="w-full rounded-xl bg-white dark:bg-[#2a2a2a] border-slate-200 dark:border-[#3a3a3a] hover:bg-slate-50 dark:hover:bg-[#333] text-slate-900 dark:text-white h-12 font-bold shadow-sm" 
         type="button"
         onClick={() => {
-          const baseUrl = import.meta.env.VITE_API_BASE ?? "/api/v1";
-          window.location.href = `${baseUrl}/auth/google`;
+          window.location.href = `${API_BASE_URL}/auth/google`;
         }}
       >
         <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
