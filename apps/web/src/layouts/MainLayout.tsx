@@ -86,7 +86,7 @@ export function MainLayout() {
           </div>
 
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             <ThemeToggle />
             {isAuthed && (
               <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400" asChild>
@@ -116,7 +116,7 @@ export function MainLayout() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="md:hidden ml-1" 
+              className="md:hidden shrink-0" 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle Menu"
             >
@@ -195,7 +195,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 h-12 pl-1.5 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+        <Button variant="ghost" size="sm" className="gap-1.5 sm:gap-2 h-10 sm:h-12 pl-1 pr-1.5 sm:pl-1.5 sm:pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
           {role !== "admin" ? (
             (() => {
               const currentLevel = getLevel(points);

@@ -88,7 +88,7 @@ export function PaperCard({
     <div className="bg-gradient-to-br from-white via-white to-slate-50/40 dark:from-[#151518] dark:via-[#121212] dark:to-[#181820]/30 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_-6px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 hover:border-indigo-200/80 dark:hover:border-indigo-900/60 transition-all duration-300 relative flex flex-col justify-between min-h-[190px]">
       <div>
         {/* Title & Actions */}
-        <div className="flex items-start justify-between gap-4 mb-2.5">
+        <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2.5">
           <div className="flex-1 min-w-0">
             <Link
               to={`/papers/${id}`}
@@ -173,8 +173,8 @@ export function PaperCard({
       </div>
 
       {/* Footer: Source, System metrics & DOI */}
-      <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-y-2 text-[11px] font-medium text-slate-400 dark:text-slate-500 select-none">
-        <div className="flex items-center gap-x-3.5 flex-wrap">
+      <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-y-2 text-[11px] font-medium text-slate-400 dark:text-slate-500 select-none">
+        <div className="flex items-center gap-x-2 sm:gap-x-3.5 flex-wrap">
           {primaryProvider && (
             <span className="uppercase text-[9px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-bold border border-slate-200/60 dark:border-slate-800 mr-1">
               Source: {primaryProvider}

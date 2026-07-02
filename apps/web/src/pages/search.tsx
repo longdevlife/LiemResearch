@@ -230,8 +230,8 @@ export function SearchPage() {
           <div className="h-px bg-slate-100 dark:bg-slate-800/60 my-0.5"></div>
 
           {/* Row 2: Search Options */}
-          <div className="flex items-center justify-between px-2 pt-0.5 pb-0.5 select-none">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 pt-0.5 pb-0.5 select-none gap-2 sm:gap-0">
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
               {/* 1. Integrated Filters Button */}
               <div className="relative">
                 <button
@@ -478,7 +478,7 @@ export function SearchPage() {
             </div>
 
             {/* Right side: Real actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto border-t border-slate-100 sm:border-0 pt-2 sm:pt-0 dark:border-slate-800/60 mt-1 sm:mt-0">
               {/* Dropdown: Mode selection (Boolean/Semantic) */}
               <div className="relative">
                 <button
@@ -606,8 +606,8 @@ export function SearchPage() {
   }
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 items-start">
-      {/* LEFT SIDEBAR: Filters */}
-      <aside className="w-full md:w-64 lg:w-72 shrink-0 bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm sticky top-24">
+      {/* LEFT SIDEBAR: Filters (Hidden on mobile, rely on search box dropdowns) */}
+      <aside className="hidden md:block w-64 lg:w-72 shrink-0 bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm sticky top-24">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-blue-800 dark:text-blue-500 tracking-tight">Filters</h2>
@@ -829,23 +829,23 @@ export function SearchPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 w-full sm:w-auto">
             {currentUser?.role !== "admin" && (
-              <Link to="/settings/submit-paper">
-                <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800 text-white font-bold gap-1.5 rounded-lg px-3 shadow-sm transition-all active:scale-95 duration-150">
-                  <Plus className="w-3.5 h-3.5" />
+              <Link to="/settings/submit-paper" className="w-full sm:w-auto">
+                <Button size="sm" className="w-full sm:w-auto h-9 bg-blue-700 hover:bg-blue-800 text-white font-bold gap-1.5 rounded-lg px-4 shadow-sm transition-all active:scale-95 duration-150">
+                  <Plus className="w-4 h-4" />
                   Contribute Paper
                 </Button>
               </Link>
             )}
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-500">Sort by:</span>
-              <div className="relative z-0">
+            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 bg-slate-50 dark:bg-[#1e1e1e] sm:bg-transparent p-2 sm:p-0 rounded-lg border sm:border-none border-slate-200 dark:border-slate-800">
+              <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Sort by:</span>
+              <div className="relative z-0 w-full sm:w-auto">
                 <select
                   value={sortBy}
                   onChange={(e) => { setSortBy(e.target.value as FeSortKey); resetPage(); }}
-                  className="h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  className="w-full sm:w-auto h-8 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1e1e1e] pl-3 pr-8 text-xs font-medium text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value="relevance">Relevance</option>
                   <option value="date">Date (Newest)</option>
