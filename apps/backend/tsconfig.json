@@ -8,7 +8,8 @@
     "rootDir": "src",
     "baseUrl": "src",
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["*"],
+      "@trend/shared-types": ["../../../packages/shared-types/dist/index.d.ts"]
     },
     "types": ["node"]
   },

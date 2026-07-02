@@ -5,7 +5,6 @@ import { PaperDownloadModel } from "../papers/models/paper-download.model.js";
 import { UserRatingModel } from "../quality/models/user-rating.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { logger } from "../../infrastructure/logger.js";
-import { getLevel } from "@trend/shared-types";
 
 // ── Constants (mirrored from Legacy) ────────────────────────────────────────
 export const REQUEST_PAPER_COST = 100;   // Credits deducted when creating a request
@@ -14,10 +13,18 @@ export const INVALID_PDF_PENALTY = 0;    // Penalty points for rejected PDF uplo
 export const RATING_POINTS = 5;          // Points earned per rating given (mirrors legacy)
 
 const APPROVED_STATUSES = ["not-downloaded", "downloaded"];
+const LEVEL_THRESHOLDS = [0, 25, 75, 150, 300, 600, 1000, 1500, 2000, 3000, Infinity];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function toObjectId(id: string | mongoose.Types.ObjectId): mongoose.Types.ObjectId {
   return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
+}
+
+function getLevel(points: number): number {
+  for (let i = LEVEL_THRESHOLDS.length - 2; i >= 0; i -= 1) {
+    if (points >= LEVEL_THRESHOLDS[i]!) return i + 1;
+  }
+  return 1;
 }
 
 // ── Pure money logic (single source of truth, unit-tested) ────────────────────
