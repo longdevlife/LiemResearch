@@ -186,7 +186,7 @@ export function ReportViewerPage() {
             {title}
           </h1>
 
-          <div className="flex items-center gap-3 mb-8 print:hidden">
+          <div className="flex flex-wrap items-center gap-3 mb-8 print:hidden">
             <Button onClick={() => setShowRoses(!showRoses)} variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
               <Flower className="w-4 h-4" /> {showRoses ? "Hide Roses" : "Show Roses"}
             </Button>
@@ -215,7 +215,7 @@ export function ReportViewerPage() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-medium text-slate-500 mb-10 pb-8 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 mb-10 pb-8 border-b border-slate-100 dark:border-slate-800">
             <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" /> AI-Verified Report
             </span>
@@ -241,7 +241,7 @@ export function ReportViewerPage() {
 
 
 
-            <div className="flex items-center justify-between mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3 print:border-none print:pb-0">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 mt-12 border-b border-slate-100 dark:border-slate-800/60 pb-3 print:border-none print:pb-0">
               <h2 id="research-gaps" className="text-[22px] font-semibold text-slate-900 dark:text-white m-0 border-none pb-0">Identified Research Gaps</h2>
               <Button onClick={() => navigate(`/research-gaps?source=report&topic=${encodeURIComponent(report?.topic || report?.query || "")}`)} className="h-8 px-4 text-xs font-bold gap-1 print:hidden bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md rounded-full transition-all hover:shadow-lg hover:-translate-y-0.5 border-0">
                 View in Research Gaps <ChevronRight className="w-3 h-3 ml-1" />
