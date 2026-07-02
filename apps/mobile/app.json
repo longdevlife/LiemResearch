@@ -24,6 +24,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "347f46d8-fa83-472c-bf80-192159aa2057"
+      }
+    },
+    "owner": "khoale3004"
   }
 }

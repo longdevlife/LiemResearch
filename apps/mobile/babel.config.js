@@ -6,10 +6,9 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      // react-native-reanimated v3.16+ moved its worklets plugin out into a
-      // separate package. Required for any Reanimated animation to compile.
+      // react-native-reanimated plugin, required for Reanimated animations.
       // MUST be listed last per Reanimated docs.
-      "react-native-worklets/plugin",
+      "react-native-reanimated/plugin",
     ],
   };
 };
