@@ -479,9 +479,74 @@
       </div>
       <div class="feat-card">
         <span class="pill done">Implemented</span>
-        <h4>Trends Dashboard</h4>
-        <p>MongoDB Aggregation Pipeline tính YoY, CAGR, Momentum cho keywords/topics theo năm. <b>Deterministic</b>, không LLM. 3 cổng chống trend giả.</p>
-        <div class="tech">MongoDB Aggregation · Deterministic Compute</div>
+        <h4>Trends Intelligence (5 endpoints)</h4>
+        <p>Hệ thống phân tích xu hướng nghiên cứu gồm <b>5 API endpoints</b>, 4 deterministic + 1 AI:</p>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 12px;">
+          <!-- Endpoint 1 -->
+          <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <code style="font-weight: 700; color: var(--blue);">GET /trends</code>
+              <span class="pill" style="margin: 0; padding: 2px 6px; font-size: 10px; background: #ecfdf5; color: var(--green); border-color: #a7f3d0;">Deterministic · 0 token</span>
+            </div>
+            <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5;">
+              <b>Overview</b> — Tổng hợp Trending topics (sắp xếp theo momentum/growth/total), Rising keywords (lọc base &gt; 1 tránh trend ảo), Yearly total papers, Citation trend và Facets (phân loại theo paperKind, openAccess, providers, top sources, citation bands). Tính bằng MongoDB Aggregation.
+            </p>
+          </div>
+
+          <!-- Endpoint 2 -->
+          <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <code style="font-weight: 700; color: var(--blue);">GET /trends/:topic</code>
+              <span class="pill" style="margin: 0; padding: 2px 6px; font-size: 10px; background: #ecfdf5; color: var(--green); border-color: #a7f3d0;">Deterministic · 0 token</span>
+            </div>
+            <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5;">
+              <b>Topic Drill-down</b> — Thống kê chi tiết một chủ đề cụ thể: Yearly breakdown, chỉ số tăng trưởng (YoY, CAGR, Momentum), danh sách Top journals, top authors và top keywords liên quan. Trả lỗi 404 nếu không có bài báo nào thuộc chủ đề.
+            </p>
+          </div>
+
+          <!-- Endpoint 3 -->
+          <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <code style="font-weight: 700; color: var(--blue);">GET /trends/compare</code>
+              <span class="pill" style="margin: 0; padding: 2px 6px; font-size: 10px; background: #ecfdf5; color: var(--green); border-color: #a7f3d0;">Deterministic · 0 token</span>
+            </div>
+            <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5;">
+              <b>Topic Compare</b> — So sánh song song từ 2–5 chủ đề cùng lúc trên biểu đồ sản lượng năm (Yearly publication) và xu hướng trích dẫn (Citation trend). Frontend sử dụng để vẽ biểu đồ so sánh đa tuyến.
+            </p>
+          </div>
+
+          <!-- Endpoint 4 -->
+          <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <code style="font-weight: 700; color: var(--blue);">GET /trends/relationships</code>
+              <span class="pill" style="margin: 0; padding: 2px 6px; font-size: 10px; background: #ecfdf5; color: var(--green); border-color: #a7f3d0;">Deterministic · 0 token</span>
+            </div>
+            <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5;">
+              <b>Topic Relationships</b> — Ma trận đồng xuất hiện (Co-occurrence graph): Đếm số bài báo chứa đồng thời cả topic chính và topic liên quan. Trả cấu trúc <code>nodes[]</code> và <code>edges[]</code> sẵn sàng vẽ Network Graph trên FE.
+            </p>
+          </div>
+
+          <!-- Endpoint 5 -->
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <code style="font-weight: 700; color: var(--blue);">POST /trends/explain</code>
+              <span class="pill" style="margin: 0; padding: 2px 6px; font-size: 10px; background: #faf5ff; color: var(--purple); border-color: #ddd6fe;">AI Powered</span>
+            </div>
+            <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5;">
+              <b>AI Explain</b> — Diễn giải và tổng hợp xu hướng nghiên cứu bằng AI. Chi tiết xem ở ô bên cạnh ➔
+            </p>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Caching:</b> Tất cả 5 endpoints đều cache trong Redis (TTL 1 giờ), key = <code>trends-v3:{method}:{hash(params)}</code>. Trend data chỉ thay đổi khi sync chạy → 1h cache gần như luôn fresh.</p>
+        <div class="tech">MongoDB Aggregation · Redis Cache · Deterministic Compute (4/5 endpoints)</div>
+      </div>
+      <div class="feat-card" style="border-top-color: var(--purple)">
+        <span class="pill done">Implemented</span>
+        <h4>Trend AI Explain</h4>
+        <p><code>POST /trends/explain</code> — Gemini nhận <b>aggregate metrics đã tính sẵn</b> (overview + topic detail + relationship graph) rồi sinh giải thích ngữ cảnh. AI <b>KHÔNG truy cập corpus trực tiếp</b>, chỉ diễn giải các con số deterministic.</p>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Luồng chi tiết:</b> Hệ thống tự gọi 3 internal methods (<code>overview()</code>, <code>topic()</code>, <code>relationships()</code>) → gom kết quả thành prompt JSON → Gemini trả JSON có 5 trường: <code>summary</code> (1 đoạn), <code>whyItMatters</code> (2–4 bullets), <code>evidenceSignals</code> (2–5 bullets grounded trên counts/growth/momentum/citations/facets), <code>cautions</code> (1–3 cảnh báo về small base, năm chưa hết...), <code>suggestedActions</code> (2–4 hành động tiếp theo). Hỗ trợ <b>song ngữ</b> (en/vi) qua param <code>language</code>.</p>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px"><b>Validation:</b> Output Gemini được <code>validateTrendExplanation()</code> kiểm tra shape + truncate array bounds. Cache key bao gồm <code>overviewComputedAt</code> → khi overview data thay đổi (sync mới) thì cache tự invalidate.</p>
+        <div class="tech">F4 Cached LLM · Gemini Flash · trend.service · Grounded on deterministic metrics only</div>
       </div>
       <div class="feat-card">
         <span class="pill done">Implemented</span>
@@ -778,7 +843,7 @@
     </table>
 
     <div class="callout ok" style="margin-top:40px">
-      <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp 8 tính năng AI (search, trends, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, hỗ trợ cả Gemini cloud lẫn Ollama local, với hệ thống chịu lỗi không đốt quota vô ích.
+      <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri thức có cấu trúc (aiAnalysis), và cung cấp <b>9 tính năng AI</b> (search, trends overview, <b>trend AI explain</b>, reports, gaps, directions, compare, chat, deep analysis) — tất cả được grounded trên dữ liệu thật, cache thông minh, hỗ trợ cả Gemini cloud lẫn Ollama local, với hệ thống chịu lỗi không đốt quota vô ích.
     </div>
   </div>
   <footer>
