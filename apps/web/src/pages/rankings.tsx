@@ -504,8 +504,8 @@ export function RankingsPage() {
 
                 {/* Pagination */}
                 {pagination.totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-medium">
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <span className="text-xs text-slate-400 font-medium text-center sm:text-left">
                       Page {pagination.page} of {pagination.totalPages} · {pagination.total} total
                     </span>
                     <div className="flex items-center gap-2">
