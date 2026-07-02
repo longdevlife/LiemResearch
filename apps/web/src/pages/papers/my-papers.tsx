@@ -168,7 +168,7 @@ export function MyPapersPage({ isEmbedded = false }: { isEmbedded?: boolean } = 
 
                 {/* Quality info */}
                 {paper.qualityScore !== undefined && paper.qualityScore > 0 && (
-                  <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-500 dark:text-slate-400">
                     <span>Quality Score: <strong className={tierColor}>{paper.qualityScore}/100</strong></span>
                     {paper.qualityTierName && (
                       <span>Tier: <strong className={tierColor}>{paper.qualityTierName}</strong></span>
