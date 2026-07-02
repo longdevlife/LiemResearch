@@ -223,9 +223,9 @@ export function TrendsPage() {
       )}
 
       {/* Control Bar */}
-      <div className="flex flex-col md:flex-row items-center gap-4 mb-8 bg-white dark:bg-[#121212] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex-wrap">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-8 bg-white dark:bg-[#121212] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex-wrap w-full">
 
-        <div className="flex-1 min-w-[200px] relative">
+        <div className="flex-1 w-full md:w-auto min-w-[200px] relative">
           <button
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 z-10"
             onClick={(e) => {
@@ -250,13 +250,13 @@ export function TrendsPage() {
         </div>
 
         {/* Year Range */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
           <input
             type="number"
             value={yearFrom}
             onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 2020)}
             placeholder="From"
-            className="w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="w-full md:w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
           />
           <span className="text-slate-400">-</span>
           <input
@@ -264,7 +264,7 @@ export function TrendsPage() {
             value={yearTo}
             onChange={(e) => setYearTo(parseInt(e.target.value, 10) || 2026)}
             placeholder="To"
-            className="w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="w-full md:w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
           />
         </div>
 
@@ -283,14 +283,14 @@ export function TrendsPage() {
         </div>
 
         {/* Min Papers */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-slate-500 font-medium" title="Hide noisy topics with fewer than this many papers in the selected window.">Min Papers:</span>
+        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+          <span className="text-xs text-slate-500 font-medium whitespace-nowrap" title="Hide noisy topics with fewer than this many papers in the selected window.">Min Papers:</span>
           <input
             type="number"
             value={minPapers}
             min="1"
             onChange={(e) => setMinPapers(parseInt(e.target.value, 10) || 1)}
-            className="w-16 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="w-full md:w-16 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
             title="Hide noisy topics with fewer than this many papers in the selected window."
           />
         </div>

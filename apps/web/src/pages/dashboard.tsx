@@ -268,15 +268,15 @@ export function DashboardPage() {
               <h2 className="text-sm font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Admin Analytics</h2>
               <p className="text-xs text-slate-500 mt-1">Real-time system usage trends and user demand data.</p>
             </div>
-            <div className="flex items-center gap-3 self-end sm:self-center">
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60">
-                <Button variant={days === 7 ? "default" : "ghost"} size="sm" onClick={() => setDays(7)} className="h-7 px-3 text-[11px] font-bold rounded-full">7 Days</Button>
-                <Button variant={days === 14 ? "default" : "ghost"} size="sm" onClick={() => setDays(14)} className="h-7 px-3 text-[11px] font-bold rounded-full">14 Days</Button>
-                <Button variant={days === 30 ? "default" : "ghost"} size="sm" onClick={() => setDays(30)} className="h-7 px-3 text-[11px] font-bold rounded-full">30 Days</Button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+              <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/60 dark:border-slate-700/60 w-full sm:w-auto">
+                <Button variant={days === 7 ? "default" : "ghost"} size="sm" onClick={() => setDays(7)} className="h-7 px-3 text-[11px] font-bold rounded-full flex-1 sm:flex-none">7 Days</Button>
+                <Button variant={days === 14 ? "default" : "ghost"} size="sm" onClick={() => setDays(14)} className="h-7 px-3 text-[11px] font-bold rounded-full flex-1 sm:flex-none">14 Days</Button>
+                <Button variant={days === 30 ? "default" : "ghost"} size="sm" onClick={() => setDays(30)} className="h-7 px-3 text-[11px] font-bold rounded-full flex-1 sm:flex-none">30 Days</Button>
               </div>
               <Button
                 onClick={() => navigate("/admin")}
-                className="h-9 px-4 bg-slate-800 hover:bg-slate-900 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 font-extrabold rounded-full text-xs shadow gap-1.5"
+                className="w-full sm:w-auto h-9 px-4 bg-slate-800 hover:bg-slate-900 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 font-extrabold rounded-full text-xs shadow gap-1.5 flex justify-center items-center"
               >
                 Open Admin Overview <ArrowRight className="w-3.5 h-3.5" />
               </Button>

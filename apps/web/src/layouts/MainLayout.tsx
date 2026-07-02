@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Award } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Award, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,8 @@ const navItems = [
 
 export function MainLayout() {
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const user = useAuthStore((s) => s.user);
   const { data: bookmarks } = useBookmarks({ enabled: isAuthed });
@@ -61,6 +64,7 @@ export function MainLayout() {
               </span>
             </Link>
             
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
               {filteredNavItems.map((item) => (
                 <NavLink
@@ -82,7 +86,7 @@ export function MainLayout() {
           </div>
 
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             <ThemeToggle />
             {isAuthed && (
               <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400" asChild>
@@ -107,8 +111,44 @@ export function MainLayout() {
               </Link>
             </Button>
             <UserMenu />
+            
+            {/* Mobile Menu Toggle */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden shrink-0" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle Menu"
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
+        
+        {/* Mobile Navigation Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t bg-white dark:bg-[#0f0f11] absolute top-16 left-0 right-0 z-40 shadow-lg animate-in slide-in-from-top-2 duration-200">
+            <nav className="flex flex-col px-4 py-2">
+              {filteredNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "px-4 py-3 rounded-md text-sm font-medium transition-all my-1",
+                      isActive
+                        ? "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        )}
       </header>
       <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <Outlet />
@@ -155,7 +195,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 h-12 pl-1.5 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+        <Button variant="ghost" size="sm" className="gap-1.5 sm:gap-2 h-10 sm:h-12 pl-1 pr-1.5 sm:pl-1.5 sm:pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
           {role !== "admin" ? (
             (() => {
               const currentLevel = getLevel(points);
