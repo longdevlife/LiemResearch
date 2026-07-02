@@ -258,6 +258,7 @@
     <div class="nav-group-title">Giới thiệu</div>
     <a href="#sec-1" class="sidebar-item active">1. Giới thiệu dự án</a>
     <a href="#sec-2" class="sidebar-item">2. Kiến trúc hệ thống</a>
+    <a href="#sec-2b" class="sidebar-item">2b. Ranh giới Hybrid Logic (AI vs BE)</a>
     <a href="#sec-3" class="sidebar-item">3. Luồng dữ liệu End-to-End</a>
     <a href="#sec-4" class="sidebar-item">4. Ba nhóm nguồn dữ liệu</a>
 
@@ -362,6 +363,69 @@
           <li>MongoDB Atlas Vector Search (cosine)</li>
           <li>Redis Cache (Upstash) + prompt versioning</li>
         </ul>
+      </div>
+    </div>
+
+    <!-- 2b. RANH GIỚI HYBRID LOGIC -->
+    <h2 id="sec-2b"><span class="n">2b.</span> AI không thay Backend: Hybrid Logic Boundary</h2>
+    <p class="lead">Một trong những điểm cốt lõi trong thiết kế của LiemResearch là việc phân định rõ ranh giới trách nhiệm giữa <b>AI (Generative/Semantic)</b> và <b>Backend (Deterministic Rule/Aggregation)</b>. Hệ thống không phó mặc toàn bộ nghiệp vụ cho LLM nhằm tối ưu chi phí token, tăng tốc độ phản hồi và loại bỏ hoàn toàn hiện tượng ảo giác (hallucination) trong các phép tính toán số liệu học thuật.</p>
+
+    <div class="card">
+      <h3>Bảng phân định ranh giới trách nhiệm (Boundary Matrix)</h3>
+      <p style="font-size: 14px; color: var(--muted); margin-top: -8px; margin-bottom: 16px;">Bảng dưới đây chỉ ra rõ ràng vai trò xử lý của từng cấu phần trong hệ thống, nhấn mạnh việc không lạm dụng LLM ở những nơi có thể giải quyết bằng logic thuật toán thông thường.</p>
+      
+      <div style="overflow-x: auto;">
+        <table style="margin: 0; font-size: 14px; min-width: 600px;">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Phần Nghiệp Vụ</th>
+              <th style="width: 50%;">Cách Thức Xử Lý</th>
+              <th style="width: 20%; text-align: center;">Có dùng LLM?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Auth, Role, Upload, Admin</b></td>
+              <td>Xử lý hoàn toàn bằng <b>Backend logic & Database rules</b> (JWT sliding session, phân quyền route Express, lưu trữ MongoDB).</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#f1f5f9; color:var(--muted); border-color:#cbd5e1;">❌ KHÔNG</span></td>
+            </tr>
+            <tr>
+              <td><b>Sync OpenAlex, Dedup, Quality Gate</b></td>
+              <td><b>BullMQ Worker</b> điều phối tải nền. Áp dụng logic chuẩn hóa (Normalize), chống trùng lặp (Dedup) bằng hash/DOI, chấm điểm chất lượng dữ liệu bằng <b>quy tắc 6 chiều tĩnh</b> (paper-quality.ts).</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#f1f5f9; color:var(--muted); border-color:#cbd5e1;">❌ KHÔNG</span></td>
+            </tr>
+            <tr>
+              <td><b>Search mặc định (Semantic)</b></td>
+              <td>Trích xuất vector câu hỏi qua Gemini Embedding API. Sử dụng <b>Atlas Vector Search ($vectorSearch)</b> để tính toán độ tương đồng cosine trực tiếp trên database.</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#ecfdf5; color:var(--green); border-color:#a7f3d0;">Embed (0 LLM)</span></td>
+            </tr>
+            <tr>
+              <td><b>Trend Metrics & Analytics</b></td>
+              <td>Tính toán chỉ số tăng trưởng YoY, CAGR, Momentum của keywords/topics theo năm. Sử dụng <b>MongoDB Aggregation Pipeline</b> và công thức toán học xác định.</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#f1f5f9; color:var(--muted); border-color:#cbd5e1;">❌ KHÔNG</span></td>
+            </tr>
+            <tr>
+              <td><b>Trend Explanation</b></td>
+              <td>Gọi LLM để <b>diễn giải ngữ cảnh</b> dựa trên bộ metrics thô và đồ thị quan hệ đã tính toán sẵn từ tầng dưới. Không cho phép LLM tự bịa số liệu.</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#faf5ff; color:var(--purple); border-color:#ddd6fe;">✅ CÓ</span></td>
+            </tr>
+            <tr>
+              <td><b>Report, Gaps, Directions, Chat</b></td>
+              <td>Sử dụng mô hình <b>RAG (Retrieval-Augmented Generation)</b>: Tầng trên dùng Gemini Flash/Pro để tổng hợp và trả lời, tầng dưới dùng F1 Retriever thu thập bằng chứng học thuật thực tế để ground thông tin. Có kiểm duyệt trích dẫn (Grounding & Citation check).</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#faf5ff; color:var(--purple); border-color:#ddd6fe;">✅ CÓ</span></td>
+            </tr>
+            <tr>
+              <td><b>Paper Score, Tier, Credit Cost</b></td>
+              <td>Tính toán độ ảnh hưởng bằng công thức cố định: <code>finalScore = 0.6 * Impact (Citations/Age) + 0.4 * Recency</code>. Xếp hạng Tiers chất lượng và áp dụng biểu giá credit hoàn toàn deterministic.</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#f1f5f9; color:var(--muted); border-color:#cbd5e1;">❌ KHÔNG</span></td>
+            </tr>
+            <tr>
+              <td><b>AI scoring upload (Tư vấn)</b></td>
+              <td>Chấm điểm chất lượng tài liệu tải lên theo 3 chiều (relevance, groundedness, completeness) bằng <b>Gemini on-demand</b>. Chỉ đóng vai trò <b>tham vấn học thuật</b> cho người dùng, không can thiệp vào nghiệp vụ duyệt hay tính credit của backend.</td>
+              <td style="text-align: center;"><span class="pill" style="margin:0; background:#faf5ff; color:var(--purple); border-color:#ddd6fe;">✅ CÓ</span></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
