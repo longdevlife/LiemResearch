@@ -32,23 +32,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authControllerProvider.notifier).register(
-          _emailController.text.trim(),
-          _passwordController.text,
-          _fullNameController.text.trim(),
-          _selectedRole,
+    try {
+      await ref.read(authControllerProvider.notifier).register(
+            _emailController.text.trim(),
+            _passwordController.text,
+            _fullNameController.text.trim(),
+            _selectedRole,
+          );
+          
+      if (mounted) {
+        final state = ref.read(authControllerProvider);
+        if (state.hasError) {
+          final errorMsg = state.error.toString().replaceAll('ApiException: ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        } else if (!state.hasError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Đăng ký thành công. Vui lòng đăng nhập.'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          );
+          context.go('/login');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
-
-    final state = ref.read(authControllerProvider);
-    if (state.hasError && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    } else if (state.value != null && mounted) {
-      context.go('/'); // Navigate to Tab shell
+      }
     }
   }
 
@@ -137,7 +157,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 enabled: !isLoading,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Password is required';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  if (value.length < 8) return 'Password must be at least 8 characters';
                   return null;
                 },
               ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/api_routes.dart';
 import '../../../core/widgets/app_screen.dart';
+import '../data/auth_models.dart';
 import '../providers/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -28,21 +29,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authControllerProvider.notifier).login(
-          _emailController.text.trim(),
-          _passwordController.text,
+    try {
+      await ref.read(authControllerProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+          
+      if (mounted) {
+        final state = ref.read(authControllerProvider);
+        if (state.hasError) {
+          final errorMsg = state.error.toString().replaceAll('ApiException: ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        } else if (state.value != null) {
+          context.go('/');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
-        
-    final state = ref.read(authControllerProvider);
-    if (state.hasError && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    } else if (state.value != null && mounted) {
-      context.go('/'); // Navigate to Tab shell
+      }
     }
   }
 
