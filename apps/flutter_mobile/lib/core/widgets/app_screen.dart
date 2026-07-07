@@ -1,0 +1,48 @@
+import 'package:flutter/material.dart';
+
+class AppScreen extends StatelessWidget {
+  final String? title;
+  final Widget body;
+  final Widget? floatingActionButton;
+  final List<Widget>? actions;
+  final bool showBackButton;
+  final Widget? bottomNavigationBar;
+  final bool padding;
+
+  const AppScreen({
+    super.key,
+    this.title,
+    required this.body,
+    this.floatingActionButton,
+    this.actions,
+    this.showBackButton = true,
+    this.bottomNavigationBar,
+    this.padding = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: title != null
+          ? AppBar(
+              title: Text(title!),
+              automaticallyImplyLeading: showBackButton,
+              actions: actions,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            )
+          : null,
+      body: SafeArea(
+        child: padding
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: body,
+              )
+            : body,
+      ),
+      floatingActionButton: floatingActionButton,
+      bottomNavigationBar: bottomNavigationBar,
+    );
+  }
+}
