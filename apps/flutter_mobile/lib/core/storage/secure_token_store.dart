@@ -7,7 +7,11 @@ class SecureTokenStore {
 
   static const _keyTokens = 'auth_tokens';
 
-  const SecureTokenStore([this._storage = const FlutterSecureStorage()]);
+  const SecureTokenStore([
+    this._storage = const FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    )
+  ]);
 
   Future<void> save(AuthTokens tokens) async {
     final jsonString = jsonEncode(tokens.toJson());

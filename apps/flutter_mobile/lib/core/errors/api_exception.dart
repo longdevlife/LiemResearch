@@ -1,4 +1,4 @@
-import 'api_envelope.dart';
+import '../network/api_envelope.dart';
 
 class ApiException implements Exception {
   final ApiErrorDetail? errorDetail;

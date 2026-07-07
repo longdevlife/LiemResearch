@@ -4,7 +4,7 @@ part 'api_envelope.freezed.dart';
 part 'api_envelope.g.dart';
 
 @freezed
-class ResponseMeta with _$ResponseMeta {
+abstract class ResponseMeta with _$ResponseMeta {
   const factory ResponseMeta({
     int? page,
     int? pageSize,
@@ -17,7 +17,7 @@ class ResponseMeta with _$ResponseMeta {
 }
 
 @freezed
-class ApiErrorDetail with _$ApiErrorDetail {
+abstract class ApiErrorDetail with _$ApiErrorDetail {
   const factory ApiErrorDetail({
     required String code,
     required String message,
@@ -28,7 +28,7 @@ class ApiErrorDetail with _$ApiErrorDetail {
 }
 
 @Freezed(genericArgumentFactories: true)
-class ApiResponse<T> with _$ApiResponse<T> {
+abstract class ApiResponse<T> with _$ApiResponse<T> {
   const factory ApiResponse({
     required bool success,
     T? data,
@@ -39,5 +39,6 @@ class ApiResponse<T> with _$ApiResponse<T> {
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,
     T Function(Object? json) fromJsonT,
-  ) => _$ApiResponseFromJson(json, fromJsonT);
+  ) =>
+      _$ApiResponseFromJson(json, fromJsonT);
 }

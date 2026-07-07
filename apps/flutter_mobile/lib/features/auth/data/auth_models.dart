@@ -6,7 +6,7 @@ part 'auth_models.g.dart';
 enum UserRole { student, lecturer, researcher, admin }
 
 @freezed
-class User with _$User {
+abstract class User with _$User {
   const factory User({
     required String id,
     required String email,
@@ -21,7 +21,7 @@ class User with _$User {
 }
 
 @freezed
-class AuthTokens with _$AuthTokens {
+abstract class AuthTokens with _$AuthTokens {
   const factory AuthTokens({
     required String accessToken,
     required String refreshToken,
@@ -32,7 +32,7 @@ class AuthTokens with _$AuthTokens {
 }
 
 @freezed
-class AuthResponse with _$AuthResponse {
+abstract class AuthResponse with _$AuthResponse {
   const factory AuthResponse({
     required User user,
     required AuthTokens tokens,
@@ -42,7 +42,7 @@ class AuthResponse with _$AuthResponse {
 }
 
 @freezed
-class LoginRequest with _$LoginRequest {
+abstract class LoginRequest with _$LoginRequest {
   const factory LoginRequest({
     required String email,
     required String password,
@@ -52,7 +52,7 @@ class LoginRequest with _$LoginRequest {
 }
 
 @freezed
-class RegisterRequest with _$RegisterRequest {
+abstract class RegisterRequest with _$RegisterRequest {
   const factory RegisterRequest({
     required String email,
     required String password,
