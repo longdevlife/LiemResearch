@@ -1,17 +1,17 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../features/auth/data/auth_models.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 
 class SecureTokenStore {
-  final FlutterSecureStorage _storage;
-
-  static const _keyTokens = 'auth_tokens';
 
   const SecureTokenStore([
     this._storage = const FlutterSecureStorage(
       aOptions: AndroidOptions(encryptedSharedPreferences: true),
     )
   ]);
+  final FlutterSecureStorage _storage;
+
+  static const _keyTokens = 'auth_tokens';
 
   Future<void> save(AuthTokens tokens) async {
     final jsonString = jsonEncode(tokens.toJson());

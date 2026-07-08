@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
+import 'package:flutter_mobile/core/theme/app_colors.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
@@ -8,7 +8,6 @@ class AppTheme {
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
         primary: AppColors.lightPrimary,
-        onPrimary: AppColors.lightPrimaryForeground,
         surface: AppColors.lightBackground,
         onSurface: AppColors.lightForeground,
         secondary: AppColors.lightAccent,
@@ -28,7 +27,6 @@ class AppTheme {
         primary: AppColors.darkPrimary,
         onPrimary: AppColors.darkPrimaryForeground,
         surface: AppColors.darkBackground,
-        onSurface: AppColors.darkForeground,
         secondary: AppColors.darkAccent,
         error: Colors.red,
       ),

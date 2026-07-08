@@ -1,15 +1,15 @@
-import '../network/api_envelope.dart';
+import 'package:flutter_mobile/core/network/api_envelope.dart';
 
 class ApiException implements Exception {
-  final ApiErrorDetail? errorDetail;
-  final String message;
-  final int? statusCode;
 
   ApiException({
     this.errorDetail,
     required this.message,
     this.statusCode,
   });
+  final ApiErrorDetail? errorDetail;
+  final String message;
+  final int? statusCode;
 
   @override
   String toString() {

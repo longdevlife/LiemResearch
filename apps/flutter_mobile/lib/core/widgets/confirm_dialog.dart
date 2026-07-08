@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 
 class ConfirmDialog extends StatelessWidget {
-  final String title;
-  final String message;
-  final String confirmText;
-  final String cancelText;
-  final bool isDestructive;
-  final VoidCallback onConfirm;
 
   const ConfirmDialog({
     super.key,
@@ -17,6 +11,12 @@ class ConfirmDialog extends StatelessWidget {
     this.isDestructive = false,
     required this.onConfirm,
   });
+  final String title;
+  final String message;
+  final String confirmText;
+  final String cancelText;
+  final bool isDestructive;
+  final VoidCallback onConfirm;
 
   static Future<bool?> show(
     BuildContext context, {

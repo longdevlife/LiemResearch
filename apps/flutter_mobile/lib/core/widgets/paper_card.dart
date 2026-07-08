@@ -1,110 +1,138 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
 
-class PaperCard extends StatelessWidget {
-  final String title;
-  final String authors;
-  final String venueAndYear;
-  final String? score;
-  final bool isBookmarked;
-  final VoidCallback onTap;
-  final VoidCallback? onBookmarkTap;
-
+class PaperCard extends ConsumerWidget {
   const PaperCard({
     super.key,
+    required this.id,
     required this.title,
     required this.authors,
     required this.venueAndYear,
     this.score,
-    this.isBookmarked = false,
     required this.onTap,
     this.onBookmarkTap,
   });
 
+  final String id;
+  final String title;
+  final String authors;
+  final String venueAndYear;
+  final String? score;
+  final VoidCallback onTap;
+  final VoidCallback? onBookmarkTap;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
-    return Card(
-      elevation: 0,
+    final isDark = theme.brightness == Brightness.dark;
+
+    final statusAsync = ref.watch(bookmarkStatusProvider(BookmarkTarget('paper', id)));
+    final isBookmarked = statusAsync.value?.bookmarked ?? false;
+
+    final cardBg = isDark ? const Color(0xFF1A2332) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF26334A) : const Color(0xFFE2E8F0);
+    final textColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (onBookmarkTap != null)
-                    IconButton(
-                      icon: Icon(
-                        isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                        color: isBookmarked ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: onBookmarkTap,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                authors,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      venueAndYear,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (score != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
                       child: Text(
-                        score!,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: isDark ? const Color(0xFFF8FAFC) : theme.textTheme.titleMedium?.color,
+                          height: 1.25,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (onBookmarkTap != null)
+                      GestureDetector(
+                        onTap: onBookmarkTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12, bottom: 4),
+                          child: Icon(
+                            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                            color: isBookmarked ? const Color(0xFF06B6D4) : textColor,
+                            size: 18,
+                          ),
                         ),
                       ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  authors,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        venueAndYear,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                ],
-              ),
-            ],
+                    if (score != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF083344) : const Color(0xFFECFEFF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.auto_awesome, color: Color(0xFF06B6D4), size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              score!,
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF67E8F9) : const Color(0xFF0891B2),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

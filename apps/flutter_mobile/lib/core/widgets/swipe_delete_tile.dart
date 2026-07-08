@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 
 class SwipeDeleteTile extends StatelessWidget {
-  final Widget child;
-  final VoidCallback onDelete;
-  final Future<bool> Function()? confirmDelete;
-  final Key tileKey;
-  final EdgeInsetsGeometry? margin;
-  final BorderRadius? borderRadius;
 
   const SwipeDeleteTile({
     super.key,
@@ -17,6 +11,12 @@ class SwipeDeleteTile extends StatelessWidget {
     this.margin,
     this.borderRadius,
   });
+  final Widget child;
+  final VoidCallback onDelete;
+  final Future<bool> Function()? confirmDelete;
+  final Key tileKey;
+  final EdgeInsetsGeometry? margin;
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class SwipeDeleteTile extends StatelessWidget {
           direction: DismissDirection.endToStart,
           confirmDismiss: (direction) async {
             if (confirmDelete != null) {
-              return await confirmDelete!();
+              return confirmDelete!();
             }
             return true;
           },
@@ -41,7 +41,7 @@ class SwipeDeleteTile extends StatelessWidget {
           background: Container(
             color: theme.colorScheme.error,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20.0),
+            padding: const EdgeInsets.only(right: 20),
             child: Icon(
               Icons.delete_outline,
               color: theme.colorScheme.onError,

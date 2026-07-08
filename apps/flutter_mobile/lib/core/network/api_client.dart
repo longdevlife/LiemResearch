@@ -1,31 +1,27 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../storage/secure_token_store.dart';
-import '../errors/api_exception.dart';
-import '../constants/api_routes.dart';
-import '../../features/auth/data/auth_models.dart';
-import '../network/api_envelope.dart';
+import 'package:flutter_mobile/core/storage/secure_token_store.dart';
+import 'package:flutter_mobile/core/errors/api_exception.dart';
+import 'package:flutter_mobile/core/constants/api_routes.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
+import 'package:flutter_mobile/core/network/api_envelope.dart';
+
+import 'package:flutter_mobile/core/config/app_config.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(SecureTokenStore());
+  return ApiClient(const SecureTokenStore());
 });
 
 class ApiClient {
-  late final Dio _dio;
-  final SecureTokenStore _tokenStore;
-  Future<String?>? _refreshFuture;
 
   ApiClient(this._tokenStore) {
-    const baseUrl = String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:4000/api/v1',
-    );
+    const baseUrl = AppConfig.apiBaseUrl;
 
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 120),
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
@@ -91,6 +87,9 @@ class ApiClient {
       },
     ));
   }
+  late final Dio _dio;
+  final SecureTokenStore _tokenStore;
+  Future<String?>? _refreshFuture;
 
   Dio get dio => _dio;
 

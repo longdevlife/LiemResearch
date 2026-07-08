@@ -2,18 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/auth/providers/auth_controller.dart';
-import '../../features/auth/data/auth_models.dart';
-import '../../features/auth/presentation/login_screen.dart';
-import '../../features/auth/presentation/register_screen.dart';
-import '../../features/home/presentation/app_shell_screen.dart';
-import '../../features/profile/presentation/profile_screen.dart';
-import '../widgets/app_loading.dart';
+import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
+import 'package:flutter_mobile/features/auth/presentation/login_screen.dart';
+import 'package:flutter_mobile/features/auth/presentation/register_screen.dart';
+import 'package:flutter_mobile/features/admin/presentation/admin_sync_screen.dart';
+import 'package:flutter_mobile/features/bookmarks/presentation/bookmarks_screen.dart';
+import 'package:flutter_mobile/features/gaps/presentation/gaps_screen.dart';
+import 'package:flutter_mobile/features/home/presentation/app_shell_screen.dart';
+import 'package:flutter_mobile/features/home/presentation/home_screen.dart';
+import 'package:flutter_mobile/features/notifications/presentation/notifications_screen.dart';
+import 'package:flutter_mobile/features/papers/presentation/my_papers_screen.dart';
+import 'package:flutter_mobile/features/papers/presentation/paper_detail_screen.dart';
+import 'package:flutter_mobile/features/papers/presentation/submit_paper_screen.dart';
+import 'package:flutter_mobile/features/profile/presentation/profile_screen.dart';
+import 'package:flutter_mobile/features/projects/presentation/project_detail_screen.dart';
+import 'package:flutter_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:flutter_mobile/features/rankings/presentation/rankings_screen.dart';
+import 'package:flutter_mobile/features/reports/presentation/report_detail_screen.dart';
+import 'package:flutter_mobile/features/reports/presentation/reports_screen.dart';
+import 'package:flutter_mobile/features/search/presentation/keyword_papers_screen.dart';
+import 'package:flutter_mobile/features/trends/presentation/trends_screen.dart';
+import 'package:flutter_mobile/core/widgets/app_loading.dart';
 
 // Dummy screens for features not yet built
 class PlaceholderScreen extends StatelessWidget {
-  final String title;
   const PlaceholderScreen({super.key, required this.title});
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +47,13 @@ final _shellNavigatorAlertsKey = GlobalKey<NavigatorState>(debugLabel: 'alertsTa
 final _shellNavigatorProfileKey = GlobalKey<NavigatorState>(debugLabel: 'profileTab');
 
 class RouterNotifier extends ChangeNotifier {
-  final Ref _ref;
   RouterNotifier(this._ref) {
     _ref.listen<AsyncValue<User?>>(
       authControllerProvider,
       (_, __) => notifyListeners(),
     );
   }
+  final Ref _ref;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -100,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/',
                 name: 'home',
-                builder: (context, state) => const PlaceholderScreen(title: 'Home Tab'),
+                builder: (context, state) => const HomeScreen(),
               ),
             ],
           ),
@@ -110,7 +125,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/bookmarks',
                 name: 'bookmarks',
-                builder: (context, state) => const PlaceholderScreen(title: 'Bookmarks Tab'),
+                builder: (context, state) => const BookmarksScreen(),
               ),
             ],
           ),
@@ -120,7 +135,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/notifications',
                 name: 'notifications',
-                builder: (context, state) => const PlaceholderScreen(title: 'Alerts Tab'),
+                builder: (context, state) => const NotificationsScreen(),
               ),
             ],
           ),
@@ -141,57 +156,65 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/paper/:id',
         name: 'paper_detail',
-        builder: (context, state) => PlaceholderScreen(title: 'Paper: ${state.pathParameters['id']}'),
+        builder: (context, state) => PaperDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/trends',
         name: 'trends',
-        builder: (context, state) => const PlaceholderScreen(title: 'Trends'),
+        builder: (context, state) => const TrendsScreen(),
       ),
       GoRoute(
         path: '/reports',
         name: 'reports',
-        builder: (context, state) => const PlaceholderScreen(title: 'Reports'),
+        builder: (context, state) => const ReportsScreen(),
       ),
       GoRoute(
         path: '/report/:id',
         name: 'report_detail',
-        builder: (context, state) => PlaceholderScreen(title: 'Report: ${state.pathParameters['id']}'),
+        builder: (context, state) => ReportDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/submit-paper',
         name: 'submit_paper',
-        builder: (context, state) => const PlaceholderScreen(title: 'Submit Paper'),
+        builder: (context, state) => SubmitPaperScreen(editId: state.uri.queryParameters['editId']),
       ),
       GoRoute(
         path: '/my-papers',
         name: 'my_papers',
-        builder: (context, state) => const PlaceholderScreen(title: 'My Papers'),
+        builder: (context, state) => const MyPapersScreen(),
       ),
       GoRoute(
         path: '/rankings',
         name: 'rankings',
-        builder: (context, state) => const PlaceholderScreen(title: 'Rankings'),
+        builder: (context, state) => const RankingsScreen(),
       ),
       GoRoute(
         path: '/gaps',
         name: 'gaps',
-        builder: (context, state) => const PlaceholderScreen(title: 'Gaps'),
+        builder: (context, state) {
+          final topic = state.uri.queryParameters['topic'];
+          return GapsScreen(initialTopic: topic);
+        },
       ),
       GoRoute(
         path: '/projects',
         name: 'projects',
-        builder: (context, state) => const PlaceholderScreen(title: 'Projects'),
+        builder: (context, state) => const ProjectsScreen(),
       ),
       GoRoute(
         path: '/project/:id',
         name: 'project_detail',
-        builder: (context, state) => PlaceholderScreen(title: 'Project: ${state.pathParameters['id']}'),
+        builder: (context, state) => ProjectDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/keyword/:keyword',
         name: 'keyword_detail',
-        builder: (context, state) => PlaceholderScreen(title: 'Keyword: ${state.pathParameters['keyword']}'),
+        builder: (context, state) => KeywordPapersScreen(keyword: state.pathParameters['keyword'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/sync',
+        name: 'admin_sync',
+        builder: (context, state) => const AdminSyncScreen(),
       ),
     ],
   );

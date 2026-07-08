@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AppLoading extends StatelessWidget {
-  final String? message;
-  final bool fullScreen;
 
   const AppLoading({
     super.key,
     this.message,
     this.fullScreen = false,
   });
+  final String? message;
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +33,7 @@ class AppLoading extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(24),
       child: Center(child: content),
     );
   }

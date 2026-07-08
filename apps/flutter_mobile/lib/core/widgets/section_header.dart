@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
 class SectionHeader extends StatelessWidget {
-  final String title;
-  final String? actionText;
-  final VoidCallback? onActionTap;
-  final EdgeInsetsGeometry padding;
 
   const SectionHeader({
     super.key,
@@ -13,6 +9,10 @@ class SectionHeader extends StatelessWidget {
     this.onActionTap,
     this.padding = const EdgeInsets.symmetric(vertical: 16),
   });
+  final String title;
+  final String? actionText;
+  final VoidCallback? onActionTap;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {

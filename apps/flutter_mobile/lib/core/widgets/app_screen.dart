@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 
 class AppScreen extends StatelessWidget {
-  final String? title;
-  final Widget body;
-  final Widget? floatingActionButton;
-  final List<Widget>? actions;
-  final bool showBackButton;
-  final Widget? bottomNavigationBar;
-  final bool padding;
 
   const AppScreen({
     super.key,
@@ -19,11 +12,18 @@ class AppScreen extends StatelessWidget {
     this.bottomNavigationBar,
     this.padding = true,
   });
+  final String? title;
+  final Widget body;
+  final Widget? floatingActionButton;
+  final List<Widget>? actions;
+  final bool showBackButton;
+  final Widget? bottomNavigationBar;
+  final bool padding;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: title != null
           ? AppBar(
               title: Text(title!),
@@ -36,7 +36,7 @@ class AppScreen extends StatelessWidget {
       body: SafeArea(
         child: padding
             ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: body,
               )
             : body,
