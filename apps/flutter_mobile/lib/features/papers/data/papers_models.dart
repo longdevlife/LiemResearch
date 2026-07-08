@@ -4,11 +4,9 @@ part 'papers_models.freezed.dart';
 part 'papers_models.g.dart';
 
 @freezed
-class PaperAuthorRef with _$PaperAuthorRef {
+abstract class PaperAuthorRef with _$PaperAuthorRef {
   const factory PaperAuthorRef({
-    String? authorId,
-    required String displayName,
-    required int position,
+    required String displayName, required int position, String? authorId,
     bool? isCorresponding,
   }) = _PaperAuthorRef;
 
@@ -16,10 +14,9 @@ class PaperAuthorRef with _$PaperAuthorRef {
 }
 
 @freezed
-class PaperKeyword with _$PaperKeyword {
+abstract class PaperKeyword with _$PaperKeyword {
   const factory PaperKeyword({
-    String? keywordId,
-    required String keywordName,
+    required String keywordName, String? keywordId,
     String? detectedBy,
     double? confidence,
   }) = _PaperKeyword;
@@ -28,10 +25,9 @@ class PaperKeyword with _$PaperKeyword {
 }
 
 @freezed
-class PaperTopic with _$PaperTopic {
+abstract class PaperTopic with _$PaperTopic {
   const factory PaperTopic({
-    String? topicId,
-    required String topicName,
+    required String topicName, String? topicId,
     String? detectedBy,
     double? confidence,
   }) = _PaperTopic;
@@ -40,31 +36,24 @@ class PaperTopic with _$PaperTopic {
 }
 
 @freezed
-class Paper with _$Paper {
+abstract class Paper with _$Paper {
   const factory Paper({
     required String id,
     required String title,
-    String? abstractText,
+    required int publicationYear, required int citationCount, required String dataStatus, required double dataQualityScore, required bool isAiAnalyzable, required String createdAt, required String updatedAt, String? abstractText,
     @Default([]) List<PaperAuthorRef> authors,
     String? journalName,
-    required int publicationYear,
     String? paperKind,
     String? openAccessStatus,
     String? openAccessUrl,
-    required int citationCount,
     @Default([]) List<PaperKeyword> keywords,
     @Default([]) List<PaperTopic> topics,
-    required String dataStatus,
-    required double dataQualityScore,
-    required bool isAiAnalyzable,
     double? downloadCost,
     double? uploadCreditReward,
     String? pdfPath,
     String? paperLink,
     String? paperStatus,
     String? rejectionReason,
-    required String createdAt,
-    required String updatedAt,
   }) = _Paper;
 
   factory Paper.fromJson(Map<String, dynamic> json) => _$PaperFromJson(json);
