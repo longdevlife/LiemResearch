@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/api_routes.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_envelope.dart';
-import '../data/auth_models.dart';
+import 'package:flutter_mobile/core/constants/api_routes.dart';
+import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_mobile/core/network/api_envelope.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 
 final authApiProvider = Provider<AuthApi>((ref) {
   final client = ref.watch(apiClientProvider);
@@ -10,9 +10,9 @@ final authApiProvider = Provider<AuthApi>((ref) {
 });
 
 class AuthApi {
-  final ApiClient _client;
 
   AuthApi(this._client);
+  final ApiClient _client;
 
   Future<AuthResponse> login(LoginRequest request) async {
     final response = await _client.dio.post(

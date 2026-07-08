@@ -11,10 +11,11 @@ abstract class User with _$User {
     required String id,
     required String email,
     required String fullName,
+    required DateTime createdAt,
     @Default(UserRole.student) UserRole role,
     String? institution,
     List<String>? researchInterests,
-    required DateTime createdAt,
+    @Default(0) int points,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

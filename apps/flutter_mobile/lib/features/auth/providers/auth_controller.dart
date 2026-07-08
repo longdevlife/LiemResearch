@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/errors/api_exception.dart';
-import '../../../core/storage/secure_token_store.dart';
-import '../data/auth_api.dart';
-import '../data/auth_models.dart';
+import 'package:flutter_mobile/core/errors/api_exception.dart';
+import 'package:flutter_mobile/core/storage/secure_token_store.dart';
+import 'package:flutter_mobile/features/auth/data/auth_api.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 
 final authControllerProvider = NotifierProvider<AuthController, AsyncValue<User?>>(() {
   return AuthController();
@@ -60,7 +60,7 @@ class AuthController extends Notifier<AsyncValue<User?>> {
       state = AsyncData(response.user);
     } catch (e, st) {
       if (e is DioException && e.error is ApiException) {
-        state = AsyncError(e.error as ApiException, st);
+        state = AsyncError(e.error! as ApiException, st);
       } else {
         state = AsyncError(e, st);
       }
@@ -80,7 +80,7 @@ class AuthController extends Notifier<AsyncValue<User?>> {
       state = const AsyncData(null);
     } catch (e, st) {
       if (e is DioException && e.error is ApiException) {
-        state = AsyncError(e.error as ApiException, st);
+        state = AsyncError(e.error! as ApiException, st);
       } else {
         state = AsyncError(e, st);
       }

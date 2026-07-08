@@ -10,23 +10,25 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   id: json['id'] as String,
   email: json['email'] as String,
   fullName: json['fullName'] as String,
+  createdAt: DateTime.parse(json['createdAt'] as String),
   role:
       $enumDecodeNullable(_$UserRoleEnumMap, json['role']) ?? UserRole.student,
   institution: json['institution'] as String?,
   researchInterests: (json['researchInterests'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
-  createdAt: DateTime.parse(json['createdAt'] as String),
+  points: (json['points'] as num?)?.toInt() ?? 0,
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'id': instance.id,
   'email': instance.email,
   'fullName': instance.fullName,
+  'createdAt': instance.createdAt.toIso8601String(),
   'role': _$UserRoleEnumMap[instance.role]!,
   'institution': instance.institution,
   'researchInterests': instance.researchInterests,
-  'createdAt': instance.createdAt.toIso8601String(),
+  'points': instance.points,
 };
 
 const _$UserRoleEnumMap = {
