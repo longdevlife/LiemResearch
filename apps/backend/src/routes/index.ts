@@ -14,6 +14,7 @@ import { adminRouter } from "../modules/admin/admin.routes.js";
 import { notificationRouter } from "../modules/notifications/notification.routes.js";
 import { projectRouter } from "../modules/projects/project.routes.js";
 import { homeRouter } from "../modules/home/home.routes.js";
+import { pipelineRouter } from "../modules/pipeline/pipeline.routes.js";
 
 export const apiRouter: Router = Router();
 
@@ -31,4 +32,5 @@ apiRouter.use("/quality", qualityRouter); // Quality & Feedback — LLM-judge + 
 apiRouter.use("/notifications", notificationRouter);
 apiRouter.use("/admin", syncRouter); // /admin/sync
 apiRouter.use("/admin", embeddingRouter); // /admin/embed
+apiRouter.use("/admin", pipelineRouter); // /admin/pipeline/status
 apiRouter.use("/admin", adminRouter); // /admin/users, /admin/stats — user management

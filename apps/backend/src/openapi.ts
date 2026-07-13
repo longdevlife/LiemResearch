@@ -608,6 +608,22 @@ export const openapiSpec = {
         responses: { "200": { description: "{ analyzable, embedded, pending }" } },
       },
     },
+    "/api/v1/admin/pipeline/status": {
+      get: {
+        tags: ["Admin"],
+        summary: "Operational health for queues, workers, corpus readiness, and stale AI jobs",
+        description:
+          "Returns BullMQ queue counts, recent failed jobs, Redis availability, corpus embedding/AI-analysis coverage, latest sync run, stale report/gap counts, and deterministic recommendations.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description:
+              "Pipeline status. If Redis/queue inspection fails, the endpoint still returns corpus diagnostics with redis.ok=false.",
+          },
+          "403": { description: "Admin only" },
+        },
+      },
+    },
     "/api/v1/admin/sync": {
       post: {
         tags: ["Admin"],
