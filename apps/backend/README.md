@@ -79,3 +79,24 @@ src/
 ## Env vars
 
 See [.env.example](.env.example) — `config/env.ts` will refuse to boot if anything required is missing.
+
+## PDF storage
+
+Development uses local disk by default:
+
+```bash
+STORAGE_PROVIDER=local
+```
+
+Production can store uploaded PDFs in Cloudflare R2:
+
+```bash
+STORAGE_PROVIDER=r2
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=...
+R2_SIGNED_URL_TTL_SECONDS=300
+```
+
+The backend keeps the paper `pdfPath` as a storage URI. Local uploads stay as `/uploads/<file>.pdf`; R2 uploads become `r2://<bucket>/papers/<object>.pdf`. Download endpoints keep the same API contract: local files are served by the backend, while R2 files return a short-lived signed URL after auth and credit checks pass.
