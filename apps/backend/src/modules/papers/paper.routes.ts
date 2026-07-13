@@ -1,6 +1,4 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import fs from "node:fs/promises";
-import path from "node:path";
 import jwt from "jsonwebtoken";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { requireAuth, requireRole, optionalAuth } from "../../common/middleware/auth.js";
@@ -15,6 +13,7 @@ import { env } from "../../config/env.js";
 
 import { runEmbedding } from "../embeddings/embedding.service.js";
 import { logger } from "../../infrastructure/logger.js";
+import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
 
 export const paperRouter: Router = Router();
 
@@ -26,6 +25,14 @@ const triggerEmbedding = () => {
     logger.error({ err }, "In-process runEmbedding failed");
   });
 };
+
+async function saveUploadedPdf(req: Request): Promise<string | undefined> {
+  const reqFile = (req as any).file;
+  if (!reqFile) return undefined;
+  assertPdfMagic(reqFile.buffer);
+  const stored = await pdfStorageService.savePdf(reqFile.buffer, reqFile.originalname);
+  return stored.uri;
+}
 
 /**
  * GET /papers — keyword search + server-side filters + sort + pagination (with adminView support).
@@ -145,16 +152,7 @@ paperRouter.post("/", requireAuth, uploadSinglePdf, async (req, res, next) => {
     }
 
     // 3. Save PDF file
-    let pdfPath: string | undefined;
-    const reqFile = (req as any).file;
-    if (reqFile) {
-      assertPdfMagic(reqFile.buffer);
-      const uploadsDir = path.resolve("uploads");
-      await fs.mkdir(uploadsDir, { recursive: true });
-      const safeName = `${Date.now()}-${path.basename(reqFile.originalname)}`;
-      await fs.writeFile(path.join(uploadsDir, safeName), reqFile.buffer);
-      pdfPath = `/uploads/${safeName}`;
-    }
+    const pdfPath = await saveUploadedPdf(req);
 
     // 4. Create paper request
     const userId = req.user!.sub;
@@ -214,7 +212,16 @@ paperRouter.get("/:id/download", async (req, res, next) => {
       throw AppError.notFound("PDF is not available for this paper");
     }
 
-    const filePath = path.resolve(paper.pdfPath.replace(/^\//, ""));
+    const signedUrl = await pdfStorageService.getSignedDownloadUrl(paper.pdfPath);
+    if (signedUrl) {
+      res.redirect(signedUrl);
+      return;
+    }
+
+    const filePath = pdfStorageService.resolveLocalPath(paper.pdfPath);
+    if (!filePath) {
+      throw AppError.notFound("PDF storage object is not available");
+    }
     res.setHeader("Content-Type", "application/pdf");
     res.sendFile(filePath);
   } catch (error) {
@@ -225,15 +232,8 @@ paperRouter.get("/:id/download", async (req, res, next) => {
 /** POST /papers/:id/upload-pdf — upload a PDF for an existing paper request. */
 paperRouter.post("/:id/upload-pdf", requireAuth, uploadSinglePdf, async (req, res, next) => {
   try {
-    const reqFile = (req as any).file;
-    if (!reqFile) throw AppError.badRequest("PDF file is required");
-    assertPdfMagic(reqFile.buffer);
-
-    const uploadsDir = path.resolve("uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
-    const safeName = `${Date.now()}-${path.basename(reqFile.originalname)}`;
-    await fs.writeFile(path.join(uploadsDir, safeName), reqFile.buffer);
-    const pdfPath = `/uploads/${safeName}`;
+    const pdfPath = await saveUploadedPdf(req);
+    if (!pdfPath) throw AppError.badRequest("PDF file is required");
 
     const paper = await paperService.uploadPdf(
       String(req.params.id),
@@ -314,16 +314,7 @@ paperRouter.patch("/:id", requireAuth, uploadSinglePdf, async (req, res, next) =
     }
 
     // 2. Save new PDF file if uploaded
-    let pdfPath: string | undefined;
-    const reqFile = (req as any).file;
-    if (reqFile) {
-      assertPdfMagic(reqFile.buffer);
-      const uploadsDir = path.resolve("uploads");
-      await fs.mkdir(uploadsDir, { recursive: true });
-      const safeName = `${Date.now()}-${path.basename(reqFile.originalname)}`;
-      await fs.writeFile(path.join(uploadsDir, safeName), reqFile.buffer);
-      pdfPath = `/uploads/${safeName}`;
-    }
+    const pdfPath = await saveUploadedPdf(req);
 
     let updated: any;
     if (isAdmin) {
