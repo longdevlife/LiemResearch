@@ -4,6 +4,7 @@ import { useCurrentUser } from "@/features/auth";
 import { useSyncRuns, useTriggerSync, useEmbedStatus, useTriggerEmbedding } from "@/features/admin/hooks/use-admin-sync";
 import type { ApiSyncRun } from "@/features/admin/api/admin.api";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 import {
@@ -32,17 +33,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { 
-  RefreshCw, 
-  Play, 
-  AlertCircle, 
-  CheckCircle2, 
-  XCircle, 
-  Ban, 
-  Database, 
-  Activity, 
-  FileText, 
-  Sparkles 
+import {
+  RefreshCw,
+  Play,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Database,
+  Activity,
+  FileText,
+  Sparkles
 } from "lucide-react";
 
 export function AdminSyncPage() {
@@ -119,15 +120,15 @@ export function AdminSyncPage() {
   // Tính toán chỉ số thống kê động từ runs thực tế
   const totalRuns = runs?.length ?? 0;
   const totalInserted = runs?.reduce((acc, r) => acc + (r.totalInserted || 0), 0) ?? 0;
-  const isPipelineRunning = runs?.some((r) => r.runStatus === "running") ?? false;
+  const isPipelineRunning = runs?.some(isFreshRunningSyncRun) ?? false;
 
   const renderStatusBadge = (run: ApiSyncRun) => {
     const status = run.runStatus;
     switch (status) {
       case "running":
         return (
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className="flex w-fit items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-medium tracking-wide rounded-full border bg-[#E1F3FE] text-[#1F6C9F] border-[#C4E6FD] dark:bg-[#1A2633] dark:text-[#93C5FD] dark:border-[#25394E] animate-pulse"
           >
             <RefreshCw className="h-3 w-3 animate-spin stroke-[1.5]" />
@@ -136,8 +137,8 @@ export function AdminSyncPage() {
         );
       case "succeeded":
         return (
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className="flex w-fit items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-medium tracking-wide rounded-full border bg-[#EDF3EC] text-[#346538] border-[#D5E3D2] dark:bg-[#1C2C20] dark:text-[#86EFAC] dark:border-[#2C402E]"
           >
             <CheckCircle2 className="h-3 w-3 stroke-[1.5]" />
@@ -148,8 +149,8 @@ export function AdminSyncPage() {
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className="flex w-fit items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-medium tracking-wide rounded-full border bg-[#FDEBEC] text-[#9F2F2D] border-[#F9D5D6] dark:bg-[#2D1C1C] dark:text-[#FCA5A5] dark:border-[#452020] cursor-pointer"
               >
                 <XCircle className="h-3 w-3 stroke-[1.5]" />
@@ -165,8 +166,8 @@ export function AdminSyncPage() {
         );
       case "cancelled":
         return (
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className="flex w-fit items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-medium tracking-wide rounded-full border bg-muted/50 text-muted-foreground border-border"
           >
             <Ban className="h-3 w-3 stroke-[1.5]" />
@@ -278,8 +279,8 @@ export function AdminSyncPage() {
 
         {/* Card 4: Action Control Card */}
         <div className="bg-card dark:bg-[#111B27] border border-dashed border-[#EF4444]/30 dark:border-[#EF4444]/20 rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-center h-[120px]">
-          <Button 
-            onClick={() => setIsDialogOpen(true)} 
+          <Button
+            onClick={() => setIsDialogOpen(true)}
             className="w-full bg-[#111111] hover:bg-[#2F3437] dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black gap-2 font-bold h-11 active:scale-[0.98] transition-transform duration-100 rounded-lg shadow-sm"
           >
             <Play className="h-3.5 w-3.5 fill-current stroke-[1.5]" />
@@ -349,6 +350,15 @@ export function AdminSyncPage() {
         ) : (
           <p className="text-sm text-red-500">Failed to load embedding status.</p>
         )}
+
+        <div className="flex justify-end border-t border-slate-100 dark:border-slate-800/80 pt-4">
+          <Link
+            to="/admin/pipeline"
+            className="text-xs font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
+          >
+            View full pipeline health &rarr;
+          </Link>
+        </div>
       </div>
 
       {/* Run History List */}
@@ -361,10 +371,10 @@ export function AdminSyncPage() {
             <p className="text-sm font-semibold text-red-500">
               Failed to load synchronization runs from the server.
             </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="active:scale-[0.98] transition-transform duration-100 border-red-500/30 text-red-500 hover:bg-red-500/10" 
+            <Button
+              variant="outline"
+              size="sm"
+              className="active:scale-[0.98] transition-transform duration-100 border-red-500/30 text-red-500 hover:bg-red-500/10"
               onClick={() => refetch()}
             >
               Try Again
@@ -522,4 +532,13 @@ export function AdminSyncPage() {
       </Dialog>
     </main>
   );
+}
+
+const FRESH_SYNC_RUN_MS = 2 * 60 * 60 * 1000;
+
+function isFreshRunningSyncRun(run: ApiSyncRun): boolean {
+  if (run.runStatus !== "running") return false;
+  const startedAt = new Date(run.startedAt).getTime();
+  if (!Number.isFinite(startedAt)) return false;
+  return Date.now() - startedAt < FRESH_SYNC_RUN_MS;
 }
