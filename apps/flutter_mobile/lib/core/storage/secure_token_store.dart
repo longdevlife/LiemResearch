@@ -1,13 +1,11 @@
 import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_mobile/features/auth/data/auth_models.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureTokenStore {
 
   const SecureTokenStore([
-    this._storage = const FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    )
+    this._storage = const FlutterSecureStorage(),
   ]);
   final FlutterSecureStorage _storage;
 
@@ -24,7 +22,7 @@ class SecureTokenStore {
     try {
       final map = jsonDecode(jsonString) as Map<String, dynamic>;
       return AuthTokens.fromJson(map);
-    } catch (e) {
+    } on Object catch (_) {
       return null;
     }
   }

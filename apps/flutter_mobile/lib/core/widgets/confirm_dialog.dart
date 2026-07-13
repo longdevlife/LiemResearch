@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 class ConfirmDialog extends StatelessWidget {
 
   const ConfirmDialog({
-    super.key,
     required this.title,
     required this.message,
+    required this.onConfirm,
+    super.key,
     this.confirmText = 'Confirm',
     this.cancelText = 'Cancel',
     this.isDestructive = false,
-    required this.onConfirm,
   });
   final String title;
   final String message;

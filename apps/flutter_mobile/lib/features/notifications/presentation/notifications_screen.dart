@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/notifications/data/notifications_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -69,9 +70,9 @@ class NotificationsScreen extends ConsumerWidget {
   }
 
   void _openTarget(BuildContext context, AppNotification item) {
-    if (item.targetKind == 'paper' && item.targetId != null) context.push('/paper/${item.targetId}');
-    if (item.targetKind == 'report' && item.targetId != null) context.push('/report/${item.targetId}');
-    if (item.targetKind == 'project' && item.targetId != null) context.push('/project/${item.targetId}');
-    if (item.targetKind == 'gap') context.push('/gaps');
+    if (item.targetKind == 'paper' && item.targetId != null) unawaited(context.push('/paper/${item.targetId}'));
+    if (item.targetKind == 'report' && item.targetId != null) unawaited(context.push('/report/${item.targetId}'));
+    if (item.targetKind == 'project' && item.targetId != null) unawaited(context.push('/project/${item.targetId}'));
+    if (item.targetKind == 'gap') unawaited(context.push('/gaps'));
   }
 }

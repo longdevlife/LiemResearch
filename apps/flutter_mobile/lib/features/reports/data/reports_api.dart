@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final reportsApiProvider = Provider<ReportsApi>((ref) {
   return ReportsApi(ref.watch(apiClientProvider).dio);
@@ -18,6 +18,7 @@ final FutureProviderFamily<AnalyticalReport, String> reportProvider = FutureProv
   return ref.watch(reportsApiProvider).detail(id);
 });
 
+@immutable
 class ReportsParams {
   const ReportsParams({this.page = 1, this.pageSize = 20});
 
@@ -39,6 +40,7 @@ class ReportsList {
 }
 
 class ReportListItem {
+  const ReportListItem({required this.id, required this.query, required this.status, this.topic, this.createdAt});
 
   factory ReportListItem.fromJson(Map<String, dynamic> json) {
     return ReportListItem(
@@ -49,7 +51,6 @@ class ReportListItem {
       createdAt: json['createdAt']?.toString(),
     );
   }
-  const ReportListItem({required this.id, required this.query, required this.status, this.topic, this.createdAt});
 
   final String id;
   final String query;
@@ -59,6 +60,17 @@ class ReportListItem {
 }
 
 class AnalyticalReport extends ReportListItem {
+  const AnalyticalReport({
+    required super.id,
+    required super.query,
+    required super.status,
+    super.topic,
+    super.createdAt,
+    this.markdown,
+    this.errorMessage,
+    this.groundingPapers = const [],
+    this.researchGaps = const [],
+  });
 
   factory AnalyticalReport.fromJson(Map<String, dynamic> json) {
     return AnalyticalReport(
@@ -79,16 +91,6 @@ class AnalyticalReport extends ReportListItem {
           .toList(),
     );
   }
-  const AnalyticalReport({
-    required super.id,
-    required super.query,
-    required super.status, super.topic,
-    super.createdAt,
-    this.markdown,
-    this.errorMessage,
-    this.groundingPapers = const [],
-    this.researchGaps = const [],
-  });
 
   final String? markdown;
   final String? errorMessage;
@@ -97,6 +99,7 @@ class AnalyticalReport extends ReportListItem {
 }
 
 class ReportGap {
+  const ReportGap({required this.title, required this.description, required this.confidence});
 
   factory ReportGap.fromJson(Map<String, dynamic> json) {
     return ReportGap(
@@ -105,7 +108,6 @@ class ReportGap {
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
     );
   }
-  const ReportGap({required this.title, required this.description, required this.confidence});
 
   final String title;
   final String description;

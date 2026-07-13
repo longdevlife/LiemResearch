@@ -1,10 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
 import 'package:flutter_mobile/features/papers/domain/submit_paper_validation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class SubmitPaperScreen extends ConsumerStatefulWidget {
   const SubmitPaperScreen({super.key, this.editId});
@@ -84,7 +83,7 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
       }
       ref.invalidate(myPapersProvider);
       if (mounted) context.go('/my-papers');
-    } catch (e) {
+    } on Object catch (e) {
       _show(e.toString());
     } finally {
       if (mounted) setState(() => submitting = false);

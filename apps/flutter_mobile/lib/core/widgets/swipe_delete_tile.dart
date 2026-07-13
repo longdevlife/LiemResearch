@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class SwipeDeleteTile extends StatelessWidget {
 
   const SwipeDeleteTile({
-    super.key,
     required this.child,
     required this.onDelete,
     required this.tileKey,
+    super.key,
     this.confirmDelete,
     this.margin,
     this.borderRadius,

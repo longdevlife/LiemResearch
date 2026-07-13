@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
+import 'package:flutter_mobile/core/widgets/app_loading.dart';
+import 'package:flutter_mobile/features/admin/presentation/admin_sync_screen.dart';
 import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 import 'package:flutter_mobile/features/auth/presentation/login_screen.dart';
 import 'package:flutter_mobile/features/auth/presentation/register_screen.dart';
-import 'package:flutter_mobile/features/admin/presentation/admin_sync_screen.dart';
+import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_mobile/features/bookmarks/presentation/bookmarks_screen.dart';
 import 'package:flutter_mobile/features/gaps/presentation/gaps_screen.dart';
 import 'package:flutter_mobile/features/home/presentation/app_shell_screen.dart';
@@ -23,11 +21,12 @@ import 'package:flutter_mobile/features/reports/presentation/report_detail_scree
 import 'package:flutter_mobile/features/reports/presentation/reports_screen.dart';
 import 'package:flutter_mobile/features/search/presentation/keyword_papers_screen.dart';
 import 'package:flutter_mobile/features/trends/presentation/trends_screen.dart';
-import 'package:flutter_mobile/core/widgets/app_loading.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 // Dummy screens for features not yet built
 class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key, required this.title});
+  const PlaceholderScreen({required this.title, super.key});
   final String title;
 
   @override
@@ -50,7 +49,7 @@ class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this._ref) {
     _ref.listen<AsyncValue<User?>>(
       authControllerProvider,
-      (_, __) => notifyListeners(),
+      (_, _) => notifyListeners(),
     );
   }
   final Ref _ref;

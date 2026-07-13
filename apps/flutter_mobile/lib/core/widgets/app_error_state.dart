@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 class AppErrorState extends StatelessWidget {
 
   const AppErrorState({
-    super.key,
     required this.message,
+    super.key,
     this.onRetry,
   });
   final String message;

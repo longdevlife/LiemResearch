@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class ChipButton extends StatelessWidget {
 
   const ChipButton({
-    super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,
+    super.key,
     this.icon,
   });
   final String label;

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 class AppScreen extends StatelessWidget {
 
   const AppScreen({
+    required this.body,
     super.key,
     this.title,
-    required this.body,
     this.floatingActionButton,
     this.actions,
     this.showBackButton = true,

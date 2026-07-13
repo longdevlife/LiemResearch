@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
+import 'package:flutter_mobile/features/admin/data/admin_api.dart';
 import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
-import 'package:flutter_mobile/features/admin/data/admin_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AdminSyncScreen extends ConsumerStatefulWidget {
   const AdminSyncScreen({super.key});

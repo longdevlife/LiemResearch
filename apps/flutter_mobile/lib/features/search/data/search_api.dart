@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final searchApiProvider = Provider<SearchApi>((ref) {
   return SearchApi(ref.watch(apiClientProvider).dio);
@@ -15,6 +15,7 @@ final FutureProviderFamily<PagedPapers, SearchParams> searchResultsProvider = Fu
   return ref.watch(searchApiProvider).semantic(params);
 });
 
+@immutable
 class SearchParams {
   const SearchParams({required this.q, this.page = 1, this.pageSize = 10, this.rerank = false});
 

@@ -1,20 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/core/widgets/paper_card.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
+import 'package:flutter_mobile/features/home/data/analytics_api.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
+import 'package:flutter_mobile/features/rankings/domain/level_helper.dart';
 import 'package:flutter_mobile/features/search/data/search_api.dart';
 import 'package:flutter_mobile/features/trends/data/trends_api.dart';
-import 'package:flutter_mobile/features/home/data/analytics_api.dart';
-import 'package:flutter_mobile/features/rankings/domain/level_helper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -50,8 +49,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } else {
       await api.create(targetKind: 'paper', targetId: paperId);
     }
-    ref.invalidate(bookmarksProvider);
-    ref.invalidate(bookmarkStatusProvider(BookmarkTarget('paper', paperId)));
+    ref
+      ..invalidate(bookmarksProvider)
+      ..invalidate(bookmarkStatusProvider(BookmarkTarget('paper', paperId)));
   }
 
   @override
@@ -327,7 +327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ('Projects', Icons.folder, '/projects', const Color(0xFF06B6D4)),
       ('My Papers', Icons.archive, '/my-papers', const Color(0xFF38BDF8)),
     ];
-    showModalBottomSheet<void>(
+    unawaited(showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -377,7 +377,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
                           Navigator.pop(context);
-                          context.push(item.$3);
+                          unawaited(context.push(item.$3));
                         },
                       ),
                     )
@@ -387,13 +387,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
 class Sparkline extends StatelessWidget {
+  const Sparkline({required this.points, super.key});
   final List<YearlyCount> points;
-  const Sparkline({super.key, required this.points});
 
   @override
   Widget build(BuildContext context) {

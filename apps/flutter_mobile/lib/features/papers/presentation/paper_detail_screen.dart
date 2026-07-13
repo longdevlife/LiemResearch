@@ -1,15 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
+import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
 import 'package:flutter_mobile/features/projects/data/projects_api.dart';
 import 'package:flutter_mobile/features/quality/data/quality_api.dart';
-import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaperDetailScreen extends ConsumerStatefulWidget {
   const PaperDetailScreen({required this.id, super.key});
@@ -63,7 +63,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
           const SnackBar(content: Text('Review submitted successfully.')),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to submit review: $e')),
@@ -78,7 +78,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
     try {
       await api.evaluate('paper', widget.id);
       ref.invalidate(qualityViewProvider(target));
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('AI evaluation failed: $e')),
@@ -115,7 +115,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
   }
 
   void _openProjectPicker(BuildContext context) {
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -127,7 +127,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
             final theme = Theme.of(context);
             return SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +155,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                               child: OutlinedButton(
                                 onPressed: () {
                                   Navigator.pop(context);
-                                  context.push('/projects');
+                                  unawaited(context.push('/projects'));
                                 },
                                 child: const Text('Create your first project'),
                               ),
@@ -191,7 +191,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                                         const SnackBar(content: Text('Added paper to project')),
                                       );
                                     }
-                                  } catch (e) {
+                                  } on Exception catch (e) {
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text('Failed to add: $e')),
@@ -214,7 +214,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
           },
         );
       },
-    );
+    ));
   }
 
   @override
@@ -545,7 +545,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                                   ),
                                 ] else ...[
                                   Text(
-                                    'Run AI evaluation to score relevance, groundedness, and completeness from this paper\'s metadata.',
+                                    "Run AI evaluation to score relevance, groundedness, and completeness from this paper's metadata.",
                                     style: TextStyle(
                                       color: theme.colorScheme.onSurfaceVariant,
                                       fontSize: 14,
@@ -586,7 +586,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                                   children: List.generate(5, (index) {
                                     final starVal = index + 1;
                                     return Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
+                                      padding: const EdgeInsets.only(right: 8),
                                       child: GestureDetector(
                                         onTap: () => setState(() => rating = starVal),
                                         child: Icon(
@@ -685,7 +685,7 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                                         ],
                                       ),
                                     );
-                                  }).toList(),
+                                  }),
                                 ],
                               ],
                             ),
@@ -824,10 +824,10 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.icon,
     required this.label,
+    required this.isDark,
     this.active = false,
     this.disabled = false,
     this.onTap,
-    required this.isDark,
   });
 
   final IconData icon;
@@ -839,7 +839,6 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final color = disabled
         ? const Color(0xFF475569)
         : active
@@ -979,7 +978,7 @@ class _ReferencesTabContent extends ConsumerWidget {
                         Row(
                           children: [
                             Text(
-                              '${reference.publicationYear ?? "Unknown year"}',
+                              '${reference.publicationYear}',
                               style: const TextStyle(
                                 color: Color(0xFF06B6D4),
                                 fontWeight: FontWeight.bold,
@@ -1007,7 +1006,7 @@ class _ReferencesTabContent extends ConsumerWidget {
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ],
         );
       },

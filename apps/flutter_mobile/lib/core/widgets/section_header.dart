@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 class SectionHeader extends StatelessWidget {
 
   const SectionHeader({
-    super.key,
     required this.title,
+    super.key,
     this.actionText,
     this.onActionTap,
     this.padding = const EdgeInsets.symmetric(vertical: 16),

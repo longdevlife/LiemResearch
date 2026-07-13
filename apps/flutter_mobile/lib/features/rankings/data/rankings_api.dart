@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final rankingsApiProvider = Provider<RankingsApi>((ref) {
   return RankingsApi(ref.watch(apiClientProvider).dio);
@@ -17,6 +16,7 @@ final FutureProvider<MyRanking?> myRankingProvider = FutureProvider.autoDispose<
 });
 
 class RankingUser {
+  const RankingUser({required this.rank, required this.name, required this.role, required this.points, required this.credits, this.university});
 
   factory RankingUser.fromJson(Map<String, dynamic> json) {
     return RankingUser(
@@ -28,7 +28,6 @@ class RankingUser {
       university: json['university']?.toString(),
     );
   }
-  const RankingUser({required this.rank, required this.name, required this.role, required this.points, required this.credits, this.university});
 
   final int rank;
   final String name;
@@ -45,6 +44,7 @@ class RankingsResponse {
 }
 
 class MyRanking {
+  const MyRanking({required this.rank, required this.points, required this.uploadedPdfs, required this.requestedPapers});
 
   factory MyRanking.fromJson(Map<String, dynamic> json) {
     final stats = json['stats'] as Map<String, dynamic>? ?? {};
@@ -55,7 +55,6 @@ class MyRanking {
       requestedPapers: (stats['requestedPapers'] as num?)?.toInt() ?? 0,
     );
   }
-  const MyRanking({required this.rank, required this.points, required this.uploadedPdfs, required this.requestedPapers});
 
   final int rank;
   final int points;

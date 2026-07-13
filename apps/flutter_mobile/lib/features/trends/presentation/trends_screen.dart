@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/trends/data/trends_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class TrendsScreen extends ConsumerWidget {
   const TrendsScreen({super.key});
@@ -109,8 +108,6 @@ class _TrendChart extends StatelessWidget {
     final visible = points.length > 8 ? points.sublist(points.length - 8) : points;
     final maxCount = visible.map((point) => point.count).reduce((a, b) => a > b ? a : b);
     final max = maxCount > 0 ? maxCount : 1;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: 80,
@@ -134,9 +131,9 @@ class _TrendChart extends StatelessWidget {
                       alignment: Alignment.bottomCenter,
                       child: Container(
                         height: barHeight,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF06B6D4),
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF06B6D4),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
                         ),
                       ),
                     ),

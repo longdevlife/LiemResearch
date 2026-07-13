@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
 import 'package:flutter_mobile/features/papers/data/papers_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final bookmarksApiProvider = Provider<BookmarksApi>((ref) {
   return BookmarksApi(ref.watch(apiClientProvider).dio);
@@ -19,6 +19,7 @@ final FutureProviderFamily<BookmarkStatus, BookmarkTarget> bookmarkStatusProvide
   return ref.watch(bookmarksApiProvider).checkStatus(target.kind, target.id);
 });
 
+@immutable
 class BookmarkTarget {
   const BookmarkTarget(this.kind, this.id);
 
@@ -33,6 +34,7 @@ class BookmarkTarget {
 }
 
 class BookmarkStatus {
+  const BookmarkStatus({required this.bookmarked, this.bookmarkId});
 
   factory BookmarkStatus.fromJson(Map<String, dynamic> json) {
     return BookmarkStatus(
@@ -40,13 +42,22 @@ class BookmarkStatus {
       bookmarkId: json['bookmarkId']?.toString(),
     );
   }
-  const BookmarkStatus({required this.bookmarked, this.bookmarkId});
 
   final bool bookmarked;
   final String? bookmarkId;
 }
 
 class Bookmark {
+  const Bookmark({
+    required this.id,
+    required this.targetKind,
+    required this.targetId,
+    this.note,
+    this.paperDetail,
+    this.reportTitle,
+    this.reportStatus,
+    this.createdAt,
+  });
 
   factory Bookmark.fromJson(Map<String, dynamic> json) {
     final paperJson = json['paperDetail'];
@@ -62,16 +73,6 @@ class Bookmark {
       createdAt: json['createdAt']?.toString(),
     );
   }
-  const Bookmark({
-    required this.id,
-    required this.targetKind,
-    required this.targetId,
-    this.note,
-    this.paperDetail,
-    this.reportTitle,
-    this.reportStatus,
-    this.createdAt,
-  });
 
   final String id;
   final String targetKind;

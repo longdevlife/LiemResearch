@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final adminApiProvider = Provider<AdminApi>((ref) {
   return AdminApi(ref.watch(apiClientProvider).dio);
@@ -13,6 +12,7 @@ final FutureProvider<List<ApiSyncRun>> syncRunsProvider = FutureProvider.autoDis
 });
 
 class ApiSyncRun {
+  const ApiSyncRun({required this.id, required this.status, required this.searchText, required this.totalFetched, required this.totalInserted, this.errorMessage});
 
   factory ApiSyncRun.fromJson(Map<String, dynamic> json) {
     return ApiSyncRun(
@@ -24,7 +24,6 @@ class ApiSyncRun {
       errorMessage: json['errorMessage']?.toString(),
     );
   }
-  const ApiSyncRun({required this.id, required this.status, required this.searchText, required this.totalFetched, required this.totalInserted, this.errorMessage});
 
   final String id;
   final String status;

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PaperCard extends ConsumerWidget {
   const PaperCard({
-    super.key,
     required this.id,
     required this.title,
     required this.authors,
     required this.venueAndYear,
-    this.score,
     required this.onTap,
+    super.key,
+    this.score,
     this.onBookmarkTap,
   });
 

@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/gaps/data/gaps_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class GapsScreen extends ConsumerStatefulWidget {
   const GapsScreen({super.key, this.initialTopic});
@@ -57,7 +56,7 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
       });
       pollTimer?.cancel();
       pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => ref.invalidate(gapStatusProvider(id)));
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -78,7 +77,7 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
       await ref.read(gapsApiProvider).patchStatus(id, newStatus);
       final params = GapsListParams(topic: search.text, status: status, minConfidence: minConfidence);
       ref.invalidate(gapsProvider(params));
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update status: $e'), backgroundColor: Colors.red),
@@ -491,7 +490,7 @@ class _GapCard extends StatelessWidget {
   });
 
   final ResearchGapItem gap;
-  final Function(String, String) onStatusChange;
+  final void Function(String, String) onStatusChange;
   final bool isDark;
   final Color borderColor;
   final Color textColor;
@@ -549,7 +548,7 @@ class _GapCard extends StatelessWidget {
               height: 1.4,
             ),
           ),
-          if (gap.rationale != null && gap.rationale!.isNotEmpty) ...[
+          if (gap.rationale.isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.only(left: 8),
@@ -562,7 +561,7 @@ class _GapCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                gap.rationale!,
+                gap.rationale,
                 style: const TextStyle(
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
