@@ -603,7 +603,7 @@ export function AdminPipelinePage() {
                 <span className="text-[10px] mt-0.5">No immediate interventions required.</span>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {status.recommendations.map((rec, idx) => (
                   <div
                     key={`rec-${idx}`}
