@@ -613,12 +613,12 @@ export const openapiSpec = {
         tags: ["Admin"],
         summary: "Operational health for queues, workers, corpus readiness, and stale AI jobs",
         description:
-          "Returns BullMQ queue counts, recent failed jobs, Redis availability, corpus embedding/AI-analysis coverage, latest sync run, stale report/gap counts, and deterministic recommendations.",
+          "Returns BullMQ queue counts, queue latency, worker heartbeat status, recent failed/dead-letter jobs, Redis availability, corpus embedding/AI-analysis coverage, latest sync run, stale report/gap counts, and deterministic recommendations.",
         security: [{ bearerAuth: [] }],
         responses: {
           "200": {
             description:
-              "Pipeline status. If Redis/queue inspection fails, the endpoint still returns corpus diagnostics with redis.ok=false.",
+              "Pipeline status. If Redis/queue or heartbeat inspection fails, the endpoint still returns corpus diagnostics with redis.ok=false or missing worker heartbeats.",
           },
           "403": { description: "Admin only" },
         },

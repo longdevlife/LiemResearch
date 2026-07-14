@@ -92,6 +92,9 @@ export function AdminPipelinePage() {
   const totalBacklog = status?.queues.reduce((acc, q) => acc + q.waiting + q.delayed, 0) ?? 0;
   const totalFailed = status?.queues.reduce((acc, q) => acc + q.failed, 0) ?? 0;
   const redisOk = status?.redis.ok ?? false;
+  const workersAlive = status?.workers.alive ?? 0;
+  const workersExpected = status?.workers.expected ?? 0;
+  const workersAtRisk = (status?.workers.stale ?? 0) + (status?.workers.missing ?? 0);
 
   const renderHealthBadge = (queue: { isBacklogged: boolean; hasFailures: boolean }) => {
     if (!redisOk) {
@@ -145,7 +148,7 @@ export function AdminPipelinePage() {
       </div>
 
       {/* Bento Stats Summary Card Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
         {/* Redis Connection Status */}
         <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
           <div className="flex items-center justify-between">
@@ -169,6 +172,33 @@ export function AdminPipelinePage() {
             </span>
             <span className="text-[10px] text-muted-foreground block truncate">
               {status?.redis.error ?? "Running BullMQ queues"}
+            </span>
+          </div>
+        </div>
+
+        {/* Worker heartbeat status */}
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Workers Alive</span>
+            <div className={cn(
+              "p-1.5 rounded-lg",
+              workersAtRisk > 0 ? "bg-red-500/10" : "bg-emerald-500/10"
+            )}>
+              <Activity className={cn(
+                "h-4 w-4 stroke-[1.5]",
+                workersAtRisk > 0 ? "text-red-500" : "text-emerald-500"
+              )} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className={cn(
+              "text-3xl font-bold font-mono tracking-tight block",
+              workersAtRisk > 0 ? "text-red-500" : "text-[#111111] dark:text-white"
+            )}>
+              {isLoading ? "—" : `${workersAlive}/${workersExpected}`}
+            </span>
+            <span className="text-[10px] text-muted-foreground block">
+              Heartbeat within 2 minutes
             </span>
           </div>
         </div>
@@ -354,6 +384,7 @@ export function AdminPipelinePage() {
                 <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Active</TableHead>
                 <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Delayed</TableHead>
                 <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Failed</TableHead>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Oldest Waiting</TableHead>
                 <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Completed</TableHead>
                 <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Health Status</TableHead>
               </TableRow>
@@ -368,12 +399,13 @@ export function AdminPipelinePage() {
                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20 mx-auto rounded-full" /></TableCell>
                   </TableRow>
                 ))
               ) : status?.queues.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground text-sm">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground text-sm">
                     {!redisOk
                       ? "Queue data unavailable because Redis is unreachable."
                       : "No active queues found. Ensure workers are started."}
@@ -396,11 +428,66 @@ export function AdminPipelinePage() {
                       "text-center font-mono text-xs py-3.5",
                       queue.failed > 0 ? "text-red-500 font-bold" : "text-muted-foreground"
                     )}>{queue.failed}</TableCell>
+                    <TableCell className={cn(
+                      "text-center font-mono text-xs py-3.5",
+                      queue.oldestPendingJobAgeSeconds !== null && queue.oldestPendingJobAgeSeconds > 600
+                        ? "text-amber-600 dark:text-amber-400 font-bold"
+                        : "text-muted-foreground"
+                    )}>
+                      {formatAge(queue.oldestPendingJobAgeSeconds)}
+                    </TableCell>
                     <TableCell className="text-center font-mono text-xs text-muted-foreground py-3.5">{queue.completed}</TableCell>
                     <TableCell className="text-center py-3.5">{renderHealthBadge(queue)}</TableCell>
                   </TableRow>
                 ))
               )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Worker Heartbeat Registry */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold tracking-tight text-[#111111] dark:text-white">Worker Heartbeats</h2>
+        <div className="rounded-xl border border-[#EAEAEA] dark:border-[#26334A] bg-card text-card-foreground shadow-[0_2px_12px_rgba(0,0,0,0.015)] overflow-x-auto">
+          <Table className="min-w-[760px]">
+            <TableHeader className="bg-[#FBFBFA] dark:bg-[#162235]/40 border-b border-[#EAEAEA] dark:border-[#26334A]">
+              <TableRow>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11">Worker</TableHead>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11">Queue</TableHead>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Status</TableHead>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11 text-center">Last Seen</TableHead>
+                <TableHead className="font-semibold text-xs tracking-wider uppercase text-[#787774] dark:text-slate-400 h-11">Host / PID</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-[#EAEAEA] dark:divide-[#26334A]">
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <TableRow key={`worker-ske-${idx}`} className="hover:bg-transparent">
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 mx-auto rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  </TableRow>
+                ))
+              ) : status?.workers.heartbeats.map((worker) => (
+                <TableRow key={worker.workerName} className="hover:bg-[#F9F9F8]/80 dark:hover:bg-[#162235]/30 transition-colors duration-150">
+                  <TableCell className="font-semibold text-sm text-[#111111] dark:text-white py-3.5">
+                    {worker.workerName}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground py-3.5">{worker.queueName}</TableCell>
+                  <TableCell className="text-center py-3.5">
+                    <WorkerStatusBadge status={worker.status} />
+                  </TableCell>
+                  <TableCell className="text-center font-mono text-xs text-muted-foreground py-3.5">
+                    {worker.lastSeenAt ? `${formatAge(worker.ageSeconds)} ago` : "never"}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground py-3.5">
+                    {worker.hostname ? `${worker.hostname} / ${worker.pid ?? "?"}` : "not reported"}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -582,7 +669,14 @@ export function AdminPipelinePage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center font-mono text-xs py-3.5 font-semibold text-slate-700 dark:text-slate-300">
-                          {job.attemptsMade}
+                          <div className="flex flex-col items-center gap-1">
+                            <span>{job.attemptsMade}/{job.maxAttempts}</span>
+                            {job.isExhausted && (
+                              <Badge variant="outline" className="border-red-200 bg-red-50 px-1.5 py-0 text-[9px] text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
+                                Exhausted
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-3.5">
                           {job.timestamp ? new Date(job.timestamp).toLocaleString("vi-VN", { hour12: false }) : "—"}
@@ -624,4 +718,36 @@ export function AdminPipelinePage() {
       )}
     </main>
   );
+}
+
+function WorkerStatusBadge({ status }: { status: "alive" | "stale" | "missing" }) {
+  if (status === "alive") {
+    return (
+      <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900 rounded-full text-[10px] font-semibold px-2 py-0.5">
+        Alive
+      </Badge>
+    );
+  }
+  if (status === "stale") {
+    return (
+      <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900 rounded-full text-[10px] font-semibold px-2 py-0.5">
+        Stale
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900 rounded-full text-[10px] font-semibold px-2 py-0.5">
+      Missing
+    </Badge>
+  );
+}
+
+function formatAge(seconds: number | null | undefined) {
+  if (seconds === null || seconds === undefined) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return restMinutes > 0 ? `${hours}h ${restMinutes}m` : `${hours}h`;
 }

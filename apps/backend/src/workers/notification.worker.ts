@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { DeviceTokenModel } from "../modules/notifications/models/device-token.model.js";
 import { NotificationModel } from "../modules/notifications/models/notification.model.js";
 
@@ -97,6 +98,10 @@ async function sendPush(notificationId: string): Promise<void> {
 
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({
+    workerName: "worker:notifications",
+    queueName: QUEUE_NAMES.notifications,
+  });
 
   const worker = new Worker(
     QUEUE_NAMES.notifications,
@@ -117,6 +122,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "notification worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);

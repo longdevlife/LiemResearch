@@ -2,6 +2,7 @@ import { UnrecoverableError, Worker } from "bullmq";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { ReportModel } from "../modules/reports/models/report.model.js";
 import { markReportFailed, runRagPipeline, type ReportJob } from "../modules/reports/rag.service.js";
 import { PROMPT_VERSION } from "../modules/reports/report.prompt.js";
@@ -27,6 +28,7 @@ const USER_FACING_FAILURE = "Report generation failed. Please try again later.";
 
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({ workerName: "worker:report", queueName: QUEUE_NAMES.report });
 
   // Startup sweep: a hard-killed worker leaves reports frozen in "generating", and
   // a lost job (Redis flush / enqueue failure) leaves one stuck in "queued" forever.
@@ -83,6 +85,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "report worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);

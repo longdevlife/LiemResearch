@@ -18,17 +18,39 @@ function makeDeps(overrides: Partial<Parameters<typeof createPipelineStatusServi
           completed: 10,
           paused: 0,
         })),
+        getOldestPendingJob: vi.fn(async () => ({ id: "wait-1", timestamp: now.getTime() - 90_000 })),
         getFailedJobs: vi.fn(async () => [
           {
             id: "job-1",
             name: "generate-report",
             failedReason: "Gemini quota exceeded",
             attemptsMade: 5,
+            opts: { attempts: 5 },
             timestamp: now.getTime(),
           },
         ]),
       },
     ],
+    heartbeatRepository: {
+      getHeartbeats: vi.fn(async () => [
+        {
+          workerName: "worker:report",
+          queueName: "report",
+          hostname: "devbox",
+          pid: 1001,
+          startedAt: new Date(now.getTime() - 10 * 60_000).toISOString(),
+          lastSeenAt: new Date(now.getTime() - 10_000).toISOString(),
+        },
+        {
+          workerName: "worker:gaps",
+          queueName: "gaps",
+          hostname: "devbox",
+          pid: 1002,
+          startedAt: new Date(now.getTime() - 20 * 60_000).toISOString(),
+          lastSeenAt: new Date(now.getTime() - 10 * 60_000).toISOString(),
+        },
+      ]),
+    },
     corpusRepository: {
       countTotalPapers: vi.fn(async () => 100),
       countActivePapers: vi.fn(async () => 80),
@@ -75,6 +97,7 @@ describe("pipeline status service", () => {
       failed: 2,
       isBacklogged: false,
       hasFailures: true,
+      oldestPendingJobAgeSeconds: 90,
     });
     expect(status.recentFailedJobs[0]).toMatchObject({
       queue: "report",
@@ -82,7 +105,25 @@ describe("pipeline status service", () => {
       name: "generate-report",
       failedReason: "Gemini quota exceeded",
       attemptsMade: 5,
+      maxAttempts: 5,
+      isExhausted: true,
       timestamp: "2026-07-13T04:00:00.000Z",
+    });
+    expect(status.workers).toMatchObject({
+      expected: 6,
+      alive: 1,
+      stale: 1,
+      missing: 4,
+    });
+    expect(status.workers.heartbeats[0]).toMatchObject({
+      workerName: "worker:report",
+      status: "alive",
+      ageSeconds: 10,
+    });
+    expect(status.workers.heartbeats[1]).toMatchObject({
+      workerName: "worker:gaps",
+      status: "stale",
+      ageSeconds: 600,
     });
     expect(status.corpus).toMatchObject({
       totalPapers: 100,
@@ -122,6 +163,7 @@ describe("pipeline status service", () => {
           getJobCounts: vi.fn(async () => {
             throw new Error("ERR max requests limit exceeded");
           }),
+          getOldestPendingJob: vi.fn(async () => null),
           getFailedJobs: vi.fn(async () => []),
         },
       ],
@@ -139,6 +181,68 @@ describe("pipeline status service", () => {
       severity: "critical",
       title: "Redis/queue unavailable",
     });
+  });
+
+  it("still returns pipeline status when worker heartbeat inspection fails", async () => {
+    const service = createPipelineStatusService(makeDeps({
+      heartbeatRepository: {
+        getHeartbeats: vi.fn(async () => {
+          throw new Error("heartbeat redis timeout");
+        }),
+      },
+    }));
+
+    const status = await service.getStatus();
+
+    expect(status.workers).toMatchObject({
+      expected: 6,
+      alive: 0,
+      stale: 0,
+      missing: 6,
+    });
+    expect(status.recommendations.map((r) => r.title)).toContain("Worker heartbeat missing or stale");
+  });
+
+  it("does not treat delayed repeatable jobs as high queue latency", async () => {
+    const service = createPipelineStatusService(makeDeps({
+      queueAdapters: [
+        {
+          name: "embedding",
+          label: "Embeddings",
+          getJobCounts: vi.fn(async () => ({
+            waiting: 0,
+            active: 0,
+            delayed: 1,
+            failed: 0,
+            completed: 0,
+            paused: 0,
+          })),
+          getOldestPendingJob: vi.fn(async () => null),
+          getFailedJobs: vi.fn(async () => []),
+        },
+      ],
+      heartbeatRepository: {
+        getHeartbeats: vi.fn(async () => [
+          {
+            workerName: "worker:embedding",
+            queueName: "embedding",
+            hostname: "devbox",
+            pid: 1003,
+            startedAt: new Date(now.getTime() - 10 * 60_000).toISOString(),
+            lastSeenAt: new Date(now.getTime() - 10_000).toISOString(),
+          },
+        ]),
+      },
+    }));
+
+    const status = await service.getStatus();
+
+    expect(status.queues[0]).toMatchObject({
+      name: "embedding",
+      delayed: 1,
+      oldestPendingJobAgeSeconds: null,
+    });
+    expect(status.recommendations.map((r) => r.title)).not.toContain("Queue latency is high");
   });
 
   it("does not treat stale running sync runs as active pipeline work", async () => {
