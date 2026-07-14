@@ -38,6 +38,7 @@ export function useCreateReport() {
     mutationFn: (payload: CreateReportRequest) => reportsApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
     },
   });
 }

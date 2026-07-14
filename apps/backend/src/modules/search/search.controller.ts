@@ -32,6 +32,7 @@ export const searchController = {
       minScore,
       sort,
       rerank,
+      userId: req.user?.sub,
     });
 
     // Fire-and-forget: log the search for analytics (never awaited, never blocks response)

@@ -3,8 +3,17 @@ import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { searchController } from "./search.controller.js";
 import { isRerankRequested } from "./dto/search.schema.js";
+import { optionalAuth, requireAuth } from "../../common/middleware/auth.js";
 
 export const searchRouter: Router = Router();
+
+/** Conditionally require auth if reranking is requested, otherwise optional auth. */
+const conditionalSearchAuth = (req: any, res: any, next: any) => {
+  if (isRerankRequested(req.query.rerank)) {
+    return requireAuth(req, res, next);
+  }
+  return optionalAuth(req, res, next);
+};
 
 /**
  * Plain semantic search is public and unthrottled. But `rerank=true` fires a
@@ -26,4 +35,4 @@ const rerankLimiter = rateLimit({
     }),
 });
 
-searchRouter.get("/", rerankLimiter, searchController.semantic);
+searchRouter.get("/", conditionalSearchAuth, rerankLimiter, searchController.semantic);

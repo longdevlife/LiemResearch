@@ -23,6 +23,8 @@ const gapDirectionsSchema = new Schema(
     model: { type: String, default: "" },
     promptVersion: { type: String, default: "" },
     evidenceHash: { type: String, default: "" },
+    creditTransactionId: { type: Schema.Types.ObjectId, ref: "CreditTransaction" },
+    creditCost: { type: Number },
   },
   { timestamps: true },
 );

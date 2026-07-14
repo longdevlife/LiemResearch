@@ -1,7 +1,9 @@
 import { env } from "../../config/env.js";
+import mongoose from "mongoose";
 import { logger } from "../../infrastructure/logger.js";
 import { AppError } from "../../common/exceptions/app-error.js";
 import type { GapProbe, GapDirections } from "@trend/shared-types";
+import { creditService } from "../credits/credit.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { LlmContentError } from "../llm/gemini.client.js";
 import { cachedGenerateJSON } from "../llm/llm.run.js";
@@ -144,17 +146,43 @@ function toDirectionsDto(d: GapDirectionsDoc): GapDirections {
 export const gapsService = {
   /** Create a queued analysis row, enqueue the BullMQ job, and return the id. */
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
-    const analysis = await GapAnalysisModel.create({
+    const analysisId = new mongoose.Types.ObjectId();
+
+    const tx = await creditService.chargeCreditsChecked({
       userId,
-      projectId: dto.projectId,
-      topic: dto.topic,
-      yearFrom: dto.yearFrom,
-      yearTo: dto.yearTo,
-      status: "queued",
+      action: "generate_gaps",
+      amount: 30,
+      targetKind: "gap_analysis",
+      targetId: analysisId.toString(),
+      idempotencyKey: `gap_analysis:${analysisId}`,
     });
-    const analysisId = String(analysis._id);
-    await gapsQueue.add("gap-analysis", { analysisId });
-    return analysisId;
+
+    const txId = tx?._id;
+
+    try {
+      const analysis = await GapAnalysisModel.create({
+        _id: analysisId,
+        userId,
+        projectId: dto.projectId,
+        topic: dto.topic,
+        yearFrom: dto.yearFrom,
+        yearTo: dto.yearTo,
+        status: "queued",
+        creditTransactionId: txId,
+        creditCost: 30,
+        creditAction: "generate_gaps",
+      });
+      await gapsQueue.add("gap-analysis", { analysisId: String(analysis._id) });
+      return String(analysis._id);
+    } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Failed to create gap analysis or enqueue job",
+        });
+      }
+      throw err;
+    }
   },
 
   /** Fetch one analysis the caller owns (poll target for the FE). */
@@ -196,9 +224,10 @@ export const gapsService = {
     });
 
     if (papers.length === 0) {
-      analysis.status = "failed";
-      analysis.errorMessage = "Not enough corpus data for this topic — try a broader question.";
-      await analysis.save();
+      await this.markAnalysisFailed(
+        job.analysisId,
+        "Not enough corpus data for this topic — try a broader question."
+      );
       return;
     }
 
@@ -283,6 +312,15 @@ export const gapsService = {
     analysis.promptVersion = GAP_PROMPT_VERSION;
     analysis.modelVersion = model;
     await analysis.save();
+
+    if (cacheHit && analysis.creditTransactionId) {
+      await creditService.refundCreditsOnce({
+        transactionId: analysis.creditTransactionId.toString(),
+        reason: "Gap analysis cache hit",
+      });
+      analysis.creditRefundedAt = new Date();
+      await analysis.save();
+    }
 
     logger.info(
       { analysisId: job.analysisId, gaps: gapDocs.length, cacheHit },
@@ -409,7 +447,7 @@ export const gapsService = {
    * Synchronous (no vector search): the gap doc already carries full context.
    */
   async generateDirections(
-    _userId: string,
+    userId: string,
     gapId: string,
     force?: boolean,
   ): Promise<GapDirections> {
@@ -438,6 +476,19 @@ export const gapsService = {
       return toDirectionsDto(existing as GapDirectionsDoc);
     }
 
+    // Charge credits first since we are about to trigger LLM generation
+    const tx = await creditService.chargeCreditsChecked({
+      userId,
+      action: "generate_directions",
+      amount: 15,
+      targetKind: "gap_direction",
+      targetId: gapId,
+      idempotencyKey: `directions:${gapId}:${Date.now()}`,
+    });
+
+    let txId = tx?._id;
+    let cacheHit = false;
+
     let raw: DirectionsRaw;
     const prompt = buildDirectionsPrompt(
       {
@@ -458,6 +509,9 @@ export const gapsService = {
         model: env.GEMINI_MODEL_FAST,
         bypassCache: force,
         prompt,
+        onCacheHit: () => {
+          cacheHit = true;
+        },
         validate: (candidate) => {
           const directions = sanitizeDirections(candidate, allowedPaperIds);
           if (directions.length === 0) {
@@ -472,10 +526,24 @@ export const gapsService = {
         },
       });
     } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Directions generation failed",
+        });
+      }
       logger.warn({ err, gapId }, "gap directions generation failed");
       throw AppError.serviceUnavailable(
         "AI gợi ý tạm thời không khả dụng. Vui lòng thử lại.",
       );
+    }
+
+    if (cacheHit && txId) {
+      await creditService.refundCreditsOnce({
+        transactionId: txId.toString(),
+        reason: "Directions cache hit",
+      });
+      txId = undefined;
     }
 
     const directions = sanitizeDirections(raw, allowedPaperIds);
@@ -491,6 +559,8 @@ export const gapsService = {
           model: env.GEMINI_MODEL_FAST,
           promptVersion: DIRECTIONS_PROMPT_VERSION,
           evidenceHash,
+          creditTransactionId: txId,
+          creditCost: txId ? 15 : 0,
         },
       },
       { upsert: true, new: true },
@@ -506,10 +576,23 @@ export const gapsService = {
 
   /** Mark an analysis failed — called by the worker when retries are exhausted. */
   async markAnalysisFailed(analysisId: string, message: string): Promise<void> {
-    await GapAnalysisModel.updateOne(
-      { _id: analysisId, status: { $ne: "ready" } },
-      { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
-    );
+    const analysis = await GapAnalysisModel.findOneAndUpdate(
+      { _id: analysisId, status: { $ne: "ready" }, creditRefundedAt: { $exists: false } },
+      { $set: { status: "failed", errorMessage: message.slice(0, 500), creditRefundedAt: new Date() } },
+      { new: true }
+    ).lean();
+
+    if (analysis && analysis.creditTransactionId) {
+      await creditService.refundCreditsOnce({
+        transactionId: analysis.creditTransactionId.toString(),
+        reason: `Gap analysis failed: ${message.slice(0, 100)}`,
+      });
+    } else if (!analysis) {
+      await GapAnalysisModel.updateOne(
+        { _id: analysisId, status: { $ne: "ready" } },
+        { $set: { status: "failed", errorMessage: message.slice(0, 500) } }
+      );
+    }
   },
 };
 

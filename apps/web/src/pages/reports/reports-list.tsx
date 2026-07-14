@@ -332,9 +332,10 @@ export function ReportsListPage() {
       setShowPreview(false);
 
       toast.success("Report generation started!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create report:", error);
-      toast.error("Failed to create report. Please try again.");
+      const errMsg = error.response?.data?.error?.message || "Failed to create report. Please try again.";
+      toast.error(errMsg);
     }
   };
 

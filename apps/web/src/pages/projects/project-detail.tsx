@@ -268,8 +268,10 @@ function ReportsTab({
       setDeepAnalysis(false);
       setFast(true);
       toast.success("Report generation started");
-    } catch (error) {
-      toast.error("Failed to create report. Please try again.");
+    } catch (error: any) {
+      console.error("Failed to create report:", error);
+      const errMsg = error.response?.data?.error?.message || "Failed to create report. Please try again.";
+      toast.error(errMsg);
     }
   };
 

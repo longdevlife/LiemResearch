@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Lightbulb, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { gapsApi } from "@/features/gaps/api/gaps.api";
@@ -26,6 +27,7 @@ export function GapDirectionsPanel({
 }) {
   const [data, setData] = useState<GapDirections | null>(null);
   const [generating, setGenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -35,6 +37,7 @@ export function GapDirectionsPanel({
       const res = await gapsApi.generateDirections(gapId, !!data);
       setData(res);
       toast.success("AI research directions suggested.");
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || "Failed to suggest directions.");
     } finally {

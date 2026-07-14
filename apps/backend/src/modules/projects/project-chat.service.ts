@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
+import { creditService } from "../credits/credit.service.js";
 import { hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
@@ -44,6 +45,18 @@ export class ProjectChatService {
     message: string,
   ): Promise<SendProjectChatMessageResult> {
     const papers = await this.loadProjectEvidence(projectId, userId);
+
+    // Charge 1 credit for sending a message
+    const tx = await creditService.chargeCreditsChecked({
+      userId,
+      action: "project_chat_message",
+      amount: 1,
+      targetKind: "project_chat",
+      targetId: projectId,
+      idempotencyKey: `chat:${projectId}:${userId}:${Date.now()}`,
+    });
+    const txId = tx?._id;
+
     const selectedEvidence = await this.selectEvidence(message, papers);
     const selectedHistory = await this.loadRecentHistory(projectId, userId);
     const fitted = fitToBudget({
@@ -105,10 +118,16 @@ export class ProjectChatService {
         },
       });
     } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Project chat message LLM call failed",
+        });
+      }
       logger.warn({ err, projectId, userId, provider: provider.name }, "project chat LLM failed");
       throw AppError.serviceUnavailable("LLM provider unreachable");
     }
-    await this.saveTurn(projectId, userId, message, result.answer, result.citedPaperIds);
+    await this.saveTurn(projectId, userId, message, result.answer, result.citedPaperIds, txId);
     return result;
   }
 
@@ -118,6 +137,7 @@ export class ProjectChatService {
     message: string,
     answer: string,
     citedPaperIds: string[],
+    creditTransactionId?: mongoose.Types.ObjectId,
   ): Promise<void> {
     await ProjectChatMessageModel.insertMany([
       {
@@ -133,6 +153,7 @@ export class ProjectChatService {
         role: "assistant",
         content: answer,
         citedPaperIds: citedPaperIds.map((id) => new mongoose.Types.ObjectId(id)),
+        creditTransactionId,
       },
     ]);
   }
