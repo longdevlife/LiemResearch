@@ -28,6 +28,7 @@ export interface PaperCardProps {
   dataQualityScore?: number;
   aiScore?: number;
   rerankScore?: number;
+  taxonomyBoostScore?: number;
   searchMode?: "semantic" | "keyword";
 }
 
@@ -52,6 +53,7 @@ export function PaperCard({
   dataQualityScore,
   aiScore,
   rerankScore,
+  taxonomyBoostScore,
   searchMode = "semantic",
 }: PaperCardProps) {
   const navigate = useNavigate();
@@ -83,6 +85,7 @@ export function PaperCard({
 
   const isSemantic = searchMode === "semantic" && score !== "N/A" && score !== undefined;
   const hasRerank = rerankScore !== undefined;
+  const hasTaxonomyBoost = taxonomyBoostScore !== undefined && taxonomyBoostScore > 0;
 
   return (
     <div className="bg-gradient-to-br from-white via-white to-slate-50/40 dark:from-[#151518] dark:via-[#121212] dark:to-[#181820]/30 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_-6px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 hover:border-indigo-200/80 dark:hover:border-indigo-900/60 transition-all duration-300 relative flex flex-col justify-between min-h-[190px]">
@@ -213,6 +216,22 @@ export function PaperCard({
                   Semantic Match: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{parseFloat(score).toFixed(2)}</span>
                 </span>
               )}
+            </>
+          )}
+
+          {hasTaxonomyBoost && (
+            <>
+              <span className="text-slate-200 dark:text-slate-800">|</span>
+              <span
+                className="flex items-center gap-1.5"
+                title="Small relevance boost because the query matches OpenAlex topic, subfield, field, or domain metadata"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                Taxonomy Boost:
+                <span className="text-cyan-600 dark:text-cyan-400 font-bold">
+                  +{taxonomyBoostScore!.toFixed(2)}
+                </span>
+              </span>
             </>
           )}
         </div>

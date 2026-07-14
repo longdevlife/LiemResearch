@@ -14,8 +14,10 @@ export interface OpenAlexWork {
   language?: string | null;
   type?: string | null; // "article", "review", "preprint", ...
   cited_by_count?: number | null;
+  fwci?: number | null;
   abstract_inverted_index?: Record<string, number[]> | null;
   referenced_works?: string[] | null; // ["https://openalex.org/W123", ...]
+  related_works?: string[] | null; // ["https://openalex.org/W456", ...]
   authorships?: OpenAlexAuthorship[];
   primary_location?: OpenAlexLocation | null;
   best_oa_location?: OpenAlexLocation | null;
@@ -24,8 +26,23 @@ export interface OpenAlexWork {
     oa_status?: string; // "gold" | "green" | "hybrid" | "bronze" | "closed" | "diamond"
     oa_url?: string | null;
   } | null;
-  topics?: { id?: string; display_name?: string; score?: number }[];
+  primary_topic?: OpenAlexTopic | null;
+  topics?: OpenAlexTopic[];
   keywords?: { id?: string; display_name?: string; score?: number }[];
+}
+
+export interface OpenAlexTopic {
+  id?: string;
+  display_name?: string;
+  score?: number;
+  subfield?: OpenAlexTopicLevel | null;
+  field?: OpenAlexTopicLevel | null;
+  domain?: OpenAlexTopicLevel | null;
+}
+
+export interface OpenAlexTopicLevel {
+  id?: string;
+  display_name?: string;
 }
 
 export interface OpenAlexAuthorship {

@@ -1,6 +1,6 @@
 import { env } from "../../../config/env.js";
 import { logger } from "../../../infrastructure/logger.js";
-import type { OpenAlexPage } from "./openalex.types.js";
+import type { OpenAlexPage, OpenAlexWork } from "./openalex.types.js";
 
 const BASE_URL = "https://api.openalex.org/works";
 const RATE_LIMIT_DELAY_MS = 100; // ≤ 10 req/s — OpenAlex polite pool
@@ -49,17 +49,30 @@ export async function fetchWorksByIds(
   ids: string[],
 ): Promise<Array<{ id: string; referenced_works: string[] }>> {
   if (ids.length === 0) return [];
+  const works = await fetchOpenAlexWorksByIds(ids, "id,referenced_works");
+  return works.map((w) => ({
+    id: (w.id ?? "").replace("https://openalex.org/", ""),
+    referenced_works: (w.referenced_works ?? []).map((r) => r.replace("https://openalex.org/", "")),
+  }));
+}
+
+/**
+ * Fetch up to 50 works by OpenAlex ID in one request. Use `select` to keep
+ * backfills cheap; OpenAlex accepts pipe-separated IDs in `filter=openalex_id`.
+ */
+export async function fetchOpenAlexWorksByIds(
+  ids: string[],
+  select: string,
+): Promise<OpenAlexWork[]> {
+  if (ids.length === 0) return [];
   const url = new URL(BASE_URL);
   url.searchParams.set("filter", `openalex_id:${ids.join("|")}`);
-  url.searchParams.set("select", "id,referenced_works");
+  url.searchParams.set("select", select);
   url.searchParams.set("per-page", String(ids.length));
   if (env.OPENALEX_MAILTO) url.searchParams.set("mailto", env.OPENALEX_MAILTO);
 
   const json = await fetchWithRetry(url.toString());
-  return (json.results ?? []).map((w) => ({
-    id: (w.id ?? "").replace("https://openalex.org/", ""),
-    referenced_works: (w.referenced_works ?? []).map((r) => r.replace("https://openalex.org/", "")),
-  }));
+  return json.results ?? [];
 }
 
 async function fetchWithRetry(url: string, attempt = 1): Promise<OpenAlexPage> {

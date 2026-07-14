@@ -14,6 +14,11 @@ import {
   type RerankCandidate,
   type RerankLlmOutput,
 } from "./search.rerank.js";
+import {
+  annotateTaxonomyBoost,
+  effectiveRelevanceScore,
+  effectiveRerankScore,
+} from "./search.taxonomy.js";
 
 export type { ScoredPaper } from "@trend/shared-types";
 
@@ -75,7 +80,7 @@ export const searchService = {
     // memory. Pool size does NOT grow with `page` — so `total` is stable and a
     // deep `page` can't push $vectorSearch limit past numCandidates (Atlas 500).
     const poolSize = Math.min(MAX_POOL, env.SEARCH_FILTER_POOL);
-    const pool = await fetchScoredPool(q, params, poolSize);
+    const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
     const sorted = sortPapers(pool, sort);
     const { items, total } = slicePage(sorted, page, pageSize);
     return { papers: items, total, reranked: false };
@@ -100,7 +105,7 @@ async function rerankedSearch(args: {
   // cost, and `total` stays deterministic. Rerank refines the head; paginating
   // past the head is meaningless and is clamped in paginatePool.
   const poolSize = Math.min(MAX_POOL, Math.max(env.RERANK_CANDIDATES, pageSize));
-  const pool = await fetchScoredPool(q, params, poolSize);
+  const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
   const candidates: RerankCandidate[] = pool.map((p) => ({
@@ -162,7 +167,7 @@ async function rerankedSearch(args: {
   // — fall back to its vector score so a strong semantic hit the model forgot
   // to emit keeps its rank instead of being dumped below explicit-0 papers.
   for (const p of pool) p.rerankScore = scoreMap[p.id] ?? p.score;
-  pool.sort((a, b) => (b.rerankScore! - a.rerankScore!) || b.score - a.score);
+  pool.sort((a, b) => (effectiveRerankScore(b) - effectiveRerankScore(a)) || b.score - a.score);
 
   // An all-empty score map (negative-cache hit or total LLM omission) means no
   // real re-ranking happened — report it honestly as plain semantic order.
@@ -200,7 +205,7 @@ function sortPapers(papers: ScoredPaper[], sort: SearchSortKey): ScoredPaper[] {
   } else if (sort === "citations") {
     arr.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
   } else {
-    arr.sort((a, b) => b.score - a.score); // relevance (cosine)
+    arr.sort((a, b) => effectiveRelevanceScore(b) - effectiveRelevanceScore(a) || b.score - a.score);
   }
   return arr;
 }
