@@ -2424,7 +2424,7 @@
           <tr><td><b>Mục đích</b></td><td>Kiểm soát chất lượng paper user upload/request, quyết định paper có đủ tốt để tải/dùng/reward không.</td></tr>
           <tr><td><b>User flow</b></td><td>User request/upload paper; admin/requester approve/reject; user download PDF bằng credit; ranking tính từ upload/rating/penalty.</td></tr>
           <tr><td><b>Input/API</b></td><td><code>POST /api/v1/papers</code>, <code>POST /api/v1/papers/:id/upload-pdf</code>, <code>GET /api/v1/papers/:id/pdf-url</code>, status update routes.</td></tr>
-          <tr><td><b>Backend flow</b></td><td>Validate/auth → save metadata/PDF → calculate qualityScore/tier → update paperStatus → charge/refund/reward credits theo rule → sync ranking points.</td></tr>
+          <tr><td><b>Backend flow</b></td><td>Validate/auth → save metadata/PDF qua <code>pdfStorageService</code> → calculate qualityScore/tier → update paperStatus → charge/refund/reward credits theo rule → sync ranking points.</td></tr>
           <tr><td><b>AI involvement</b></td><td>AI rank 1-3 chỉ là advisory review/rationale. AI không tự approve, không tự đổi tier, không tự cộng/trừ credit.</td></tr>
           <tr><td><b>Deterministic logic</b></td><td>6 chiều quality: metadata, source, duplicate, relevance, prestige, utility. Tier map ra downloadCost/uploadReward.</td></tr>
           <tr><td><b>Source of truth</b></td><td><code>research_papers</code>, user credits/ranking fields, <code>points.service.ts</code>. Ledger chi tiết là cải tiến nên bổ sung.</td></tr>
@@ -2443,15 +2443,15 @@
           </tr>
           <tr>
             <td><b>Sequence Flow</b></td>
-            <td><code>submit-paper.tsx</code> / <code>paper-detail.tsx</code> → <code>features/papers/api/papers.api.ts</code> → <code>paper.routes.ts</code> → upload middleware + PDF magic check → <code>paper.service.ts</code> → <code>paper-quality.ts</code> → <code>points.service.ts</code> → trigger embedding worker.</td>
+            <td><code>submit-paper.tsx</code> / <code>paper-detail.tsx</code> → <code>features/papers/api/papers.api.ts</code> → <code>paper.routes.ts</code> → upload middleware + PDF magic check → <code>pdf-storage.service.ts</code> → <code>paper.service.ts</code> → <code>paper-quality.ts</code> → <code>points.service.ts</code> → trigger embedding worker.</td>
           </tr>
           <tr>
             <td><b>Backend Responsibilities</b></td>
-            <td>Backend xác thực user/admin, parse multipart form, validate metadata bằng Zod, kiểm file PDF bằng magic bytes, lưu file vào uploads, tạo/cập nhật paper request, tính quality score/tier bằng công thức, xử lý status như pending/uploaded/accepted/rejected/cancelled, và gọi <code>points.service.ts</code> để charge/refund/reward/clawback credit.</td>
+            <td>Backend xác thực user/admin, parse multipart form, validate metadata bằng Zod, kiểm file PDF bằng magic bytes, lưu file qua provider storage (<code>local</code> hoặc <code>r2</code>), tạo/cập nhật paper request, tính quality score/tier bằng công thức, xử lý status như pending/uploaded/accepted/rejected/cancelled, và gọi <code>points.service.ts</code> để charge/refund/reward/clawback credit.</td>
           </tr>
           <tr>
             <td><b>Data Objects / State</b></td>
-            <td><b>Paper document</b> lưu metadata, pdfPath, paperStatus, duplicate flags, qualityScore, qualityTierName, downloadCost, uploadCreditReward. <b>QualityResult</b> gồm 6 điểm thành phần: metadata, source, duplicate, relevance, prestige, utility. <b>User credit/ranking</b> là state nghiệp vụ do backend cập nhật, không do AI cập nhật.</td>
+            <td><b>Paper document</b> lưu metadata, <code>pdfPath</code>, paperStatus, duplicate flags, qualityScore, qualityTierName, downloadCost, uploadCreditReward. Nếu storage là R2, <code>pdfPath</code> có dạng <code>r2://bucket/papers/...pdf</code>; nếu local dev thì là <code>/uploads/...pdf</code>. <b>QualityResult</b> gồm 6 điểm thành phần. <b>User credit/ranking</b> là state nghiệp vụ do backend cập nhật, không do AI cập nhật.</td>
           </tr>
           <tr>
             <td><b>Scoring Mechanics</b></td>
@@ -2459,7 +2459,7 @@
           </tr>
           <tr>
             <td><b>Code References</b></td>
-            <td><code>apps/backend/src/modules/papers/paper.service.ts</code>, <code>paper-quality.ts</code>, <code>paper-ai-analysis.ts</code>, <code>dto/create-paper.schema.ts</code>, <code>apps/backend/src/modules/auth/points.service.ts</code>, <code>apps/web/src/pages/papers/submit-paper.tsx</code>, <code>apps/web/src/pages/admin/papers.tsx</code>.</td>
+            <td><code>apps/backend/src/modules/papers/paper.routes.ts</code>, <code>paper.service.ts</code>, <code>paper-quality.ts</code>, <code>paper-ai-analysis.ts</code>, <code>apps/backend/src/infrastructure/pdf-storage.service.ts</code>, <code>dto/create-paper.schema.ts</code>, <code>apps/backend/src/modules/auth/points.service.ts</code>, <code>apps/web/src/pages/papers/submit-paper.tsx</code>, <code>apps/web/src/pages/admin/papers.tsx</code>.</td>
           </tr>
           <tr>
             <td><b>Failure Modes</b></td>
@@ -2482,6 +2482,82 @@
         <div class="callout">
           <b>Nói đơn giản:</b> Điểm chất lượng không phải AI tự chấm. Backend cộng điểm từ các dấu hiệu cụ thể: bài có title không, có abstract không, có DOI không, có bị trùng không, loại bài là article/proceedings hay preprint, abstract có nói về method/result/dataset không. Điểm càng cao thì tier càng cao, download cost và upload reward càng cao.
         </div>
+
+        <h3>PDF Storage Pipeline — upload/update/download bằng R2</h3>
+        <p>
+          PDF không được lưu trực tiếp trong MongoDB. Database chỉ lưu
+          <code>pdfPath</code> như một URI trỏ đến storage. Ở local dev,
+          <code>pdfPath</code> có thể là <code>/uploads/file.pdf</code>. Ở
+          production, khi <code>STORAGE_PROVIDER=r2</code>, backend lưu object
+          lên Cloudflare R2 và <code>pdfPath</code> có dạng
+          <code>r2://bucket/papers/&lt;uuid&gt;-paper.pdf</code>.
+        </p>
+        <table>
+          <tr>
+            <th style="width: 24%">Luồng</th>
+            <th>Backend làm gì?</th>
+            <th>Vì sao an toàn hơn?</th>
+          </tr>
+          <tr>
+            <td><b>Upload PDF mới</b></td>
+            <td>
+              FE gửi multipart file đến <code>POST /api/v1/papers</code> hoặc
+              <code>POST /api/v1/papers/:id/upload-pdf</code>. Multer giữ file
+              trong memory, backend kiểm magic bytes PDF, gọi
+              <code>pdfStorageService.savePdf(buffer, originalName)</code>. Nếu
+              provider là R2, service dùng S3-compatible
+              <code>PutObjectCommand</code> để upload object.
+            </td>
+            <td>
+              Không phụ thuộc filesystem tạm của Render. Object key được sanitize
+              bằng <code>buildPdfObjectKey()</code>, không tin đường dẫn từ tên
+              file user gửi lên.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Update / resubmit PDF</b></td>
+            <td>
+              Khi admin cập nhật paper hoặc user resubmit request bị reject,
+              route <code>PATCH /api/v1/papers/:id</code> có thể nhận file PDF
+              mới. Backend upload file mới qua cùng storage service, cập nhật
+              <code>pdfPath</code>, <code>uploadedBy</code>, <code>uploadedAt</code>
+              và tính lại quality score theo trạng thái mới.
+            </td>
+            <td>
+              Update PDF đi qua cùng validation và storage abstraction, nên local
+              và R2 dùng chung logic nghiệp vụ. Không để FE tự ghi trực tiếp vào
+              bucket.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Download PDF</b></td>
+            <td>
+              FE gọi <code>GET /api/v1/papers/:id/pdf-url</code>. Backend kiểm
+              quyền và credit, rồi nếu <code>pdfPath</code> là R2 thì sinh
+              signed URL ngắn hạn bằng <code>getSignedDownloadUrl()</code>. Nếu
+              là local dev thì trả download token để backend stream file.
+            </td>
+            <td>
+              Bucket không cần public. User chỉ nhận URL hết hạn sau
+              <code>R2_SIGNED_URL_TTL_SECONDS</code>, giảm rủi ro share link dài
+              hạn.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Delete / revoke PDF</b></td>
+            <td>
+              Admin xóa PDF qua <code>DELETE /api/v1/papers/:id/pdf</code> hoặc
+              service xóa paper/request. Backend gọi
+              <code>pdfStorageService.deletePdf(pdfPath)</code>; với R2 thì dùng
+              <code>DeleteObjectCommand</code>, sau đó unset
+              <code>pdfPath/uploadedBy/uploadedAt</code> và tính lại quality.
+            </td>
+            <td>
+              DB state và storage object được đồng bộ. Paper không còn PDF sẽ
+              không tiếp tục tạo signed URL cũ qua API.
+            </td>
+          </tr>
+        </table>
 
         <table>
           <tr><th>Điều người dùng hỏi</th><th>Câu trả lời dễ hiểu</th><th>Logic backend</th></tr>
@@ -2507,7 +2583,7 @@
             <div class="num">1</div>
             <div class="body">
               <h4>FE Submit & Initial Check</h4>
-              <p>Sinh viên tải lên file PDF của bài báo hoặc yêu cầu đồng bộ qua DOI. Backend tiếp nhận file, lưu trữ an toàn, và kiểm tra trùng lặp DOI ban đầu.</p>
+              <p>Sinh viên tải lên file PDF của bài báo hoặc yêu cầu đồng bộ qua DOI. Backend tiếp nhận file, kiểm PDF magic bytes, lưu qua <code>pdfStorageService</code> (R2 trong production), và kiểm tra trùng lặp DOI ban đầu.</p>
             </div>
           </div>
           <div class="step">
@@ -2555,7 +2631,7 @@
           </tr>
           <tr>
             <td><b>Xử lý tất định (BE Logic)</b></td>
-            <td>Xử lý lưu file PDF, phân quyền, kiểm tra trạng thái bài báo (<code>paperStatus</code>). Tính toán <code>qualityScore</code> 6 chiều tự động, phân hạng 5 tiers. Thực hiện giao dịch credit an toàn (atomic update) trong <code>points.service.ts</code>. Duy trì bảng Contributor Ranking.</td>
+            <td>Xử lý lưu file PDF qua <code>pdfStorageService</code>, phân quyền, kiểm tra trạng thái bài báo (<code>paperStatus</code>). Nếu production bật R2, backend lưu object vào Cloudflare R2 và chỉ lưu URI vào MongoDB. Tính toán <code>qualityScore</code> 6 chiều tự động, phân hạng 5 tiers. Thực hiện giao dịch credit an toàn trong <code>points.service.ts</code>.</td>
           </tr>
           <tr>
             <td><b>Xử lý AI (AI Logic)</b></td>
@@ -2563,20 +2639,21 @@
           </tr>
           <tr>
             <td><b>Dữ liệu gốc (DB / Source of Truth)</b></td>
-            <td>Collection <code>research_papers</code> lưu trữ metadata, đường dẫn PDF, tier, điểm chất lượng tự động và trạng thái upload/request. User credits hiện nằm trong user/ranking logic; một collection ledger chi tiết cho mọi giao dịch credit là cải tiến nên bổ sung.</td>
+            <td>Collection <code>research_papers</code> lưu trữ metadata, <code>pdfPath</code> storage URI, tier, điểm chất lượng tự động và trạng thái upload/request. PDF bytes nằm ở local uploads trong dev hoặc Cloudflare R2 trong production; MongoDB không lưu file PDF binary. User credits hiện nằm trong user/ranking logic; một collection ledger chi tiết cho mọi giao dịch credit là cải tiến nên bổ sung.</td>
           </tr>
           <tr>
             <td><b>Kiểm soát lỗi (Guardrails)</b></td>
             <td>
               <ul>
                 <li><b>Credit Safety:</b> Các luồng request/download/upload phải đảm bảo không mất credit khi thao tác fail; các trường hợp cancel/reject cần refund hoặc clawback đúng rule.</li>
+                <li><b>Storage Safety:</b> Backend chỉ trả signed URL ngắn hạn cho R2, không expose secret key, không để FE upload trực tiếp vào bucket, và xóa object cũ khi admin xóa/revoke PDF.</li>
                 <li><b>Freeze Reward & Clawback:</b> Khi bài viết đã nhận thưởng (<code>uploadRewardedAt</code> đã set), phần thưởng này sẽ bị khóa lại (freeze) để tránh ảnh hưởng bởi các thay đổi cấu hình tier sau này. Nếu admin thu hồi phê duyệt bài viết, hệ thống thực hiện clawback (thu hồi) đúng số tiền đã thưởng trước đó nhằm chống gian lận.</li>
               </ul>
             </td>
           </tr>
           <tr>
             <td><b>Nghiệm thu (Acceptance / Evidence)</b></td>
-            <td>Điểm chất lượng hiển thị khớp chính xác với công thức cộng điểm từ các thuộc tính đầu vào của bài viết. Credit/ranking thay đổi đúng rule khi request, cancel, accept, reject hoặc revoke. Ledger giao dịch chi tiết là phần cần bổ sung nếu muốn audit mọi biến động credit ở mức kế toán.</td>
+            <td>Điểm chất lượng hiển thị khớp chính xác với công thức cộng điểm từ các thuộc tính đầu vào của bài viết. Upload/update PDF tạo <code>pdfPath</code> đúng provider; R2 download trả signed URL; delete PDF xóa object và unset metadata. Credit/ranking thay đổi đúng rule khi request, cancel, accept, reject hoặc revoke.</td>
           </tr>
         </table>
 
@@ -3987,13 +4064,16 @@
           <tr>
             <td><b>PDF Storage</b></td>
             <td>
-              Backend hỗ trợ local storage và Cloudflare R2. Local storage chỉ
-              phù hợp dev; trên Render filesystem không bền.
+              Backend hỗ trợ local storage và Cloudflare R2. Upload/update PDF
+              đều đi qua <code>pdfStorageService</code>; download dùng signed
+              URL hoặc backend streaming tùy provider. Local storage chỉ phù
+              hợp dev; trên Render filesystem không bền.
             </td>
             <td>
               Render env phải có <code>STORAGE_PROVIDER=r2</code> và đủ các key
               R2. Thiếu <code>STORAGE_PROVIDER=r2</code> thì backend vẫn chạy
-              nhưng PDF lưu local, không đạt production storage.
+              nhưng PDF lưu local, không đạt production storage cho upload/update
+              PDF.
             </td>
           </tr>
           <tr>
@@ -4080,7 +4160,7 @@
         <div class="callout warn">
           <b>Quan trọng:</b> API health/search/trends chạy được không có nghĩa
           là R2 đã đúng. Nếu thiếu R2 env, backend có thể vẫn hoạt động nhưng
-          PDF upload sẽ rơi về local storage hoặc fail khi bật R2.
+          PDF upload/update sẽ rơi về local storage hoặc fail khi bật R2.
         </div>
         <table>
           <tr>
