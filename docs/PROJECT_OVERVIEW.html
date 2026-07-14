@@ -804,6 +804,7 @@
         <a href="#sec-15" class="sidebar-item">15. Thông số hệ thống</a>
         <a href="#sec-16" class="sidebar-item">16. Cơ chế chịu lỗi</a>
         <a href="#sec-17" class="sidebar-item">17. AI Governance</a>
+        <a href="#sec-18" class="sidebar-item">18. Production Readiness</a>
       </nav>
     </aside>
 
@@ -2107,16 +2108,16 @@
         <table>
           <tr><th style="width: 24%">Feature Card</th><th>Report giải thích theo format chuẩn</th></tr>
           <tr><td><b>Mục đích</b></td><td>Tạo báo cáo nghiên cứu có citation thật từ corpus, giúp user hiểu topic, evidence, gaps và hướng nghiên cứu.</td></tr>
-          <tr><td><b>User flow</b></td><td>User nhập topic/question, chọn language/year/deepAnalysis/fast, submit, chờ queued/generating/ready, mở markdown report và grounding papers.</td></tr>
-          <tr><td><b>Input/API</b></td><td><code>POST /api/v1/reports</code> với <code>query</code>, <code>topic</code>, <code>language</code>, <code>yearFrom/yearTo</code>, <code>deepAnalysis</code>, <code>fast</code>.</td></tr>
-          <tr><td><b>Backend flow</b></td><td>Create report doc → enqueue job → embed query → retrieve top-K papers → build evidence pack → cache check → LLM generate JSON/markdown → validate → save.</td></tr>
+          <tr><td><b>User flow</b></td><td>User nhập topic/question, chọn language/year/reasoning profile, bấm <b>Review Evidence Pack</b>, xem Step 2 ngay trong form, thêm/xóa paper, mở paper detail nếu cần kiểm chứng, rồi generate report từ evidence pack cuối cùng.</td></tr>
+          <tr><td><b>Input/API</b></td><td><code>POST /api/v1/reports/evidence-preview</code> trả đúng evidence pack sẽ dùng; <code>POST /api/v1/reports</code> nhận <code>query</code>, <code>topic</code>, <code>language</code>, <code>yearFrom/yearTo</code>, <code>deepAnalysis</code>, <code>fast</code>, <code>selectedPaperIds</code>.</td></tr>
+          <tr><td><b>Backend flow</b></td><td>Preview evidence → user curate paperIds → create report doc → enqueue job → collect selected papers first + retrieval fill → build fixed evidence pack → cache check → LLM generate JSON/markdown → validate → save.</td></tr>
           <tr><td><b>AI involvement</b></td><td>LLM chỉ diễn giải evidence pack theo schema. Deep mode cho Gemini Pro gọi MCP tools nhưng citation vẫn phải trỏ về evidence papers.</td></tr>
           <tr><td><b>Deterministic logic</b></td><td>Pending quota, job state, retrieval, cache key, language resolve, citation mapping, citation validation, fan-out gaps.</td></tr>
           <tr><td><b>Source of truth</b></td><td><code>llm_analysis_reports</code>, <code>groundingPaperIds</code>, <code>rag_queries</code>, retrieved <code>research_papers</code>.</td></tr>
-          <tr><td><b>Output</b></td><td>Markdown report, research gaps, modelVersion, promptVersion, grounding papers, status/error message.</td></tr>
-          <tr><td><b>Guardrails</b></td><td>Citation <code>[n]</code> phải map về <code>groundingPaperIds[n-1]</code>; malformed/truncated deep analysis fallback; cache includes promptVersion/model/evidence.</td></tr>
-          <tr><td><b>Acceptance</b></td><td>Report đúng language; citations click được; không nói ngoài evidence; cache hit nhanh; failed report có lý do rõ.</td></tr>
-          <tr><td><b>Status</b></td><td><span class="pill done" style="margin:0">Implemented</span> · <span class="pill partial" style="margin:0">Add paper / Analysis inputs: design cần bổ sung</span></td></tr>
+          <tr><td><b>Output</b></td><td>Evidence preview cards, relevance %, links sang paper detail, markdown report, research gaps, modelVersion, promptVersion, grounding papers, status/error message.</td></tr>
+          <tr><td><b>Guardrails</b></td><td>Citation <code>[n]</code> phải map về <code>groundingPaperIds[n-1]</code>; malformed/truncated deep analysis fallback; cache includes promptVersion/model/evidence; selected papers được dedupe và bị giới hạn bởi evidence budget.</td></tr>
+          <tr><td><b>Acceptance</b></td><td>Report đúng language; citations click được; evidence preview và worker dùng cùng ordering; paper trong Step 2 mở được detail; không nói ngoài evidence; cache hit nhanh; failed report có lý do rõ.</td></tr>
+          <tr><td><b>Status</b></td><td><span class="pill done" style="margin:0">Implemented</span> · <span class="pill done" style="margin:0">Evidence editor wired</span> · <span class="pill done" style="margin:0">Step 2 inline UX</span></td></tr>
         </table>
 
         <h3>FSD + TDD Hybrid — Report</h3>
@@ -2140,11 +2141,11 @@
           </tr>
           <tr>
             <td><b>Data Objects / State</b></td>
-            <td><b>Report document</b> lưu query/topic/language/year/deepAnalysis/status/markdown/error. <b>EvidencePaper</b> gồm id, title, abstract, year, journal, citation count, authors, relevance score. <b>ReportLlmOutput</b> gồm <code>markdown</code> và <code>gaps[]</code>. <b>groundingPaperIds</b> là mapping citation. <b>RagQuery</b> là audit trail của retrieval/cache/timing.</td>
+            <td><b>Report document</b> lưu query/topic/language/year/deepAnalysis/status/markdown/error và <code>selectedPaperIds</code>. <b>EvidencePaper</b> gồm id, title, abstract, year, journal, citation count, authors, relevance score. <b>ReportLlmOutput</b> gồm <code>markdown</code> và <code>gaps[]</code>. <b>groundingPaperIds</b> là mapping citation. <b>RagQuery</b> là audit trail của retrieval/cache/timing.</td>
           </tr>
           <tr>
             <td><b>Code References</b></td>
-            <td><code>apps/backend/src/modules/reports/rag.service.ts</code>, <code>report.prompt.ts</code>, <code>report.service.ts</code>, <code>dto/report.schema.ts</code>, <code>workers/report.worker.ts</code>, <code>apps/web/src/pages/reports/report-viewer.tsx</code>, <code>apps/web/src/features/reports/hooks/use-reports.ts</code>.</td>
+            <td><code>apps/backend/src/modules/reports/report.evidence.ts</code>, <code>rag.service.ts</code>, <code>report.prompt.ts</code>, <code>report.service.ts</code>, <code>dto/report.schema.ts</code>, <code>workers/report.worker.ts</code>, <code>apps/web/src/pages/reports/reports-list.tsx</code>, <code>report-viewer.tsx</code>, <code>apps/web/src/features/reports/hooks/use-reports.ts</code>.</td>
           </tr>
           <tr>
             <td><b>Failure Modes</b></td>
@@ -2152,7 +2153,7 @@
           </tr>
           <tr>
             <td><b>LLM Generation</b></td>
-            <td>Worker tạo Evidence Pack gồm ordered papers, snippets, metadata, trend/gap hints và output language. Prompt yêu cầu model sinh report theo schema/markdown, dùng citation dạng <code>[n]</code> tương ứng với vị trí paper trong <code>groundingPaperIds</code>. Deep mode cho phép Gemini Pro gọi MCP tools trước khi viết bản cuối.</td>
+            <td>Worker tạo Evidence Pack gồm ordered papers, snippets, metadata, selected papers, retrieved papers, trend/gap hints và output language. Prompt yêu cầu model sinh report theo schema/markdown, dùng citation dạng <code>[n]</code> tương ứng với vị trí paper trong <code>groundingPaperIds</code>. Deep mode cho phép Gemini Pro gọi MCP tools trước khi viết bản cuối.</td>
           </tr>
           <tr>
             <td><b>Validation / Guarding</b></td>
@@ -2172,7 +2173,7 @@
           <tr><th>Người dùng thấy gì?</th><th>Backend thật sự làm gì?</th><th>AI thật sự làm gì?</th></tr>
           <tr>
             <td>User nhập topic/question, ví dụ <code>Research gaps in LLM-based education</code>.</td>
-            <td>Embed query, vector search top-K paper, lọc theo năm, tạo danh sách evidence papers có thứ tự.</td>
+            <td>Preview evidence trước: embed query, vector search top-K paper, lọc theo năm, tạo danh sách evidence papers có thứ tự.</td>
             <td>Đọc evidence đã được backend chọn và viết report theo schema.</td>
           </tr>
           <tr>
@@ -2181,9 +2182,9 @@
             <td>Không được bịa paper mới hoặc citation ngoài danh sách.</td>
           </tr>
           <tr>
-            <td>User muốn gắn thêm 1 paper để phân tích tiếp.</td>
-            <td>Validate paperId, ép paper đó vào evidence pack, dedupe, rồi regenerate/continue report.</td>
-            <td>Phân tích paper được gắn thêm trong bối cảnh report cũ.</td>
+            <td>User muốn gắn thêm paper trước khi generate.</td>
+            <td>Validate paperId, ép paper đó vào evidence pack, dedupe, refresh preview và gửi <code>selectedPaperIds</code> vào job.</td>
+            <td>Phân tích paper được gắn thêm vì nó nằm trong evidence pack đã cố định.</td>
           </tr>
         </table>
 
@@ -2192,14 +2193,14 @@
             <div class="num">1</div>
             <div class="body">
               <h4>FE Entry & Enqueue Job</h4>
-              <p>User nhập topic/question, giới hạn năm, chọn ngôn ngữ và tùy chọn deepAnalysis/fast, submit form. API tạo report document rồi đẩy một job bất đồng bộ vào BullMQ report queue. <b>AI credit cho report là cơ chế đề xuất ở phần Governance, chưa nên mô tả như đã trừ credit bắt buộc.</b></p>
+              <p>User nhập topic/question, giới hạn năm, chọn ngôn ngữ và reasoning profile, bấm <b>Review Evidence Pack</b>. FE hiển thị Step 2 ngay trong cùng form, tự scroll xuống evidence, cho phép thêm/xóa paper rồi mới generate. API tạo report document và đẩy job bất đồng bộ vào BullMQ report queue. <b>AI credit cho report là cơ chế đề xuất ở phần Governance, chưa nên mô tả như đã trừ credit bắt buộc.</b></p>
             </div>
           </div>
           <div class="step">
             <div class="num">2</div>
             <div class="body">
               <h4>Retrieve Evidence (F1 Shared Retriever)</h4>
-              <p>BullMQ worker chạy ngầm: embed query bằng <code>gemini-embedding-2</code>, gọi <code>$vectorSearch</code> của MongoDB Atlas để lấy top-K bài viết liên quan nhất làm Evidence Pack.</p>
+              <p>Preview/service dùng cùng hàm <code>collectReportEvidence()</code>: user-selected papers được đặt trước, retrieval bằng <code>gemini-embedding-2</code> + MongoDB Atlas <code>$vectorSearch</code> lấp phần còn lại tới <code>REPORT_TOP_K</code>. Vì preview và worker dùng chung ordering, citation mapping không bị lệch giữa Step 2 và report cuối.</p>
             </div>
           </div>
           <div class="step">
@@ -2220,7 +2221,7 @@
             <div class="num">5</div>
             <div class="body">
               <h4>Save & Render Outputs (Analysis Inputs)</h4>
-              <p>Lưu báo cáo vào MongoDB, fan-out research gaps phát hiện được sang collection <code>research_gaps</code> theo cơ chế non-fatal. UI hiện tại hiển thị markdown và grounding papers; <b>Analysis Inputs Panel</b> là phần nên bổ sung để minh bạch model, promptVersion, cache hit, retrieved papers và tool runs.</p>
+              <p>Lưu báo cáo vào MongoDB, fan-out research gaps phát hiện được sang collection <code>research_gaps</code> theo cơ chế non-fatal. UI hiển thị markdown, grounding papers và link về paper detail; evidence editor trước khi generate là nơi user kiểm chứng input phân tích.</p>
             </div>
           </div>
         </div>
@@ -2232,17 +2233,17 @@
           </tr>
           <tr>
             <td><b>Giao diện FE (FE Entry)</b></td>
-            <td>Form yêu cầu báo cáo cho phép nhập chủ đề nghiên cứu, giới hạn thời gian (year range), ngôn ngữ báo cáo, chế độ phân tích (fast/deepAnalysis). Trạng thái tạo báo cáo được đồng bộ qua BullMQ job status (queued -> processing -> completed/failed). Kết quả hiển thị Markdown đẹp mắt kèm hệ thống Citation link tương tác. Có panel <b>Add paper to analyze more</b> và <b>Analysis Inputs Panel</b>.</td>
+            <td>Form yêu cầu báo cáo cho phép nhập chủ đề nghiên cứu, giới hạn thời gian, ngôn ngữ báo cáo và reasoning profile. Step 2 hiển thị Evidence Pack inline, tự scroll sau khi preview thành công, có card relevance %, nút View paper, add/remove paper và warning nếu evidence yếu. Trạng thái report đồng bộ qua BullMQ job status (queued -> generating -> ready/failed). Kết quả hiển thị Markdown kèm citation link tương tác.</td>
           </tr>
           <tr>
             <td><b>Endpoint & Service</b></td>
-            <td><code>POST /api/v1/reports</code> tạo report document trong DB với status = <code>queued</code>, sau đó enqueue job vào BullMQ. Client dùng <code>GET /api/v1/reports/:id</code> để đọc trạng thái và nội dung report.</td>
+            <td><code>POST /api/v1/reports/evidence-preview</code> trả về evidence pack không gọi LLM generate. <code>POST /api/v1/reports</code> tạo report document trong DB với status = <code>queued</code>, lưu <code>selectedPaperIds</code>, sau đó enqueue job vào BullMQ. Client dùng <code>GET /api/v1/reports/:id</code> để đọc trạng thái và nội dung report.</td>
           </tr>
           <tr>
             <td><b>Xử lý tất định (BE Logic)</b></td>
             <td>
               Quản lý trạng thái job, định tuyến ngôn ngữ prompt, validate giới hạn năm, tính toán khóa cache Redis theo cấu trúc hash. Ánh xạ chỉ số trích dẫn (citation index mapping) đảm bảo tính chính xác tuần tự từ 1 đến K.
-              <br/><b>Add paper to analyze more (additionalPaperIds):</b> Đây là thiết kế cần bổ sung. Khi làm, backend sẽ kiểm tra quyền truy cập của người dùng, loại bỏ trùng lặp, ép bài báo được chọn xuất hiện trong Evidence Pack (force-include) và lưu audit để biết report đã phân tích thêm bài nào.
+              <br/><b>Evidence editor:</b> Backend kiểm tra selected paper tồn tại và active, loại bỏ trùng lặp, ép bài báo được chọn xuất hiện trong Evidence Pack (force-include), rồi retrieval chỉ lấp phần còn thiếu. FE không ép kết luận; selected paper chỉ là nguồn evidence được phép cite.
             </td>
           </tr>
           <tr>
@@ -2251,7 +2252,7 @@
           </tr>
           <tr>
             <td><b>Dữ liệu gốc (DB / Source of Truth)</b></td>
-            <td>Collection <code>llm_analysis_reports</code> lưu báo cáo, markdown content và <code>groundingPaperIds</code>. Collection <code>rag_queries</code> ghi nhận lịch sử truy vấn để kiểm toán. <code>additionalPaperIds</code> là trường nên thêm khi triển khai tính năng gắn paper phân tích tiếp.</td>
+            <td>Collection <code>llm_analysis_reports</code> lưu báo cáo, markdown content, <code>selectedPaperIds</code> và <code>groundingPaperIds</code>. Collection <code>rag_queries</code> ghi nhận lịch sử truy vấn để kiểm toán retrieval/cache/timing.</td>
           </tr>
           <tr>
             <td><b>Kiểm soát lỗi (Guardrails)</b></td>
@@ -3799,7 +3800,7 @@
           Job fail thì refund; cache hit thì miễn phí hoặc giảm phí.
         </div>
 
-        <h3>Report Extension — gắn thêm paper để phân tích tiếp</h3>
+        <h3>Report Evidence Editor — gắn thêm paper trước khi generate</h3>
         <table>
           <tr>
             <th>Bước</th>
@@ -3809,29 +3810,29 @@
           <tr>
             <td>1. User chọn paper</td>
             <td>
-              Ở report detail, user thêm 1 paper hoặc nhiều paper vào report
-              context.
+              Ở Step 2 của form tạo report, user thêm 1 paper hoặc nhiều paper
+              vào Evidence Pack trước khi generate.
             </td>
             <td>
-              Backend validate paper tồn tại, user có quyền xem/download nếu
-              cần.
+              Backend validate paper tồn tại, paper active, không vượt evidence
+              budget và không trùng paper đã có.
             </td>
           </tr>
           <tr>
             <td>2. Backend force-include evidence</td>
             <td>
-              Retriever vẫn lấy top-K như cũ, nhưng paper user chọn được ép vào
-              evidence set.
+              Retriever vẫn lấy top-K như cũ, nhưng paper user chọn được đặt
+              trước trong evidence set; retrieval chỉ lấp phần còn thiếu.
             </td>
             <td>
               Dedupe paperIds, giới hạn số paper thêm để không vỡ token budget.
             </td>
           </tr>
           <tr>
-            <td>3. Regenerate/continue report</td>
+            <td>3. Generate report</td>
             <td>
-              Worker sinh bản phân tích mới hoặc section bổ sung dựa trên report
-              cũ + paper mới.
+              Worker sinh report từ evidence pack cuối cùng, gồm selected papers
+              và retrieved papers đã được dedupe.
             </td>
             <td>
               Paper được thêm phải nằm trong <code>groundingPaperIds</code> để
@@ -3841,8 +3842,8 @@
           <tr>
             <td>4. Audit</td>
             <td>
-              Lưu <code>additionalPaperIds</code>, model, promptVersion,
-              cacheKey, timestamps.
+              Lưu <code>selectedPaperIds</code>, model, promptVersion, cacheKey,
+              timestamps và <code>groundingPaperIds</code>.
             </td>
             <td>
               Người review biết chính xác bài nào được gắn thêm để phân tích
@@ -3927,6 +3928,208 @@
           </tr>
         </table>
 
+        <!-- 18. PRODUCTION READINESS -->
+        <h2 id="sec-18">
+          <span class="n">18.</span> Production Readiness & Deploy Contract
+        </h2>
+        <p class="lead">
+          Tính đến bản cập nhật này, hệ thống đã đạt mức <b>production-grade về
+          kiến trúc logic AI/BE/FE</b>: dữ liệu có source-of-truth rõ, AI bị
+          giới hạn bởi evidence/schema/citation, FE đã wire các luồng chính,
+          backend có queue/cache/validation. Tuy nhiên, <b>production-grade vận
+          hành</b> còn phụ thuộc vào cách deploy worker và storage trên cloud.
+        </p>
+
+        <table>
+          <tr>
+            <th style="width: 24%">Mảng</th>
+            <th>Trạng thái hiện tại</th>
+            <th>Điều kiện để gọi là production-ready thật</th>
+          </tr>
+          <tr>
+            <td><b>Backend API</b></td>
+            <td>
+              Render Web Service chạy Express API, public health/API hoạt động.
+              Build dùng shared-types trước rồi build backend.
+            </td>
+            <td>
+              Env đầy đủ, health check xanh, CORS đúng domain FE, logs không có
+              boot error, cold start được chấp nhận nếu dùng Render Free.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Frontend Web</b></td>
+            <td>
+              Vercel build React/Vite, FE gọi backend qua
+              <code>VITE_API_BASE</code>. Search, Trends, Reports, Paper Detail,
+              Admin Dashboard đã wire các API chính.
+            </td>
+            <td>
+              Vercel env phải là
+              <code>VITE_API_BASE=https://liemresearch.onrender.com/api/v1</code>
+              hoặc backend production tương ứng. Không hardcode localhost trong
+              production.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Workers</b></td>
+            <td>
+              Code có worker riêng cho report, gaps, embedding, paper-analysis,
+              notifications, sync. Local chạy bằng
+              <code>pnpm --filter backend dev:all</code> hoặc từng worker.
+            </td>
+            <td>
+              Production thật cần worker process chạy 24/7 trên cloud. Render
+              Background Worker không free, nên free-tier demo có thể phải chạy
+              worker local khi cần hoặc chuyển sang nền tảng worker/cron khác.
+            </td>
+          </tr>
+          <tr>
+            <td><b>PDF Storage</b></td>
+            <td>
+              Backend hỗ trợ local storage và Cloudflare R2. Local storage chỉ
+              phù hợp dev; trên Render filesystem không bền.
+            </td>
+            <td>
+              Render env phải có <code>STORAGE_PROVIDER=r2</code> và đủ các key
+              R2. Thiếu <code>STORAGE_PROVIDER=r2</code> thì backend vẫn chạy
+              nhưng PDF lưu local, không đạt production storage.
+            </td>
+          </tr>
+          <tr>
+            <td><b>AI Correctness</b></td>
+            <td>
+              Report/gap/search/trend đã có guardrails: evidence pack, citation
+              mapping, schema validation, deterministic formulas, LLM cache,
+              rerank fallback.
+            </td>
+            <td>
+              Cần duy trì golden dataset/evaluation summary để chứng minh số
+              liệu và output đúng theo thời gian, không chỉ dựa vào cảm giác UI.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Observability</b></td>
+            <td>
+              Có health endpoint, pipeline status, worker heartbeat, queue
+              status và admin dashboard.
+            </td>
+            <td>
+              Production thật cần theo dõi queue length, failed jobs, LLM fail
+              rate, cache hit rate, vector latency, storage errors và alert khi
+              worker heartbeat mất.
+            </td>
+          </tr>
+        </table>
+
+        <h3>Render/Vercel deploy contract</h3>
+        <table>
+          <tr>
+            <th>Runtime</th>
+            <th>Command / Env</th>
+            <th>Ghi chú</th>
+          </tr>
+          <tr>
+            <td><b>Render Backend API</b></td>
+            <td>
+              Build:
+              <code>pnpm install --frozen-lockfile && pnpm --filter @trend/shared-types build && pnpm --filter backend build</code><br />
+              Start: <code>pnpm --filter backend start</code>
+            </td>
+            <td>
+              Đây là Web Service, không phải Background Worker. Render Free có
+              cold start khoảng vài chục giây sau khi sleep.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Vercel Web</b></td>
+            <td>
+              Env: <code>VITE_API_BASE=https://liemresearch.onrender.com/api/v1</code>
+            </td>
+            <td>
+              Nếu đổi Render URL hoặc dùng custom domain, phải đổi env này và
+              redeploy FE.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Backend CORS</b></td>
+            <td>
+              <code>CORS_ORIGIN=https://your-vercel-domain.vercel.app,http://localhost:5173</code>
+            </td>
+            <td>
+              Domain Vercel production/preview nào gọi API thì phải nằm trong
+              danh sách này.
+            </td>
+          </tr>
+          <tr>
+            <td><b>Worker Local Demo</b></td>
+            <td>
+              <code>pnpm --filter backend dev:all</code> hoặc
+              <code>worker:report</code>, <code>worker:gaps</code>,
+              <code>worker:embedding</code>, <code>worker:paper-analysis</code>
+            </td>
+            <td>
+              Chỉ là giải pháp demo/free-tier. Worker local vẫn xử lý được job
+              deploy nếu dùng cùng <code>REDIS_URL</code> và
+              <code>MONGODB_URI</code>.
+            </td>
+          </tr>
+        </table>
+
+        <h3>Cloudflare R2 checklist cho Render</h3>
+        <div class="callout warn">
+          <b>Quan trọng:</b> API health/search/trends chạy được không có nghĩa
+          là R2 đã đúng. Nếu thiếu R2 env, backend có thể vẫn hoạt động nhưng
+          PDF upload sẽ rơi về local storage hoặc fail khi bật R2.
+        </div>
+        <table>
+          <tr>
+            <th>Env key trên Render</th>
+            <th>Bắt buộc?</th>
+            <th>Ý nghĩa</th>
+          </tr>
+          <tr>
+            <td><code>STORAGE_PROVIDER=r2</code></td>
+            <td>Có</td>
+            <td>Bật mode Cloudflare R2. Nếu không set, default là <code>local</code>.</td>
+          </tr>
+          <tr>
+            <td><code>R2_ENDPOINT</code></td>
+            <td>Có</td>
+            <td>S3-compatible endpoint của Cloudflare R2.</td>
+          </tr>
+          <tr>
+            <td><code>R2_ACCESS_KEY_ID</code></td>
+            <td>Có</td>
+            <td>Access key cho backend upload/delete/sign PDF.</td>
+          </tr>
+          <tr>
+            <td><code>R2_SECRET_ACCESS_KEY</code></td>
+            <td>Có</td>
+            <td>Secret key, phải để dạng secret env, không commit vào repo.</td>
+          </tr>
+          <tr>
+            <td><code>R2_BUCKET</code></td>
+            <td>Có</td>
+            <td>Tên bucket lưu PDF.</td>
+          </tr>
+          <tr>
+            <td><code>R2_SIGNED_URL_TTL_SECONDS</code></td>
+            <td>Khuyến nghị</td>
+            <td>Thời gian sống của signed URL download, mặc định 300 giây.</td>
+          </tr>
+        </table>
+
+        <h3>Kết luận production-grade</h3>
+        <div class="callout ok">
+          <b>Đánh giá đúng:</b> LiemResearch đã production-grade ở tầng thiết
+          kế logic AI/BE/FE: hybrid deterministic + AI, evidence-first reports,
+          RAG grounding, taxonomy OpenAlex, R2-ready storage, typed API và
+          dashboard vận hành. Để production vận hành thật sự, cần deploy worker
+          cloud hoặc chọn chiến lược worker miễn phí/cron phù hợp, cấu hình R2
+          trên Render, và duy trì evaluation/golden dataset cho AI correctness.
+        </div>
+
         <div class="callout ok" style="margin-top: 40px">
           <b>Tóm tắt cốt lõi:</b> LiemResearch tự động thu thập tài liệu khoa
           học chất lượng cao, chuyển đổi thành vector ngữ nghĩa, trích xuất tri
@@ -3940,7 +4143,7 @@
       </div>
       <footer>
         LiemResearch — Publication Trend System · WDP301, Đại học FPT<br />
-        Báo cáo Kỹ thuật Tổng quan · Updated 2026-07-12 · Hybrid AI architecture
+        Báo cáo Kỹ thuật Tổng quan · Updated 2026-07-14 · Hybrid AI architecture
       </footer>
     </main>
 
