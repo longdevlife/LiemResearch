@@ -54,6 +54,7 @@ export function ReportsListPage() {
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
   const [previewData, setPreviewData] = useState<PreviewReportEvidenceResponse | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewScrollToken, setPreviewScrollToken] = useState(0);
   const [collapsedAbstracts, setCollapsedAbstracts] = useState<Record<string, boolean>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [paperPickerOpen, setPaperPickerOpen] = useState(false);
@@ -64,10 +65,24 @@ export function ReportsListPage() {
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const evidenceSectionRef = React.useRef<HTMLDivElement | null>(null);
   const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
   const currentYear = new Date().getFullYear();
   const reasoningMode = deepAnalysis ? "deep" : fast ? "fast" : "balanced";
   const canPreviewEvidence = query.trim().length >= 3 && !previewEvidence.isPending;
+
+  React.useEffect(() => {
+    if (!previewScrollToken) return;
+
+    const scrollTimer = window.setTimeout(() => {
+      evidenceSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [previewScrollToken]);
 
   React.useEffect(() => {
     const isCreate = searchParams.get("create") === "true" || searchParams.has("topic");
@@ -174,6 +189,7 @@ export function ReportsListPage() {
       setPreviewData(response);
       setSelectedPaperIds(response.selectedPaperIds);
       setShowPreview(true);
+      setPreviewScrollToken((current) => current + 1);
       toast.success("Evidence pack loaded! Review papers below.");
     } catch (error: any) {
       console.error("Failed to preview evidence:", error);
@@ -688,7 +704,7 @@ export function ReportsListPage() {
 
           {/* Evidence Pack UI */}
           {showPreview && previewData && (
-            <div className="space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
+            <div ref={evidenceSectionRef} className="scroll-mt-24 space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
               <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
