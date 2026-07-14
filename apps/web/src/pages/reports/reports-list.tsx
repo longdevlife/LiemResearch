@@ -20,7 +20,8 @@ import {
   Info, 
   Database,
   Search,
-  ExternalLink
+  ExternalLink,
+  Globe
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { 
@@ -369,20 +370,48 @@ export function ReportsListPage() {
           {/* Collapsible Advanced Options */}
           {showAdvanced && (
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 fade-in duration-200">
-              <div className="space-y-2">
-                <label htmlFor="report-language" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</label>
-                <div className="relative">
-                  <select
-                    id="report-language"
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
-                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none text-slate-800 dark:text-slate-100"
+              <div className="space-y-2.5">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</span>
+                <div className="flex rounded-xl bg-slate-100/80 dark:bg-slate-900/60 p-1 border border-slate-200/50 dark:border-slate-800/40 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("auto")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "auto"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
                   >
-                    <option value="auto">Auto-detect from query</option>
-                    <option value="en">English (Forced)</option>
-                    <option value="vi">Vietnamese</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("en")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "en"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("vi")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "vi"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    Tiếng Việt
+                  </button>
                 </div>
               </div>
               
@@ -406,27 +435,103 @@ export function ReportsListPage() {
                     className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
+                <div className="flex gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setYearFrom(""); setYearTo(""); }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (!yearFrom && !yearTo)
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cy = new Date().getFullYear();
+                      setYearFrom((cy - 3).toString());
+                      setYearTo(cy.toString());
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (yearFrom === (new Date().getFullYear() - 3).toString() && yearTo === new Date().getFullYear().toString())
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Last 3 Years
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cy = new Date().getFullYear();
+                      setYearFrom((cy - 5).toString());
+                      setYearTo(cy.toString());
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (yearFrom === (new Date().getFullYear() - 5).toString() && yearTo === new Date().getFullYear().toString())
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Last 5 Years
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col justify-center space-y-2.5 pt-4">
-                <label className="flex cursor-pointer items-center gap-3 group">
-                  <input
-                    type="checkbox"
-                    checked={fast}
-                    onChange={(e) => setFast(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:bg-slate-950 dark:border-slate-800"
-                  />
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Fast Mode (Flash Model)</span>
-                </label>
-                <label className="flex cursor-pointer items-center gap-3 group">
-                  <input
-                    type="checkbox"
-                    checked={deepAnalysis}
-                    onChange={(e) => setDeepAnalysis(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:bg-slate-950 dark:border-slate-800"
-                  />
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Deep Web Analysis</span>
-                </label>
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Generation Mode</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFast(!fast)}
+                    className={cn(
+                      "flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group cursor-pointer",
+                      fast 
+                        ? "border-blue-500 bg-blue-500/[0.03] dark:bg-blue-950/10 text-blue-900 dark:text-blue-100" 
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className={cn("w-4 h-4 transition-colors", fast ? "text-blue-600 fill-blue-600/10 dark:text-blue-400" : "text-slate-400 group-hover:text-slate-500")} />
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold block leading-none">Fast Mode</span>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-none font-medium">Flash model</span>
+                      </div>
+                    </div>
+                    {/* Custom Toggle Switch */}
+                    <div className={cn("w-7 h-4 rounded-full p-0.5 transition-colors flex items-center", fast ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800")}>
+                      <div className={cn("w-3 h-3 rounded-full bg-white transition-transform shadow-sm", fast ? "translate-x-3" : "translate-x-0")} />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeepAnalysis(!deepAnalysis)}
+                    className={cn(
+                      "flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group cursor-pointer",
+                      deepAnalysis 
+                        ? "border-indigo-500 bg-indigo-500/[0.03] dark:bg-indigo-950/10 text-indigo-900 dark:text-indigo-100" 
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Search className={cn("w-4 h-4 transition-colors", deepAnalysis ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 group-hover:text-slate-500")} />
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold block leading-none">Deep Search</span>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-none font-medium">Multi-step query</span>
+                      </div>
+                    </div>
+                    {/* Custom Toggle Switch */}
+                    <div className={cn("w-7 h-4 rounded-full p-0.5 transition-colors flex items-center", deepAnalysis ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800")}>
+                      <div className={cn("w-3 h-3 rounded-full bg-white transition-transform shadow-sm", deepAnalysis ? "translate-x-3" : "translate-x-0")} />
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           )}
