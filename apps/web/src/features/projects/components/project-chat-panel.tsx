@@ -27,6 +27,7 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
     onSuccess: () => {
       setMessage("");
       void queryClient.invalidateQueries({ queryKey: ["project-chat", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["credits"] });
     },
   });
 

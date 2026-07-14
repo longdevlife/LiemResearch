@@ -7,6 +7,7 @@ const projectChatMessageSchema = new Schema(
     role: { type: String, enum: ["user", "assistant"], required: true },
     content: { type: String, required: true, trim: true, maxlength: 4000 },
     citedPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
+    creditTransactionId: { type: Schema.Types.ObjectId, ref: "CreditTransaction" },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
