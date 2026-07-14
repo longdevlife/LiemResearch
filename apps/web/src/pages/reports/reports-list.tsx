@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { 
   FileText, 
@@ -9,13 +8,9 @@ import {
   XCircle, 
   Trash2, 
   Zap, 
-  Settings2, 
   Plus, 
   Sparkles, 
-  ChevronRight, 
   BookOpen, 
-  ChevronDown, 
-  ChevronUp, 
   AlertTriangle, 
   Info, 
   Database,
@@ -54,7 +49,6 @@ export function ReportsListPage() {
   const [yearTo, setYearTo] = useState<string>("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   
   // New States for Evidence Review Step
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
@@ -71,6 +65,9 @@ export function ReportsListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
+  const currentYear = new Date().getFullYear();
+  const reasoningMode = deepAnalysis ? "deep" : fast ? "fast" : "balanced";
+  const canPreviewEvidence = query.trim().length >= 3 && !previewEvidence.isPending;
 
   React.useEffect(() => {
     const isCreate = searchParams.get("create") === "true" || searchParams.has("topic");
@@ -111,6 +108,21 @@ export function ReportsListPage() {
     e.stopPropagation();
     setItemToDelete(id);
     setDeleteModalOpen(true);
+  };
+
+  const setReasoningMode = (mode: "fast" | "balanced" | "deep") => {
+    if (mode === "fast") {
+      setFast(true);
+      setDeepAnalysis(false);
+      return;
+    }
+    if (mode === "deep") {
+      setFast(false);
+      setDeepAnalysis(true);
+      return;
+    }
+    setFast(false);
+    setDeepAnalysis(false);
   };
 
   const confirmDelete = async () => {
@@ -297,7 +309,6 @@ export function ReportsListPage() {
       setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
-      setShowAdvanced(false);
       
       // Reset preview states
       setPreviewData(null);
@@ -336,16 +347,37 @@ export function ReportsListPage() {
       </section>
 
       {/* Inline Generation Form */}
-      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 relative overflow-hidden group">
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-blue-600" /> New Report
-        </h2>
-        
-        <div className="space-y-6">
+        <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+              <Plus className="h-4 w-4" />
+              New grounded report
+            </div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+              Define the question, then review the evidence before generation.
+            </h2>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Reports are generated from a fixed evidence pack, so every citation maps back to a paper you can inspect.
+            </p>
+          </div>
+          <div className="grid min-w-[260px] grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-bold dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="rounded-lg bg-white px-3 py-2 text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300">
+              Step 1
+              <span className="block text-[10px] font-semibold text-slate-500">Setup</span>
+            </div>
+            <div className="px-3 py-2 text-slate-500 dark:text-slate-400">
+              Step 2
+              <span className="block text-[10px] font-semibold">Evidence</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-7">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
-              <label htmlFor="topic" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Topic / Keyword (Optional)</label>
+              <label htmlFor="topic" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Topic / Keyword</label>
               <input
                 id="topic"
                 value={topic}
@@ -360,16 +392,40 @@ export function ReportsListPage() {
                 id="query"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="What specific insights are you looking for?"
+                placeholder="e.g. What evidence shows clinical impact, limitations, and future directions?"
                 rows={1}
                 className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none overflow-hidden"
               />
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Be specific. The retrieval step uses this question to choose evidence papers.
+              </p>
             </div>
           </div>
 
-          {/* Collapsible Advanced Options */}
-          {showAdvanced && (
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 fade-in duration-200">
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Report setup</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  These controls affect retrieval, output language, and model route.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTopic("");
+                  setQuery("");
+                  setYearFrom("");
+                  setYearTo("");
+                  setLanguage("auto");
+                  setReasoningMode("fast");
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"
+              >
+                Reset setup
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2.5">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</span>
                 <div className="flex rounded-xl bg-slate-100/80 dark:bg-slate-900/60 p-1 border border-slate-200/50 dark:border-slate-800/40 w-full">
@@ -413,6 +469,9 @@ export function ReportsListPage() {
                     Tiếng Việt
                   </button>
                 </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  Auto detects from the topic and research question.
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -431,7 +490,7 @@ export function ReportsListPage() {
                     type="number"
                     value={yearTo}
                     onChange={(e) => setYearTo(e.target.value)}
-                    placeholder="To: 2026"
+                    placeholder={`To: ${currentYear}`}
                     className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -451,13 +510,12 @@ export function ReportsListPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const cy = new Date().getFullYear();
-                      setYearFrom((cy - 3).toString());
-                      setYearTo(cy.toString());
+                      setYearFrom((currentYear - 3).toString());
+                      setYearTo(currentYear.toString());
                     }}
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
-                      (yearFrom === (new Date().getFullYear() - 3).toString() && yearTo === new Date().getFullYear().toString())
+                      (yearFrom === (currentYear - 3).toString() && yearTo === currentYear.toString())
                         ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
                         : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
@@ -467,13 +525,12 @@ export function ReportsListPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const cy = new Date().getFullYear();
-                      setYearFrom((cy - 5).toString());
-                      setYearTo(cy.toString());
+                      setYearFrom((currentYear - 5).toString());
+                      setYearTo(currentYear.toString());
                     }}
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
-                      (yearFrom === (new Date().getFullYear() - 5).toString() && yearTo === new Date().getFullYear().toString())
+                      (yearFrom === (currentYear - 5).toString() && yearTo === currentYear.toString())
                         ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
                         : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
@@ -481,81 +538,87 @@ export function ReportsListPage() {
                     Last 5 Years
                   </button>
                 </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  {currentYear} is treated as year-to-date when charts or trend metrics use this range.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Generation Mode</span>
-                <div className="grid grid-cols-2 gap-3">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reasoning Profile</span>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setFast(!fast)}
+                    onClick={() => setReasoningMode("fast")}
                     className={cn(
-                      "flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group cursor-pointer",
-                      fast 
-                        ? "border-blue-500 bg-blue-500/[0.03] dark:bg-blue-950/10 text-blue-900 dark:text-blue-100" 
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "fast"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
                         : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      <Zap className={cn("w-4 h-4 transition-colors", fast ? "text-blue-600 fill-blue-600/10 dark:text-blue-400" : "text-slate-400 group-hover:text-slate-500")} />
-                      <div className="space-y-0.5">
-                        <span className="text-[11px] font-bold block leading-none">Fast Mode</span>
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-none font-medium">Flash model</span>
-                      </div>
-                    </div>
-                    {/* Custom Toggle Switch */}
-                    <div className={cn("w-7 h-4 rounded-full p-0.5 transition-colors flex items-center", fast ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800")}>
-                      <div className={cn("w-3 h-3 rounded-full bg-white transition-transform shadow-sm", fast ? "translate-x-3" : "translate-x-0")} />
-                    </div>
+                    <Zap className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Fast</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Quick draft</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setDeepAnalysis(!deepAnalysis)}
+                    onClick={() => setReasoningMode("balanced")}
                     className={cn(
-                      "flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group cursor-pointer",
-                      deepAnalysis 
-                        ? "border-indigo-500 bg-indigo-500/[0.03] dark:bg-indigo-950/10 text-indigo-900 dark:text-indigo-100" 
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "balanced"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
                         : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      <Search className={cn("w-4 h-4 transition-colors", deepAnalysis ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 group-hover:text-slate-500")} />
-                      <div className="space-y-0.5">
-                        <span className="text-[11px] font-bold block leading-none">Deep Search</span>
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-none font-medium">Multi-step query</span>
-                      </div>
-                    </div>
-                    {/* Custom Toggle Switch */}
-                    <div className={cn("w-7 h-4 rounded-full p-0.5 transition-colors flex items-center", deepAnalysis ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800")}>
-                      <div className={cn("w-3 h-3 rounded-full bg-white transition-transform shadow-sm", deepAnalysis ? "translate-x-3" : "translate-x-0")} />
-                    </div>
+                    <Database className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Balanced</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Best default</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReasoningMode("deep")}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "deep"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <Search className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Deep</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Slowest</span>
                   </button>
                 </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  Balanced uses the standard report path. Deep enables multi-step analysis.
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Action Footer Bar */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-            <Button
-              variant="outline"
-              type="button"
-              className="h-10 px-4 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center gap-2 text-xs font-semibold"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              <Settings2 className="w-4 h-4" />
-              <span>Advanced Options</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-            </Button>
+          <div className="pt-5 border-t border-slate-100 dark:border-slate-800/60 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300">
+                <Database className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">Next: review the evidence pack</p>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed">
+                  We retrieve candidate papers first. You can remove weak papers or add your own before the AI writes.
+                </p>
+              </div>
+            </div>
             
             <Button 
               onClick={handlePreviewEvidence} 
-              disabled={previewEvidence.isPending || !query.trim()} 
-              className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors flex items-center gap-2"
+              disabled={!canPreviewEvidence}
+              className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-900/40"
             >
               {previewEvidence.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              Preview Evidence Pack
+              Review Evidence Pack
             </Button>
           </div>
         </div>
@@ -611,19 +674,28 @@ export function ReportsListPage() {
       {/* Evidence Pack UI */}
       {showPreview && previewData && (
         <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Selected Evidence Pack</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                The report will cite only this evidence pack.
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                <CheckCircle2 className="h-4 w-4" />
+                Step 2 of 2
+              </div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Review the evidence pack
+              </h2>
+              <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                This ordered set becomes the citation source for the report. Remove weak papers or add missing required studies before generation.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-slate-50 dark:bg-slate-900/60 border text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="rounded-full border bg-slate-50 px-3 py-1 text-xs font-semibold dark:bg-slate-900/60">
                 {previewData.papers.length} / {previewData.maxEvidencePapers} Papers
               </Badge>
-              <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900 text-xs uppercase">
-                Lang: {previewData.papers.length > 0 ? language : "auto"}
+              <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-400">
+                {language === "auto" ? "Auto language" : language === "en" ? "English" : "Vietnamese"}
+              </Badge>
+              <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400">
+                {reasoningMode}
               </Badge>
             </div>
           </div>
@@ -649,7 +721,7 @@ export function ReportsListPage() {
           {/* Add papers from corpus search */}
           <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
             <div>
-              <span className="text-xs font-semibold text-slate-500 block">Need different evidence?</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white block">Curate evidence</span>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Search the active corpus by title, keyword, topic, or DOI, then add papers into this pack.
               </p>
@@ -668,11 +740,7 @@ export function ReportsListPage() {
           <div className="flex gap-2 p-3 bg-blue-500/5 border border-blue-500/10 text-blue-800 dark:text-blue-400 rounded-xl text-xs leading-normal">
             <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <span><strong>Operational guidelines:</strong></span>
-              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                <li>Adding a paper does not force the AI to agree with it; it only makes it available as evidence.</li>
-                <li>If the selected evidence is weak or contradictory, the AI report should explicitly state that the evidence pack is insufficient.</li>
-              </ul>
+              <span><strong>Grounding rule:</strong> adding a paper makes it available as evidence, not a forced conclusion. If the pack is weak or contradictory, the generated report should say so.</span>
             </div>
           </div>
 
@@ -758,15 +826,15 @@ export function ReportsListPage() {
 
           {/* Actions footer for Preview Box */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
-            <span className="text-xs text-slate-500 dark:text-slate-400 italic">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {previewData.papers.length === 0
                 ? "Add or preview papers to enable generation." 
-                : "Confirm you have selected all required papers for the review."}
+                : "Ready to generate when this evidence set looks correct."}
             </span>
             <Button
               onClick={() => handleGenerate(false)}
               disabled={createReport.isPending || previewData.papers.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-6 rounded-xl shadow-sm text-sm"
+              className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-blue-700"
             >
               {createReport.isPending ? (
                 <>
