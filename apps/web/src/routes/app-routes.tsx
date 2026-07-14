@@ -25,6 +25,7 @@ import { ProjectDetailPage } from "@/pages/projects/project-detail";
 import { ResearchGapsPage } from "@/pages/research-gaps";
 import { AdminSyncPage } from "@/pages/admin/sync";
 import { AdminPipelinePage } from "@/pages/admin/pipeline";
+import { AdminEvaluationPage } from "@/pages/admin/evaluation";
 import { AdminPapersPage } from "@/pages/admin/papers";
 import { AdminUsersPage } from "@/pages/admin/users";
 import { AdminHomePage } from "@/pages/admin";
@@ -68,6 +69,7 @@ export function AppRoutes() {
             <Route path="papers" element={<AdminPapersPage />} />
             <Route path="sync" element={<AdminSyncPage />} />
             <Route path="pipeline" element={<AdminPipelinePage />} />
+            <Route path="evaluation" element={<AdminEvaluationPage />} />
             <Route path="analytics" element={<DashboardPage />} />
           </Route>
         </Route>
