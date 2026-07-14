@@ -18,5 +18,6 @@ export * from "./admin.js";
 export * from "./project.js";
 export * from "./level.js";
 export * from "./home.js";
+export * from "./credit.js";
 
 // Code quality reviewed and formatted
