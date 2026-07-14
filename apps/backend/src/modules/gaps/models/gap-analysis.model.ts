@@ -23,6 +23,10 @@ const gapAnalysisSchema = new Schema(
     errorMessage: { type: String },
     promptVersion: { type: String, default: "" },
     modelVersion: { type: String, default: "" },
+    creditTransactionId: { type: Schema.Types.ObjectId, ref: "CreditTransaction" },
+    creditCost: { type: Number },
+    creditAction: { type: String },
+    creditRefundedAt: { type: Date },
   },
   { timestamps: true },
 );

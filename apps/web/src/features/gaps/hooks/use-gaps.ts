@@ -23,8 +23,13 @@ export function useGapAnalysisStatus(analysisId: string | null) {
 }
 
 export function useAnalyzeGap() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: AnalyzeGapRequest) => gapsApi.analyze(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gaps"] });
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
+    },
   });
 }
 
