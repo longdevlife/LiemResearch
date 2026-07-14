@@ -58,6 +58,7 @@ export const API_ROUTES = {
     userStatus: (id: string) => `/admin/users/${id}/status`,
     stats: "/admin/stats",
     pipelineStatus: "/admin/pipeline/status",
+    evaluationSummary: "/admin/evaluation/summary",
   },
   gaps: {
     analyze: "/gaps/analyze",

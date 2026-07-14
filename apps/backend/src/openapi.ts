@@ -624,6 +624,22 @@ export const openapiSpec = {
         },
       },
     },
+    "/api/v1/admin/evaluation/summary": {
+      get: {
+        tags: ["Admin"],
+        summary: "AI correctness and acceptance benchmark summary",
+        description:
+          "Returns deterministic checks for search readiness, trend formulas, gap evidence, report grounding, paper score rubric, and corpus-backed report/gap coverage. This endpoint does not call an LLM.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description:
+              "Evaluation summary with overall score, score rubric, corpus metrics, and per-feature acceptance checks.",
+          },
+          "403": { description: "Admin only" },
+        },
+      },
+    },
     "/api/v1/admin/sync": {
       post: {
         tags: ["Admin"],
