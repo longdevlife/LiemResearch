@@ -2,17 +2,46 @@ import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, CheckCircle2, XCircle, Trash2, Zap, Settings2, Plus, Sparkles, ChevronRight, BookOpen } from "lucide-react";
+import { 
+  FileText, 
+  Loader2, 
+  CheckCircle2, 
+  XCircle, 
+  Trash2, 
+  Zap, 
+  Settings2, 
+  Plus, 
+  Sparkles, 
+  ChevronRight, 
+  BookOpen, 
+  ChevronDown, 
+  ChevronUp, 
+  AlertTriangle, 
+  Info, 
+  Database,
+  HelpCircle
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useReports, useCreateReport, useDeleteReport, useDeleteBatchReports } from "@/features/reports/hooks/use-reports";
+import { 
+  useReports, 
+  useCreateReport, 
+  useDeleteReport, 
+  useDeleteBatchReports, 
+  useReportEvidencePreview 
+} from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
 import type { ReportLanguage } from "@trend/shared-types";
+import type { EvidencePaper, EvidencePreviewResponse } from "@/features/reports/api/reports.api";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/utils/cn";
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
   const createReport = useCreateReport();
   const deleteReport = useDeleteReport();
   const deleteBatchReports = useDeleteBatchReports();
+  const previewEvidence = useReportEvidencePreview();
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
@@ -25,6 +54,14 @@ export function ReportsListPage() {
   const [fast, setFast] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   
+  // New States for Evidence Review Step
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<EvidencePreviewResponse | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [collapsedAbstracts, setCollapsedAbstracts] = useState<Record<string, boolean>>({});
+  const [manualPaperId, setManualPaperId] = useState("");
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -33,8 +70,16 @@ export function ReportsListPage() {
     if (isCreate) {
       const urlTopic = searchParams.get("topic") || "";
       const urlQuery = searchParams.get("query") || searchParams.get("q") || "";
+      const urlPaperId = searchParams.get("paperId") || "";
+
       if (urlTopic) setTopic(urlTopic);
       if (urlQuery) setQuery(urlQuery);
+      if (urlPaperId) {
+        setSelectedPaperIds([urlPaperId]);
+        toast.info("Paper pre-selected from context", {
+          description: `ID: ${urlPaperId}`
+        });
+      }
 
       // Clear URL params
       setSearchParams(prev => {
@@ -42,6 +87,7 @@ export function ReportsListPage() {
         prev.delete("topic");
         prev.delete("query");
         prev.delete("q");
+        prev.delete("paperId");
         return prev;
       });
     }
@@ -79,7 +125,8 @@ export function ReportsListPage() {
     }
   };
 
-  const handleGenerate = async () => {
+  // Step 2: Clicks "Preview evidence"
+  const handlePreviewEvidence = async () => {
     if (!query.trim()) {
       toast.error("Please enter a question for the AI to analyze");
       return;
@@ -93,6 +140,93 @@ export function ReportsListPage() {
       return;
     }
 
+    setPreviewError(null);
+
+    try {
+      const response = await previewEvidence.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language: language === "auto" ? "auto" : language,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        selectedPaperIds: selectedPaperIds.length > 0 ? selectedPaperIds : undefined,
+      });
+
+      setPreviewData(response);
+      setSelectedPaperIds(response.selectedPaperIds);
+      setShowPreview(true);
+      toast.success("Evidence pack loaded! Review papers below.");
+    } catch (error: any) {
+      console.error("Failed to preview evidence:", error);
+      const errMsg = error?.response?.data?.error?.message ?? "Could not retrieve evidence pack from server.";
+      setPreviewError(errMsg);
+      toast.error(errMsg);
+    }
+  };
+
+  // Step 4: User can remove retrieved/selected papers
+  const handleRemovePaper = (paperId: string) => {
+    if (!previewData) return;
+    
+    const updatedPapers = previewData.papers.filter(p => p.id !== paperId);
+    const updatedSelectedIds = selectedPaperIds.filter(id => id !== paperId);
+
+    setPreviewData({
+      ...previewData,
+      papers: updatedPapers,
+      selectedPaperIds: updatedSelectedIds,
+    });
+    setSelectedPaperIds(updatedSelectedIds);
+    toast.info("Paper removed from evidence pack.");
+  };
+
+  // Step 5: User can manually add paper by ID
+  const handleAddPaperById = async () => {
+    const id = manualPaperId.trim();
+    if (!id) return;
+
+    if (selectedPaperIds.includes(id)) {
+      toast.warning("This paper is already in the evidence pack.");
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+    const newSelectedIds = [...selectedPaperIds, id];
+
+    try {
+      toast.loading("Refetching evidence with new paper...", { id: "add-paper" });
+      const response = await previewEvidence.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language: language === "auto" ? "auto" : language,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        selectedPaperIds: newSelectedIds,
+      });
+
+      setPreviewData(response);
+      setSelectedPaperIds(response.selectedPaperIds);
+      setManualPaperId("");
+      toast.dismiss("add-paper");
+      toast.success("Custom paper added to evidence pack successfully!");
+    } catch (error: any) {
+      toast.dismiss("add-paper");
+      const errMsg = error?.response?.data?.error?.message ?? "Failed to resolve paper ID.";
+      toast.error(errMsg);
+    }
+  };
+
+  // Step 6: Create report sends selectedPaperIds
+  const handleGenerate = async (forceNoPreview = false) => {
+    if (!query.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
     try {
       await createReport.mutateAsync({
         query: query.trim(),
@@ -102,7 +236,9 @@ export function ReportsListPage() {
         fast,
         yearFrom: fromYear,
         yearTo: toYear,
+        selectedPaperIds: forceNoPreview ? undefined : selectedPaperIds,
       });
+
       setTopic("");
       setQuery("");
       setYearFrom("");
@@ -111,11 +247,24 @@ export function ReportsListPage() {
       setDeepAnalysis(false);
       setFast(true);
       setShowAdvanced(false);
+      
+      // Reset preview states
+      setPreviewData(null);
+      setSelectedPaperIds([]);
+      setShowPreview(false);
+      
       toast.success("Report generation started!");
     } catch (error) {
       console.error("Failed to create report:", error);
       toast.error("Failed to create report. Please try again.");
     }
+  };
+
+  const toggleAbstract = (paperId: string) => {
+    setCollapsedAbstracts(prev => ({
+      ...prev,
+      [paperId]: !prev[paperId]
+    }));
   };
 
   return (
@@ -130,13 +279,13 @@ export function ReportsListPage() {
             Generate deep analytical reports from thousands of papers.
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-[55ch]">
-            Ask a complex research question. Our AI agents will retrieve relevant literature, synthesize findings, identify gaps, and draft a comprehensive report in seconds.
+            Ask a complex research question. Review the evidence pack, add or remove papers, and synthesize findings into a comprehensive report.
           </p>
         </div>
       </section>
 
-      {/* Inline Generation Form (Replaces Modal) */}
-      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-16 relative overflow-hidden group">
+      {/* Inline Generation Form */}
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
           <Plus className="w-5 h-5 text-blue-600" /> New Report
@@ -178,12 +327,12 @@ export function ReportsListPage() {
             </Button>
             
             <Button 
-              onClick={handleGenerate} 
-              disabled={createReport.isPending || !query.trim()} 
-              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm"
+              onClick={handlePreviewEvidence} 
+              disabled={previewEvidence.isPending || !query.trim()} 
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors"
             >
-              {createReport.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Zap className="w-5 h-5 mr-2" />}
-              Generate Report
+              {previewEvidence.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Database className="w-5 h-5 mr-2" />}
+              Preview Evidence Pack
             </Button>
           </div>
         </div>
@@ -252,6 +401,234 @@ export function ReportsListPage() {
           </div>
         )}
       </div>
+
+      {/* Loading Skeleton during preview fetch */}
+      {previewEvidence.isPending && (
+        <div className="space-y-6 mb-12 p-6 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/20">
+          <div className="flex items-center justify-between border-b pb-4">
+            <Skeleton className="h-6 w-48 rounded" />
+            <Skeleton className="h-6 w-32 rounded-full" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </div>
+        </div>
+      )}
+
+      {/* Preview Error State with Fallback option */}
+      {previewError && (
+        <div className="mb-12 p-6 border border-red-200 dark:border-red-900/50 bg-red-500/5 rounded-2xl text-red-950 dark:text-red-200 space-y-4">
+          <div className="flex gap-2">
+            <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            <div>
+              <span className="font-bold block">Failed to generate evidence preview</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 block">{previewError}</span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-300 text-red-700 dark:border-red-900 hover:bg-red-500/10 rounded-lg text-xs"
+              onClick={handlePreviewEvidence}
+            >
+              Retry Preview
+            </Button>
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
+              onClick={() => handleGenerate(true)}
+              disabled={createReport.isPending}
+            >
+              {createReport.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
+              Skip Preview & Generate Report
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Evidence Pack UI */}
+      {showPreview && previewData && (
+        <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Selected Evidence Pack</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                The report will cite only this evidence pack.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-slate-50 dark:bg-slate-900/60 border text-xs">
+                {selectedPaperIds.length} / {previewData.maxEvidencePapers} Papers
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900 text-xs uppercase">
+                Lang: {previewData.papers.length > 0 ? language : "auto"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Warnings Banner */}
+          {(selectedPaperIds.length < 3 || previewData.warnings.length > 0) && (
+            <div className="space-y-2">
+              {selectedPaperIds.length < 3 && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-xs flex gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span><strong>Warning:</strong> Fewer than 3 evidence papers selected. AI analysis might be limited or insufficient.</span>
+                </div>
+              )}
+              {previewData.warnings.map((warning, idx) => (
+                <div key={idx} className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-xs flex gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{warning}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add custom paper by ID Input */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 items-end sm:items-center justify-between">
+            <div className="flex-1 w-full space-y-1.5">
+              <span className="text-xs font-semibold text-slate-500 block">Pin Custom Paper (Add by ID)</span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualPaperId}
+                  onChange={(e) => setManualPaperId(e.target.value)}
+                  placeholder="Paste 24-character hexadecimal MongoDB ObjectId here"
+                  className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <Button
+                  onClick={handleAddPaperById}
+                  disabled={!manualPaperId.trim() || previewEvidence.isPending}
+                  className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-black text-xs font-bold px-4 h-9 rounded-lg shadow-sm"
+                >
+                  Add Paper
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Guidelines info text */}
+          <div className="flex gap-2 p-3 bg-blue-500/5 border border-blue-500/10 text-blue-800 dark:text-blue-400 rounded-xl text-xs leading-normal">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span><strong>Operational guidelines:</strong></span>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <li>Adding a paper does not force the AI to agree with it; it only makes it available as evidence.</li>
+                <li>If the selected evidence is weak or contradictory, the AI report should explicitly state that the evidence pack is insufficient.</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Evidence Papers List */}
+          {previewData.papers.length === 0 ? (
+            <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+              <span className="text-sm font-semibold text-slate-500">No evidence found. Broaden query or year range.</span>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-4">
+              {previewData.papers.map((paper) => {
+                const isExpanded = collapsedAbstracts[paper.id] ?? false;
+                const snippet = paper.abstractText 
+                  ? (paper.abstractText.length > 150 && !isExpanded 
+                    ? `${paper.abstractText.slice(0, 150)}...` 
+                    : paper.abstractText) 
+                  : null;
+
+                return (
+                  <div key={paper.id} className="pt-4 first:pt-0 flex flex-col md:flex-row justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5",
+                            paper.source === "selected" 
+                              ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900" 
+                              : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                          )}
+                        >
+                          {paper.source}
+                        </Badge>
+                        <span className="text-xs font-semibold font-mono text-slate-500">Score: {paper.score.toFixed(3)}</span>
+                        {paper.publicationYear && <span className="text-xs text-slate-400">({paper.publicationYear})</span>}
+                      </div>
+
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
+                        {paper.title}
+                      </h3>
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        {paper.authorNames.length > 0 && (
+                          <span>Authors: {paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</span>
+                        )}
+                        {paper.journalName && <span>Journal: {paper.journalName}</span>}
+                        {paper.citationCount !== undefined && <span>Citations: {paper.citationCount}</span>}
+                      </div>
+
+                      {/* Abstract snippets collapsible */}
+                      {snippet && (
+                        <div className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
+                          <p>
+                            {snippet}
+                            {paper.abstractText && paper.abstractText.length > 150 && (
+                              <button
+                                onClick={() => toggleAbstract(paper.id)}
+                                className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1 cursor-pointer focus:outline-none"
+                              >
+                                {isExpanded ? "Show Less" : "Show More"}
+                              </button>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-shrink-0 flex items-start justify-end md:justify-start">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                        onClick={() => handleRemovePaper(paper.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Actions footer for Preview Box */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <span className="text-xs text-slate-500 dark:text-slate-400 italic">
+              {selectedPaperIds.length === 0 
+                ? "Add or preview papers to enable generation." 
+                : "Confirm you have selected all required papers for the review."}
+            </span>
+            <Button
+              onClick={() => handleGenerate(false)}
+              disabled={createReport.isPending || selectedPaperIds.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-6 rounded-xl shadow-sm text-sm"
+            >
+              {createReport.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating Report...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2 fill-current" />
+                  Generate Report from Evidence Pack
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Reports Grid */}
       <div className="flex items-center justify-between mb-8">

@@ -30,6 +30,7 @@ export const API_ROUTES = {
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
     paperCount: (paperId: string) => `/reports/paper/${paperId}/count`,
+    evidencePreview: "/reports/evidence-preview",
   },
   bookmarks: {
     list: "/bookmarks",

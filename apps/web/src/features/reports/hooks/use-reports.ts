@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { reportsApi } from "../api/reports.api";
-import type { CreateReportRequest } from "@trend/shared-types";
+import { reportsApi, type WebCreateReportRequest, type EvidencePreviewRequest } from "../api/reports.api";
 
 export function useReports(projectId?: string) {
   return useQuery({
@@ -35,10 +34,16 @@ export function useCreateReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CreateReportRequest) => reportsApi.create(payload),
+    mutationFn: (payload: WebCreateReportRequest) => reportsApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
+  });
+}
+
+export function useReportEvidencePreview() {
+  return useMutation({
+    mutationFn: (payload: EvidencePreviewRequest) => reportsApi.previewEvidence(payload),
   });
 }
 
