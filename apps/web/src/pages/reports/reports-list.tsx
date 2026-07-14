@@ -800,95 +800,106 @@ export function ReportsListPage() {
                   ? (paper.abstractText.length > 150 && !isExpanded
                     ? `${paper.abstractText.slice(0, 150)}...`
                     : paper.abstractText)
-                  : null;
-
-                return (
-                  <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/20 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/70">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5",
-                              paper.source === "selected"
-                                ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900"
-                                : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
-                            )}
-                          >
-                            {paper.source === "selected" ? "Added by you" : "Retrieved"}
-                          </Badge>
-                          {paper.publicationYear && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                              {paper.publicationYear}
-                            </span>
+                  : null;                 return (
+                  <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-200 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/50">
+                    {/* Header: Badges & Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border-transparent",
+                            paper.source === "selected"
+                              ? "bg-purple-150 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
+                              : "bg-blue-155 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
                           )}
-                          {paper.citationCount !== undefined && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                              {paper.citationCount.toLocaleString()} citations
-                            </span>
-                          )}
-                        </div>
-
-                        <Link
-                          to={`/papers/${paper.id}`}
-                          className="group inline-flex max-w-full items-start gap-2 text-sm font-extrabold leading-snug text-slate-950 transition-colors hover:text-blue-700 dark:text-white dark:hover:text-blue-300"
-                          title="Open paper detail"
                         >
-                          <span>{paper.title}</span>
-                          <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400 transition-colors group-hover:text-blue-600" />
-                        </Link>
-
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                          {paper.authorNames.length > 0 && (
-                            <span>Authors: {paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</span>
-                          )}
-                          {paper.journalName && <span>Journal: {paper.journalName}</span>}
-                        </div>
+                          {paper.source === "selected" ? "Added by you" : "Retrieved"}
+                        </Badge>
+                        {paper.publicationYear && (
+                          <span className="rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 px-2 py-0.5 text-[10px] font-bold">
+                            {paper.publicationYear}
+                          </span>
+                        )}
+                        {paper.citationCount !== undefined && (
+                          <span className="rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 px-2 py-0.5 text-[10px] font-bold">
+                            {paper.citationCount.toLocaleString()} citations
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:items-stretch">
-                        <div className="min-w-[150px] rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Relevance</span>
-                            <span className={cn("font-mono text-sm font-extrabold", relevanceTone)}>{relevancePercent}%</span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                      {/* Actions on the top right */}
+                      <div className="flex flex-wrap items-center gap-3 justify-between sm:justify-end">
+                        {/* Compact Relevance indicator */}
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-[10px] font-bold uppercase tracking-wider", relevanceTone)}>
+                            {relevanceLabel} ({relevancePercent}%)
+                          </span>
+                          <div className="w-16 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                             <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${Math.min(100, Math.max(0, relevancePercent))}%` }} />
                           </div>
-                          <p className={cn("mt-2 text-[11px] font-bold", relevanceTone)}>{relevanceLabel}</p>
                         </div>
 
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+                        {/* View & Remove */}
+                        <div className="flex items-center gap-2">
                           <Link
                             to={`/papers/${paper.id}`}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-800 dark:text-slate-300 dark:hover:border-blue-900 dark:hover:bg-blue-950/20 dark:hover:text-blue-300"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/80 px-2.5 text-[11px] font-bold text-slate-600 dark:border-slate-800 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-900/60 transition-colors"
                           >
                             View paper
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <ExternalLink className="h-3 w-3" />
                           </Link>
+                          
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                            className="h-7 w-7 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
                             onClick={() => handleRemovePaper(paper.id)}
                             aria-label={`Remove ${paper.title} from evidence pack`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Abstract snippets collapsible */}
+                    {/* Paper Title */}
+                    <div className="space-y-2">
+                      <Link
+                        to={`/papers/${paper.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-2 text-sm md:text-base font-extrabold leading-snug text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <span>{paper.title}</span>
+                        <ExternalLink className="h-4 w-4 flex-shrink-0 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                      </Link>
+
+                      {/* Authors & Journal */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {paper.authorNames.length > 0 && (
+                          <span>Authors: <strong className="text-slate-600 dark:text-slate-300 font-semibold">{paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</strong></span>
+                        )}
+                        {paper.journalName && (
+                          <span>Journal: <strong className="text-slate-600 dark:text-slate-300 font-semibold">{paper.journalName}</strong></span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Abstract snippet */}
                     {snippet && (
-                      <div className="mt-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
+                      <div className="mt-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50/50 dark:bg-slate-900/30 p-3.5 rounded-xl border border-slate-105/50 dark:border-slate-800/40">
                         <p>
                           {snippet}
                           {paper.abstractText && paper.abstractText.length > 150 && (
                             <button
+                              type="button"
                               onClick={() => toggleAbstract(paper.id)}
-                              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1 cursor-pointer focus:outline-none"
+                              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1.5 cursor-pointer focus:outline-none"
                             >
                               {isExpanded ? "Show Less" : "Show More"}
                             </button>
