@@ -15,6 +15,7 @@ import {
   type NormalizedPaper,
 } from "./providers/openalex.normalizer.js";
 import type { OpenAlexWork } from "./providers/openalex.types.js";
+import { shouldReplaceTopics } from "./topic-merge.js";
 
 export interface RunSyncJob {
   searchText: string;
@@ -245,6 +246,8 @@ async function upsertPaper(
 
   // Merge: only overwrite when the incoming value is clearly better.
   existing.citationCount = Math.max(existing.citationCount ?? 0, n.citationCount);
+  if (n.fwci !== undefined && (existing.fwci === undefined || existing.fwci === null)) existing.fwci = n.fwci;
+  if (n.relatedWorksCount > (existing.relatedWorksCount ?? 0)) existing.relatedWorksCount = n.relatedWorksCount;
   if (n.abstractText && n.abstractText.length > (existing.abstractText?.length ?? 0)) {
     existing.abstractText = n.abstractText;
   }
@@ -259,10 +262,13 @@ async function upsertPaper(
   if ((!existing.publicationYear || existing.publicationYear === 0) && n.publicationYear)
     existing.publicationYear = n.publicationYear;
   // `.set()` so TypeScript accepts plain arrays into Mongoose DocumentArray paths.
-  if (n.topics.length > (existing.topics?.length ?? 0)) existing.set("topics", n.topics);
+  if (shouldReplaceTopics(existing.topics, n.topics)) existing.set("topics", n.topics);
   if (n.keywords.length > (existing.keywords?.length ?? 0)) existing.set("keywords", n.keywords);
   if ((n.referencedWorks?.length ?? 0) > 0 && (existing.referencedWorks?.length ?? 0) === 0) {
     existing.referencedWorks = n.referencedWorks;
+  }
+  if ((n.relatedWorks?.length ?? 0) > 0 && (existing.relatedWorks?.length ?? 0) === 0) {
+    existing.relatedWorks = n.relatedWorks;
   }
 
   await existing.save();

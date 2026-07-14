@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const paperModel = vi.hoisted(() => ({
   findOne: vi.fn(),
   create: vi.fn(),
+  findById: vi.fn(),
+  findByIdAndUpdate: vi.fn(),
 }));
 
 const userModel = vi.hoisted(() => ({
@@ -26,15 +28,23 @@ const points = vi.hoisted(() => ({
   REQUEST_PAPER_COST: 100,
 }));
 
+const downloads = vi.hoisted(() => ({
+  findOne: vi.fn(),
+  deleteMany: vi.fn(),
+}));
+
+const storage = vi.hoisted(() => ({
+  getSignedDownloadUrl: vi.fn(),
+  deletePdf: vi.fn(),
+  resolveLocalPath: vi.fn(),
+}));
+
 vi.mock("../models/paper.model.js", () => ({
   PaperModel: paperModel,
 }));
 
 vi.mock("../models/paper-download.model.js", () => ({
-  PaperDownloadModel: {
-    findOne: vi.fn(),
-    deleteMany: vi.fn(),
-  },
+  PaperDownloadModel: downloads,
 }));
 
 vi.mock("../../auth/models/user.model.js", () => ({
@@ -46,6 +56,10 @@ vi.mock("../../notifications/notification.service.js", () => ({
 }));
 
 vi.mock("../../auth/points.service.js", () => points);
+
+vi.mock("../../../infrastructure/pdf-storage.service.js", () => ({
+  pdfStorageService: storage,
+}));
 
 const { paperService } = await import("../paper.service.js");
 
@@ -75,6 +89,7 @@ describe("paperService.create", () => {
     userModel.findById.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ fullName: "Codex Tester" }),
     });
+    storage.getSignedDownloadUrl.mockResolvedValue(null);
   });
 
   it("allows a non-admin paper request without an attached PDF", async () => {
@@ -105,5 +120,42 @@ describe("paperService.create", () => {
       }),
     );
     expect(points.chargePaperRequestCreditChecked).toHaveBeenCalledWith(userId);
+  });
+
+  it("returns an R2 signed URL for PDF downloads instead of a backend token URL", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    const uploadedBy = new mongoose.Types.ObjectId();
+    const pdfUri = "r2://papers-bucket/papers/example.pdf";
+    const signedUrl = "https://r2.example.com/signed";
+    paperModel.findById.mockResolvedValue({
+      _id: paperId,
+      requestedBy: new mongoose.Types.ObjectId(),
+      uploadedBy,
+      paperStatus: "downloaded",
+      qualityTier: 2,
+      downloadCost: 30,
+      pdfPath: pdfUri,
+    });
+    userModel.findById.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ credits: 100 }),
+      }),
+    });
+    downloads.findOne.mockResolvedValue(null);
+    paperModel.findByIdAndUpdate.mockResolvedValue(undefined);
+    points.chargePaperDownloadCredit.mockResolvedValue({ cost: 30, isRepeatDownload: false });
+    storage.getSignedDownloadUrl.mockResolvedValue(signedUrl);
+
+    const result = await paperService.getPdfDownloadUrl(
+      String(paperId),
+      String(userId),
+      "student",
+      "https://api.example.com",
+    );
+
+    expect(result.downloadUrl).toBe(signedUrl);
+    expect(storage.getSignedDownloadUrl).toHaveBeenCalledWith(pdfUri);
+    expect(points.chargePaperDownloadCredit).toHaveBeenCalled();
   });
 });

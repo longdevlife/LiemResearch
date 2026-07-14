@@ -1,18 +1,44 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, CheckCircle2, XCircle, Trash2, Zap, Settings2, Plus, Sparkles, ChevronRight, BookOpen } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  Zap,
+  Plus,
+  Sparkles,
+  BookOpen,
+  AlertTriangle,
+  Info,
+  Database,
+  Search,
+  ExternalLink,
+  Globe
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useReports, useCreateReport, useDeleteReport, useDeleteBatchReports } from "@/features/reports/hooks/use-reports";
+import {
+  useReports,
+  useCreateReport,
+  useDeleteReport,
+  useDeleteBatchReports,
+  useReportEvidencePreview
+} from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
-import type { ReportLanguage } from "@trend/shared-types";
+import type { PreviewReportEvidenceResponse, ReportLanguage } from "@trend/shared-types";
+import { searchApi, type ScoredPaper } from "@/features/search";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/utils/cn";
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
   const createReport = useCreateReport();
   const deleteReport = useDeleteReport();
   const deleteBatchReports = useDeleteBatchReports();
+  const previewEvidence = useReportEvidencePreview();
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
@@ -23,18 +49,56 @@ export function ReportsListPage() {
   const [yearTo, setYearTo] = useState<string>("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
+  // New States for Evidence Review Step
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewReportEvidenceResponse | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewScrollToken, setPreviewScrollToken] = useState(0);
+  const [collapsedAbstracts, setCollapsedAbstracts] = useState<Record<string, boolean>>({});
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [paperPickerOpen, setPaperPickerOpen] = useState(false);
+  const [paperSearchQuery, setPaperSearchQuery] = useState("");
+  const [paperSearchResults, setPaperSearchResults] = useState<ScoredPaper[]>([]);
+  const [paperSearchLoading, setPaperSearchLoading] = useState(false);
+  const [paperSearchError, setPaperSearchError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const evidenceSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
+  const currentYear = new Date().getFullYear();
+  const reasoningMode = deepAnalysis ? "deep" : fast ? "fast" : "balanced";
+  const canPreviewEvidence = query.trim().length >= 3 && !previewEvidence.isPending;
+
+  React.useEffect(() => {
+    if (!previewScrollToken) return;
+
+    const scrollTimer = window.setTimeout(() => {
+      evidenceSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [previewScrollToken]);
 
   React.useEffect(() => {
     const isCreate = searchParams.get("create") === "true" || searchParams.has("topic");
     if (isCreate) {
       const urlTopic = searchParams.get("topic") || "";
       const urlQuery = searchParams.get("query") || searchParams.get("q") || "";
+      const urlPaperId = searchParams.get("paperId") || "";
+
       if (urlTopic) setTopic(urlTopic);
       if (urlQuery) setQuery(urlQuery);
+      if (urlPaperId) {
+        setSelectedPaperIds([urlPaperId]);
+        toast.info("Paper pre-selected from context", {
+          description: `ID: ${urlPaperId}`
+        });
+      }
 
       // Clear URL params
       setSearchParams(prev => {
@@ -42,6 +106,7 @@ export function ReportsListPage() {
         prev.delete("topic");
         prev.delete("query");
         prev.delete("q");
+        prev.delete("paperId");
         return prev;
       });
     }
@@ -58,6 +123,21 @@ export function ReportsListPage() {
     e.stopPropagation();
     setItemToDelete(id);
     setDeleteModalOpen(true);
+  };
+
+  const setReasoningMode = (mode: "fast" | "balanced" | "deep") => {
+    if (mode === "fast") {
+      setFast(true);
+      setDeepAnalysis(false);
+      return;
+    }
+    if (mode === "deep") {
+      setFast(false);
+      setDeepAnalysis(true);
+      return;
+    }
+    setFast(false);
+    setDeepAnalysis(false);
   };
 
   const confirmDelete = async () => {
@@ -79,7 +159,8 @@ export function ReportsListPage() {
     }
   };
 
-  const handleGenerate = async () => {
+  // Step 2: Clicks "Preview evidence"
+  const handlePreviewEvidence = async () => {
     if (!query.trim()) {
       toast.error("Please enter a question for the AI to analyze");
       return;
@@ -93,6 +174,134 @@ export function ReportsListPage() {
       return;
     }
 
+    setPreviewError(null);
+
+    try {
+      const response = await previewEvidence.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language: language === "auto" ? "auto" : language,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        selectedPaperIds: selectedPaperIds.length > 0 ? selectedPaperIds : undefined,
+      });
+
+      setPreviewData(response);
+      setSelectedPaperIds(response.selectedPaperIds);
+      setShowPreview(true);
+      setPreviewScrollToken((current) => current + 1);
+      toast.success("Evidence pack loaded! Review papers below.");
+    } catch (error: any) {
+      console.error("Failed to preview evidence:", error);
+      const errMsg = error?.response?.data?.error?.message ?? "Could not retrieve evidence pack from server.";
+      setPreviewError(errMsg);
+      toast.error(errMsg);
+    }
+  };
+
+  // Step 4: User can remove retrieved/selected papers
+  const handleRemovePaper = (paperId: string) => {
+    if (!previewData) return;
+
+    const updatedPapers = previewData.papers.filter(p => p.id !== paperId);
+    const updatedSelectedIds = selectedPaperIds.filter(id => id !== paperId);
+
+    setPreviewData({
+      ...previewData,
+      papers: updatedPapers,
+      selectedPaperIds: updatedSelectedIds,
+    });
+    setSelectedPaperIds(updatedSelectedIds);
+    toast.info("Paper removed from evidence pack.");
+  };
+
+  const handleOpenPaperPicker = () => {
+    setPaperPickerOpen(true);
+    setPaperSearchError(null);
+    if (!paperSearchQuery.trim()) {
+      setPaperSearchQuery(topic.trim() || query.trim());
+    }
+  };
+
+  const handleSearchPapers = async () => {
+    const searchText = paperSearchQuery.trim();
+    if (searchText.length < 2) {
+      setPaperSearchError("Enter at least 2 characters to search papers.");
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
+    setPaperSearchLoading(true);
+    setPaperSearchError(null);
+    try {
+      const response = await searchApi.semantic({
+        q: searchText,
+        page: 1,
+        pageSize: 8,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        rerank: false,
+      });
+      setPaperSearchResults(response.papers);
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.error?.message ?? "Could not search papers.";
+      setPaperSearchError(errMsg);
+    } finally {
+      setPaperSearchLoading(false);
+    }
+  };
+
+  // Step 5: User can add papers from corpus search.
+  const handleAddPaperFromSearch = async (paperId: string) => {
+    if (!previewData) return;
+    if (currentEvidencePaperIds.includes(paperId)) {
+      toast.warning("This paper is already in the evidence pack.");
+      return;
+    }
+    if (currentEvidencePaperIds.length >= previewData.maxEvidencePapers) {
+      toast.warning(`Evidence pack is full. Remove a paper before adding another one.`);
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+    const newSelectedIds = [...currentEvidencePaperIds, paperId];
+
+    try {
+      toast.loading("Adding paper to evidence pack...", { id: "add-paper" });
+      const response = await previewEvidence.mutateAsync({
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        language: language === "auto" ? "auto" : language,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        selectedPaperIds: newSelectedIds,
+        fillWithRetrieved: false,
+      });
+
+      setPreviewData(response);
+      setSelectedPaperIds(response.selectedPaperIds);
+      toast.dismiss("add-paper");
+      toast.success("Paper added to evidence pack.");
+    } catch (error: any) {
+      toast.dismiss("add-paper");
+      const errMsg = error?.response?.data?.error?.message ?? "Failed to add paper.";
+      toast.error(errMsg);
+    }
+  };
+
+  // Step 6: Create report sends selectedPaperIds
+  const handleGenerate = async (forceNoPreview = false) => {
+    if (!query.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
     try {
       await createReport.mutateAsync({
         query: query.trim(),
@@ -102,7 +311,13 @@ export function ReportsListPage() {
         fast,
         yearFrom: fromYear,
         yearTo: toYear,
+        selectedPaperIds: forceNoPreview
+          ? undefined
+          : currentEvidencePaperIds.length > 0
+            ? currentEvidencePaperIds
+            : undefined,
       });
+
       setTopic("");
       setQuery("");
       setYearFrom("");
@@ -110,13 +325,25 @@ export function ReportsListPage() {
       setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
-      setShowAdvanced(false);
+
+      // Reset preview states
+      setPreviewData(null);
+      setSelectedPaperIds([]);
+      setShowPreview(false);
+
       toast.success("Report generation started!");
     } catch (error: any) {
       console.error("Failed to create report:", error);
       const errMsg = error.response?.data?.error?.message || "Failed to create report. Please try again.";
       toast.error(errMsg);
     }
+  };
+
+  const toggleAbstract = (paperId: string) => {
+    setCollapsedAbstracts(prev => ({
+      ...prev,
+      [paperId]: !prev[paperId]
+    }));
   };
 
   return (
@@ -131,22 +358,53 @@ export function ReportsListPage() {
             Generate deep analytical reports from thousands of papers.
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-[55ch]">
-            Ask a complex research question. Our AI agents will retrieve relevant literature, synthesize findings, identify gaps, and draft a comprehensive report in seconds.
+            Ask a complex research question. Review the evidence pack, add or remove papers, and synthesize findings into a comprehensive report.
           </p>
         </div>
       </section>
 
-      {/* Inline Generation Form (Replaces Modal) */}
-      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-16 relative overflow-hidden group">
+      {/* Inline Generation Form */}
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-blue-600" /> New Report
-        </h2>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-5">
-            <div>
-              <label htmlFor="topic" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Topic / Keyword (Optional)</label>
+        <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+              <Plus className="h-4 w-4" />
+              New grounded report
+            </div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+              Define the question, then review the evidence before generation.
+            </h2>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Reports are generated from a fixed evidence pack, so every citation maps back to a paper you can inspect.
+            </p>
+          </div>
+          <div className="grid min-w-[260px] grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-bold dark:border-slate-800 dark:bg-slate-900/60">
+            <div className={cn(
+              "rounded-lg px-3 py-2 transition-colors",
+              showPreview && previewData
+                ? "text-slate-500 dark:text-slate-400"
+                : "bg-white text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300"
+            )}>
+              Step 1
+              <span className="block text-[10px] font-semibold text-slate-500">Setup</span>
+            </div>
+            <div className={cn(
+              "rounded-lg px-3 py-2 transition-colors",
+              showPreview && previewData
+                ? "bg-white text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300"
+                : "text-slate-500 dark:text-slate-400"
+            )}>
+              Step 2
+              <span className="block text-[10px] font-semibold text-slate-500">Evidence</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-7">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <label htmlFor="topic" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Topic / Keyword</label>
               <input
                 id="topic"
                 value={topic}
@@ -155,103 +413,535 @@ export function ReportsListPage() {
                 className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label htmlFor="query" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Research Question <span className="text-red-500">*</span></label>
               <textarea
                 id="query"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="What specific insights are you looking for?"
-                rows={3}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
+                placeholder="e.g. What evidence shows clinical impact, limitations, and future directions?"
+                rows={1}
+                className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none overflow-hidden"
               />
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Be specific. The retrieval step uses this question to choose evidence papers.
+              </p>
             </div>
           </div>
-          
-          <div className="lg:col-span-4 flex flex-col justify-end space-y-4">
-            <Button
-              variant="outline"
-              className="w-full justify-between h-12 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              <span className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> Advanced Options</span>
-              <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
-            </Button>
-            
-            <Button 
-              onClick={handleGenerate} 
-              disabled={createReport.isPending || !query.trim()} 
-              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm"
-            >
-              {createReport.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Zap className="w-5 h-5 mr-2" />}
-              Generate Report
-            </Button>
-          </div>
-        </div>
 
-        {/* Collapsible Advanced Options */}
-        {showAdvanced && (
-          <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 fade-in duration-200">
-            <div className="space-y-2">
-              <label htmlFor="report-language" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output Language</label>
-              <select
-                id="report-language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Report setup</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  These controls affect retrieval, output language, and model route.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTopic("");
+                  setQuery("");
+                  setYearFrom("");
+                  setYearTo("");
+                  setLanguage("auto");
+                  setReasoningMode("fast");
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"
               >
-                <option value="auto">Auto-detect from query</option>
-                <option value="en">English (Forced)</option>
-                <option value="vi">Vietnamese</option>
-              </select>
+                Reset setup
+              </button>
             </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="year-from" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Year From</label>
-              <input
-                id="year-from"
-                type="number"
-                value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
-                placeholder="2020"
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="year-to" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Year To</label>
-              <input
-                id="year-to"
-                type="number"
-                value={yearTo}
-                onChange={(e) => setYearTo(e.target.value)}
-                placeholder="2026"
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2.5">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</span>
+                <div className="flex rounded-xl bg-slate-100/80 dark:bg-slate-900/60 p-1 border border-slate-200/50 dark:border-slate-800/40 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("auto")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "auto"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("en")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "en"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage("vi")}
+                    className={cn(
+                      "flex-1 h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      language === "vi"
+                        ? "bg-white dark:bg-slate-950 shadow-sm text-blue-600 dark:text-blue-400 font-bold border border-slate-200/30 dark:border-slate-800/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
+                    )}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    Tiếng Việt
+                  </button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  Auto detects from the topic and research question.
+                </p>
+              </div>
 
-            <div className="space-y-3 pt-6">
-              <label className="flex cursor-pointer items-center gap-3 group">
-                <input
-                  type="checkbox"
-                  checked={fast}
-                  onChange={(e) => setFast(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-                />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Fast Mode (Flash Model)</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3 group">
-                <input
-                  type="checkbox"
-                  checked={deepAnalysis}
-                  onChange={(e) => setDeepAnalysis(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-                />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Deep Web Analysis</span>
-              </label>
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Publication Year Range</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    id="year-from"
+                    type="number"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                    placeholder="From: 2020"
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+                  />
+                  <input
+                    id="year-to"
+                    type="number"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                    placeholder={`To: ${currentYear}`}
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setYearFrom(""); setYearTo(""); }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (!yearFrom && !yearTo)
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYearFrom((currentYear - 3).toString());
+                      setYearTo(currentYear.toString());
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (yearFrom === (currentYear - 3).toString() && yearTo === currentYear.toString())
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Last 3 Years
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYearFrom((currentYear - 5).toString());
+                      setYearTo(currentYear.toString());
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                      (yearFrom === (currentYear - 5).toString() && yearTo === currentYear.toString())
+                        ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                        : "bg-transparent text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Last 5 Years
+                  </button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  {currentYear} is treated as year-to-date when charts or trend metrics use this range.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Reasoning Profile</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReasoningMode("fast")}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "fast"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <Zap className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Fast</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Quick draft</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReasoningMode("balanced")}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "balanced"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <Database className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Balanced</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Best default</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReasoningMode("deep")}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                      reasoningMode === "deep"
+                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm dark:bg-blue-950/20 dark:text-blue-100"
+                        : "border-slate-200 dark:border-slate-800 bg-transparent text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    <Search className="mb-2 h-4 w-4" />
+                    <span className="block text-[11px] font-extrabold">Deep</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Slowest</span>
+                  </button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  Balanced uses the standard report path. Deep enables multi-step analysis.
+                </p>
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Action Footer Bar */}
+          <div className="pt-5 border-t border-slate-100 dark:border-slate-800/60 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300">
+                <Database className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">Next: review the evidence pack</p>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed">
+                  {showPreview && previewData
+                    ? "Evidence is loaded below. Refresh if you changed the setup, or generate once the pack looks right."
+                    : "We retrieve candidate papers first. You can remove weak papers or add your own before the AI writes."}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handlePreviewEvidence}
+              disabled={!canPreviewEvidence}
+              className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-900/40"
+            >
+              {previewEvidence.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+              {showPreview && previewData ? "Refresh Evidence Pack" : "Review Evidence Pack"}
+            </Button>
+          </div>
+
+          {/* Loading Skeleton during preview fetch */}
+          {previewEvidence.isPending && (
+            <div className="space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-5 w-48 rounded" />
+                  <Skeleton className="mt-2 h-3 w-80 max-w-full rounded" />
+                </div>
+                <Skeleton className="h-7 w-32 rounded-full" />
+              </div>
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+              </div>
+            </div>
+          )}
+
+          {/* Preview Error State with Fallback option */}
+          {previewError && (
+            <div className="border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="space-y-4 rounded-2xl border border-red-200 bg-red-500/5 p-5 text-red-950 dark:border-red-900/50 dark:text-red-200">
+                <div className="flex gap-2">
+                  <XCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+                  <div>
+                    <span className="block font-bold">Failed to generate evidence preview</span>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{previewError}</span>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg border-red-300 text-xs text-red-700 hover:bg-red-500/10 dark:border-red-900"
+                    onClick={handlePreviewEvidence}
+                  >
+                    Retry Preview
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="rounded-lg bg-red-600 text-xs font-bold text-white hover:bg-red-700"
+                    onClick={() => handleGenerate(true)}
+                    disabled={createReport.isPending}
+                  >
+                    {createReport.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                    Skip Preview & Generate Report
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Evidence Pack UI */}
+          {showPreview && previewData && (
+            <div ref={evidenceSectionRef} className="scroll-mt-24 space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Step 2 of 2
+                  </div>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                    Review the evidence pack
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                    This ordered set becomes the citation source for the report. Remove weak papers or add missing required studies before generation.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-full border bg-slate-50 px-3 py-1 text-xs font-semibold dark:bg-slate-900/60">
+                    {previewData.papers.length} / {previewData.maxEvidencePapers} Papers
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-400">
+                    {language === "auto" ? "Auto language" : language === "en" ? "English" : "Vietnamese"}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400">
+                    {reasoningMode}
+                  </Badge>
+                </div>
+              </div>
+
+          {/* Warnings Banner */}
+          {(previewData.papers.length < 3 || previewData.warnings.length > 0) && (
+            <div className="space-y-2">
+              {previewData.papers.length < 3 && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-xs flex gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span><strong>Warning:</strong> Fewer than 3 evidence papers selected. AI analysis might be limited or insufficient.</span>
+                </div>
+              )}
+              {previewData.warnings.map((warning, idx) => (
+                <div key={idx} className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-xs flex gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{warning}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add papers from corpus search */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+            <div>
+              <span className="text-sm font-bold text-slate-900 dark:text-white block">Curate evidence</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Search the active corpus by title, keyword, topic, or DOI, then add papers into this pack.
+              </p>
+            </div>
+            <Button
+              onClick={handleOpenPaperPicker}
+              disabled={previewEvidence.isPending || previewData.papers.length >= previewData.maxEvidencePapers}
+              className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-black text-xs font-bold px-4 h-9 rounded-lg shadow-sm"
+            >
+              <Search className="h-3.5 w-3.5 mr-2" />
+              Add Papers
+            </Button>
+          </div>
+
+          {/* Guidelines info text */}
+          <div className="flex gap-2 p-3 bg-blue-500/5 border border-blue-500/10 text-blue-800 dark:text-blue-400 rounded-xl text-xs leading-normal">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span><strong>Grounding rule:</strong> adding a paper makes it available as evidence, not a forced conclusion. If the pack is weak or contradictory, the generated report should say so.</span>
+            </div>
+          </div>
+
+          {/* Evidence Papers List */}
+          {previewData.papers.length === 0 ? (
+            <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+              <span className="text-sm font-semibold text-slate-500">No evidence found. Broaden query or year range.</span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {previewData.papers.map((paper) => {
+                const isExpanded = collapsedAbstracts[paper.id] ?? false;
+                const relevancePercent = Math.round(paper.score * 100);
+                const relevanceLabel = paper.score >= 0.8 ? "Strong match" : paper.score >= 0.65 ? "Good match" : "Review match";
+                const relevanceTone = paper.score >= 0.8
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : paper.score >= 0.65
+                    ? "text-blue-700 dark:text-blue-300"
+                    : "text-amber-700 dark:text-amber-300";
+                const relevanceBar = paper.score >= 0.8
+                  ? "bg-emerald-500"
+                  : paper.score >= 0.65
+                    ? "bg-blue-500"
+                    : "bg-amber-500";
+                const snippet = paper.abstractText
+                  ? (paper.abstractText.length > 150 && !isExpanded
+                    ? `${paper.abstractText.slice(0, 150)}...`
+                    : paper.abstractText)
+                  : null;                 return (
+                  <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-200 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/50">
+                    {/* Header: Badges & Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border-transparent",
+                            paper.source === "selected"
+                              ? "bg-purple-150 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
+                              : "bg-blue-155 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+                          )}
+                        >
+                          {paper.source === "selected" ? "Added by you" : "Retrieved"}
+                        </Badge>
+                        {paper.publicationYear && (
+                          <span className="rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 px-2 py-0.5 text-[10px] font-bold">
+                            {paper.publicationYear}
+                          </span>
+                        )}
+                        {paper.citationCount !== undefined && (
+                          <span className="rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 px-2 py-0.5 text-[10px] font-bold">
+                            {paper.citationCount.toLocaleString()} citations
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions on the top right */}
+                      <div className="flex flex-wrap items-center gap-3 justify-between sm:justify-end">
+                        {/* Compact Relevance indicator */}
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-[10px] font-bold uppercase tracking-wider", relevanceTone)}>
+                            {relevanceLabel} ({relevancePercent}%)
+                          </span>
+                          <div className="w-16 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${Math.min(100, Math.max(0, relevancePercent))}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+                        {/* View & Remove */}
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/papers/${paper.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/80 px-2.5 text-[11px] font-bold text-slate-600 dark:border-slate-800 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-900/60 transition-colors"
+                          >
+                            View paper
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                            onClick={() => handleRemovePaper(paper.id)}
+                            aria-label={`Remove ${paper.title} from evidence pack`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Paper Title */}
+                    <div className="space-y-2">
+                      <Link
+                        to={`/papers/${paper.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-2 text-sm md:text-base font-extrabold leading-snug text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <span>{paper.title}</span>
+                        <ExternalLink className="h-4 w-4 flex-shrink-0 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                      </Link>
+
+                      {/* Authors & Journal */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {paper.authorNames.length > 0 && (
+                          <span>Authors: <strong className="text-slate-600 dark:text-slate-300 font-semibold">{paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</strong></span>
+                        )}
+                        {paper.journalName && (
+                          <span>Journal: <strong className="text-slate-600 dark:text-slate-300 font-semibold">{paper.journalName}</strong></span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Abstract snippet */}
+                    {snippet && (
+                      <div className="mt-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50/50 dark:bg-slate-900/30 p-3.5 rounded-xl border border-slate-105/50 dark:border-slate-800/40">
+                        <p>
+                          {snippet}
+                          {paper.abstractText && paper.abstractText.length > 150 && (
+                            <button
+                              type="button"
+                              onClick={() => toggleAbstract(paper.id)}
+                              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1.5 cursor-pointer focus:outline-none"
+                            >
+                              {isExpanded ? "Show Less" : "Show More"}
+                            </button>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Actions footer for Preview Box */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {previewData.papers.length === 0
+                ? "Add or preview papers to enable generation."
+                : "Ready to generate when this evidence set looks correct."}
+            </span>
+            <Button
+              onClick={() => handleGenerate(false)}
+              disabled={createReport.isPending || previewData.papers.length === 0}
+              className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-blue-700"
+            >
+              {createReport.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating Report...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2 fill-current" />
+                  Generate Report from Evidence Pack
+                </>
+              )}
+            </Button>
+          </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Reports Grid */}
@@ -283,8 +973,8 @@ export function ReportsListPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {reports.map((report) => (
-            <Link 
-              key={report.id} 
+            <Link
+              key={report.id}
               to={`/reports/${report.id}`}
               className="group flex flex-col bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
             >
@@ -333,6 +1023,120 @@ export function ReportsListPage() {
           ))}
         </div>
       )}
+
+      {/* Paper Picker Modal */}
+      <Dialog open={paperPickerOpen} onOpenChange={setPaperPickerOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-blue-600" />
+              Add Papers To Evidence Pack
+            </DialogTitle>
+            <DialogDescription>
+              Search the active corpus and add papers into the report evidence pack. The report will cite only the final pack.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <input
+              value={paperSearchQuery}
+              onChange={(e) => setPaperSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSearchPapers();
+              }}
+              placeholder="Search title, keyword, topic, DOI..."
+              className="flex-1 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <Button
+              onClick={handleSearchPapers}
+              disabled={paperSearchLoading || paperSearchQuery.trim().length < 2}
+              className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              {paperSearchLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+              Search
+            </Button>
+          </div>
+
+          {paperSearchError && (
+            <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-500/5 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+              {paperSearchError}
+            </div>
+          )}
+
+          <div className="min-h-[260px] overflow-y-auto pr-1">
+            {paperSearchLoading ? (
+              <div className="space-y-3 py-4">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+              </div>
+            ) : paperSearchResults.length === 0 ? (
+              <div className="flex h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                <Search className="h-8 w-8 text-slate-300 mb-3" />
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Search papers to add evidence</p>
+                <p className="text-xs text-slate-500 mt-1">Results will show title, year, citations, and semantic relevance.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {paperSearchResults.map((paper) => {
+                  const alreadyAdded = currentEvidencePaperIds.includes(paper.id);
+                  const packFull = previewData ? currentEvidencePaperIds.length >= previewData.maxEvidencePapers : false;
+                  const authors = paper.authors?.map((a) => a.displayName).filter(Boolean) ?? [];
+                  const abstract =
+                    paper.abstractText && paper.abstractText.length > 220
+                      ? `${paper.abstractText.slice(0, 220)}...`
+                      : paper.abstractText;
+
+                  return (
+                    <div key={paper.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
+                            Score {paper.score.toFixed(3)}
+                          </Badge>
+                          <span className="text-xs text-slate-500">{paper.publicationYear}</span>
+                          <span className="text-xs text-slate-500">{paper.citationCount ?? 0} citations</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <h3 className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{paper.title}</h3>
+                          <Link
+                            to={`/papers/${paper.id}`}
+                            target="_blank"
+                            className="mt-0.5 text-slate-400 hover:text-blue-600"
+                            title="Open paper detail"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                        {(authors.length > 0 || paper.journalName) && (
+                          <p className="text-xs text-slate-500">
+                            {authors.slice(0, 3).join(", ")}
+                            {authors.length > 3 ? " et al." : ""}
+                            {authors.length > 0 && paper.journalName ? " · " : ""}
+                            {paper.journalName}
+                          </p>
+                        )}
+                        {abstract && (
+                          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{abstract}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={alreadyAdded ? "outline" : "default"}
+                        disabled={alreadyAdded || packFull || previewEvidence.isPending}
+                        onClick={() => handleAddPaperFromSearch(paper.id)}
+                        className="rounded-lg font-bold"
+                      >
+                        {alreadyAdded ? "Added" : packFull ? "Pack Full" : "Add"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

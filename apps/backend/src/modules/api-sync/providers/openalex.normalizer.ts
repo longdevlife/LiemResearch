@@ -1,4 +1,4 @@
-import type { OpenAlexWork } from "./openalex.types.js";
+import type { OpenAlexTopic, OpenAlexTopicLevel, OpenAlexWork } from "./openalex.types.js";
 
 type DetectedBy = "openalex" | "ai" | "user";
 type PaperKind = "article" | "proceedings" | "preprint" | "review" | "book-chapter" | "other";
@@ -30,10 +30,27 @@ export interface NormalizedPaper {
   openAccessUrl?: string;
   licenseName?: string;
   citationCount: number;
+  fwci?: number;
   keywords: { keywordName: string; detectedBy: DetectedBy; confidence?: number }[];
-  topics: { topicName: string; detectedBy: DetectedBy; confidence?: number }[];
+  topics: NormalizedTopic[];
   referencedWorks: string[];
+  relatedWorks: string[];
+  relatedWorksCount: number;
   primaryProvider: "openalex";
+}
+
+export interface NormalizedTopic {
+  openalexTopicId?: string;
+  topicName: string;
+  detectedBy: DetectedBy;
+  confidence?: number;
+  isPrimary?: boolean;
+  subfieldId?: string;
+  subfieldName?: string;
+  fieldId?: string;
+  fieldName?: string;
+  domainId?: string;
+  domainName?: string;
 }
 
 /** Convert one OpenAlex Work into the normalized paper shape. Pure & permissive. */
@@ -64,6 +81,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
       undefined,
     licenseName: w.primary_location?.license ?? undefined,
     citationCount: w.cited_by_count ?? 0,
+    fwci: typeof w.fwci === "number" ? w.fwci : undefined,
     keywords: (w.keywords ?? [])
       .filter((k) => k.display_name)
       .map((k) => ({
@@ -71,16 +89,55 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
         detectedBy: "openalex" as const,
         confidence: k.score,
       })),
-    topics: (w.topics ?? [])
-      .filter((t) => t.display_name)
-      .map((t) => ({
-        topicName: t.display_name!.trim(),
-        detectedBy: "openalex" as const,
-        confidence: t.score,
-      })),
+    topics: normalizeTopics(w),
     referencedWorks: (w.referenced_works ?? []).map((r) => stripPrefix(r, "https://openalex.org/")!),
+    relatedWorks: (w.related_works ?? []).map((r) => stripPrefix(r, "https://openalex.org/")!),
+    relatedWorksCount: w.related_works?.length ?? 0,
     primaryProvider: "openalex",
   };
+}
+
+function normalizeTopics(w: OpenAlexWork): NormalizedTopic[] {
+  const primaryTopic = w.primary_topic?.display_name ? w.primary_topic : undefined;
+  const primaryKey = primaryTopic ? topicKey(primaryTopic) : undefined;
+  const topics = [...(primaryTopic ? [primaryTopic] : []), ...(w.topics ?? [])];
+  const seen = new Set<string>();
+  const normalized: NormalizedTopic[] = [];
+
+  for (const topic of topics) {
+    if (!topic.display_name) continue;
+    const key = topicKey(topic);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({
+      openalexTopicId: openAlexEntityId(topic.id),
+      topicName: topic.display_name.trim(),
+      detectedBy: "openalex",
+      confidence: topic.score,
+      isPrimary: primaryKey === key,
+      ...topicLevel("subfield", topic.subfield),
+      ...topicLevel("field", topic.field),
+      ...topicLevel("domain", topic.domain),
+    });
+  }
+
+  return normalized;
+}
+
+function topicKey(topic: OpenAlexTopic): string {
+  return openAlexEntityId(topic.id) ?? topic.display_name?.trim().toLowerCase() ?? "";
+}
+
+function topicLevel(
+  level: "subfield" | "field" | "domain",
+  value?: OpenAlexTopicLevel | null,
+): Partial<NormalizedTopic> {
+  if (!value) return {};
+  const prefix = level;
+  return {
+    [`${prefix}Id`]: openAlexEntityId(value.id),
+    [`${prefix}Name`]: value.display_name?.trim(),
+  } as Partial<NormalizedTopic>;
 }
 
 /**
@@ -100,6 +157,12 @@ export function reconstructAbstract(idx?: Record<string, number[]> | null): stri
 function stripPrefix(value: string | null | undefined, prefix: string): string | undefined {
   if (!value) return undefined;
   return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+}
+
+function openAlexEntityId(value: string | null | undefined): string | undefined {
+  const stripped = stripPrefix(value, "https://openalex.org/");
+  if (!stripped) return undefined;
+  return stripped.split("/").filter(Boolean).at(-1);
 }
 
 function mapPaperKind(type?: string | null): PaperKind {

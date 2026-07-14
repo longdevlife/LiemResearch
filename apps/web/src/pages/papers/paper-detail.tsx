@@ -34,7 +34,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
-import type { PaperAiAnalysis } from "@trend/shared-types";
+import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
+import { getPaperPdfPanelState } from "./paper-pdf-panel";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,6 +90,7 @@ export function PaperDetailPage() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin";
   const [compareOpen, setCompareOpen] = useState(false);
+  const [showAllAuthors, setShowAllAuthors] = useState(false);
 
   const handleUploadPdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,26 +200,17 @@ export function PaperDetailPage() {
   const isBookmarked = !!bookmarkStatus?.bookmarked;
   const bookmarkId = bookmarkStatus?.bookmarkId;
 
-  const isRequester = paper.requestedBy?._id === currentUser?.id;
-  const isUploader = paper.uploadedBy?._id === currentUser?.id;
-  const isOwner = isRequester || isUploader;
-  const isPdfAvailable = paper.pdfPath && paper.paperStatus === "downloaded";
-
-  const isWaitingRequesterAccept =
-    paper.paperStatus === "pending-requester-acceptance" ||
-    (paper.paperStatus === "pending" && !!paper.pdfPath && paper.uploadedBy?._id !== paper.requestedBy?._id);
-
-  const canAcceptPdf = !!currentUser && isRequester && isWaitingRequesterAccept && !!paper.pdfPath;
-  const isPrivateDownload = isAdmin || isRequester || isUploader;
-  const canPublicDownload = !!isPdfAvailable && paper.qualityTier !== 0 && paper.downloadCost !== null;
-  const canDownloadPdf = !!paper.pdfPath && (isPrivateDownload || canPublicDownload);
-
-  const canUploadPdf = !!currentUser && !paper.pdfPath && paper.paperStatus !== "rejected" && (
-    isAdmin ||
-    isRequester ||
-    paper.paperStatus === "not-downloaded" ||
-    paper.paperStatus === "pending"
-  );
+  const pdfPanel = getPaperPdfPanelState({ paper, currentUser });
+  const isRequester = pdfPanel.isRequester;
+  const isOwner = pdfPanel.isOwner;
+  const canAcceptPdf = pdfPanel.canAcceptPdf;
+  const isPrivateDownload = pdfPanel.isPrivateDownload;
+  const canDownloadPdf = pdfPanel.canDownloadPdf;
+  const canUploadPdf = pdfPanel.canUploadPdf;
+  const shouldShowPdfPanel = pdfPanel.shouldShowPanel;
+  const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
+  const taxonomyTopic = getBestTaxonomyTopic(paper.topics ?? []);
+  const taxonomyRows = taxonomyTopic ? buildTaxonomyRows(taxonomyTopic) : [];
 
   const handleBookmarkToggle = () => {
     if (isBookmarked && bookmarkId) {
@@ -312,25 +305,31 @@ export function PaperDetailPage() {
             </div>
 
             {/* Authors List */}
-            <div className="flex flex-wrap items-center gap-4 mb-8">
-              {paper.authors.slice(0, 5).map((author, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 border-2 border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-400">
+            <div className="mb-8">
+              <div className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Authors ({paper.authors.length})
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {visibleAuthors.map((author, idx) => (
+                  <div key={`${author.displayName}-${idx}`} className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-800 dark:bg-zinc-950/40">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-400">
                     {author.displayName.charAt(0)}
+                    </div>
+                    <span className="text-sm font-semibold text-blue-800 dark:text-blue-400">
+                      {author.displayName}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-400 cursor-pointer hover:underline">
-                    {author.displayName}
-                  </span>
-                </div>
-              ))}
-              {paper.authors.length > 5 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-xs font-bold text-slate-500">
-                    +{paper.authors.length - 5}
-                  </div>
-                  <span className="text-sm text-slate-500">et al.</span>
-                </div>
-              )}
+                ))}
+                {paper.authors.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllAuthors((v) => !v)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-800 dark:bg-zinc-900 dark:text-slate-300 dark:hover:border-blue-900/60 dark:hover:bg-blue-950/20 dark:hover:text-blue-300"
+                  >
+                    {showAllAuthors ? "Show fewer authors" : `Show all ${paper.authors.length} authors`}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Action Bar */}
@@ -396,10 +395,12 @@ export function PaperDetailPage() {
             </div>
           </div>
 
-          {/* PDF Document Section */}
+          {/* Internal PDF workflow. OpenAlex/OA full text stays in the action bar. */}
+          {shouldShowPdfPanel && (
           <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10 space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-500" /> PDF Document
+              <FileText className="w-5 h-5 text-indigo-500" />
+              {pdfPanel.mode === "upload" ? "Submit internal PDF" : "Internal full-text PDF"}
             </h3>
 
             {paper.pdfPath ? (
@@ -493,9 +494,9 @@ export function PaperDetailPage() {
             ) : (
               <div className="border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl p-8 text-center bg-slate-50/30 dark:bg-zinc-900/10">
                 <p className="text-slate-500 dark:text-zinc-500 text-sm mb-4">
-                  {paper.paperStatus === "pending"
-                    ? "Awaiting request approval from administrators before PDF can be uploaded."
-                    : "No PDF document uploaded for this request yet."}
+                  {pdfPanel.mode === "pending-approval"
+                    ? "This paper request is waiting for admin approval. PDF upload unlocks after approval."
+                    : "No internal PDF has been uploaded for this paper yet."}
                 </p>
 
                 {canUploadPdf && (
@@ -505,7 +506,7 @@ export function PaperDetailPage() {
                       className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-zinc-800 hover:border-indigo-500 dark:hover:border-indigo-400/50 rounded-lg p-6 bg-white dark:bg-zinc-950 cursor-pointer transition-all group"
                     >
                       <Upload className="w-8 h-8 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mb-2 transition-colors" />
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Click to upload PDF</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Upload internal PDF</span>
                       <span className="text-xs text-slate-500 mt-1">PDF only (Max 10MB)</span>
                       <input id="pdf-upload" type="file" accept="application/pdf" className="hidden" onChange={handleUploadPdfChange} />
                     </label>
@@ -514,6 +515,7 @@ export function PaperDetailPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* AI Analysis Summary — intrinsic, real scores only (no fabricated
               fallbacks). Renders only when paper.aiScore exists. Visual polish
@@ -606,7 +608,7 @@ export function PaperDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     {paper.topics.map((t) => (
                       <Link
-                        key={t.topicId || t.topicName}
+                        key={t.openalexTopicId || t.topicId || t.topicName}
                         to={`/trends/${encodeURIComponent(t.topicName)}`}
                         className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors"
                       >
@@ -750,6 +752,12 @@ export function PaperDetailPage() {
 
         {/* Right Sidebar */}
         <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4">
+          <PaperMetadataSidebarCard
+            paper={paper}
+            taxonomyRows={taxonomyRows}
+            taxonomyTopic={taxonomyTopic}
+          />
+
           {/* AI Reports Citation Card */}
           <div className="bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200 dark:border-violet-800/50 rounded-xl p-5 shadow-sm">
             <div className="text-[10px] font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -776,35 +784,6 @@ export function PaperDetailPage() {
 
           {/* Sticky Sidebar elements */}
           <div className="sticky top-24 flex flex-col gap-4">
-            {/* Lead Author Card */}
-            {paper.authors[0] && (
-              <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-4">Lead Author</div>
-
-                <div className="flex gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-lg font-bold text-blue-700 dark:text-blue-400">
-                    {paper.authors[0].displayName.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{paper.authors[0].displayName}</h4>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-slate-500 font-medium mb-1">Citations (Paper)</div>
-                    <div className="text-base font-bold text-slate-900 dark:text-white">{paper.citationCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-medium mb-1">Data Quality</div>
-                    <div className="text-base font-bold text-slate-900 dark:text-white">
-                      {paper.dataQualityScore ? paper.dataQualityScore.toFixed(2) : "N/A"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Other Users' Ratings List */}
             <PaperReviewsList
               ratingView={ratingView}
@@ -818,6 +797,169 @@ export function PaperDetailPage() {
       <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} currentPaper={paper} />
     </main>
   );
+}
+
+function PaperMetadataSidebarCard({
+  paper,
+  taxonomyRows,
+  taxonomyTopic,
+}: {
+  paper: Paper;
+  taxonomyRows: Array<{ label: string; value: string; href?: string }>;
+  taxonomyTopic?: PaperTopic;
+}) {
+  const fallbackTopic = paper.topics?.[0];
+  const hasTaxonomy = taxonomyRows.length > 0;
+
+  return (
+    <aside className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Work Metadata
+          </div>
+          <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
+            OpenAlex facts
+          </h2>
+        </div>
+        {taxonomyTopic?.isPrimary && (
+          <span className="rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+            Primary
+          </span>
+        )}
+      </div>
+
+      <dl className="space-y-2.5 text-sm">
+        <MetadataRow label="Year" value={paper.publicationYear ? String(paper.publicationYear) : undefined} />
+        <MetadataRow label="Type" value={paper.paperKind} capitalize />
+        <MetadataRow label="Source" value={paper.journalName} />
+        <MetadataRow label="Language" value={formatLanguage(paper.language)} />
+      </dl>
+
+      <div className="my-4 h-px bg-slate-100 dark:bg-slate-800" />
+
+      <dl className="space-y-2.5 text-sm">
+        <MetadataRow label="FWCI" value={paper.fwci !== undefined ? paper.fwci.toFixed(2) : "N/A"} />
+        <MetadataRow label="Cited by" value={paper.citationCount?.toLocaleString()} />
+        <MetadataRow
+          label="Related to"
+          value={paper.relatedWorksCount !== undefined ? paper.relatedWorksCount.toLocaleString() : "N/A"}
+        />
+        <MetadataRow
+          label="AI value"
+          value={paper.aiScore?.finalScore !== undefined ? paper.aiScore.finalScore.toFixed(2) : undefined}
+        />
+        <MetadataRow
+          label="Data quality"
+          value={paper.dataQualityScore !== undefined ? `${Math.round(paper.dataQualityScore * 100)}%` : undefined}
+        />
+      </dl>
+
+      <div className="my-4 h-px bg-slate-100 dark:bg-slate-800" />
+
+      {hasTaxonomy ? (
+        <dl className="space-y-2.5 text-sm">
+          {taxonomyRows.map((row) => (
+            <MetadataRow key={row.label} label={row.label} value={row.value} href={row.href} />
+          ))}
+        </dl>
+      ) : (
+        <div className="space-y-2.5 text-sm">
+          {fallbackTopic?.topicName && (
+            <MetadataRow label="Topic" value={fallbackTopic.topicName} />
+          )}
+          <p className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-zinc-900/30 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Subfield, field, and domain are not available for this paper yet. Re-sync OpenAlex to backfill taxonomy hierarchy.
+          </p>
+        </div>
+      )}
+
+      <div className="my-4 h-px bg-slate-100 dark:bg-slate-800" />
+
+      <dl className="space-y-2.5 text-sm">
+        <MetadataRow label="Open Access" value={paper.openAccessStatus ?? "unknown"} capitalize />
+      </dl>
+    </aside>
+  );
+}
+
+function MetadataRow({
+  label,
+  value,
+  href,
+  capitalize,
+}: {
+  label: string;
+  value?: string;
+  href?: string;
+  capitalize?: boolean;
+}) {
+  if (!value) return null;
+  return (
+    <div className="grid grid-cols-[108px_1fr] gap-2">
+      <dt className="font-bold text-slate-900 dark:text-slate-100">{label}:</dt>
+      <dd className={capitalize ? "capitalize" : undefined}>
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+          >
+            {value}
+          </a>
+        ) : (
+          <span className="font-medium text-slate-700 dark:text-slate-300">{value}</span>
+        )}
+      </dd>
+    </div>
+  );
+}
+
+function formatLanguage(language?: string): string | undefined {
+  if (!language) return undefined;
+  if (language.toLowerCase() === "en") return "English";
+  if (language.toLowerCase() === "vi") return "Vietnamese";
+  return language;
+}
+
+function getBestTaxonomyTopic(topics: PaperTopic[]): PaperTopic | undefined {
+  return topics.find((topic) => topic.isPrimary && hasTaxonomy(topic)) ?? topics.find(hasTaxonomy);
+}
+
+function hasTaxonomy(topic: PaperTopic): boolean {
+  return Boolean(topic.topicName && (topic.domainName || topic.fieldName || topic.subfieldName));
+}
+
+function buildTaxonomyRows(topic: PaperTopic) {
+  const rows: Array<{ label: string; value?: string; href?: string }> = [
+    {
+      label: "Topic",
+      value: topic.topicName,
+      href: openAlexTaxonomyUrl("topics", topic.openalexTopicId),
+    },
+    {
+      label: "Subfield",
+      value: topic.subfieldName,
+      href: openAlexTaxonomyUrl("subfields", topic.subfieldId),
+    },
+    {
+      label: "Field",
+      value: topic.fieldName,
+      href: openAlexTaxonomyUrl("fields", topic.fieldId),
+    },
+    {
+      label: "Domain",
+      value: topic.domainName,
+      href: openAlexTaxonomyUrl("domains", topic.domainId),
+    },
+  ];
+  return rows.filter((row): row is { label: string; value: string; href?: string } => Boolean(row.value));
+}
+
+function openAlexTaxonomyUrl(kind: "topics" | "subfields" | "fields" | "domains", id?: string): string | undefined {
+  if (!id) return undefined;
+  return `https://openalex.org/${kind}/${id.toLowerCase()}`;
 }
 
 function SparklesIcon() {

@@ -30,6 +30,7 @@ describe("normalizeOpenAlexWork", () => {
     publication_date: "2024-03-01",
     type: "article",
     cited_by_count: 87,
+    fwci: 2.35,
     abstract_inverted_index: { This: [0], paper: [1] },
     authorships: [
       {
@@ -55,6 +56,8 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.publicationYear).toBe(2024);
     expect(n.paperKind).toBe("article");
     expect(n.citationCount).toBe(87);
+    expect(n.fwci).toBe(2.35);
+    expect(n.relatedWorksCount).toBe(0);
     expect(n.openAccessStatus).toBe("gold");
     expect(n.openAccessUrl).toBe("https://oa.example/paper.pdf");
     expect(n.journalName).toBe("Nature Education");
@@ -99,8 +102,57 @@ describe("normalizeOpenAlexWork", () => {
     const n = normalizeOpenAlexWork({
       ...base,
       referenced_works: ["https://openalex.org/W111", "https://openalex.org/W222"],
+      related_works: ["https://openalex.org/W333", "https://openalex.org/W444"],
     });
     expect(n.referencedWorks).toEqual(["W111", "W222"]);
+    expect(n.relatedWorks).toEqual(["W333", "W444"]);
+    expect(n.relatedWorksCount).toBe(2);
+  });
+
+  it("preserves OpenAlex topic hierarchy and primary topic metadata", () => {
+    const n = normalizeOpenAlexWork({
+      ...base,
+      primary_topic: {
+        id: "https://openalex.org/T12547",
+        display_name: "Pharmaceutical studies and practices",
+        score: 0.98,
+        subfield: {
+          id: "https://openalex.org/subfields/2735",
+          display_name: "Pediatrics, Perinatology and Child Health",
+        },
+        field: { id: "https://openalex.org/fields/27", display_name: "Medicine" },
+        domain: { id: "https://openalex.org/domains/4", display_name: "Health Sciences" },
+      },
+      topics: [
+        {
+          id: "https://openalex.org/T12547",
+          display_name: "Pharmaceutical studies and practices",
+          score: 0.96,
+          subfield: {
+            id: "https://openalex.org/subfields/2735",
+            display_name: "Pediatrics, Perinatology and Child Health",
+          },
+          field: { id: "https://openalex.org/fields/27", display_name: "Medicine" },
+          domain: { id: "https://openalex.org/domains/4", display_name: "Health Sciences" },
+        },
+      ],
+    });
+
+    expect(n.topics).toEqual([
+      {
+        openalexTopicId: "T12547",
+        topicName: "Pharmaceutical studies and practices",
+        detectedBy: "openalex",
+        confidence: 0.98,
+        isPrimary: true,
+        subfieldId: "2735",
+        subfieldName: "Pediatrics, Perinatology and Child Health",
+        fieldId: "27",
+        fieldName: "Medicine",
+        domainId: "4",
+        domainName: "Health Sciences",
+      },
+    ]);
   });
 
   it("defaults referenced_works to [] when missing", () => {

@@ -35,4 +35,30 @@ describe("getQualityTier", () => {
     expect(q.qualityTier).toBeGreaterThanOrEqual(3);
     expect(q.uploadCreditReward).toBe(QUALITY_TIERS[q.qualityTier]!.uploadCreditReward);
   });
+
+  it("awards stronger relevance when OpenAlex taxonomy is complete", () => {
+    const basic = calculatePaperQuality({
+      abstractText: "This paper presents a method and experiment with results ".repeat(4),
+      keywords: [{ keywordName: "medicine" }],
+      topics: [{ topicName: "Pharmaceutical studies and practices" }],
+    });
+
+    const taxonomyRich = calculatePaperQuality({
+      abstractText: "This paper presents a method and experiment with results ".repeat(4),
+      keywords: [{ keywordName: "medicine" }],
+      topics: [
+        {
+          openalexTopicId: "T12547",
+          topicName: "Pharmaceutical studies and practices",
+          isPrimary: true,
+          subfieldName: "Pediatrics, Perinatology and Child Health",
+          fieldName: "Medicine",
+          domainName: "Health Sciences",
+        },
+      ],
+    });
+
+    expect(basic.relevanceScore).toBe(11);
+    expect(taxonomyRich.relevanceScore).toBe(15);
+  });
 });

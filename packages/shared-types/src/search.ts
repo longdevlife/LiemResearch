@@ -17,6 +17,7 @@ export type SearchResultMode = "semantic" | "semantic+rerank";
 export interface ScoredPaper extends Paper {
   score: number;
   rerankScore?: number;
+  taxonomyBoostScore?: number;
 }
 
 export interface SearchFilters {

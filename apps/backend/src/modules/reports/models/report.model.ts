@@ -32,6 +32,8 @@ const reportSchema = new Schema(
     /** Markdown body — absent until status becomes "ready". */
     markdown: { type: String },
     groundingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
+    /** User-pinned evidence papers; worker places these before retrieved evidence. */
+    selectedPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     researchGaps: { type: [researchGapSchema], default: [] },
     modelVersion: { type: String, default: "" },
     promptVersion: { type: String, default: "" },

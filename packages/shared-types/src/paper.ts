@@ -28,9 +28,17 @@ export interface PaperKeyword {
 
 export interface PaperTopic {
   topicId?: string;
+  openalexTopicId?: string;
   topicName: string;
   detectedBy?: DetectedBy;
   confidence?: number; // 0..1
+  isPrimary?: boolean;
+  subfieldId?: string;
+  subfieldName?: string;
+  fieldId?: string;
+  fieldName?: string;
+  domainId?: string;
+  domainName?: string;
 }
 
 /**
@@ -60,6 +68,8 @@ export interface Paper {
   openAccessUrl?: string;
   licenseName?: string;
   citationCount: number;
+  fwci?: number;
+  relatedWorksCount?: number;
   keywords: PaperKeyword[];
   topics: PaperTopic[];
   primaryProvider: DataSource;

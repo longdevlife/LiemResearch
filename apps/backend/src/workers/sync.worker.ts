@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { apiSyncQueue, makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { runSync, type RunSyncJob } from "../modules/api-sync/sync.service.js";
 
 /**
@@ -14,6 +15,7 @@ import { runSync, type RunSyncJob } from "../modules/api-sync/sync.service.js";
  */
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({ workerName: "worker:sync", queueName: QUEUE_NAMES.apiSync });
 
   const worker = new Worker(
     QUEUE_NAMES.apiSync,
@@ -43,6 +45,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);

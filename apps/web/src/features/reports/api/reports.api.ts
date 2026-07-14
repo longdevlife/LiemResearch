@@ -1,6 +1,12 @@
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants/api";
-import type { AnalyticalReport, ReportListItem, CreateReportRequest } from "@trend/shared-types";
+import type {
+  AnalyticalReport,
+  CreateReportRequest,
+  PreviewReportEvidenceRequest,
+  PreviewReportEvidenceResponse,
+  ReportListItem,
+} from "@trend/shared-types";
 
 export const reportsApi = {
   async list(params?: { projectId?: string }): Promise<ReportListItem[]> {
@@ -15,6 +21,11 @@ export const reportsApi = {
 
   async create(payload: CreateReportRequest): Promise<void> {
     await api.post(API_ROUTES.reports.create, payload);
+  },
+
+  async previewEvidence(payload: PreviewReportEvidenceRequest): Promise<PreviewReportEvidenceResponse> {
+    const res = await api.post(API_ROUTES.reports.evidencePreview, payload);
+    return res.data.data;
   },
 
   async delete(id: string): Promise<void> {

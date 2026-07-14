@@ -30,6 +30,7 @@ export const API_ROUTES = {
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
     paperCount: (paperId: string) => `/reports/paper/${paperId}/count`,
+    evidencePreview: "/reports/evidence-preview",
   },
   bookmarks: {
     list: "/bookmarks",
@@ -57,6 +58,8 @@ export const API_ROUTES = {
     userRole: (id: string) => `/admin/users/${id}/role`,
     userStatus: (id: string) => `/admin/users/${id}/status`,
     stats: "/admin/stats",
+    pipelineStatus: "/admin/pipeline/status",
+    evaluationSummary: "/admin/evaluation/summary",
   },
   gaps: {
     analyze: "/gaps/analyze",

@@ -27,6 +27,10 @@ export interface TrendFacets {
   providers: TrendFacetBucket[];
   topSources: TrendFacetBucket[];
   citationBands: TrendFacetBucket[];
+  domains: TrendFacetBucket[];
+  fields: TrendFacetBucket[];
+  subfields: TrendFacetBucket[];
+  topics: TrendFacetBucket[];
 }
 
 /**

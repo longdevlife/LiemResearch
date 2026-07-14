@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { embeddingQueue, makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { runEmbedding, type RunEmbeddingJob } from "../modules/embeddings/embedding.service.js";
 
 /**
@@ -14,6 +15,7 @@ import { runEmbedding, type RunEmbeddingJob } from "../modules/embeddings/embedd
  */
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({ workerName: "worker:embedding", queueName: QUEUE_NAMES.embedding });
 
   const worker = new Worker(
     QUEUE_NAMES.embedding,
@@ -37,6 +39,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "embedding worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);
