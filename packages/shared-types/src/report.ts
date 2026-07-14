@@ -17,6 +17,39 @@ export interface CreateReportRequest {
   language?: ReportLanguage;
   deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode (Pro + tools, slowest)
   fast?: boolean; // Fast mode — use the Flash model (faster, lighter). Ignored if deepAnalysis.
+  /** Optional fixed evidence set chosen by the user before generation. */
+  selectedPaperIds?: string[];
+}
+
+export interface PreviewReportEvidenceRequest {
+  query: string;
+  topic?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  language?: ReportLanguage;
+  selectedPaperIds?: string[];
+  /** Defaults true. Set false when editing an already-reviewed pack so removed papers stay removed. */
+  fillWithRetrieved?: boolean;
+}
+
+export interface ReportEvidencePaper {
+  id: string;
+  title: string;
+  abstractText?: string;
+  publicationYear?: number;
+  journalName?: string;
+  citationCount?: number;
+  authorNames: string[];
+  score: number;
+  source: "selected" | "retrieved";
+}
+
+export interface PreviewReportEvidenceResponse {
+  papers: ReportEvidencePaper[];
+  retrievedPaperIds: string[];
+  selectedPaperIds: string[];
+  maxEvidencePapers: number;
+  warnings: string[];
 }
 
 export interface GapProbe {
@@ -70,6 +103,7 @@ export interface AnalyticalReport {
   promptVersion: string;
   deepAnalysis: boolean; // NEW — Phase D
   fast?: boolean; // Fast mode — generated with the Flash model
+  selectedPaperIds?: string[];
   errorMessage?: string;
   createdAt: ISODateString;
   completedAt?: ISODateString;

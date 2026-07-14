@@ -19,7 +19,8 @@ import {
   AlertTriangle, 
   Info, 
   Database,
-  HelpCircle
+  Search,
+  ExternalLink
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { 
@@ -30,8 +31,8 @@ import {
   useReportEvidencePreview 
 } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
-import type { ReportLanguage } from "@trend/shared-types";
-import type { EvidencePaper, EvidencePreviewResponse } from "@/features/reports/api/reports.api";
+import type { PreviewReportEvidenceResponse, ReportLanguage } from "@trend/shared-types";
+import { searchApi, type ScoredPaper } from "@/features/search";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
@@ -56,14 +57,19 @@ export function ReportsListPage() {
   
   // New States for Evidence Review Step
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
-  const [previewData, setPreviewData] = useState<EvidencePreviewResponse | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewReportEvidenceResponse | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [collapsedAbstracts, setCollapsedAbstracts] = useState<Record<string, boolean>>({});
-  const [manualPaperId, setManualPaperId] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [paperPickerOpen, setPaperPickerOpen] = useState(false);
+  const [paperSearchQuery, setPaperSearchQuery] = useState("");
+  const [paperSearchResults, setPaperSearchResults] = useState<ScoredPaper[]>([]);
+  const [paperSearchLoading, setPaperSearchLoading] = useState(false);
+  const [paperSearchError, setPaperSearchError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
 
   React.useEffect(() => {
     const isCreate = searchParams.get("create") === "true" || searchParams.has("topic");
@@ -180,22 +186,62 @@ export function ReportsListPage() {
     toast.info("Paper removed from evidence pack.");
   };
 
-  // Step 5: User can manually add paper by ID
-  const handleAddPaperById = async () => {
-    const id = manualPaperId.trim();
-    if (!id) return;
+  const handleOpenPaperPicker = () => {
+    setPaperPickerOpen(true);
+    setPaperSearchError(null);
+    if (!paperSearchQuery.trim()) {
+      setPaperSearchQuery(topic.trim() || query.trim());
+    }
+  };
 
-    if (selectedPaperIds.includes(id)) {
-      toast.warning("This paper is already in the evidence pack.");
+  const handleSearchPapers = async () => {
+    const searchText = paperSearchQuery.trim();
+    if (searchText.length < 2) {
+      setPaperSearchError("Enter at least 2 characters to search papers.");
       return;
     }
 
     const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
     const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
-    const newSelectedIds = [...selectedPaperIds, id];
+
+    setPaperSearchLoading(true);
+    setPaperSearchError(null);
+    try {
+      const response = await searchApi.semantic({
+        q: searchText,
+        page: 1,
+        pageSize: 8,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        rerank: false,
+      });
+      setPaperSearchResults(response.papers);
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.error?.message ?? "Could not search papers.";
+      setPaperSearchError(errMsg);
+    } finally {
+      setPaperSearchLoading(false);
+    }
+  };
+
+  // Step 5: User can add papers from corpus search.
+  const handleAddPaperFromSearch = async (paperId: string) => {
+    if (!previewData) return;
+    if (currentEvidencePaperIds.includes(paperId)) {
+      toast.warning("This paper is already in the evidence pack.");
+      return;
+    }
+    if (currentEvidencePaperIds.length >= previewData.maxEvidencePapers) {
+      toast.warning(`Evidence pack is full. Remove a paper before adding another one.`);
+      return;
+    }
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+    const newSelectedIds = [...currentEvidencePaperIds, paperId];
 
     try {
-      toast.loading("Refetching evidence with new paper...", { id: "add-paper" });
+      toast.loading("Adding paper to evidence pack...", { id: "add-paper" });
       const response = await previewEvidence.mutateAsync({
         query: query.trim(),
         topic: topic.trim() || undefined,
@@ -203,16 +249,16 @@ export function ReportsListPage() {
         yearFrom: fromYear,
         yearTo: toYear,
         selectedPaperIds: newSelectedIds,
+        fillWithRetrieved: false,
       });
 
       setPreviewData(response);
       setSelectedPaperIds(response.selectedPaperIds);
-      setManualPaperId("");
       toast.dismiss("add-paper");
-      toast.success("Custom paper added to evidence pack successfully!");
+      toast.success("Paper added to evidence pack.");
     } catch (error: any) {
       toast.dismiss("add-paper");
-      const errMsg = error?.response?.data?.error?.message ?? "Failed to resolve paper ID.";
+      const errMsg = error?.response?.data?.error?.message ?? "Failed to add paper.";
       toast.error(errMsg);
     }
   };
@@ -236,7 +282,11 @@ export function ReportsListPage() {
         fast,
         yearFrom: fromYear,
         yearTo: toYear,
-        selectedPaperIds: forceNoPreview ? undefined : selectedPaperIds,
+        selectedPaperIds: forceNoPreview
+          ? undefined
+          : currentEvidencePaperIds.length > 0
+            ? currentEvidencePaperIds
+            : undefined,
       });
 
       setTopic("");
@@ -461,7 +511,7 @@ export function ReportsListPage() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-slate-50 dark:bg-slate-900/60 border text-xs">
-                {selectedPaperIds.length} / {previewData.maxEvidencePapers} Papers
+                {previewData.papers.length} / {previewData.maxEvidencePapers} Papers
               </Badge>
               <Badge variant="outline" className="px-3 py-1 font-semibold rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900 text-xs uppercase">
                 Lang: {previewData.papers.length > 0 ? language : "auto"}
@@ -470,9 +520,9 @@ export function ReportsListPage() {
           </div>
 
           {/* Warnings Banner */}
-          {(selectedPaperIds.length < 3 || previewData.warnings.length > 0) && (
+          {(previewData.papers.length < 3 || previewData.warnings.length > 0) && (
             <div className="space-y-2">
-              {selectedPaperIds.length < 3 && (
+              {previewData.papers.length < 3 && (
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-xs flex gap-2">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   <span><strong>Warning:</strong> Fewer than 3 evidence papers selected. AI analysis might be limited or insufficient.</span>
@@ -487,27 +537,22 @@ export function ReportsListPage() {
             </div>
           )}
 
-          {/* Add custom paper by ID Input */}
-          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 items-end sm:items-center justify-between">
-            <div className="flex-1 w-full space-y-1.5">
-              <span className="text-xs font-semibold text-slate-500 block">Pin Custom Paper (Add by ID)</span>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={manualPaperId}
-                  onChange={(e) => setManualPaperId(e.target.value)}
-                  placeholder="Paste 24-character hexadecimal MongoDB ObjectId here"
-                  className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <Button
-                  onClick={handleAddPaperById}
-                  disabled={!manualPaperId.trim() || previewEvidence.isPending}
-                  className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-black text-xs font-bold px-4 h-9 rounded-lg shadow-sm"
-                >
-                  Add Paper
-                </Button>
-              </div>
+          {/* Add papers from corpus search */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 block">Need different evidence?</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Search the active corpus by title, keyword, topic, or DOI, then add papers into this pack.
+              </p>
             </div>
+            <Button
+              onClick={handleOpenPaperPicker}
+              disabled={previewEvidence.isPending || previewData.papers.length >= previewData.maxEvidencePapers}
+              className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-black text-xs font-bold px-4 h-9 rounded-lg shadow-sm"
+            >
+              <Search className="h-3.5 w-3.5 mr-2" />
+              Add Papers
+            </Button>
           </div>
 
           {/* Guidelines info text */}
@@ -605,13 +650,13 @@ export function ReportsListPage() {
           {/* Actions footer for Preview Box */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
             <span className="text-xs text-slate-500 dark:text-slate-400 italic">
-              {selectedPaperIds.length === 0 
+              {previewData.papers.length === 0
                 ? "Add or preview papers to enable generation." 
                 : "Confirm you have selected all required papers for the review."}
             </span>
             <Button
               onClick={() => handleGenerate(false)}
-              disabled={createReport.isPending || selectedPaperIds.length === 0}
+              disabled={createReport.isPending || previewData.papers.length === 0}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-6 rounded-xl shadow-sm text-sm"
             >
               {createReport.isPending ? (
@@ -709,6 +754,120 @@ export function ReportsListPage() {
           ))}
         </div>
       )}
+
+      {/* Paper Picker Modal */}
+      <Dialog open={paperPickerOpen} onOpenChange={setPaperPickerOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-blue-600" />
+              Add Papers To Evidence Pack
+            </DialogTitle>
+            <DialogDescription>
+              Search the active corpus and add papers into the report evidence pack. The report will cite only the final pack.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <input
+              value={paperSearchQuery}
+              onChange={(e) => setPaperSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSearchPapers();
+              }}
+              placeholder="Search title, keyword, topic, DOI..."
+              className="flex-1 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <Button
+              onClick={handleSearchPapers}
+              disabled={paperSearchLoading || paperSearchQuery.trim().length < 2}
+              className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              {paperSearchLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+              Search
+            </Button>
+          </div>
+
+          {paperSearchError && (
+            <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-500/5 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+              {paperSearchError}
+            </div>
+          )}
+
+          <div className="min-h-[260px] overflow-y-auto pr-1">
+            {paperSearchLoading ? (
+              <div className="space-y-3 py-4">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+              </div>
+            ) : paperSearchResults.length === 0 ? (
+              <div className="flex h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                <Search className="h-8 w-8 text-slate-300 mb-3" />
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Search papers to add evidence</p>
+                <p className="text-xs text-slate-500 mt-1">Results will show title, year, citations, and semantic relevance.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {paperSearchResults.map((paper) => {
+                  const alreadyAdded = currentEvidencePaperIds.includes(paper.id);
+                  const packFull = previewData ? currentEvidencePaperIds.length >= previewData.maxEvidencePapers : false;
+                  const authors = paper.authors?.map((a) => a.displayName).filter(Boolean) ?? [];
+                  const abstract =
+                    paper.abstractText && paper.abstractText.length > 220
+                      ? `${paper.abstractText.slice(0, 220)}...`
+                      : paper.abstractText;
+
+                  return (
+                    <div key={paper.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
+                            Score {paper.score.toFixed(3)}
+                          </Badge>
+                          <span className="text-xs text-slate-500">{paper.publicationYear}</span>
+                          <span className="text-xs text-slate-500">{paper.citationCount ?? 0} citations</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <h3 className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{paper.title}</h3>
+                          <Link
+                            to={`/papers/${paper.id}`}
+                            target="_blank"
+                            className="mt-0.5 text-slate-400 hover:text-blue-600"
+                            title="Open paper detail"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                        {(authors.length > 0 || paper.journalName) && (
+                          <p className="text-xs text-slate-500">
+                            {authors.slice(0, 3).join(", ")}
+                            {authors.length > 3 ? " et al." : ""}
+                            {authors.length > 0 && paper.journalName ? " · " : ""}
+                            {paper.journalName}
+                          </p>
+                        )}
+                        {abstract && (
+                          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{abstract}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={alreadyAdded ? "outline" : "default"}
+                        disabled={alreadyAdded || packFull || previewEvidence.isPending}
+                        onClick={() => handleAddPaperFromSearch(paper.id)}
+                        className="rounded-lg font-bold"
+                      >
+                        {alreadyAdded ? "Added" : packFull ? "Pack Full" : "Add"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

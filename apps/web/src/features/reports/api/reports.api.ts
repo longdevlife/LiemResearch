@@ -1,39 +1,12 @@
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants/api";
-import type { AnalyticalReport, ReportListItem, CreateReportRequest } from "@trend/shared-types";
-
-export interface EvidencePaper {
-  id: string;
-  title: string;
-  abstractText?: string;
-  publicationYear?: number;
-  journalName?: string;
-  citationCount?: number;
-  authorNames: string[];
-  score: number;
-  source: "retrieved" | "selected";
-}
-
-export interface EvidencePreviewRequest {
-  query: string;
-  topic?: string;
-  yearFrom?: number;
-  yearTo?: number;
-  language?: "auto" | "en" | "vi";
-  selectedPaperIds?: string[];
-}
-
-export interface EvidencePreviewResponse {
-  papers: EvidencePaper[];
-  retrievedPaperIds: string[];
-  selectedPaperIds: string[];
-  maxEvidencePapers: number;
-  warnings: string[];
-}
-
-export interface WebCreateReportRequest extends Omit<CreateReportRequest, "selectedPaperIds"> {
-  selectedPaperIds?: string[];
-}
+import type {
+  AnalyticalReport,
+  CreateReportRequest,
+  PreviewReportEvidenceRequest,
+  PreviewReportEvidenceResponse,
+  ReportListItem,
+} from "@trend/shared-types";
 
 export const reportsApi = {
   async list(params?: { projectId?: string }): Promise<ReportListItem[]> {
@@ -46,11 +19,11 @@ export const reportsApi = {
     return res.data.data;
   },
 
-  async create(payload: WebCreateReportRequest): Promise<void> {
+  async create(payload: CreateReportRequest): Promise<void> {
     await api.post(API_ROUTES.reports.create, payload);
   },
 
-  async previewEvidence(payload: EvidencePreviewRequest): Promise<EvidencePreviewResponse> {
+  async previewEvidence(payload: PreviewReportEvidenceRequest): Promise<PreviewReportEvidenceResponse> {
     const res = await api.post(API_ROUTES.reports.evidencePreview, payload);
     return res.data.data;
   },

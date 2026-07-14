@@ -13,9 +13,9 @@ import { assertCitationsInRange as assertGroundedCitationsInRange } from "../llm
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
 import { notificationService } from "../notifications/notification.service.js";
-import { retrieve } from "../retrieval/retriever.js";
 import { ReportModel, type ReportHydrated } from "./models/report.model.js";
 import { RagQueryModel } from "./models/rag-query.model.js";
+import { collectReportEvidence } from "./report.evidence.js";
 import {
   buildReportPrompt,
   PROMPT_VERSION,
@@ -62,12 +62,17 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   const queryVector = await getEmbeddingProvider().embed(report.query);
   const embeddingMs = Date.now() - t0;
 
-  // ② Retrieve top-K evidence via vector search.
+  // ② Build the fixed evidence pack: user-selected papers first, retrieval fills the rest.
   const t1 = Date.now();
-  const papers = await retrieveEvidence(queryVector, {
+  const selectedPaperIds = (report.selectedPaperIds ?? []).map((id) => String(id));
+  const evidence = await collectReportEvidence({
+    queryVector,
+    selectedPaperIds,
     yearFrom: report.yearFrom ?? undefined,
     yearTo: report.yearTo ?? undefined,
+    fillWithRetrieved: selectedPaperIds.length === 0,
   });
+  const papers = evidence.papers;
   const searchMs = Date.now() - t1;
 
   // ③ No evidence → permanent failure (retrying won't grow the corpus).
@@ -108,6 +113,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     yearFrom: report.yearFrom ?? null,
     yearTo: report.yearTo ?? null,
     deepAnalysis: Boolean(report.deepAnalysis),
+    selectedPaperIds: evidence.selectedPaperIds,
     retrievedPaperIds: papers.map((p) => p.id),
   };
   const inputHash = report.deepAnalysis ? `${DEEP_ANALYSIS_SYSTEM_PROMPT}\n${prompt}` : `${REPORT_SYSTEM_PROMPT}\n${prompt}`;
@@ -287,17 +293,6 @@ export async function markReportFailed(reportId: string, message: string): Promi
     { _id: reportId, status: { $ne: "ready" } },
     { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
   );
-}
-
-async function retrieveEvidence(queryVector: number[], filters: { yearFrom?: number; yearTo?: number }): Promise<EvidencePaper[]> {
-  return retrieve({
-    queryVector,
-    topK: env.REPORT_TOP_K,
-    poolSize: env.REPORT_TOP_K,
-    numCandidates: 200,
-    filters,
-    projection: "report",
-  });
 }
 
 async function auditRagRun(

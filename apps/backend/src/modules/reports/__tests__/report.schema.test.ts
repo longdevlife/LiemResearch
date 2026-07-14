@@ -21,9 +21,11 @@ describe("report DTO schemas", () => {
       yearFrom: "2021",
       yearTo: "2025",
       selectedPaperIds: [paperId],
+      fillWithRetrieved: false,
     });
 
     expect(parsed.yearFrom).toBe(2021);
     expect(parsed.selectedPaperIds).toEqual([paperId]);
+    expect(parsed.fillWithRetrieved).toBe(false);
   });
 });
