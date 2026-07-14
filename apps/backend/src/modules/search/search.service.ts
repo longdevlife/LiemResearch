@@ -1,7 +1,9 @@
 import type { ScoredPaper } from "@trend/shared-types";
 import { env } from "../../config/env.js";
+import { AppError } from "../../common/exceptions/app-error.js";
 import { cache, hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
+import { creditService } from "../credits/credit.service.js";
 import { generateJSON } from "../llm/gemini.client.js";
 import { cachedGenerate } from "../llm/llm.run.js";
 import { retrieveScored } from "../retrieval/retriever.js";
@@ -31,6 +33,7 @@ export interface SemanticSearchParams {
   sort?: SearchSortKey;
   /** Opt-in LLM re-ranking of the top candidate pool. */
   rerank?: boolean;
+  userId?: string;
 }
 
 export interface SemanticSearchResult {
@@ -118,6 +121,27 @@ async function rerankedSearch(args: {
   if (await cache.get<Record<string, never>>(failKey)) {
     return paginatePool(pool, page, pageSize, false);
   }
+
+  if (!params.userId) {
+    throw AppError.unauthorized("Authentication is required for AI re-ranking");
+  }
+
+  // Charge 5 credits for re-ranking
+  const tx = await creditService.chargeCreditsChecked({
+    userId: params.userId,
+    action: "search_rerank",
+    amount: 5,
+    targetKind: "search",
+    idempotencyKey: `rerank:${hashKey({
+      query: q.trim().toLowerCase(),
+      filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+      candidateIds: candidates.map((c) => c.id).sort(),
+    })}`,
+  });
+
+  const txId = tx?._id;
+  let cacheHit = false;
+
   const prompt = buildRerankPrompt(q, candidates);
   let scoreMap: Record<string, number>;
   try {
@@ -131,6 +155,9 @@ async function rerankedSearch(args: {
       },
       model,
       inputHash: prompt,
+      onCacheHit: () => {
+        cacheHit = true;
+      },
       validate: (candidate) => {
         if (Object.keys(candidate).length === 0) {
           throw new Error("Rerank returned no valid scores");
@@ -150,12 +177,25 @@ async function rerankedSearch(args: {
       },
     });
   } catch (err) {
+    if (txId) {
+      await creditService.refundCreditsOnce({
+        transactionId: txId.toString(),
+        reason: "Rerank LLM generation failed",
+      });
+    }
     // Re-rank is an enhancement, not a hard dependency — degrade gracefully.
     // Negative-cache the failure briefly so an identical (deterministically
     // failing) query doesn't re-burn Gemini quota on every request.
     logger.warn({ err }, "rerank LLM call failed; falling back to vector order");
     await cache.set(failKey, {}, RERANK_FAIL_TTL_SECONDS);
     return paginatePool(pool, page, pageSize, false);
+  }
+
+  if (cacheHit && txId) {
+    await creditService.refundCreditsOnce({
+      transactionId: txId.toString(),
+      reason: "Rerank cache hit",
+    });
   }
 
   // Attach LLM scores. A paper the LLM OMITTED is NOT "scored 0" (= irrelevant)
