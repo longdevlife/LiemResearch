@@ -363,13 +363,23 @@ export function ReportsListPage() {
             </p>
           </div>
           <div className="grid min-w-[260px] grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-bold dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="rounded-lg bg-white px-3 py-2 text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300">
+            <div className={cn(
+              "rounded-lg px-3 py-2 transition-colors",
+              showPreview && previewData
+                ? "text-slate-500 dark:text-slate-400"
+                : "bg-white text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300"
+            )}>
               Step 1
               <span className="block text-[10px] font-semibold text-slate-500">Setup</span>
             </div>
-            <div className="px-3 py-2 text-slate-500 dark:text-slate-400">
+            <div className={cn(
+              "rounded-lg px-3 py-2 transition-colors",
+              showPreview && previewData
+                ? "bg-white text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300"
+                : "text-slate-500 dark:text-slate-400"
+            )}>
               Step 2
-              <span className="block text-[10px] font-semibold">Evidence</span>
+              <span className="block text-[10px] font-semibold text-slate-500">Evidence</span>
             </div>
           </div>
         </div>
@@ -607,98 +617,103 @@ export function ReportsListPage() {
               <div>
                 <p className="font-semibold text-slate-900 dark:text-white">Next: review the evidence pack</p>
                 <p className="mt-1 max-w-xl text-xs leading-relaxed">
-                  We retrieve candidate papers first. You can remove weak papers or add your own before the AI writes.
+                  {showPreview && previewData
+                    ? "Evidence is loaded below. Refresh if you changed the setup, or generate once the pack looks right."
+                    : "We retrieve candidate papers first. You can remove weak papers or add your own before the AI writes."}
                 </p>
               </div>
             </div>
-            
+
             <Button 
               onClick={handlePreviewEvidence} 
               disabled={!canPreviewEvidence}
               className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-900/40"
             >
               {previewEvidence.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              Review Evidence Pack
+              {showPreview && previewData ? "Refresh Evidence Pack" : "Review Evidence Pack"}
             </Button>
           </div>
-        </div>
-      </div>
 
-      {/* Loading Skeleton during preview fetch */}
-      {previewEvidence.isPending && (
-        <div className="space-y-6 mb-12 p-6 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/20">
-          <div className="flex items-center justify-between border-b pb-4">
-            <Skeleton className="h-6 w-48 rounded" />
-            <Skeleton className="h-6 w-32 rounded-full" />
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-          </div>
-        </div>
-      )}
-
-      {/* Preview Error State with Fallback option */}
-      {previewError && (
-        <div className="mb-12 p-6 border border-red-200 dark:border-red-900/50 bg-red-500/5 rounded-2xl text-red-950 dark:text-red-200 space-y-4">
-          <div className="flex gap-2">
-            <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-            <div>
-              <span className="font-bold block">Failed to generate evidence preview</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 block">{previewError}</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-300 text-red-700 dark:border-red-900 hover:bg-red-500/10 rounded-lg text-xs"
-              onClick={handlePreviewEvidence}
-            >
-              Retry Preview
-            </Button>
-            <Button
-              size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
-              onClick={() => handleGenerate(true)}
-              disabled={createReport.isPending}
-            >
-              {createReport.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5" />}
-              Skip Preview & Generate Report
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Evidence Pack UI */}
-      {showPreview && previewData && (
-        <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm mb-12 space-y-6">
-          <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                <CheckCircle2 className="h-4 w-4" />
-                Step 2 of 2
+          {/* Loading Skeleton during preview fetch */}
+          {previewEvidence.isPending && (
+            <div className="space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-5 w-48 rounded" />
+                  <Skeleton className="mt-2 h-3 w-80 max-w-full rounded" />
+                </div>
+                <Skeleton className="h-7 w-32 rounded-full" />
               </div>
-              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                Review the evidence pack
-              </h2>
-              <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                This ordered set becomes the citation source for the report. Remove weak papers or add missing required studies before generation.
-              </p>
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="rounded-full border bg-slate-50 px-3 py-1 text-xs font-semibold dark:bg-slate-900/60">
-                {previewData.papers.length} / {previewData.maxEvidencePapers} Papers
-              </Badge>
-              <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-400">
-                {language === "auto" ? "Auto language" : language === "en" ? "English" : "Vietnamese"}
-              </Badge>
-              <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400">
-                {reasoningMode}
-              </Badge>
+          )}
+
+          {/* Preview Error State with Fallback option */}
+          {previewError && (
+            <div className="border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="space-y-4 rounded-2xl border border-red-200 bg-red-500/5 p-5 text-red-950 dark:border-red-900/50 dark:text-red-200">
+                <div className="flex gap-2">
+                  <XCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+                  <div>
+                    <span className="block font-bold">Failed to generate evidence preview</span>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{previewError}</span>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg border-red-300 text-xs text-red-700 hover:bg-red-500/10 dark:border-red-900"
+                    onClick={handlePreviewEvidence}
+                  >
+                    Retry Preview
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="rounded-lg bg-red-600 text-xs font-bold text-white hover:bg-red-700"
+                    onClick={() => handleGenerate(true)}
+                    disabled={createReport.isPending}
+                  >
+                    {createReport.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                    Skip Preview & Generate Report
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Evidence Pack UI */}
+          {showPreview && previewData && (
+            <div className="space-y-6 border-t border-slate-100 pt-7 dark:border-slate-800/60">
+              <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Step 2 of 2
+                  </div>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                    Review the evidence pack
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                    This ordered set becomes the citation source for the report. Remove weak papers or add missing required studies before generation.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-full border bg-slate-50 px-3 py-1 text-xs font-semibold dark:bg-slate-900/60">
+                    {previewData.papers.length} / {previewData.maxEvidencePapers} Papers
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-400">
+                    {language === "auto" ? "Auto language" : language === "en" ? "English" : "Vietnamese"}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400">
+                    {reasoningMode}
+                  </Badge>
+                </div>
+              </div>
 
           {/* Warnings Banner */}
           {(previewData.papers.length < 3 || previewData.warnings.length > 0) && (
@@ -849,8 +864,10 @@ export function ReportsListPage() {
               )}
             </Button>
           </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Reports Grid */}
       <div className="flex items-center justify-between mb-8">
