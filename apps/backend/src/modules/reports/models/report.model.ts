@@ -44,6 +44,10 @@ const reportSchema = new Schema(
     fast: { type: Boolean, default: false },
     errorMessage: { type: String },
     completedAt: { type: Date },
+    creditTransactionId: { type: Schema.Types.ObjectId, ref: "CreditTransaction" },
+    creditCost: { type: Number },
+    creditAction: { type: String },
+    creditRefundedAt: { type: Date },
   },
   { timestamps: true },
 );

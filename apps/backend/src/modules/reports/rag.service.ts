@@ -72,9 +72,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
   // ③ No evidence → permanent failure (retrying won't grow the corpus).
   if (papers.length === 0) {
-    report.status = "failed";
-    report.errorMessage = "Not enough corpus data for this query — try a broader question.";
-    await report.save();
+    await markReportFailed(job.reportId, "Not enough corpus data for this query — try a broader question.");
     await auditRagRun(report, { embeddingMs, searchMs, llmMs: 0, cacheHit: false, papers: [] });
     return;
   }
@@ -232,6 +230,17 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   report.errorMessage = undefined;
   await report.save();
 
+  // If it was a cache hit, refund the credits charged during create()
+  if (cacheHit && report.creditTransactionId) {
+    const { creditService } = await import("../credits/credit.service.js");
+    await creditService.refundCreditsOnce({
+      transactionId: report.creditTransactionId.toString(),
+      reason: "Report cache hit",
+    });
+    report.creditRefundedAt = new Date();
+    await report.save();
+  }
+
   // ⑦ Audit trail.
   await auditRagRun(report, { embeddingMs, searchMs, llmMs, cacheHit, papers });
 
@@ -283,10 +292,24 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
 /** Mark a report failed — called by the worker when retries are exhausted. */
 export async function markReportFailed(reportId: string, message: string): Promise<void> {
-  await ReportModel.updateOne(
-    { _id: reportId, status: { $ne: "ready" } },
-    { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
-  );
+  const report = await ReportModel.findOneAndUpdate(
+    { _id: reportId, status: { $ne: "ready" }, creditRefundedAt: { $exists: false } },
+    { $set: { status: "failed", errorMessage: message.slice(0, 500), creditRefundedAt: new Date() } },
+    { new: true }
+  ).lean();
+
+  if (report && report.creditTransactionId) {
+    const { creditService } = await import("../credits/credit.service.js");
+    await creditService.refundCreditsOnce({
+      transactionId: report.creditTransactionId.toString(),
+      reason: `Report generation failed: ${message.slice(0, 100)}`,
+    });
+  } else if (!report) {
+    await ReportModel.updateOne(
+      { _id: reportId, status: { $ne: "ready" } },
+      { $set: { status: "failed", errorMessage: message.slice(0, 500) } }
+    );
+  }
 }
 
 async function retrieveEvidence(queryVector: number[], filters: { yearFrom?: number; yearTo?: number }): Promise<EvidencePaper[]> {

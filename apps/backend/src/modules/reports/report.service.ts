@@ -1,4 +1,5 @@
 import type { AnalyticalReport, ReportListItem } from "@trend/shared-types";
+import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import { reportQueue } from "../../infrastructure/queue.js";
@@ -6,6 +7,8 @@ import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
 import { paperService } from "../papers/paper.service.js";
 import { ReportModel, type ReportDoc } from "./models/report.model.js";
 import type { CreateReportInput, ListReportsQuery } from "./dto/report.schema.js";
+import { creditService } from "../credits/credit.service.js";
+import { resolveReportCreditCost } from "../credits/credit-policy.js";
 
 /**
  * HTTP-facing report operations. The heavy RAG work lives in rag.service.ts
@@ -36,27 +39,62 @@ export const reportService = {
       );
     }
 
-    const report = await ReportModel.create({
-      userId,
-      query: input.query,
-      topic: input.topic,
-      projectId: input.projectId,
-      yearFrom: input.yearFrom,
-      yearTo: input.yearTo,
-      language: input.language ?? "auto",
-      deepAnalysis: input.deepAnalysis ?? false,
-      fast: input.fast ?? false,
-      status: "queued",
+    const reportId = new mongoose.Types.ObjectId();
+    const { action, cost } = resolveReportCreditCost({
+      fast: input.fast,
+      deepAnalysis: input.deepAnalysis,
     });
 
-    // jobId = reportId → BullMQ dedups accidental double-submits of the same doc.
-    await reportQueue.add(
-      "generate-report",
-      { reportId: String(report._id) },
-      { jobId: String(report._id) },
-    );
+    let txId: mongoose.Types.ObjectId | undefined;
+    if (cost > 0) {
+      const tx = await creditService.chargeCreditsChecked({
+        userId,
+        action,
+        amount: cost,
+        targetKind: "report",
+        targetId: reportId.toString(),
+        idempotencyKey: `report:${reportId}`,
+      });
+      if (tx) {
+        txId = tx._id;
+      }
+    }
 
-    return { id: String(report._id), status: "queued" };
+    try {
+      const report = await ReportModel.create({
+        _id: reportId,
+        userId,
+        query: input.query,
+        topic: input.topic,
+        projectId: input.projectId,
+        yearFrom: input.yearFrom,
+        yearTo: input.yearTo,
+        language: input.language ?? "auto",
+        deepAnalysis: input.deepAnalysis ?? false,
+        fast: input.fast ?? false,
+        status: "queued",
+        creditTransactionId: txId,
+        creditCost: cost,
+        creditAction: action,
+      });
+
+      // jobId = reportId → BullMQ dedups accidental double-submits of the same doc.
+      await reportQueue.add(
+        "generate-report",
+        { reportId: String(report._id) },
+        { jobId: String(report._id) },
+      );
+
+      return { id: String(report._id), status: "queued" };
+    } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Failed to create report or enqueue job",
+        });
+      }
+      throw err;
+    }
   },
 
   /** The user's own reports (or project reports), newest first — WITHOUT heavy fields. */
