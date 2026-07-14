@@ -1,6 +1,7 @@
 import type { Job } from "bullmq";
 import type { Queue } from "bullmq";
 import { apiSyncQueue, embeddingQueue, gapsQueue, notificationQueue, paperAnalysisQueue, reportQueue } from "../../infrastructure/queue.js";
+import { readWorkerHeartbeats, type WorkerHeartbeatRecord } from "../../infrastructure/worker-heartbeat.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ReportModel } from "../reports/models/report.model.js";
 import { GapAnalysisModel } from "../gaps/models/gap-analysis.model.js";
@@ -10,6 +11,8 @@ const STUCK_GENERATING_MS = 5 * 60_000;
 const STUCK_QUEUED_MS = 30 * 60_000;
 const STUCK_SYNC_RUNNING_MS = 2 * 60 * 60_000;
 const BACKLOG_THRESHOLD = 50;
+const HIGH_QUEUE_LATENCY_MS = 10 * 60_000;
+const WORKER_HEARTBEAT_STALE_MS = 2 * 60_000;
 
 export type PipelineQueueName =
   | "api-sync"
@@ -28,6 +31,7 @@ export interface PipelineQueueStatus {
   failed: number;
   completed: number;
   paused: number;
+  oldestPendingJobAgeSeconds: number | null;
   isBacklogged: boolean;
   hasFailures: boolean;
 }
@@ -38,6 +42,8 @@ export interface PipelineFailedJob {
   name: string;
   failedReason: string;
   attemptsMade: number;
+  maxAttempts: number;
+  isExhausted: boolean;
   timestamp?: string;
 }
 
@@ -55,6 +61,13 @@ export interface PipelineStatus {
   };
   queues: PipelineQueueStatus[];
   recentFailedJobs: PipelineFailedJob[];
+  workers: {
+    expected: number;
+    alive: number;
+    stale: number;
+    missing: number;
+    heartbeats: PipelineWorkerHeartbeat[];
+  };
   corpus: {
     totalPapers: number;
     activePapers: number;
@@ -91,13 +104,25 @@ export interface PipelineStatus {
   recommendations: PipelineRecommendation[];
 }
 
+export interface PipelineWorkerHeartbeat {
+  workerName: string;
+  queueName: PipelineQueueName;
+  status: "alive" | "stale" | "missing";
+  ageSeconds: number | null;
+  lastSeenAt: string | null;
+  startedAt: string | null;
+  hostname?: string;
+  pid?: number;
+}
+
 type QueueCountsLike = Partial<Record<"waiting" | "wait" | "active" | "delayed" | "failed" | "completed" | "paused", number>>;
 
 export interface QueueAdapter {
   name: PipelineQueueName;
   label: string;
   getJobCounts(): Promise<QueueCountsLike>;
-  getFailedJobs(): Promise<Array<Pick<Job, "id" | "name" | "failedReason" | "attemptsMade" | "timestamp">>>;
+  getOldestPendingJob(): Promise<null | Pick<Job, "id" | "timestamp">>;
+  getFailedJobs(): Promise<Array<Pick<Job, "id" | "name" | "failedReason" | "attemptsMade" | "timestamp" | "opts">>>;
 }
 
 interface CorpusRepository {
@@ -121,12 +146,17 @@ interface SyncRepository {
   hasFreshRunningRun(since: Date): Promise<boolean>;
 }
 
+interface HeartbeatRepository {
+  getHeartbeats(): Promise<WorkerHeartbeatRecord[]>;
+}
+
 export interface PipelineStatusDeps {
   now?: () => Date;
   queueAdapters: QueueAdapter[];
   corpusRepository: CorpusRepository;
   staleRepository: StaleRepository;
   syncRepository: SyncRepository;
+  heartbeatRepository: HeartbeatRepository;
 }
 
 export function createPipelineStatusService(deps: PipelineStatusDeps) {
@@ -137,27 +167,29 @@ export function createPipelineStatusService(deps: PipelineStatusDeps) {
       const generatedAt = now();
 
       const [queueResult, corpus, stale, sync] = await Promise.all([
-        inspectQueues(deps.queueAdapters),
+        inspectQueues(deps.queueAdapters, generatedAt),
         getCorpus(deps.corpusRepository),
         getStale(deps.staleRepository, generatedAt),
         getSync(deps.syncRepository, generatedAt),
       ]);
+      const workers = await getWorkers(deps.heartbeatRepository, generatedAt);
 
       return {
         generatedAt: generatedAt.toISOString(),
         redis: queueResult.redis,
         queues: queueResult.queues,
         recentFailedJobs: queueResult.recentFailedJobs,
+        workers,
         corpus,
         stale,
         sync,
-        recommendations: buildRecommendations(queueResult.redis, queueResult.queues, corpus, stale),
+        recommendations: buildRecommendations(queueResult.redis, queueResult.queues, workers, corpus, stale),
       };
     },
   };
 }
 
-async function inspectQueues(queueAdapters: QueueAdapter[]): Promise<{
+async function inspectQueues(queueAdapters: QueueAdapter[], currentTime: Date): Promise<{
   redis: PipelineStatus["redis"];
   queues: PipelineQueueStatus[];
   recentFailedJobs: PipelineFailedJob[];
@@ -165,7 +197,11 @@ async function inspectQueues(queueAdapters: QueueAdapter[]): Promise<{
   try {
     const queueResults = await Promise.all(
       queueAdapters.map(async (queue) => {
-        const [counts, failedJobs] = await Promise.all([queue.getJobCounts(), queue.getFailedJobs()]);
+        const [counts, oldestPendingJob, failedJobs] = await Promise.all([
+          queue.getJobCounts(),
+          queue.getOldestPendingJob(),
+          queue.getFailedJobs(),
+        ]);
         const waiting = getCount(counts, "waiting") + getCount(counts, "wait");
         const active = getCount(counts, "active");
         const delayed = getCount(counts, "delayed");
@@ -183,17 +219,25 @@ async function inspectQueues(queueAdapters: QueueAdapter[]): Promise<{
             failed,
             completed,
             paused,
+            oldestPendingJobAgeSeconds: oldestPendingJob
+              ? Math.max(0, Math.floor((currentTime.getTime() - oldestPendingJob.timestamp) / 1000))
+              : null,
             isBacklogged: waiting + delayed > BACKLOG_THRESHOLD,
             hasFailures: failed > 0,
           } satisfies PipelineQueueStatus,
-          failedJobs: failedJobs.map((job) => ({
-            queue: queue.name,
-            jobId: String(job.id ?? ""),
-            name: job.name,
-            failedReason: sanitizeReason(job.failedReason),
-            attemptsMade: job.attemptsMade,
-            timestamp: job.timestamp ? new Date(job.timestamp).toISOString() : undefined,
-          })),
+          failedJobs: failedJobs.map((job) => {
+            const maxAttempts = getMaxAttempts(job);
+            return {
+              queue: queue.name,
+              jobId: String(job.id ?? ""),
+              name: job.name,
+              failedReason: sanitizeReason(job.failedReason),
+              attemptsMade: job.attemptsMade,
+              maxAttempts,
+              isExhausted: job.attemptsMade >= maxAttempts,
+              timestamp: job.timestamp ? new Date(job.timestamp).toISOString() : undefined,
+            };
+          }),
         };
       }),
     );
@@ -210,6 +254,50 @@ async function inspectQueues(queueAdapters: QueueAdapter[]): Promise<{
       recentFailedJobs: [],
     };
   }
+}
+
+async function getWorkers(
+  repository: HeartbeatRepository,
+  currentTime: Date,
+): Promise<PipelineStatus["workers"]> {
+  const seen = await repository.getHeartbeats().catch(() => []);
+  const byWorker = new Map<string, WorkerHeartbeatRecord>(seen.map((heartbeat) => [heartbeat.workerName, heartbeat]));
+  const observed = seen.map((heartbeat) => toWorkerHeartbeat(heartbeat, currentTime));
+  const missing = EXPECTED_WORKERS.filter((worker) => !byWorker.has(worker.workerName)).map((worker) => ({
+    workerName: worker.workerName,
+    queueName: worker.queueName,
+    status: "missing" as const,
+    ageSeconds: null,
+    lastSeenAt: null,
+    startedAt: null,
+  }));
+  const heartbeats = [...observed, ...missing];
+
+  return {
+    expected: EXPECTED_WORKERS.length,
+    alive: heartbeats.filter((heartbeat) => heartbeat.status === "alive").length,
+    stale: heartbeats.filter((heartbeat) => heartbeat.status === "stale").length,
+    missing: heartbeats.filter((heartbeat) => heartbeat.status === "missing").length,
+    heartbeats,
+  };
+}
+
+function toWorkerHeartbeat(record: WorkerHeartbeatRecord, currentTime: Date): PipelineWorkerHeartbeat {
+  const lastSeenAt = new Date(record.lastSeenAt);
+  const ageSeconds = Number.isFinite(lastSeenAt.getTime())
+    ? Math.max(0, Math.floor((currentTime.getTime() - lastSeenAt.getTime()) / 1000))
+    : null;
+
+  return {
+    workerName: record.workerName,
+    queueName: record.queueName,
+    status: ageSeconds !== null && ageSeconds * 1000 <= WORKER_HEARTBEAT_STALE_MS ? "alive" : "stale",
+    ageSeconds,
+    lastSeenAt: record.lastSeenAt,
+    startedAt: record.startedAt,
+    hostname: record.hostname,
+    pid: record.pid,
+  };
 }
 
 async function getCorpus(repository: CorpusRepository): Promise<PipelineStatus["corpus"]> {
@@ -265,6 +353,7 @@ async function getSync(repository: SyncRepository, currentTime = new Date()): Pr
 function buildRecommendations(
   redis: PipelineStatus["redis"],
   queues: PipelineQueueStatus[],
+  workers: PipelineStatus["workers"],
   corpus: PipelineStatus["corpus"],
   stale: PipelineStatus["stale"],
 ): PipelineRecommendation[] {
@@ -293,6 +382,25 @@ function buildRecommendations(
       severity: "warning",
       title: "Queue backlog is growing",
       description: `${backloggedQueues.map((queue) => queue.label).join(", ")} have more than ${BACKLOG_THRESHOLD} waiting or delayed jobs.`,
+    });
+  }
+
+  const slowQueues = queues.filter(
+    (queue) => queue.oldestPendingJobAgeSeconds !== null && queue.oldestPendingJobAgeSeconds * 1000 > HIGH_QUEUE_LATENCY_MS,
+  );
+  if (slowQueues.length > 0) {
+    recommendations.push({
+      severity: "warning",
+      title: "Queue latency is high",
+      description: `${slowQueues.map((queue) => queue.label).join(", ")} have waiting jobs older than ${Math.floor(HIGH_QUEUE_LATENCY_MS / 60_000)} minutes.`,
+    });
+  }
+
+  if (workers.stale + workers.missing > 0) {
+    recommendations.push({
+      severity: "critical",
+      title: "Worker heartbeat missing or stale",
+      description: `${workers.alive}/${workers.expected} expected workers are alive. Missing/stale workers can leave report, gap, embedding, or sync jobs stuck.`,
     });
   }
 
@@ -352,6 +460,11 @@ function sanitizeReason(reason: unknown): string {
   return text.slice(0, 500);
 }
 
+function getMaxAttempts(job: Pick<Job, "opts">): number {
+  const attempts = job.opts?.attempts;
+  return typeof attempts === "number" && Number.isFinite(attempts) && attempts > 0 ? attempts : 1;
+}
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -361,6 +474,10 @@ function queueAdapter(name: PipelineQueueName, label: string, queue: Queue): Que
     name,
     label,
     getJobCounts: () => queue.getJobCounts("waiting", "active", "delayed", "failed", "completed", "paused"),
+    async getOldestPendingJob() {
+      const [job] = await queue.getJobs(["waiting"], 0, 0, true);
+      return job ? { id: job.id, timestamp: job.timestamp } : null;
+    },
     getFailedJobs: () => queue.getFailed(0, 4),
   };
 }
@@ -414,4 +531,16 @@ export const pipelineService = createPipelineStatusService({
       return (await ApiSyncRunModel.countDocuments({ runStatus: "running", startedAt: { $gte: since } })) > 0;
     },
   },
+  heartbeatRepository: {
+    getHeartbeats: readWorkerHeartbeats,
+  },
 });
+
+const EXPECTED_WORKERS: Array<{ workerName: string; queueName: PipelineQueueName }> = [
+  { workerName: "worker:report", queueName: "report" },
+  { workerName: "worker:gaps", queueName: "gaps" },
+  { workerName: "worker:embedding", queueName: "embedding" },
+  { workerName: "worker:paper-analysis", queueName: "paper-analysis" },
+  { workerName: "worker:notifications", queueName: "notifications" },
+  { workerName: "worker:sync", queueName: "api-sync" },
+];

@@ -10,6 +10,7 @@ export interface QueueStatus {
   failed: number;
   completed: number;
   paused?: number;
+  oldestPendingJobAgeSeconds: number | null;
   isBacklogged: boolean;
   hasFailures: boolean;
 }
@@ -20,7 +21,28 @@ export interface FailedJob {
   name: string;
   failedReason: string;
   attemptsMade: number;
+  maxAttempts: number;
+  isExhausted: boolean;
   timestamp?: string;
+}
+
+export interface WorkerHeartbeat {
+  workerName: string;
+  queueName: QueueStatus["name"];
+  status: "alive" | "stale" | "missing";
+  ageSeconds: number | null;
+  lastSeenAt: string | null;
+  startedAt: string | null;
+  hostname?: string;
+  pid?: number;
+}
+
+export interface WorkerHeartbeatSummary {
+  expected: number;
+  alive: number;
+  stale: number;
+  missing: number;
+  heartbeats: WorkerHeartbeat[];
 }
 
 export interface CorpusMetrics {
@@ -75,6 +97,7 @@ export interface PipelineStatusResponse {
   };
   queues: QueueStatus[];
   recentFailedJobs: FailedJob[];
+  workers: WorkerHeartbeatSummary;
   corpus: CorpusMetrics;
   stale: StaleMetrics;
   sync: SyncStatus;

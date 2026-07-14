@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { makeConnection, paperAnalysisQueue, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { runPaperAnalysis, type RunPaperAnalysisJob } from "../modules/papers/paper-analysis.service.js";
 
 /**
@@ -15,6 +16,10 @@ import { runPaperAnalysis, type RunPaperAnalysisJob } from "../modules/papers/pa
  */
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({
+    workerName: "worker:paper-analysis",
+    queueName: QUEUE_NAMES.paperAnalysis,
+  });
 
   const worker = new Worker(
     QUEUE_NAMES.paperAnalysis,
@@ -36,6 +41,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "paper analysis worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);

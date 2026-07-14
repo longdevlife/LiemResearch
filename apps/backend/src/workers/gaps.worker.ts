@@ -2,6 +2,7 @@ import { UnrecoverableError, Worker } from "bullmq";
 import { connectMongo, disconnectMongo } from "../infrastructure/db.js";
 import { makeConnection, QUEUE_NAMES } from "../infrastructure/queue.js";
 import { logger } from "../infrastructure/logger.js";
+import { startWorkerHeartbeat } from "../infrastructure/worker-heartbeat.js";
 import { GapAnalysisModel } from "../modules/gaps/models/gap-analysis.model.js";
 import { gapsService, type GapJob } from "../modules/gaps/gaps.service.js";
 
@@ -23,6 +24,7 @@ const USER_FACING_FAILURE = "Gap analysis failed. Please try again later.";
 
 async function main() {
   await connectMongo();
+  const stopHeartbeat = startWorkerHeartbeat({ workerName: "worker:gaps", queueName: QUEUE_NAMES.gaps });
 
   // Startup sweep: a hard-killed worker leaves analyses frozen in "analyzing".
   // Fail them cleanly so the FE poll terminates instead of spinning forever.
@@ -87,6 +89,7 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "gaps worker shutting down");
+    await stopHeartbeat();
     await worker.close();
     await disconnectMongo();
     process.exit(0);
