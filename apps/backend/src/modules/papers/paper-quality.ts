@@ -81,16 +81,27 @@ function scoreDuplicate(paper: any): number {
 }
 
 function scoreRelevance(paper: any): number {
-  // Check relevance based on: Topics, Keywords, and Abstract existence
-  const hasTopics = Array.isArray(paper.topics) && paper.topics.length > 0;
+  // Relevance here means "metadata can place the paper in the corpus reliably",
+  // not query relevance. OpenAlex taxonomy is stronger evidence than a loose
+  // user-entered topic string, so it receives the final completeness points.
+  const topics = Array.isArray(paper.topics) ? paper.topics : [];
+  const hasTopics = topics.length > 0;
   const hasKeywords = Array.isArray(paper.keywords) && paper.keywords.length > 0;
   const hasAbstract = hasValue(paper.abstractText) && countWords(paper.abstractText) >= 20;
+  const hasOpenAlexTopicId = topics.some((t: any) => hasValue(t.openalexTopicId));
+  const hasPrimaryTopic = topics.some((t: any) => t.isPrimary === true);
+  const hasHierarchy = topics.some(
+    (t: any) => hasValue(t.domainName) && hasValue(t.fieldName) && hasValue(t.subfieldName),
+  );
 
-  const count = (hasTopics ? 1 : 0) + (hasKeywords ? 1 : 0) + (hasAbstract ? 1 : 0);
-  if (count === 3) return 15;
-  if (count === 2) return 10;
-  if (count === 1) return 5;
-  return 0;
+  return (
+    (hasAbstract ? 5 : 0) +
+    (hasKeywords ? 3 : 0) +
+    (hasTopics ? 3 : 0) +
+    (hasOpenAlexTopicId ? 1 : 0) +
+    (hasHierarchy ? 2 : 0) +
+    (hasPrimaryTopic ? 1 : 0)
+  );
 }
 
 function scorePrestige(paper: any): number {

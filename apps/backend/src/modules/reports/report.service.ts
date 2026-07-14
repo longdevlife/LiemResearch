@@ -1,11 +1,17 @@
-import type { AnalyticalReport, ReportListItem } from "@trend/shared-types";
+import type { AnalyticalReport, PreviewReportEvidenceResponse, ReportListItem } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import { reportQueue } from "../../infrastructure/queue.js";
 import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
+import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { paperService } from "../papers/paper.service.js";
 import { ReportModel, type ReportDoc } from "./models/report.model.js";
-import type { CreateReportInput, ListReportsQuery } from "./dto/report.schema.js";
+import type {
+  CreateReportInput,
+  ListReportsQuery,
+  PreviewReportEvidenceInput,
+} from "./dto/report.schema.js";
+import { collectReportEvidence } from "./report.evidence.js";
 
 /**
  * HTTP-facing report operations. The heavy RAG work lives in rag.service.ts
@@ -46,6 +52,7 @@ export const reportService = {
       language: input.language ?? "auto",
       deepAnalysis: input.deepAnalysis ?? false,
       fast: input.fast ?? false,
+      selectedPaperIds: input.selectedPaperIds ?? [],
       status: "queued",
     });
 
@@ -57,6 +64,36 @@ export const reportService = {
     );
 
     return { id: String(report._id), status: "queued" };
+  },
+
+  /** Preview the exact evidence pack that report generation will use. No LLM generation here. */
+  async previewEvidence(
+    userId: string,
+    input: PreviewReportEvidenceInput,
+  ): Promise<PreviewReportEvidenceResponse> {
+    void userId;
+    const queryVector = await getEmbeddingProvider().embed(input.query);
+    const evidence = await collectReportEvidence({
+      queryVector,
+      selectedPaperIds: input.selectedPaperIds,
+      yearFrom: input.yearFrom,
+      yearTo: input.yearTo,
+      fillWithRetrieved: input.fillWithRetrieved,
+    });
+    const warnings = evidence.missingSelectedPaperIds.map(
+      (id) => `Selected paper ${id} was not found in the active corpus and was skipped.`,
+    );
+    if (evidence.papers.length === 0) {
+      warnings.push("No active evidence papers were found for this query.");
+    }
+
+    return {
+      papers: evidence.papers,
+      retrievedPaperIds: evidence.retrievedPaperIds,
+      selectedPaperIds: evidence.selectedPaperIds,
+      maxEvidencePapers: evidence.maxEvidencePapers,
+      warnings,
+    };
   },
 
   /** The user's own reports (or project reports), newest first — WITHOUT heavy fields. */

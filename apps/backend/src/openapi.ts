@@ -74,11 +74,30 @@ export const openapiSpec = {
           journalName: { type: "string", example: "Learning and Individual Differences" },
           publicationYear: { type: "integer", example: 2023 },
           citationCount: { type: "integer", example: 4826 },
+          fwci: { type: "number", example: 2.35 },
+          relatedWorksCount: { type: "integer", example: 10 },
           topics: {
             type: "array",
             items: {
               type: "object",
-              properties: { topicName: { type: "string" }, confidence: { type: "number" } },
+              properties: {
+                openalexTopicId: { type: "string", example: "T12547" },
+                topicName: {
+                  type: "string",
+                  example: "Pharmaceutical studies and practices",
+                },
+                confidence: { type: "number", example: 0.98 },
+                isPrimary: { type: "boolean", example: true },
+                subfieldId: { type: "string", example: "2735" },
+                subfieldName: {
+                  type: "string",
+                  example: "Pediatrics, Perinatology and Child Health",
+                },
+                fieldId: { type: "string", example: "27" },
+                fieldName: { type: "string", example: "Medicine" },
+                domainId: { type: "string", example: "4" },
+                domainName: { type: "string", example: "Health Sciences" },
+              },
             },
           },
           externalIds: {
@@ -148,6 +167,20 @@ export const openapiSpec = {
               "Metrics use years <= this. yearlyBreakdown entries beyond it are the running YTD year — label/style them accordingly on charts.",
           },
           totalPapersInWindow: { type: "integer", example: 594 },
+          facets: {
+            type: "object",
+            properties: {
+              paperKinds: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              openAccessStatuses: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              providers: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              topSources: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              citationBands: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              domains: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              fields: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              subfields: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              topics: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+            },
+          },
           topics: { type: "array", items: { $ref: "#/components/schemas/TrendingTopic" } },
           risingKeywords: { type: "array", items: { $ref: "#/components/schemas/RisingKeyword" } },
           computedAt: { type: "string", format: "date-time" },
@@ -208,12 +241,41 @@ export const openapiSpec = {
               "Paper ids in RETRIEVAL ORDER — ORDER-SIGNIFICANT. Citation [n] in markdown " +
               "maps to index n-1. Do NOT sort or dedupe this array.",
           },
+          selectedPaperIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "User-pinned evidence papers, placed before retrieved papers during generation.",
+          },
           researchGaps: { type: "array", items: { $ref: "#/components/schemas/ResearchGap" } },
           modelVersion: { type: "string", example: "gemini-3.5-flash" },
           promptVersion: { type: "string", example: "report-v2" },
           errorMessage: { type: "string" },
           createdAt: { type: "string", format: "date-time" },
           completedAt: { type: "string", format: "date-time" },
+        },
+      },
+      ReportEvidencePaper: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          abstractText: { type: "string" },
+          publicationYear: { type: "integer" },
+          journalName: { type: "string" },
+          citationCount: { type: "integer" },
+          authorNames: { type: "array", items: { type: "string" } },
+          score: { type: "number" },
+          source: { type: "string", enum: ["selected", "retrieved"] },
+        },
+      },
+      PreviewReportEvidenceResponse: {
+        type: "object",
+        properties: {
+          papers: { type: "array", items: { $ref: "#/components/schemas/ReportEvidencePaper" } },
+          retrievedPaperIds: { type: "array", items: { type: "string" } },
+          selectedPaperIds: { type: "array", items: { type: "string" } },
+          maxEvidencePapers: { type: "integer" },
+          warnings: { type: "array", items: { type: "string" } },
         },
       },
       ReportListItem: {
@@ -510,9 +572,9 @@ export const openapiSpec = {
         summary: "Request an AI analytical report (RAG) — async, returns 202",
         description:
           "Creates a queued report and enqueues a BullMQ job. The report worker runs the " +
-          "RAG pipeline: embed the question → vector-search top-K evidence papers → " +
+          "RAG pipeline: embed the question → pin selected evidence papers → vector-search top-K evidence papers → " +
           "Gemini 2.5 Pro writes a grounded markdown report with [n] citations plus " +
-          "preliminary research gaps. The report mirrors the question's language. " +
+          "preliminary research gaps. The output language is controlled by the language field. " +
           "Poll GET /reports/{id} (~3s) until status is ready/failed.",
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -528,6 +590,13 @@ export const openapiSpec = {
                   topic: { type: "string", maxLength: 200, example: "Artificial Intelligence in Healthcare and Education" },
                   yearFrom: { type: "integer", minimum: 1900, maximum: 2100, example: 2022 },
                   yearTo: { type: "integer", minimum: 1900, maximum: 2100, example: 2026 },
+                  language: { type: "string", enum: ["auto", "en", "vi"], default: "auto" },
+                  selectedPaperIds: { type: "array", maxItems: 20, items: { type: "string" } },
+                  fillWithRetrieved: {
+                    type: "boolean",
+                    default: true,
+                    description: "Set false while editing a reviewed evidence pack so removed papers are not auto-filled again.",
+                  },
                 },
               },
             },
@@ -564,6 +633,54 @@ export const openapiSpec = {
               },
             },
           },
+        },
+      },
+    },
+    "/api/v1/reports/evidence-preview": {
+      post: {
+        tags: ["Reports"],
+        summary: "Preview the report evidence pack before generation",
+        description:
+          "Embeds the query and returns the exact ordered evidence pack the report worker will use. " +
+          "Selected papers are pinned first; vector retrieval fills the remaining evidence budget. " +
+          "This endpoint does not call the LLM generator.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["query"],
+                properties: {
+                  query: { type: "string", minLength: 3, maxLength: 500 },
+                  topic: { type: "string", maxLength: 200 },
+                  yearFrom: { type: "integer", minimum: 1900, maximum: 2100 },
+                  yearTo: { type: "integer", minimum: 1900, maximum: 2100 },
+                  language: { type: "string", enum: ["auto", "en", "vi"], default: "auto" },
+                  selectedPaperIds: { type: "array", maxItems: 20, items: { type: "string" } },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Evidence preview",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: { $ref: "#/components/schemas/PreviewReportEvidenceResponse" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Validation failed" },
+          "401": { description: "Login required" },
         },
       },
     },

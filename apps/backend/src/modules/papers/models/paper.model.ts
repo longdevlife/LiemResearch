@@ -32,9 +32,17 @@ const paperKeywordSchema = new Schema(
 const paperTopicSchema = new Schema(
   {
     topicId: { type: Schema.Types.ObjectId, ref: "ResearchTopic" },
+    openalexTopicId: { type: String },
     topicName: { type: String, required: true },
     detectedBy: { type: String, enum: ["openalex", "ai", "user"], default: "openalex" },
     confidence: { type: Number, min: 0, max: 1 },
+    isPrimary: { type: Boolean, default: false },
+    subfieldId: { type: String },
+    subfieldName: { type: String },
+    fieldId: { type: String },
+    fieldName: { type: String },
+    domainId: { type: String },
+    domainName: { type: String },
   },
   { _id: false },
 );
@@ -87,6 +95,8 @@ const paperSchema = new Schema(
     paperLink: { type: String }, // Direct link to source paper (required for requests)
     licenseName: { type: String },
     citationCount: { type: Number, default: 0, index: true },
+    fwci: { type: Number },
+    relatedWorksCount: { type: Number, default: 0 },
     keywords: { type: [paperKeywordSchema], default: [] },
     topics: { type: [paperTopicSchema], default: [] },
     primaryProvider: {
@@ -140,6 +150,8 @@ const paperSchema = new Schema(
     embedding: { type: [Number], default: undefined, select: false },
     /** OpenAlex IDs this paper cites (referenced_works). select:false — heavy. */
     referencedWorks: { type: [String], default: [], select: false },
+    /** OpenAlex IDs algorithmically related to this paper. select:false — heavy. */
+    relatedWorks: { type: [String], default: [], select: false },
     aiScore: {
       type: new Schema(
         {
@@ -164,6 +176,10 @@ const paperSchema = new Schema(
 
 // Compound indexes for the main "topic + year" and "year + citations" queries.
 paperSchema.index({ "topics.topicName": 1, publicationYear: -1 });
+paperSchema.index({ "topics.openalexTopicId": 1, publicationYear: -1 });
+paperSchema.index({ "topics.subfieldName": 1, publicationYear: -1 });
+paperSchema.index({ "topics.fieldName": 1, publicationYear: -1 });
+paperSchema.index({ "topics.domainName": 1, publicationYear: -1 });
 paperSchema.index({ publicationYear: -1, citationCount: -1 });
 paperSchema.index({ "aiScore.finalScore": -1 });
 paperSchema.index({ isAiAnalyzable: 1, dataStatus: 1, "aiAnalysis.analysisPromptVersion": 1 });

@@ -131,7 +131,11 @@ export function SearchPage() {
 
   const data = isSemanticSearchActive ? search.data : browse.data;
   const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
-  const papers = (data?.papers ?? []) as (Paper & { score?: number; rerankScore?: number })[];
+  const papers = (data?.papers ?? []) as (Paper & {
+    score?: number;
+    rerankScore?: number;
+    taxonomyBoostScore?: number;
+  })[];
   const meta = data?.meta;
   const totalPages = meta?.totalPages ?? 1;
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -892,6 +896,7 @@ export function SearchPage() {
                 dataQualityScore={paper.dataQualityScore}
                 aiScore={paper.aiScore?.finalScore}
                 rerankScore={paper.rerankScore}
+                taxonomyBoostScore={paper.taxonomyBoostScore}
                 searchMode={searchMode}
               />
             ))
