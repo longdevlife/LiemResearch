@@ -341,9 +341,9 @@ export function ReportsListPage() {
           <Plus className="w-5 h-5 text-blue-600" /> New Report
         </h2>
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-5">
-            <div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
               <label htmlFor="topic" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Topic / Keyword (Optional)</label>
               <input
                 id="topic"
@@ -353,103 +353,107 @@ export function ReportsListPage() {
                 className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label htmlFor="query" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Research Question <span className="text-red-500">*</span></label>
               <textarea
                 id="query"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="What specific insights are you looking for?"
-                rows={3}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
+                rows={1}
+                className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none overflow-hidden"
               />
             </div>
           </div>
-          
-          <div className="lg:col-span-4 flex flex-col justify-end space-y-4">
+
+          {/* Collapsible Advanced Options */}
+          {showAdvanced && (
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 fade-in duration-200">
+              <div className="space-y-2">
+                <label htmlFor="report-language" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</label>
+                <div className="relative">
+                  <select
+                    id="report-language"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="auto">Auto-detect from query</option>
+                    <option value="en">English (Forced)</option>
+                    <option value="vi">Vietnamese</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Publication Year Range</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    id="year-from"
+                    type="number"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                    placeholder="From: 2020"
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+                  />
+                  <input
+                    id="year-to"
+                    type="number"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                    placeholder="To: 2026"
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-center space-y-2.5 pt-4">
+                <label className="flex cursor-pointer items-center gap-3 group">
+                  <input
+                    type="checkbox"
+                    checked={fast}
+                    onChange={(e) => setFast(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:bg-slate-950 dark:border-slate-800"
+                  />
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Fast Mode (Flash Model)</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 group">
+                  <input
+                    type="checkbox"
+                    checked={deepAnalysis}
+                    onChange={(e) => setDeepAnalysis(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:bg-slate-950 dark:border-slate-800"
+                  />
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Deep Web Analysis</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Action Footer Bar */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
             <Button
               variant="outline"
-              className="w-full justify-between h-12 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+              type="button"
+              className="h-10 px-4 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center gap-2 text-xs font-semibold"
               onClick={() => setShowAdvanced(!showAdvanced)}
             >
-              <span className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> Advanced Options</span>
-              <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+              <Settings2 className="w-4 h-4" />
+              <span>Advanced Options</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
             </Button>
             
             <Button 
               onClick={handlePreviewEvidence} 
               disabled={previewEvidence.isPending || !query.trim()} 
-              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors"
+              className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors flex items-center gap-2"
             >
-              {previewEvidence.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Database className="w-5 h-5 mr-2" />}
+              {previewEvidence.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
               Preview Evidence Pack
             </Button>
           </div>
         </div>
-
-        {/* Collapsible Advanced Options */}
-        {showAdvanced && (
-          <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 fade-in duration-200">
-            <div className="space-y-2">
-              <label htmlFor="report-language" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output Language</label>
-              <select
-                id="report-language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as ReportLanguage)}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="auto">Auto-detect from query</option>
-                <option value="en">English (Forced)</option>
-                <option value="vi">Vietnamese</option>
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="year-from" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Year From</label>
-              <input
-                id="year-from"
-                type="number"
-                value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
-                placeholder="2020"
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="year-to" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Year To</label>
-              <input
-                id="year-to"
-                type="number"
-                value={yearTo}
-                onChange={(e) => setYearTo(e.target.value)}
-                placeholder="2026"
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="space-y-3 pt-6">
-              <label className="flex cursor-pointer items-center gap-3 group">
-                <input
-                  type="checkbox"
-                  checked={fast}
-                  onChange={(e) => setFast(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-                />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Fast Mode (Flash Model)</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3 group">
-                <input
-                  type="checkbox"
-                  checked={deepAnalysis}
-                  onChange={(e) => setDeepAnalysis(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-                />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Deep Web Analysis</span>
-              </label>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Loading Skeleton during preview fetch */}
