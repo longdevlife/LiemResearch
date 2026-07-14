@@ -1,30 +1,30 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  FileText, 
-  Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  Trash2, 
-  Zap, 
-  Plus, 
-  Sparkles, 
-  BookOpen, 
-  AlertTriangle, 
-  Info, 
+import {
+  FileText,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  Zap,
+  Plus,
+  Sparkles,
+  BookOpen,
+  AlertTriangle,
+  Info,
   Database,
   Search,
   ExternalLink,
   Globe
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { 
-  useReports, 
-  useCreateReport, 
-  useDeleteReport, 
-  useDeleteBatchReports, 
-  useReportEvidencePreview 
+import {
+  useReports,
+  useCreateReport,
+  useDeleteReport,
+  useDeleteBatchReports,
+  useReportEvidencePreview
 } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
 import type { PreviewReportEvidenceResponse, ReportLanguage } from "@trend/shared-types";
@@ -49,7 +49,7 @@ export function ReportsListPage() {
   const [yearTo, setYearTo] = useState<string>("");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
-  
+
   // New States for Evidence Review Step
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
   const [previewData, setPreviewData] = useState<PreviewReportEvidenceResponse | null>(null);
@@ -202,7 +202,7 @@ export function ReportsListPage() {
   // Step 4: User can remove retrieved/selected papers
   const handleRemovePaper = (paperId: string) => {
     if (!previewData) return;
-    
+
     const updatedPapers = previewData.papers.filter(p => p.id !== paperId);
     const updatedSelectedIds = selectedPaperIds.filter(id => id !== paperId);
 
@@ -325,12 +325,12 @@ export function ReportsListPage() {
       setLanguage("auto");
       setDeepAnalysis(false);
       setFast(true);
-      
+
       // Reset preview states
       setPreviewData(null);
       setSelectedPaperIds([]);
       setShowPreview(false);
-      
+
       toast.success("Report generation started!");
     } catch (error) {
       console.error("Failed to create report:", error);
@@ -499,7 +499,7 @@ export function ReportsListPage() {
                   Auto detects from the topic and research question.
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Publication Year Range</span>
                 <div className="grid grid-cols-2 gap-2">
@@ -640,8 +640,8 @@ export function ReportsListPage() {
               </div>
             </div>
 
-            <Button 
-              onClick={handlePreviewEvidence} 
+            <Button
+              onClick={handlePreviewEvidence}
               disabled={!canPreviewEvidence}
               className="h-12 rounded-xl bg-blue-600 px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-900/40"
             >
@@ -781,75 +781,122 @@ export function ReportsListPage() {
               <span className="text-sm font-semibold text-slate-500">No evidence found. Broaden query or year range.</span>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-4">
+            <div className="space-y-3">
               {previewData.papers.map((paper) => {
                 const isExpanded = collapsedAbstracts[paper.id] ?? false;
-                const snippet = paper.abstractText 
-                  ? (paper.abstractText.length > 150 && !isExpanded 
-                    ? `${paper.abstractText.slice(0, 150)}...` 
-                    : paper.abstractText) 
+                const relevancePercent = Math.round(paper.score * 100);
+                const relevanceLabel = paper.score >= 0.8 ? "Strong match" : paper.score >= 0.65 ? "Good match" : "Review match";
+                const relevanceTone = paper.score >= 0.8
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : paper.score >= 0.65
+                    ? "text-blue-700 dark:text-blue-300"
+                    : "text-amber-700 dark:text-amber-300";
+                const relevanceBar = paper.score >= 0.8
+                  ? "bg-emerald-500"
+                  : paper.score >= 0.65
+                    ? "bg-blue-500"
+                    : "bg-amber-500";
+                const snippet = paper.abstractText
+                  ? (paper.abstractText.length > 150 && !isExpanded
+                    ? `${paper.abstractText.slice(0, 150)}...`
+                    : paper.abstractText)
                   : null;
 
                 return (
-                  <div key={paper.id} className="pt-4 first:pt-0 flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5",
-                            paper.source === "selected" 
-                              ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900" 
-                              : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
-                          )}
-                        >
-                          {paper.source}
-                        </Badge>
-                        <span className="text-xs font-semibold font-mono text-slate-500">Score: {paper.score.toFixed(3)}</span>
-                        {paper.publicationYear && <span className="text-xs text-slate-400">({paper.publicationYear})</span>}
-                      </div>
-
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                        {paper.title}
-                      </h3>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                        {paper.authorNames.length > 0 && (
-                          <span>Authors: {paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</span>
-                        )}
-                        {paper.journalName && <span>Journal: {paper.journalName}</span>}
-                        {paper.citationCount !== undefined && <span>Citations: {paper.citationCount}</span>}
-                      </div>
-
-                      {/* Abstract snippets collapsible */}
-                      {snippet && (
-                        <div className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
-                          <p>
-                            {snippet}
-                            {paper.abstractText && paper.abstractText.length > 150 && (
-                              <button
-                                onClick={() => toggleAbstract(paper.id)}
-                                className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1 cursor-pointer focus:outline-none"
-                              >
-                                {isExpanded ? "Show Less" : "Show More"}
-                              </button>
+                  <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/20 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/70">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-full text-[10px] font-bold uppercase tracking-wider px-2 py-0.5",
+                              paper.source === "selected"
+                                ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900"
+                                : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
                             )}
-                          </p>
+                          >
+                            {paper.source === "selected" ? "Added by you" : "Retrieved"}
+                          </Badge>
+                          {paper.publicationYear && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                              {paper.publicationYear}
+                            </span>
+                          )}
+                          {paper.citationCount !== undefined && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                              {paper.citationCount.toLocaleString()} citations
+                            </span>
+                          )}
                         </div>
-                      )}
+
+                        <Link
+                          to={`/papers/${paper.id}`}
+                          className="group inline-flex max-w-full items-start gap-2 text-sm font-extrabold leading-snug text-slate-950 transition-colors hover:text-blue-700 dark:text-white dark:hover:text-blue-300"
+                          title="Open paper detail"
+                        >
+                          <span>{paper.title}</span>
+                          <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400 transition-colors group-hover:text-blue-600" />
+                        </Link>
+
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          {paper.authorNames.length > 0 && (
+                            <span>Authors: {paper.authorNames.slice(0, 3).join(", ")}{paper.authorNames.length > 3 ? " et al." : ""}</span>
+                          )}
+                          {paper.journalName && <span>Journal: {paper.journalName}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:items-stretch">
+                        <div className="min-w-[150px] rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Relevance</span>
+                            <span className={cn("font-mono text-sm font-extrabold", relevanceTone)}>{relevancePercent}%</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${Math.min(100, Math.max(0, relevancePercent))}%` }} />
+                          </div>
+                          <p className={cn("mt-2 text-[11px] font-bold", relevanceTone)}>{relevanceLabel}</p>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            to={`/papers/${paper.id}`}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-800 dark:text-slate-300 dark:hover:border-blue-900 dark:hover:bg-blue-950/20 dark:hover:text-blue-300"
+                          >
+                            View paper
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                            onClick={() => handleRemovePaper(paper.id)}
+                            aria-label={`Remove ${paper.title} from evidence pack`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex-shrink-0 flex items-start justify-end md:justify-start">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
-                        onClick={() => handleRemovePaper(paper.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                    {/* Abstract snippets collapsible */}
+                    {snippet && (
+                      <div className="mt-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
+                        <p>
+                          {snippet}
+                          {paper.abstractText && paper.abstractText.length > 150 && (
+                            <button
+                              onClick={() => toggleAbstract(paper.id)}
+                              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1 cursor-pointer focus:outline-none"
+                            >
+                              {isExpanded ? "Show Less" : "Show More"}
+                            </button>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </article>
                 );
               })}
             </div>
@@ -859,7 +906,7 @@ export function ReportsListPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {previewData.papers.length === 0
-                ? "Add or preview papers to enable generation." 
+                ? "Add or preview papers to enable generation."
                 : "Ready to generate when this evidence set looks correct."}
             </span>
             <Button
@@ -914,8 +961,8 @@ export function ReportsListPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {reports.map((report) => (
-            <Link 
-              key={report.id} 
+            <Link
+              key={report.id}
               to={`/reports/${report.id}`}
               className="group flex flex-col bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
             >
