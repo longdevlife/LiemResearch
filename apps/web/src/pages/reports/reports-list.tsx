@@ -16,7 +16,9 @@ import {
   Database,
   Search,
   ExternalLink,
-  Globe
+  Globe,
+  ArrowUpRight,
+  Cpu
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -975,13 +977,21 @@ export function ReportsListPage() {
             <Link
               key={report.id}
               to={`/reports/${report.id}`}
-              className="group flex flex-col bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+              className="group flex flex-col bg-white dark:bg-[#1c1f26] border border-slate-200 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden h-full"
             >
-              {/* Status Badge */}
-              <div className="absolute top-6 right-6">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+              {/* Subtle background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/20 dark:bg-blue-900/5 rounded-bl-full -mr-10 -mt-10 opacity-40 group-hover:bg-blue-100/20 dark:group-hover:bg-blue-900/10 transition-colors pointer-events-none" />
+
+              {/* 1. Header: Topic badge left, status right */}
+              <div className="mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-4 relative z-10">
+                <Badge variant="secondary" className="bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold px-2 py-0.5 text-[9px] uppercase tracking-wider rounded">
+                  # {report.topic || "General Inquiry"}
+                </Badge>
+
+                {/* Status Badge */}
+                <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                   (report.status === 'generating' || report.status === 'queued') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                  report.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                  report.status === 'failed' ? 'bg-rose-50 text-red-700 dark:bg-rose-900/30 dark:text-red-400' :
                   'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                 }`}>
                   {(report.status === 'generating' || report.status === 'queued') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
@@ -993,30 +1003,87 @@ export function ReportsListPage() {
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 mt-2 mb-6 pr-24">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-3 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {report.topic || 'Untitled Analysis'}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                  {report.query}
-                </p>
+              {/* 2. Main content: premium icon box on the left, query on the right */}
+              <div className="mb-4 flex items-start gap-3 flex-1 relative z-10">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 group-hover:scale-105 group-hover:from-blue-500/15 group-hover:to-indigo-500/15 transition-all duration-300">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-snug group-hover:text-blue-650 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                    {report.query}
+                  </h3>
+
+                  {/* Compact source description */}
+                  <div className="flex items-center gap-1 text-[11px] text-slate-450 dark:text-slate-500">
+                    <Database className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Grounded on {report.selectedPaperIds?.length ?? 5} core source{(report.selectedPaperIds?.length ?? 5) !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {/* 3. Report Metadata & Constraints */}
+              <div className="space-y-3 mb-4 border-t border-slate-100 dark:border-slate-800/60 pt-3 relative z-10">
+                <div className="flex flex-wrap gap-1.5">
+                  {/* Years Tag */}
+                  {(report.yearFrom || report.yearTo) ? (
+                    <span className="bg-slate-50 dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800 px-2.5 py-1 rounded-full text-[9px] text-slate-650 dark:text-slate-400 font-extrabold uppercase tracking-wider">
+                      Range: {report.yearFrom && report.yearTo
+                        ? `${report.yearFrom} - ${report.yearTo}`
+                        : report.yearFrom
+                          ? `>= ${report.yearFrom}`
+                          : `<= ${report.yearTo}`}
+                    </span>
+                  ) : (
+                    <span className="bg-slate-50 dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800 px-2.5 py-1 rounded-full text-[9px] text-slate-650 dark:text-slate-400 font-extrabold uppercase tracking-wider">
+                      All Years
+                    </span>
+                  )}
+
+                  {/* RAG Mode Tag */}
+                  {report.deepAnalysis ? (
+                    <span className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                      <Zap className="w-2.5 h-2.5 fill-amber-500/30 animate-pulse" /> Deep RAG
+                    </span>
+                  ) : report.fast ? (
+                    <span className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/25 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                      <Cpu className="w-2.5 h-2.5 text-cyan-550 dark:text-cyan-400" /> Flash Mode
+                    </span>
+                  ) : (
+                    <span className="bg-gradient-to-r from-slate-100 to-slate-200/50 dark:from-slate-800 dark:to-slate-800/40 text-slate-600 dark:text-slate-400 border border-slate-250/30 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
+                      Standard
+                    </span>
+                  )}
+
+                  {/* Grounded Papers Tag */}
+                  {report.selectedPaperIds && report.selectedPaperIds.length > 0 && (
+                    <span className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/25 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                      <FileText className="w-2.5 h-2.5 text-purple-550 dark:text-purple-450" /> Grounded ({report.selectedPaperIds.length})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Footer */}
+              <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 dark:border-slate-800 mt-auto relative z-10">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                   {new Date(report.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  onClick={(e) => handleDeleteSingle(report.id, e)}
-                  disabled={deleteReport.isPending}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                    Open report <ArrowUpRight className="w-3 h-3" />
+                  </span>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-7 h-7 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                    onClick={(e) => handleDeleteSingle(report.id, e)}
+                    disabled={deleteReport.isPending}
+                    title="Delete report"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </Link>
           ))}
