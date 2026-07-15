@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Sparkles, CheckCircle2, XCircle, Filter, Search, Zap, Loader2, Undo2, ListFilter, ChevronLeft, ChevronRight } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Sparkles, XCircle, Filter, Search, Zap, Loader2, ListFilter, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,11 @@ import {
   useGaps,
   useAnalyzeGap,
   useGapAnalysisStatus,
+  useActiveGapAnalysis,
 } from "@/features/gaps";
-import type { GapSource } from "@trend/shared-types";
+import type { GapSource, ResearchGapItem } from "@trend/shared-types";
 import { GapCard } from "@/features/gaps/components/gap-card";
+import { GapDetailDrawer } from "@/features/gaps/components/gap-detail-drawer";
 
 
 function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: () => void }) {
@@ -43,7 +45,7 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 }
 
 export function ResearchGapsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [topic, setTopic] = useState("");
   const [yearFrom, setYearFrom] = useState<string>("");
   const [yearTo, setYearTo] = useState<string>("");
@@ -54,6 +56,8 @@ export function ResearchGapsPage() {
   const [page, setPage] = useState(1);
   const [minConfidence, setMinConfidence] = useState(0);
   const [debouncedConfidence, setDebouncedConfidence] = useState(0);
+  const [selectedGap, setSelectedGap] = useState<ResearchGapItem | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Sync with URL params
   const urlSource = searchParams.get("source") as GapSource | null;
@@ -83,7 +87,6 @@ export function ResearchGapsPage() {
     data: gapsData,
     isLoading,
     isError,
-    error,
     refetch,
   } = useGaps({
     status: filterStatus,
@@ -94,10 +97,18 @@ export function ResearchGapsPage() {
     source: sourceFilter !== "all" ? sourceFilter : undefined,
   });
   const { mutate: analyze, isPending } = useAnalyzeGap();
+  const { data: activeAnalysis } = useActiveGapAnalysis();
+
+  useEffect(() => {
+    if (activeAnalysis && (activeAnalysis.status === "queued" || activeAnalysis.status === "analyzing")) {
+      setActiveAnalysisId(activeAnalysis.id);
+    }
+  }, [activeAnalysis]);
 
   const handleDone = useCallback(() => {
     setActiveAnalysisId(null);
     void refetch();
+    toast.success("Gap analysis completed successfully! Gaps list refreshed.");
   }, [refetch]);
 
   const handleAnalyze = () => {
@@ -238,7 +249,7 @@ export function ResearchGapsPage() {
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Source:</span>
           <select
             value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as any)}
+            onChange={(e) => setSourceFilter(e.target.value as GapSource | "all")}
             className="h-8 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
           >
             <option value="all">All Sources</option>
@@ -299,7 +310,15 @@ export function ResearchGapsPage() {
       {!isError && gapsData?.data && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
           {gapsData.data.map((gap) => (
-            <GapCard key={gap.id} gap={gap} filterStatus={filterStatus} />
+            <GapCard
+              key={gap.id}
+              gap={gap}
+              filterStatus={filterStatus}
+              onViewDetails={(g) => {
+                setSelectedGap(g);
+                setIsDrawerOpen(true);
+              }}
+            />
           ))}
         </div>
       )}
@@ -336,6 +355,15 @@ export function ResearchGapsPage() {
           {gapsData.meta.total} gap{gapsData.meta.total !== 1 ? "s" : ""} found
         </p>
       )}
+
+      <GapDetailDrawer
+        gap={selectedGap}
+        isOpen={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedGap(null);
+        }}
+      />
     </main>
   );
 }

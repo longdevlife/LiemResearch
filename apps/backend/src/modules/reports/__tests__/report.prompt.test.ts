@@ -77,6 +77,13 @@ describe("buildReportPrompt", () => {
 
     expect(prompt).toContain("OUTPUT LANGUAGE: English");
   });
+
+  it("requires every report-derived gap to include a corpus-verifiable probe", () => {
+    const prompt = buildReportPrompt("Find under-explored LLM education intersections", [paper()]);
+
+    expect(prompt).toContain('"probe": {"topicA", "topicB", "yearFrom"?, "yearTo"?}');
+    expect(prompt).toContain("The backend will verify each probe against the corpus");
+  });
 });
 
 describe("REPORT_SYSTEM_PROMPT", () => {
@@ -93,7 +100,7 @@ describe("REPORT_SYSTEM_PROMPT", () => {
 
 describe("report language resolution", () => {
   it("bumps prompt version when report language behavior changes", () => {
-    expect(PROMPT_VERSION).toBe("report-v3");
+    expect(PROMPT_VERSION).toBe("report-v4");
   });
 
   it("detects English from ASCII academic questions", () => {

@@ -21,6 +21,12 @@ export const gapsController = {
     res.json({ success: true, data });
   },
 
+  /** GET /api/v1/gaps/analyze/active — latest queued/analyzing run for resume UX. */
+  async getActiveAnalysis(req: Request, res: Response) {
+    const data = await gapsService.getActiveAnalysis(req.user!.sub);
+    res.json({ success: true, data });
+  },
+
   /** GET /api/v1/gaps — paginated, filterable list of gaps. */
   async list(req: Request, res: Response) {
     const parsed = ListGapsQuerySchema.safeParse(req.query);

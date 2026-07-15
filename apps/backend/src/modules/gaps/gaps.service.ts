@@ -184,6 +184,25 @@ export const gapsService = {
     };
   },
 
+  /** Resume helper for FE reloads — returns the user's latest queued/analyzing run, if any. */
+  async getActiveAnalysis(userId: string) {
+    const doc = await GapAnalysisModel.findOne({
+      userId,
+      status: { $in: ["queued", "analyzing"] },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!doc) return null;
+    return {
+      id: String(doc._id),
+      topic: doc.topic,
+      status: doc.status,
+      gapIds: doc.gapIds.map(String),
+      errorMessage: doc.errorMessage,
+    };
+  },
+
   /**
    * The full gap-analysis pipeline for one request. Runs inside gaps.worker
    * (NEVER in a request handler). Throws on transient failures so BullMQ
@@ -320,13 +339,15 @@ export const gapsService = {
       rationale: string;
       supportingPaperIds: unknown[];
       confidence: number;
+      probe?: GapProbe;
     }>;
   }): Promise<void> {
     if (!report.researchGaps || report.researchGaps.length === 0) return;
     const normalizedTopic = normalizeTopicStr(report.query);
     await Promise.all(
-      report.researchGaps.map((g) =>
-        ResearchGapModel.create({
+      report.researchGaps.map(async (g) => {
+        const evidence = await scoreGapEvidence(g.probe);
+        return ResearchGapModel.create({
           topic: report.query,
           normalizedTopic,
           title: g.title,
@@ -334,18 +355,17 @@ export const gapsService = {
           rationale: g.rationale,
           supportingPaperIds: g.supportingPaperIds,
           confidence: g.confidence,
-          // Report-path gaps carry no probe (the report LLM doesn't emit one yet),
-          // so they have no quantitative evidence. Seed evidenceConfidence from the
-          // LLM confidence so they sort fairly against standalone v2 gaps instead of
-          // sinking below them (null sorts last). Full probe-wiring for reports is a
-          // follow-up.
-          evidenceConfidence: g.confidence,
+          probe: evidence?.probe,
+          intersectionCount: evidence?.intersectionCount,
+          parentCounts: evidence?.parentCounts,
+          parentTrend: evidence?.parentTrend ?? null,
+          evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "report",
           sourceReportId: report._id,
           userId: report.userId,
           projectId: report.projectId,
-        }),
-      ),
+        });
+      }),
     );
   },
 

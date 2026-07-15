@@ -224,6 +224,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         .filter((n) => Number.isInteger(n) && n >= 1 && n <= papers.length)
         .map((n) => papers[n - 1]!.id),
       confidence: clamp01(g.confidence),
+      probe: normalizeProbe(g.probe),
     })),
   );
   report.set(
@@ -267,6 +268,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           rationale?: string;
           supportingPaperIds?: unknown[];
           confidence?: unknown;
+          probe?: unknown;
         };
         return {
           title: String(g.title ?? ""),
@@ -274,6 +276,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           rationale: String(g.rationale ?? ""),
           supportingPaperIds: g.supportingPaperIds ?? [],
           confidence: Number(g.confidence ?? 0.5),
+          probe: normalizeProbe(g.probe),
         };
       }),
     })
@@ -327,6 +330,30 @@ function clamp01(x: unknown): number {
   const n = Number(x);
   if (!Number.isFinite(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
+}
+
+function normalizeProbe(raw: unknown):
+  | { topicA: string; topicB: string; yearFrom?: number; yearTo?: number }
+  | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const candidate = raw as {
+    topicA?: unknown;
+    topicB?: unknown;
+    yearFrom?: unknown;
+    yearTo?: unknown;
+  };
+  const topicA = typeof candidate.topicA === "string" ? candidate.topicA.trim() : "";
+  const topicB = typeof candidate.topicB === "string" ? candidate.topicB.trim() : "";
+  if (!topicA || !topicB) return undefined;
+
+  const yearFrom = Number(candidate.yearFrom);
+  const yearTo = Number(candidate.yearTo);
+  return {
+    topicA,
+    topicB,
+    ...(Number.isInteger(yearFrom) ? { yearFrom } : {}),
+    ...(Number.isInteger(yearTo) ? { yearTo } : {}),
+  };
 }
 
 /**

@@ -5,9 +5,10 @@ import type { GapSupportingPaper } from "@trend/shared-types";
 interface SupportingPaperListProps {
   papers?: GapSupportingPaper[];
   totalPaperCount?: number;
+  max?: number;
 }
 
-export function SupportingPaperList({ papers = [], totalPaperCount = 0 }: SupportingPaperListProps) {
+export function SupportingPaperList({ papers = [], totalPaperCount = 0, max = 2 }: SupportingPaperListProps) {
   if (papers.length === 0) {
     return (
       <div className="text-xs text-slate-400 italic">
@@ -16,9 +17,9 @@ export function SupportingPaperList({ papers = [], totalPaperCount = 0 }: Suppor
     );
   }
 
-  // Display max 3 papers inline
-  const visiblePapers = papers.slice(0, 3);
-  const remainingCount = totalPaperCount > 3 ? totalPaperCount - 3 : papers.length > 3 ? papers.length - 3 : 0;
+  // Display max papers inline
+  const visiblePapers = papers.slice(0, max);
+  const remainingCount = totalPaperCount > max ? totalPaperCount - max : papers.length > max ? papers.length - max : 0;
 
   return (
     <div className="space-y-2.5">
