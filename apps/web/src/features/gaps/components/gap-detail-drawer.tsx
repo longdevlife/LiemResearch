@@ -69,7 +69,7 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
                 </span>
                 <DialogPrimitive.Close
                   onClick={onClose}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-650 dark:hover:text-slate-250 transition-colors cursor-pointer"
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   aria-label="Close details"
                 >
                   <X className="h-5 w-5" />
@@ -77,10 +77,14 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
               </div>
 
               <div className="space-y-2.5">
-                <h2 className="text-lg md:text-xl font-bold leading-tight text-slate-900 dark:text-white flex items-start gap-2">
+                <DialogPrimitive.Title className="text-lg md:text-xl font-bold leading-tight text-slate-900 dark:text-white flex items-start gap-2">
                   <Sparkles className="w-5 h-5 text-cyan-500 shrink-0 mt-1" />
                   <span>{gap.title}</span>
-                </h2>
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="sr-only">
+                  Research gap detail drawer showing source, corpus evidence, supporting papers,
+                  AI directions, and evaluation for this gap.
+                </DialogPrimitive.Description>
 
                 <div className="pt-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/60">
                   <GapOrigin 
@@ -95,7 +99,7 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
                   <Badge variant="outline" className={cn("rounded-lg text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 border", strengthColor)}>
                     {strengthLabel}
                   </Badge>
-                  <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-500 font-medium">
                     {strengthTooltip}
                   </span>
                 </div>
@@ -224,7 +228,7 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-slate-450 italic bg-slate-50 dark:bg-slate-900/10 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/30">
+                <div className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/10 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/30">
                   No supporting papers were saved for this gap.
                 </div>
               )}
