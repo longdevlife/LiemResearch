@@ -22,6 +22,13 @@ export function useGapAnalysisStatus(analysisId: string | null) {
   });
 }
 
+export function useActiveGapAnalysis() {
+  return useQuery({
+    queryKey: ["activeGapAnalysis"],
+    queryFn: () => gapsApi.getActiveAnalysis(),
+  });
+}
+
 export function useAnalyzeGap() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -56,6 +56,7 @@ const directionsLimiter = rateLimit({
 });
 
 gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
+gapsRouter.get("/analyze/active", gapsController.getActiveAnalysis);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);
 gapsRouter.get("/", gapsController.list);
 gapsRouter.patch("/:id", validate(PatchGapSchema), gapsController.patch);

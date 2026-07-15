@@ -64,6 +64,7 @@ export const API_ROUTES = {
   gaps: {
     analyze: "/gaps/analyze",
     analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
+    activeAnalysis: "/gaps/analyze/active",
     list: "/gaps",
     patch: (id: string) => `/gaps/${id}`,
     directions: (id: string) => `/gaps/${id}/directions`,

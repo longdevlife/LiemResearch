@@ -18,6 +18,11 @@ export const gapsApi = {
     return res.data.data;
   },
 
+  async getActiveAnalysis(): Promise<GapAnalysisResult | null> {
+    const res = await api.get(API_ROUTES.gaps.activeAnalysis);
+    return res.data.data ?? null;
+  },
+
   async list(params?: {
     topic?: string;
     minConfidence?: number;

@@ -72,7 +72,9 @@ export const evaluationRepository: EvaluationRepository = {
     ResearchGapModel.countDocuments({
       status: "active",
       supportingPaperIds: { $exists: true, $ne: [] },
-      evidenceConfidence: { $gt: 0 },
+      "probe.topicA": { $exists: true, $ne: "" },
+      "probe.topicB": { $exists: true, $ne: "" },
+      evidenceConfidence: { $gte: 0.5 },
     }),
 };
 
@@ -396,14 +398,14 @@ function buildGapCorpusEvidenceCheck(corpus: EvaluationCorpusMetrics): Evaluatio
   return {
     id: "gap-corpus-evidence",
     feature: "gap",
-    title: "Saved research gaps keep quantitative evidence",
+    title: "Saved research gaps keep probe-backed quantitative evidence",
     status: pass ? "pass" : "warn",
     score: pass ? 10 : hasGaps ? 5 : 0,
     maxScore: 10,
     basis:
-      "Gap quality is stronger when the saved gap carries supporting papers and evidenceConfidence, not just a fluent LLM description.",
+      "Gap quality is stronger when the saved gap carries supporting papers, a corpus-verifiable probe, and evidenceConfidence, not just a fluent LLM description.",
     evidence: `${corpus.evidenceBackedGaps}/${corpus.activeGaps} active gaps are evidence-backed (${corpus.gapEvidenceCoveragePct}%).`,
-    action: "Backfill or regenerate gaps through the v2 evidence path before claiming gap correctness.",
+    action: "Backfill or regenerate gaps through the probe-backed v2 evidence path before claiming gap correctness.",
   };
 }
 
