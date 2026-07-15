@@ -56,7 +56,7 @@ export const gapsController = {
 
   /** GET /api/v1/gaps/:id/directions — cached directions (or null). */
   async getDirections(req: Request, res: Response) {
-    const data = await gapsService.getDirections(req.params["id"] as string);
+    const data = await gapsService.getDirections(req.user!.sub, req.params["id"] as string);
     res.json({ success: true, data });
   },
 };

@@ -30,6 +30,7 @@ import {
   type GapsLlmOutput,
 } from "./gaps.prompt.js";
 import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
+import { canAccessGap, toGapListItem, type GapListDoc } from "./gap-presenter.js";
 
 export interface GapJob {
   analysisId: string;
@@ -139,6 +140,19 @@ function toDirectionsDto(d: GapDirectionsDoc): GapDirections {
     model: d.model ?? "",
     updatedAt: (d as unknown as { updatedAt: Date }).updatedAt.toISOString(),
   };
+}
+
+async function loadProjectForGap(gap: { projectId?: unknown }) {
+  if (!gap.projectId) return null;
+  const { ProjectModel } = await import("../projects/models/project.model.js");
+  return ProjectModel.findById(gap.projectId).lean();
+}
+
+async function assertCanReadGap(userId: string, gap: { userId?: unknown; projectId?: unknown }): Promise<void> {
+  if (canAccessGap(userId, gap as any)) return;
+  const project = await loadProjectForGap(gap);
+  if (canAccessGap(userId, gap as any, project as any)) return;
+  throw AppError.notFound("Research gap not found");
 }
 
 export const gapsService = {
@@ -366,27 +380,29 @@ export const gapsService = {
       ResearchGapModel.countDocuments(filter),
     ]);
 
+    const supportingPaperIds = [
+      ...new Set(docs.flatMap((d) => (d.supportingPaperIds ?? []).map(String))),
+    ];
+    const supportingPapers = supportingPaperIds.length
+      ? await PaperModel.find({ _id: { $in: supportingPaperIds } })
+          .select("title publicationYear journalName citationCount")
+          .lean()
+      : [];
+    const supportingPapersById = new Map(
+      supportingPapers.map((p) => [
+        String(p._id),
+        {
+          id: String(p._id),
+          title: String(p.title ?? ""),
+          publicationYear: p.publicationYear,
+          journalName: p.journalName ?? undefined,
+          citationCount: p.citationCount,
+        },
+      ]),
+    );
+
     return {
-      gaps: docs.map((d) => ({
-        id: String(d._id),
-        topic: d.topic,
-        normalizedTopic: d.normalizedTopic,
-        title: d.title,
-        description: d.description,
-        rationale: d.rationale,
-        supportingPaperIds: d.supportingPaperIds.map(String),
-        confidence: d.confidence,
-        probe: d.probe,
-        intersectionCount: d.intersectionCount,
-        parentCounts: d.parentCounts,
-        parentTrend: d.parentTrend,
-        evidenceConfidence: d.evidenceConfidence,
-        source: d.source,
-        sourceReportId: d.sourceReportId ? String(d.sourceReportId) : undefined,
-        userId: String(d.userId),
-        status: d.status,
-        createdAt: d.createdAt,
-      })),
+      gaps: docs.map((d) => toGapListItem(d as unknown as GapListDoc, supportingPapersById)),
       total,
     };
   },
@@ -409,12 +425,13 @@ export const gapsService = {
    * Synchronous (no vector search): the gap doc already carries full context.
    */
   async generateDirections(
-    _userId: string,
+    userId: string,
     gapId: string,
     force?: boolean,
   ): Promise<GapDirections> {
     const gap = await ResearchGapModel.findById(gapId).lean();
     if (!gap) throw AppError.notFound("Research gap not found");
+    await assertCanReadGap(userId, gap);
 
     const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
     const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
@@ -499,7 +516,10 @@ export const gapsService = {
   },
 
   /** Cached directions for a gap (or null if never generated). */
-  async getDirections(gapId: string): Promise<GapDirections | null> {
+  async getDirections(userId: string, gapId: string): Promise<GapDirections | null> {
+    const gap = await ResearchGapModel.findById(gapId).lean();
+    if (!gap) throw AppError.notFound("Research gap not found");
+    await assertCanReadGap(userId, gap);
     const doc = await GapDirectionsModel.findOne({ gapId });
     return doc ? toDirectionsDto(doc as GapDirectionsDoc) : null;
   },

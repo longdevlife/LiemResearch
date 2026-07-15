@@ -3,6 +3,15 @@
 export type GapStatus = "active" | "resolved" | "dismissed";
 export type GapSource = "report" | "standalone";
 export type GapAnalysisStatus = "queued" | "analyzing" | "ready" | "failed";
+export type GapEvidenceStatus = "confirmed" | "weak" | "ai_only";
+
+export interface GapSupportingPaper {
+  id: string;
+  title: string;
+  publicationYear?: number;
+  journalName?: string;
+  citationCount?: number;
+}
 
 export interface ResearchGapItem {
   id: string;
@@ -12,9 +21,12 @@ export interface ResearchGapItem {
   description: string;
   rationale: string;
   supportingPaperIds: string[];
+  supportingPapers: GapSupportingPaper[];
   confidence: number;
+  evidenceStatus: GapEvidenceStatus;
   source: GapSource;
   sourceReportId?: string;
+  analysisId?: string;
   projectId?: string;
   userId: string;
   status: GapStatus;

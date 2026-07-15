@@ -66,7 +66,7 @@ export function GapDirectionsPanel({
           variant={isFlat ? "outline" : "default"}
           className={
             isFlat
-              ? "h-8 px-3 rounded-lg text-xs font-semibold border-amber-200 dark:border-amber-900/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 text-amber-755 dark:text-amber-400 gap-1.5"
+              ? "h-8 px-3 rounded-lg text-xs font-semibold border-amber-200 dark:border-amber-900/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 text-amber-700 dark:text-amber-400 gap-1.5"
               : "h-9 px-4 gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold"
           }
         >
