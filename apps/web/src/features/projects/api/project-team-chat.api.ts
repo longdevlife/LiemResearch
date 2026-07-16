@@ -24,4 +24,22 @@ export const projectTeamChatApi = {
     }>(API_ROUTES.projects.teamChat.send(projectId), { content });
     return res.data.data.message;
   },
+
+  async markRead(projectId: string, messageId: string): Promise<ProjectTeamChatMessage> {
+    const res = await api.post<{
+      success: boolean;
+      data: SendProjectTeamChatMessageResponse;
+      meta: null;
+    }>(API_ROUTES.projects.teamChat.read(projectId, messageId));
+    return res.data.data.message;
+  },
+
+  async deleteMessage(projectId: string, messageId: string, reason?: string): Promise<ProjectTeamChatMessage> {
+    const res = await api.delete<{
+      success: boolean;
+      data: SendProjectTeamChatMessageResponse;
+      meta: null;
+    }>(API_ROUTES.projects.teamChat.delete(projectId, messageId), { data: { reason } });
+    return res.data.data.message;
+  },
 };

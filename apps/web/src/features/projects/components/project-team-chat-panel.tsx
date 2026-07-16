@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, SendHorizonal, XCircle, Users } from "lucide-react";
+import { CheckCheck, Loader2, SendHorizonal, Trash2, XCircle, Users } from "lucide-react";
 import type { ProjectTeamChatMessage } from "@trend/shared-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,19 +9,24 @@ import { projectTeamChatApi } from "../api/project-team-chat.api";
 
 interface ProjectTeamChatPanelProps {
   projectId: string;
+  ownerId?: string;
 }
 
-export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
+export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPanelProps) {
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
+  const lastMarkedReadRef = useRef<string | null>(null);
+  const queryKey = useMemo(() => ["project-team-chat", projectId] as const, [projectId]);
 
   const historyQuery = useQuery({
-    queryKey: ["project-team-chat", projectId],
+    queryKey,
     queryFn: () => projectTeamChatApi.listMessages(projectId),
     // Avoid repeatedly retrying permission errors; let the user retry manually.
     retry: false,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const sendMutation = useMutation({
@@ -30,8 +35,56 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
     onSuccess: () => {
       setMessage("");
       void queryClient.invalidateQueries({
-        queryKey: ["project-team-chat", projectId],
+        queryKey,
       });
+    },
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (messageId: string) => projectTeamChatApi.markRead(projectId, messageId),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ProjectTeamChatMessage[]>(queryKey, (current) =>
+        current?.map((item) => (item.id === updated.id ? updated : item)) ?? current,
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (messageId: string) =>
+      projectTeamChatApi.deleteMessage(projectId, messageId, "Removed from team chat"),
+    onMutate: async (messageId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ProjectTeamChatMessage[]>(queryKey);
+      queryClient.setQueryData<ProjectTeamChatMessage[]>(queryKey, (current) =>
+        current?.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                content: "",
+                isDeleted: true,
+                deletedAt: new Date().toISOString(),
+                deletedBy: currentUser
+                  ? {
+                      id: currentUser.id,
+                      fullName: currentUser.fullName,
+                      email: currentUser.email,
+                      avatarUrl: currentUser.avatarUrl,
+                    }
+                  : undefined,
+                deleteReason: "Removed from team chat",
+              }
+            : item,
+        ) ?? current,
+      );
+      return { previous };
+    },
+    onError: (_error, _messageId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -47,6 +100,18 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
           avatarUrl: currentUser?.avatarUrl,
         },
         content: sendMutation.variables ?? message,
+        readBy: currentUser
+          ? [
+              {
+                id: currentUser.id,
+                fullName: currentUser.fullName,
+                email: currentUser.email,
+                avatarUrl: currentUser.avatarUrl,
+              },
+            ]
+          : [],
+        readCount: currentUser ? 1 : 0,
+        isDeleted: false,
         createdAt: new Date().toISOString(),
       } satisfies ProjectTeamChatMessage)
     : null;
@@ -59,6 +124,15 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [visibleMessages.length]);
+
+  useEffect(() => {
+    const latest = messages.at(-1);
+    if (!latest || latest.id === lastMarkedReadRef.current || latest.sender.id === currentUser?.id) return;
+    const alreadyRead = latest.readBy.some((reader) => reader.id === currentUser?.id);
+    if (alreadyRead) return;
+    lastMarkedReadRef.current = latest.id;
+    markReadMutation.mutate(latest.id);
+  }, [currentUser?.id, markReadMutation, messages]);
 
   const submit = () => {
     const text = message.trim();
@@ -85,7 +159,7 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
         </div>
         <Badge variant="secondary" className="rounded-full flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-slate-300">
           <Users className="w-3 h-3" />
-          Members
+          Live updates
         </Badge>
       </div>
 
@@ -127,6 +201,9 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
           ) : (
             visibleMessages.map((item) => {
               const isMe = item.sender.id === currentUser?.id;
+              const canDelete = isMe || currentUser?.id === ownerId || currentUser?.role === "admin";
+              const isPending = item.id === "pending-team-msg";
+              const readByOthers = Math.max(0, item.readCount - (isMe ? 1 : 0));
               return (
                 <div
                   key={item.id}
@@ -182,7 +259,35 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
                         </span>
                       </div>
                     )}
-                    <p className="whitespace-pre-wrap">{item.content}</p>
+                    {item.isDeleted ? (
+                      <p className={`italic ${isMe ? "text-indigo-100" : "text-slate-500 dark:text-slate-400"}`}>
+                        This message was removed.
+                      </p>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{item.content}</p>
+                    )}
+                    <div className={`mt-2 flex items-center gap-2 text-[10px] ${isMe ? "justify-end text-indigo-200" : "text-slate-400"}`}>
+                      {isMe ? (
+                        <>
+                          <CheckCheck className="h-3 w-3" />
+                          <span>{isPending ? "Sending..." : readByOthers > 0 ? `Seen by ${readByOthers}` : "Sent"}</span>
+                        </>
+                      ) : (
+                        <span>{item.readBy.some((reader) => reader.id === currentUser?.id) ? "Read" : "Unread"}</span>
+                      )}
+                      {canDelete && !isPending && !item.isDeleted && (
+                        <button
+                          type="button"
+                          className="ml-1 inline-flex items-center rounded-full p-1 text-indigo-100 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+                          onClick={() => deleteMutation.mutate(item.id)}
+                          disabled={deleteMutation.isPending}
+                          aria-label="Delete team chat message"
+                          title="Delete message"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
