@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../common/exceptions/app-error.js";
 import { auditService } from "../../audit/audit.service.js";
 import { notificationService } from "../../notifications/notification.service.js";
+import { projectTeamChatEventHub } from "../project-team-chat.events.js";
 import { ProjectModel } from "../models/project.model.js";
 import { ProjectTeamMessageModel } from "../models/project-team-message.model.js";
 import { projectTeamChatService } from "../project-team-chat.service.js";
@@ -19,6 +20,7 @@ vi.mock("../models/project-team-message.model.js", () => ({
     find: vi.fn(),
     findById: vi.fn(),
     findOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
     updateMany: vi.fn(),
   },
 }));
@@ -32,6 +34,12 @@ vi.mock("../../audit/audit.service.js", () => ({
 vi.mock("../../notifications/notification.service.js", () => ({
   notificationService: {
     create: vi.fn(),
+  },
+}));
+
+vi.mock("../project-team-chat.events.js", () => ({
+  projectTeamChatEventHub: {
+    publish: vi.fn(),
   },
 }));
 
@@ -106,6 +114,12 @@ describe("projectTeamChatService", () => {
       targetRecordId: projectId,
       details: { messageId: expect.any(String) },
     });
+    expect(projectTeamChatEventHub.publish).toHaveBeenCalledWith({
+      type: "message.created",
+      projectId,
+      message: expect.objectContaining({ content: "Please review paper 3" }),
+      occurredAt: expect.any(String),
+    });
     expect(result).toMatchObject({
       projectId,
       sender: { id: memberId, fullName: "Member One", email: "member@test.local" },
@@ -171,6 +185,44 @@ describe("projectTeamChatService", () => {
       { _id: { $in: [newer._id, older._id] }, readBy: { $ne: new mongoose.Types.ObjectId(memberId) } },
       { $addToSet: { readBy: new mongoose.Types.ObjectId(memberId) } },
     );
+    expect(projectTeamChatEventHub.publish).toHaveBeenCalledWith({
+      type: "message.updated",
+      projectId,
+      message: expect.objectContaining({ id: older._id.toString(), readCount: 2 }),
+      occurredAt: expect.any(String),
+    });
+  });
+
+  it("publishes an update event when a member marks a message as read", async () => {
+    vi.mocked(ProjectModel.findById).mockReturnValue(
+      queryReturning({
+        _id: projectId,
+        ownerId,
+        members: [{ targetId: memberId, role: "member" }],
+      }) as any,
+    );
+    const messageId = new mongoose.Types.ObjectId();
+    vi.mocked(ProjectTeamMessageModel.findOneAndUpdate).mockReturnValue(
+      messageQueryReturning({
+        _id: messageId,
+        projectId,
+        senderId: { _id: ownerId, fullName: "Owner", email: "owner@test.local" },
+        content: "Please read",
+        readBy: [{ _id: memberId, fullName: "Member", email: "member@test.local" }],
+        isDeleted: false,
+        createdAt: new Date("2026-07-16T04:01:00.000Z"),
+      }) as any,
+    );
+
+    const result = await projectTeamChatService.markRead(projectId, messageId.toString(), memberId);
+
+    expect(result.readCount).toBe(1);
+    expect(projectTeamChatEventHub.publish).toHaveBeenCalledWith({
+      type: "message.updated",
+      projectId,
+      message: expect.objectContaining({ id: messageId.toString(), readCount: 1 }),
+      occurredAt: expect.any(String),
+    });
   });
 
   it("soft deletes a sender message and hides its content", async () => {
@@ -210,6 +262,12 @@ describe("projectTeamChatService", () => {
       targetTableName: "research_projects",
       targetRecordId: projectId,
       details: { messageId: messageId.toString(), reason: "Duplicate request" },
+    });
+    expect(projectTeamChatEventHub.publish).toHaveBeenCalledWith({
+      type: "message.deleted",
+      projectId,
+      message: expect.objectContaining({ id: messageId.toString(), isDeleted: true }),
+      occurredAt: expect.any(String),
     });
     expect(result).toMatchObject({
       id: messageId.toString(),

@@ -49,6 +49,7 @@ const EnvSchema = z.object({
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().default("llama3.1"),
   CHAT_MAX_PER_HOUR: z.coerce.number().int().positive().default(40),
+  TEAM_CHAT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(20),
   CHAT_CONTEXT_PAPERS: z.coerce.number().int().min(1).max(50).default(12),
   CHAT_HISTORY_TURNS: z.coerce.number().int().min(0).max(20).default(6),
   CHAT_MAX_PROMPT_CHARS: z.coerce.number().int().positive().default(12000),

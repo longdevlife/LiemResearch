@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import type { ProjectTeamChatEvent } from "@trend/shared-types";
+import { projectTeamChatEventHub } from "./project-team-chat.events.js";
 import { projectTeamChatService } from "./project-team-chat.service.js";
 
 export class ProjectTeamChatController {
@@ -38,6 +40,45 @@ export class ProjectTeamChatController {
     });
     res.json({ success: true, data: { message }, meta: null });
   }
+
+  async streamEvents(req: Request, res: Response) {
+    const projectId = req.params.id as string;
+    const userId = req.user!.sub;
+    const userRole = req.user!.role;
+    await projectTeamChatService.assertCanOpenEvents(projectId, userId, userRole);
+
+    req.socket.setTimeout(0);
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    writeSse(res, {
+      type: "ready",
+      projectId,
+      occurredAt: new Date().toISOString(),
+    });
+
+    const unsubscribe = projectTeamChatEventHub.subscribe(projectId, (event) => {
+      writeSse(res, event);
+    });
+    const heartbeat = setInterval(() => {
+      res.write(`: heartbeat ${Date.now()}\n\n`);
+    }, 25_000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+      res.end();
+    });
+  }
 }
 
 export const projectTeamChatController = new ProjectTeamChatController();
+
+function writeSse(res: Response, event: ProjectTeamChatEvent): void {
+  res.write(`event: ${event.type}\n`);
+  res.write(`data: ${JSON.stringify(event)}\n\n`);
+}

@@ -112,3 +112,12 @@ export interface SendProjectTeamChatMessageResponse {
 export interface ProjectTeamChatHistoryResponse {
   messages: ProjectTeamChatMessage[];
 }
+
+export type ProjectTeamChatEventType = "ready" | "message.created" | "message.updated" | "message.deleted";
+
+export interface ProjectTeamChatEvent {
+  type: ProjectTeamChatEventType;
+  projectId: string;
+  message?: ProjectTeamChatMessage;
+  occurredAt: string;
+}
