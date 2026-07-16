@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { auditService } from "../audit/audit.service.js";
 import { notificationService } from "../notifications/notification.service.js";
+import { projectTeamChatEventHub } from "./project-team-chat.events.js";
 import { ProjectModel } from "./models/project.model.js";
 import { ProjectTeamMessageModel } from "./models/project-team-message.model.js";
 import { canAccessProject, idToString, type ProjectScopeLike } from "./project-scope.js";
@@ -76,6 +77,12 @@ export class ProjectTeamChatService {
       .lean();
     if (!doc) throw AppError.internal("Team message was created but could not be loaded");
     const message = toTeamChatMessage(doc as unknown as TeamMessageDoc);
+    projectTeamChatEventHub.publish({
+      type: "message.created",
+      projectId,
+      message,
+      occurredAt: new Date().toISOString(),
+    });
     await this.afterMessageSent(projectId, userId, project, message);
     return message;
   }
@@ -107,12 +114,22 @@ export class ProjectTeamChatService {
         { _id: { $in: ids }, readBy: { $ne: new mongoose.Types.ObjectId(userId) } },
         { $addToSet: { readBy: new mongoose.Types.ObjectId(userId) } },
       );
+      const updatedReadMessages: TeamMessageDoc[] = [];
       for (const doc of docs as Array<{ readBy?: unknown[] }>) {
         const readBy: unknown[] = Array.isArray(doc.readBy) ? doc.readBy : [];
         if (!readBy.some((id: unknown) => idToString(id as Parameters<typeof idToString>[0]) === userId)) {
           readBy.push(new mongoose.Types.ObjectId(userId));
           doc.readBy = readBy;
+          updatedReadMessages.push(doc as unknown as TeamMessageDoc);
         }
+      }
+      for (const doc of updatedReadMessages) {
+        projectTeamChatEventHub.publish({
+          type: "message.updated",
+          projectId,
+          message: toTeamChatMessage(doc),
+          occurredAt: new Date().toISOString(),
+        });
       }
     }
 
@@ -140,7 +157,18 @@ export class ProjectTeamChatService {
       .populate("deletedBy", "fullName email avatarUrl")
       .lean();
     if (!updated) throw AppError.notFound("Team message not found");
-    return toTeamChatMessage(updated as unknown as TeamMessageDoc);
+    const message = toTeamChatMessage(updated as unknown as TeamMessageDoc);
+    projectTeamChatEventHub.publish({
+      type: "message.updated",
+      projectId,
+      message,
+      occurredAt: new Date().toISOString(),
+    });
+    return message;
+  }
+
+  async assertCanOpenEvents(projectId: string, userId: string, userRole?: string): Promise<void> {
+    await this.assertCanAccess(projectId, userId, { allowAdmin: userRole === "admin" });
   }
 
   async deleteMessage(
@@ -182,7 +210,14 @@ export class ProjectTeamChatService {
       details: { messageId, reason: reason?.trim() || undefined },
     });
 
-    return toTeamChatMessage(doc as unknown as TeamMessageDoc);
+    const message = toTeamChatMessage(doc as unknown as TeamMessageDoc);
+    projectTeamChatEventHub.publish({
+      type: "message.deleted",
+      projectId,
+      message,
+      occurredAt: new Date().toISOString(),
+    });
+    return message;
   }
 
   private async assertCanAccess(

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCheck, Loader2, SendHorizonal, Trash2, XCircle, Users } from "lucide-react";
+import { CheckCheck, Loader2, Radio, SendHorizonal, Trash2, XCircle } from "lucide-react";
 import type { ProjectTeamChatMessage } from "@trend/shared-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "reconnecting" | "offline">("connecting");
   const endRef = useRef<HTMLDivElement | null>(null);
   const lastMarkedReadRef = useRef<string | null>(null);
   const queryKey = useMemo(() => ["project-team-chat", projectId] as const, [projectId]);
@@ -25,7 +26,7 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
     queryFn: () => projectTeamChatApi.listMessages(projectId),
     // Avoid repeatedly retrying permission errors; let the user retry manually.
     retry: false,
-    refetchInterval: 5000,
+    refetchInterval: liveStatus === "live" ? false : 5000,
     refetchIntervalInBackground: false,
   });
 
@@ -122,6 +123,49 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
   );
 
   useEffect(() => {
+    const controller = new AbortController();
+    let reconnectTimer: number | undefined;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled || historyQuery.isError) return;
+      setLiveStatus((current) => (current === "offline" ? "reconnecting" : current));
+      void projectTeamChatApi.streamEvents(projectId, {
+        signal: controller.signal,
+        onOpen: () => setLiveStatus("live"),
+        onEvent: (event) => {
+          if (event.type === "ready") {
+            setLiveStatus("live");
+            return;
+          }
+          if (!event.message) return;
+          queryClient.setQueryData<ProjectTeamChatMessage[]>(queryKey, (current) => {
+            const existing = current ?? [];
+            const index = existing.findIndex((item) => item.id === event.message!.id);
+            if (index >= 0) {
+              return existing.map((item) => (item.id === event.message!.id ? event.message! : item));
+            }
+            return [...existing, event.message!];
+          });
+        },
+      }).catch((error) => {
+        if (cancelled || controller.signal.aborted) return;
+        console.warn("[team-chat] event stream disconnected", error);
+        setLiveStatus("reconnecting");
+        reconnectTimer = window.setTimeout(connect, 3000);
+      });
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    };
+  }, [historyQuery.isError, projectId, queryClient, queryKey]);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [visibleMessages.length]);
 
@@ -157,9 +201,9 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
             Internal discussion workspace for project members.
           </p>
         </div>
-        <Badge variant="secondary" className="rounded-full flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-slate-300">
-          <Users className="w-3 h-3" />
-          Live updates
+        <Badge variant="secondary" className={liveStatusBadgeClass(liveStatus)}>
+          <Radio className="w-3 h-3" />
+          {liveStatusLabel(liveStatus)}
         </Badge>
       </div>
 
@@ -346,4 +390,19 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
       </div>
     </div>
   );
+}
+
+function liveStatusLabel(status: "connecting" | "live" | "reconnecting" | "offline"): string {
+  if (status === "live") return "Live";
+  if (status === "reconnecting") return "Reconnecting";
+  if (status === "offline") return "Offline";
+  return "Connecting";
+}
+
+function liveStatusBadgeClass(status: "connecting" | "live" | "reconnecting" | "offline"): string {
+  const base = "rounded-full flex items-center gap-1";
+  if (status === "live") return `${base} bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300`;
+  if (status === "reconnecting") return `${base} bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300`;
+  if (status === "offline") return `${base} bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300`;
+  return `${base} bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-slate-300`;
 }

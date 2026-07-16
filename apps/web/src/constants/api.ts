@@ -86,6 +86,7 @@ export const API_ROUTES = {
     teamChat: {
       send: (id: string) => `/projects/${id}/team-chat`,
       history: (id: string) => `/projects/${id}/team-chat`,
+      events: (id: string) => `/projects/${id}/team-chat/events`,
       read: (id: string, messageId: string) => `/projects/${id}/team-chat/${messageId}/read`,
       delete: (id: string, messageId: string) => `/projects/${id}/team-chat/${messageId}`,
     },
