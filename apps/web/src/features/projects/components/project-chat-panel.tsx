@@ -10,9 +10,10 @@ import { projectChatApi } from "../api/project-chat.api";
 interface ProjectChatPanelProps {
   projectId: string;
   paperCount: number;
+  currentUserName: string;
 }
 
-export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProps) {
+export function ProjectChatPanel({ projectId, paperCount, currentUserName }: ProjectChatPanelProps) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -55,9 +56,11 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
 
   const submit = () => {
     const text = message.trim();
-    if (!text || sendMutation.isPending) return;
+    if (!text || sendMutation.isPending || paperCount === 0) return;
     sendMutation.mutate(text);
   };
+
+  const isDisabled = sendMutation.isPending || paperCount === 0;
 
   return (
     <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900">
@@ -65,7 +68,7 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">Project Chat</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Ask AI about the {paperCount} papers added to this project.
+            Ask AI about the {paperCount} paper{paperCount === 1 ? "" : "s"} added to this project.
           </p>
         </div>
         <Badge variant="secondary" className="rounded-full">
@@ -85,9 +88,15 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
               <div className="mb-3 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm dark:bg-zinc-800 dark:text-slate-200">
                 No messages yet
               </div>
-              <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                Ask questions about methodologies, limitations, trends, or gaps in your project's papers.
-              </p>
+              {paperCount === 0 ? (
+                <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  Add papers before asking AI. Empty projects are blocked before credits are charged.
+                </p>
+              ) : (
+                <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  Ask questions about methodologies, limitations, trends, or gaps in your project's papers.
+                </p>
+              )}
             </div>
           ) : (
             visibleMessages.map((item) => (
@@ -102,6 +111,13 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
                       : "border border-slate-200 bg-white text-slate-800 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
                   }`}
                 >
+                  <div className={`mb-1 flex items-center gap-2 text-[11px] font-semibold ${
+                    item.role === "user" ? "text-indigo-100" : "text-slate-500 dark:text-slate-400"
+                  }`}>
+                    <span>{item.role === "user" ? currentUserName : "AI assistant"}</span>
+                    <span aria-hidden="true">•</span>
+                    <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+                  </div>
                   <p className="whitespace-pre-wrap">{item.content}</p>
                   {item.role === "assistant" && item.citedPaperIds.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
@@ -150,12 +166,12 @@ export function ProjectChatPanel({ projectId, paperCount }: ProjectChatPanelProp
               rows={2}
               placeholder="Ask AI about papers in this project..."
               className="min-h-[48px] flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none transition focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={sendMutation.isPending}
+              disabled={isDisabled}
             />
             <Button
               type="button"
               onClick={submit}
-              disabled={!message.trim() || sendMutation.isPending}
+              disabled={!message.trim() || isDisabled}
               className="h-auto rounded-xl px-4"
             >
               {sendMutation.isPending ? (

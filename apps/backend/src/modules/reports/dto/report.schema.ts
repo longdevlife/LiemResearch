@@ -27,6 +27,7 @@ export const PreviewReportEvidenceSchema = z
   .object({
     query: z.string().trim().min(3, "query must be at least 3 characters").max(500),
     topic: z.string().trim().max(200).optional(),
+    projectId: z.string().optional(),
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
     language: z.enum(["auto", "en", "vi"]).default("auto"),

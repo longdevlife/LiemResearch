@@ -33,6 +33,7 @@ import {
 } from "./gaps.prompt.js";
 import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
 import { canAccessGap, toGapListItem, type GapListDoc } from "./gap-presenter.js";
+import { projectService } from "../projects/project.service.js";
 
 export interface GapJob {
   analysisId: string;
@@ -58,9 +59,12 @@ function escapeRegex(s: string): string {
  *  The probe is LLM-generated free text, so it is escaped before becoming a regex. */
 function conceptFilter(
   phrases: string[],
-  years: { yearFrom?: number; yearTo?: number },
+  years: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Record<string, unknown> {
   const filter: Record<string, unknown> = { dataStatus: "active" };
+  if (years.paperIds && years.paperIds.length > 0) {
+    filter._id = { $in: years.paperIds.map((id) => new mongoose.Types.ObjectId(id)) };
+  }
   if (years.yearFrom !== undefined || years.yearTo !== undefined) {
     filter.publicationYear = {
       ...(years.yearFrom !== undefined ? { $gte: years.yearFrom } : {}),
@@ -77,13 +81,13 @@ function conceptFilter(
 /** YoY growth % of a free-text concept over the analysis window (0 if too sparse). */
 async function conceptGrowthPct(
   phrase: string,
-  years: { yearFrom?: number; yearTo?: number },
+  years: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Promise<number> {
   const now = new Date().getFullYear();
   const yearTo = years.yearTo ?? now;
   const yearFrom = years.yearFrom ?? yearTo - GAP_WINDOW_YEARS;
   const rows = await PaperModel.aggregate<{ _id: number; count: number }>([
-    { $match: conceptFilter([phrase], { yearFrom, yearTo }) },
+    { $match: conceptFilter([phrase], { yearFrom, yearTo, paperIds: years.paperIds }) },
     { $group: { _id: "$publicationYear", count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
   ]);
@@ -101,9 +105,9 @@ async function conceptGrowthPct(
  * escaped-regex on title+abstract (the probe is free text, not a canonical topic
  * name). Returns null when the probe is missing so the gap degrades gracefully.
  */
-async function scoreGapEvidence(probe: GapProbe | undefined) {
+async function scoreGapEvidence(probe: GapProbe | undefined, paperIds?: string[]) {
   if (!probe?.topicA || !probe?.topicB) return null;
-  const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo };
+  const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo, paperIds };
   const [intersectionCount, aCount, bCount, growthA, growthB] = await Promise.all([
     PaperModel.countDocuments(conceptFilter([probe.topicA, probe.topicB], years)),
     PaperModel.countDocuments(conceptFilter([probe.topicA], years)),
@@ -161,6 +165,9 @@ export const gapsService = {
   /** Create a queued analysis row, enqueue the BullMQ job, and return the id. */
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
     const analysisId = new mongoose.Types.ObjectId();
+    if (dto.projectId) {
+      await projectService.getProjectPaperIdsForUser(dto.projectId, userId, "gap analysis");
+    }
 
     const tx = await creditService.chargeCreditsChecked({
       userId,
@@ -249,11 +256,19 @@ export const gapsService = {
 
     // ① Embed topic
     const queryVector = await getEmbeddingProvider().embed(analysis.topic);
+    const projectPaperIds = analysis.projectId
+      ? await projectService.getProjectPaperIdsForUser(
+          String(analysis.projectId),
+          String(analysis.userId),
+          "gap analysis",
+        )
+      : undefined;
 
     // ② Vector search — BEFORE cache lookup (paper IDs needed for cache key)
     const papers = await retrieveGapEvidence(queryVector, {
       yearFrom: analysis.yearFrom ?? undefined,
       yearTo: analysis.yearTo ?? undefined,
+      paperIds: projectPaperIds,
     });
 
     if (papers.length === 0) {
@@ -312,7 +327,7 @@ export const gapsService = {
     await ResearchGapModel.deleteMany({ analysisId: analysis._id });
     const gapDocs = await Promise.all(
       output.gaps.slice(0, 5).map(async (g) => {
-        const evidence = await scoreGapEvidence(g.probe);
+        const evidence = await scoreGapEvidence(g.probe, projectPaperIds);
         return ResearchGapModel.create({
           topic: analysis.topic,
           normalizedTopic,
@@ -370,6 +385,7 @@ export const gapsService = {
     _id: unknown;
     userId: unknown;
     projectId?: unknown;
+    projectPaperIds?: unknown[];
     query: string;
     researchGaps: Array<{
       title: string;
@@ -382,9 +398,10 @@ export const gapsService = {
   }): Promise<void> {
     if (!report.researchGaps || report.researchGaps.length === 0) return;
     const normalizedTopic = normalizeTopicStr(report.query);
+    const scopedPaperIds = report.projectId ? (report.projectPaperIds ?? []).map(String) : undefined;
     await Promise.all(
       report.researchGaps.map(async (g) => {
-        const evidence = await scoreGapEvidence(g.probe);
+        const evidence = await scoreGapEvidence(g.probe, scopedPaperIds);
         return ResearchGapModel.create({
           topic: report.query,
           normalizedTopic,
@@ -638,8 +655,11 @@ export const gapsService = {
 
 async function retrieveGapEvidence(
   queryVector: number[],
-  filters: { yearFrom?: number; yearTo?: number },
+  filters: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Promise<GapEvidencePaper[]> {
+  if (filters.paperIds && filters.paperIds.length > 0) {
+    return retrieveProjectGapEvidence(queryVector, { ...filters, paperIds: filters.paperIds });
+  }
   return retrieve({
     queryVector,
     topK: env.GAPS_TOP_K,
@@ -648,4 +668,62 @@ async function retrieveGapEvidence(
     filters,
     projection: "gap",
   });
+}
+
+async function retrieveProjectGapEvidence(
+  queryVector: number[],
+  filters: { yearFrom?: number; yearTo?: number; paperIds: string[] },
+): Promise<GapEvidencePaper[]> {
+  const match: Record<string, unknown> = {
+    _id: { $in: filters.paperIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    dataStatus: "active",
+  };
+  if (filters.yearFrom !== undefined || filters.yearTo !== undefined) {
+    match.publicationYear = {
+      ...(filters.yearFrom !== undefined ? { $gte: filters.yearFrom } : {}),
+      ...(filters.yearTo !== undefined ? { $lte: filters.yearTo } : {}),
+    };
+  }
+
+  const docs = await PaperModel.find(match)
+    .select("title abstractText aiAnalysis publicationYear +embedding")
+    .lean();
+  const order = new Map(filters.paperIds.map((id, index) => [id, index]));
+
+  return docs
+    .map((doc) => {
+      const embedding = Array.isArray(doc.embedding) ? doc.embedding : undefined;
+      return {
+        id: String(doc._id),
+        title: String(doc.title ?? ""),
+        abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
+        aiAnalysis: doc.aiAnalysis ?? null,
+        publicationYear: doc.publicationYear,
+        score: embedding ? cosineSimilarity(queryVector, embedding) : Number.NEGATIVE_INFINITY,
+      };
+    })
+    .sort((a, b) => {
+      const scoreA = Number.isFinite(a.score) ? a.score : Number.NEGATIVE_INFINITY;
+      const scoreB = Number.isFinite(b.score) ? b.score : Number.NEGATIVE_INFINITY;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+    })
+    .slice(0, env.GAPS_TOP_K)
+    .map(({ score: _score, ...paper }) => paper);
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return Number.NEGATIVE_INFINITY;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    dot += av * bv;
+    normA += av * av;
+    normB += bv * bv;
+  }
+  if (normA === 0 || normB === 0) return Number.NEGATIVE_INFINITY;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }

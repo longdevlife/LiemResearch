@@ -1,12 +1,27 @@
+export interface ProjectMemberUserSummary {
+  _id: string;
+  fullName?: string;
+  email?: string;
+  avatarUrl?: string;
+}
+
+export interface ProjectPaperSummary {
+  _id: string;
+  title: string;
+  publicationYear?: number;
+  authors?: Array<{ displayName?: string }>;
+  abstractText?: string;
+}
+
 export interface IProjectMember {
-  targetKind: "User" | "Expert";
-  targetId: string;
+  targetKind: "User";
+  targetId: string | ProjectMemberUserSummary;
   role: "owner" | "member";
 }
 
 export interface IProjectPaper {
   targetKind: "Paper";
-  targetId: string;
+  targetId: string | ProjectPaperSummary;
 }
 
 export interface IProject {
@@ -31,7 +46,7 @@ export interface UpdateProjectRequest {
 }
 
 export interface AddProjectMemberRequest {
-  targetKind: "User" | "Expert";
+  targetKind: "User";
   targetId: string;
   role: "owner" | "member";
 }
