@@ -4,6 +4,7 @@ import { requireAuth } from "../../common/middleware/auth.js";
 import { validate } from "../../common/middleware/validate.js";
 import { z } from "zod";
 import { projectChatRouter } from "./chat.routes.js";
+import { projectTeamChatRouter } from "./team-chat.routes.js";
 
 export const projectRouter: Router = Router();
 
@@ -31,6 +32,7 @@ projectRouter.post("/:id/papers", validate(paramIdSchema, "params"), validate(ad
 projectRouter.delete("/:id/papers/:paperId", validate(paramPaperIdSchema, "params"), projectController.removePaper);
 
 projectRouter.use("/:id/chat", projectChatRouter);
+projectRouter.use("/:id/team-chat", projectTeamChatRouter);
 
 projectRouter.post("/:id/members", validate(paramIdSchema, "params"), validate(addMemberSchema, "body"), projectController.addMember);
 projectRouter.delete("/:id/members/:memberId", validate(paramMemberIdSchema, "params"), projectController.removeMember);

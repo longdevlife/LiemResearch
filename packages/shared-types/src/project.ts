@@ -79,3 +79,30 @@ export interface SendProjectChatMessageResponse {
 export interface ProjectChatHistoryResponse {
   messages: ProjectChatMessage[];
 }
+
+export interface ProjectTeamChatSender {
+  id: string;
+  fullName?: string;
+  email?: string;
+  avatarUrl?: string;
+}
+
+export interface ProjectTeamChatMessage {
+  id: string;
+  projectId: string;
+  sender: ProjectTeamChatSender;
+  content: string;
+  createdAt: string;
+}
+
+export interface SendProjectTeamChatMessageRequest {
+  content: string;
+}
+
+export interface SendProjectTeamChatMessageResponse {
+  message: ProjectTeamChatMessage;
+}
+
+export interface ProjectTeamChatHistoryResponse {
+  messages: ProjectTeamChatMessage[];
+}
