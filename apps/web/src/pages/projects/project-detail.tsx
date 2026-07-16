@@ -12,8 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api-client";
 import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
 import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
-import { ProjectChatPanel } from "@/features/projects/components/project-chat-panel";
-import { ProjectTeamChatPanel } from "@/features/projects/components/project-team-chat-panel";
+import { ProjectDiscussionPanel } from "@/features/projects/components/project-discussion-panel";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import type { ReportLanguage } from "@trend/shared-types";
@@ -50,7 +49,7 @@ export function ProjectDetailPage() {
   const currentUser = useAuthStore(s => s.user);
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading } = useProject(id);
-  const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps" | "chat" | "team-chat">("papers");
+  const [activeTab, setActiveTab] = useState<"papers" | "members" | "reports" | "gaps" | "chat">("papers");
   const [autoOpenReport, setAutoOpenReport] = useState(false);
   const [autoOpenGap, setAutoOpenGap] = useState(false);
 
@@ -169,26 +168,9 @@ export function ProjectDetailPage() {
             >
               <span className="inline-flex items-center gap-1.5">
                 <MessageSquare className="h-4 w-4" />
-                AI Chat
+                Chat
               </span>
               {activeTab === "chat" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
-            </button>
-
-            <button
-              id="project-tab-team-chat"
-              role="tab"
-              aria-selected={activeTab === "team-chat"}
-              aria-controls="project-panel-team-chat"
-              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
-                activeTab === "team-chat" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-              onClick={() => setActiveTab("team-chat")}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                Team Chat
-              </span>
-              {activeTab === "team-chat" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
             </button>
 
           </div>
@@ -240,12 +222,11 @@ export function ProjectDetailPage() {
           )}
           {activeTab === "chat" && (
             <section id="project-panel-chat" role="tabpanel" aria-labelledby="project-tab-chat">
-              <ProjectChatPanel projectId={project._id} paperCount={project.papers?.length || 0} currentUserName={currentUser?.fullName || currentUser?.email || "You"} />
-            </section>
-          )}
-          {activeTab === "team-chat" && (
-            <section id="project-panel-team-chat" role="tabpanel" aria-labelledby="project-tab-team-chat">
-              <ProjectTeamChatPanel projectId={project._id} ownerId={project.ownerId} />
+              <ProjectDiscussionPanel
+                projectId={project._id}
+                paperCount={project.papers?.length || 0}
+                ownerId={project.ownerId}
+              />
             </section>
           )}
         </div>

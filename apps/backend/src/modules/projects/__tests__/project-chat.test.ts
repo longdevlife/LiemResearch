@@ -7,6 +7,7 @@ import {
   type ChatEvidencePaper,
 } from "../project-chat.prompt.js";
 import { buildChatCacheKey, fitToBudget } from "../project-chat.tokens.js";
+import { buildChatHistoryFilter } from "../project-chat.service.js";
 
 function paper(id: string, embedding?: number[]): ChatEvidencePaper {
   return {
@@ -155,6 +156,7 @@ describe("fitToBudget", () => {
 describe("buildChatCacheKey", () => {
   const base = {
     projectId: "p1",
+    scope: "private" as const,
     question: "  Research GAP là gì? ",
     paperIds: ["b", "a", "c"],
     promptVersion: "project-chat-v1",
@@ -175,9 +177,25 @@ describe("buildChatCacheKey", () => {
   it("changes when project, paper ids, prompt version, provider, or model changes", () => {
     const key = buildChatCacheKey(base);
     expect(buildChatCacheKey({ ...base, projectId: "p2" })).not.toBe(key);
+    expect(buildChatCacheKey({ ...base, scope: "team" })).not.toBe(key);
     expect(buildChatCacheKey({ ...base, paperIds: ["a", "b"] })).not.toBe(key);
     expect(buildChatCacheKey({ ...base, promptVersion: "project-chat-v2" })).not.toBe(key);
     expect(buildChatCacheKey({ ...base, provider: "gemini" })).not.toBe(key);
     expect(buildChatCacheKey({ ...base, model: "gemini-3.1-flash-lite" })).not.toBe(key);
+  });
+});
+
+describe("buildChatHistoryFilter", () => {
+  it("keeps private AI history scoped to the current user", () => {
+    const filter = buildChatHistoryFilter("507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012", "private");
+    expect(filter).toHaveProperty("userId");
+    expect(filter).toHaveProperty("$or");
+    expect(filter.$or).toEqual([{ scope: "private" }, { scope: { $exists: false } }]);
+  });
+
+  it("keeps team AI history shared across project members", () => {
+    const filter = buildChatHistoryFilter("507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012", "team");
+    expect(filter).toMatchObject({ scope: "team" });
+    expect(filter).not.toHaveProperty("userId");
   });
 });

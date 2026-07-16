@@ -17,7 +17,7 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "reconnecting" | "offline">("connecting");
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMarkedReadRef = useRef<string | null>(null);
   const queryKey = useMemo(() => ["project-team-chat", projectId] as const, [projectId]);
 
@@ -166,7 +166,9 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
   }, [historyQuery.isError, projectId, queryClient, queryKey]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
   }, [visibleMessages.length]);
 
   useEffect(() => {
@@ -209,7 +211,7 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
 
       <div className="flex h-[520px] flex-col">
         {/* Messages Area */}
-        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50/70 px-5 py-5 dark:bg-black/20">
+        <div ref={containerRef} className="flex-1 space-y-4 overflow-y-auto bg-slate-50/70 px-5 py-5 dark:bg-black/20">
           {historyQuery.isLoading ? (
             <div className="flex h-full items-center justify-center text-sm text-slate-500">
               <Loader2 className="mr-2 h-4 w-4 animate-spin text-indigo-600" />
@@ -337,7 +339,7 @@ export function ProjectTeamChatPanel({ projectId, ownerId }: ProjectTeamChatPane
               );
             })
           )}
-          <div ref={endRef} />
+
         </div>
 
         {/* Mutation Send Error */}

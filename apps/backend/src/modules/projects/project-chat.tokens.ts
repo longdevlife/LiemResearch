@@ -32,6 +32,7 @@ export interface FitToBudgetResult<TPaper extends BudgetPaper> {
 
 export interface BuildChatCacheKeyInput {
   projectId: string;
+  scope: "private" | "team";
   question: string;
   paperIds: string[];
   promptVersion: string;
@@ -46,6 +47,7 @@ export function normalizeQuestion(question: string): string {
 export function buildChatCacheKey(input: BuildChatCacheKeyInput): string {
   const canonical = JSON.stringify({
     projectId: input.projectId,
+    scope: input.scope,
     question: normalizeQuestion(input.question),
     paperIds: [...input.paperIds].sort(),
     promptVersion: input.promptVersion,

@@ -56,28 +56,52 @@ export interface AddProjectPaperRequest {
 }
 
 export type ProjectChatRole = "user" | "assistant";
+export type ProjectChatScope = "private" | "team";
 
 export interface ProjectChatMessage {
   id: string;
   projectId: string;
   userId: string;
+  scope: ProjectChatScope;
   role: ProjectChatRole;
   content: string;
   citedPaperIds: string[];
+  requester?: ProjectTeamChatSender;
+  creditCost?: number;
+  isPinned?: boolean;
+  pinnedAt?: string;
+  pinnedBy?: ProjectTeamChatSender;
   createdAt: string;
 }
 
 export interface SendProjectChatMessageRequest {
   message: string;
+  scope?: ProjectChatScope;
 }
 
 export interface SendProjectChatMessageResponse {
+  scope: ProjectChatScope;
   answer: string;
   citedPaperIds: string[];
+  creditCost: number;
 }
 
 export interface ProjectChatHistoryResponse {
   messages: ProjectChatMessage[];
+}
+
+export interface PinProjectChatMessageResponse {
+  message: ProjectChatMessage;
+}
+
+export type ProjectChatEventType = "ready" | "message.created" | "message.updated";
+
+export interface ProjectChatEvent {
+  type: ProjectChatEventType;
+  projectId: string;
+  scope: ProjectChatScope;
+  message?: ProjectChatMessage;
+  occurredAt: string;
 }
 
 export interface ProjectTeamChatSender {
