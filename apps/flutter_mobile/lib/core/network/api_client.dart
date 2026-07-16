@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_mobile/core/auth/auth_events.dart';
 import 'package:flutter_mobile/core/config/app_config.dart';
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/errors/api_exception.dart';
@@ -8,12 +9,17 @@ import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(const SecureTokenStore());
+  return ApiClient(
+    const SecureTokenStore(),
+    onAuthExpired: () {
+      ref.read(authExpiredSignalProvider.notifier).notifyExpired();
+    },
+  );
 });
 
 class ApiClient {
 
-  ApiClient(this._tokenStore) {
+  ApiClient(this._tokenStore, {this.onAuthExpired}) {
     const baseUrl = AppConfig.apiBaseUrl;
 
     _dio = Dio(BaseOptions(
@@ -53,8 +59,7 @@ class ApiClient {
                 return handler.resolve(cloneReq);
               }
             } on Exception {
-              await _tokenStore.delete();
-              // In UI logic, this will trigger router redirect since token is gone.
+              await _clearAuthSession();
             }
           }
         }
@@ -89,7 +94,9 @@ class ApiClient {
   }
   late final Dio _dio;
   final SecureTokenStore _tokenStore;
+  final void Function()? onAuthExpired;
   Future<String?>? _refreshFuture;
+  bool _hasNotifiedAuthExpired = false;
 
   Dio get dio => _dio;
 
@@ -108,6 +115,7 @@ class ApiClient {
         final tokens = AuthTokens.fromJson(dataMap);
         
         await _tokenStore.save(tokens);
+        _hasNotifiedAuthExpired = false;
         return tokens.accessToken;
       } on Exception {
         rethrow;
@@ -115,5 +123,12 @@ class ApiClient {
         _refreshFuture = null;
       }
     }();
+  }
+
+  Future<void> _clearAuthSession() async {
+    await _tokenStore.delete();
+    if (_hasNotifiedAuthExpired) return;
+    _hasNotifiedAuthExpired = true;
+    onAuthExpired?.call();
   }
 }

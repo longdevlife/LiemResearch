@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_mobile/core/auth/auth_events.dart';
 import 'package:flutter_mobile/core/errors/api_exception.dart';
 import 'package:flutter_mobile/core/storage/secure_token_store.dart';
 import 'package:flutter_mobile/features/auth/data/auth_api.dart';
@@ -24,6 +25,11 @@ class AuthController extends Notifier<AsyncValue<User?>> {
   AsyncValue<User?> build() {
     _authApi = ref.watch(authApiProvider);
     _tokenStore = const SecureTokenStore();
+    ref.listen<int>(authExpiredSignalProvider, (previous, next) {
+      if (previous != null && next != previous) {
+        state = const AsyncData(null);
+      }
+    });
     
     // We can't do async build directly with Notifier, so we trigger an async init
     unawaited(Future.microtask(_initAuth));

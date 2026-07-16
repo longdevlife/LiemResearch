@@ -318,15 +318,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showHomeMenu(BuildContext context) {
-    final items = [
-      ('Submit Paper', Icons.upload_file, '/submit-paper', const Color(0xFF06B6D4)),
-      ('AI Reports', Icons.description, '/reports', const Color(0xFFA78BFA)),
-      ('Ranks', Icons.emoji_events, '/rankings', const Color(0xFFA5B4FC)),
-      ('Trends', Icons.trending_up, '/trends', const Color(0xFF22C55E)),
-      ('Gaps', Icons.bolt, '/gaps', const Color(0xFFF59E0B)),
-      ('Projects', Icons.folder, '/projects', const Color(0xFF06B6D4)),
-      ('My Papers', Icons.archive, '/my-papers', const Color(0xFF38BDF8)),
-    ];
+    final parentContext = context;
     unawaited(showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -334,60 +326,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Menu',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(),
-            Expanded(
-              child: ListView(
-                shrinkWrap: true,
-                children: items
-                    .map(
-                      (item) => ListTile(
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: item.$4.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(item.$2, color: item.$4, size: 18),
-                        ),
-                        title: Text(
-                          item.$1,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.pop(context);
-                          unawaited(context.push(item.$3));
-                        },
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
+      builder: (sheetContext) {
+        return HomeMenuSheet(
+          onNavigate: (route) {
+            Navigator.pop(sheetContext);
+            if (parentContext.mounted) {
+              unawaited(parentContext.push(route));
+            }
+          },
+        );
+      },
     ));
+  }
+}
+
+class HomeMenuSheet extends StatelessWidget {
+  const HomeMenuSheet({required this.onNavigate, super.key});
+
+  final ValueChanged<String> onNavigate;
+
+  static const List<(String, IconData, String, Color)> _items = [
+    ('Submit Paper', Icons.upload_file, '/submit-paper', Color(0xFF06B6D4)),
+    ('AI Reports', Icons.description, '/reports', Color(0xFFA78BFA)),
+    ('Ranks', Icons.emoji_events, '/rankings', Color(0xFFA5B4FC)),
+    ('Trends', Icons.trending_up, '/trends', Color(0xFF22C55E)),
+    ('Gaps', Icons.bolt, '/gaps', Color(0xFFF59E0B)),
+    ('Projects', Icons.folder, '/projects', Color(0xFF06B6D4)),
+    ('My Papers', Icons.archive, '/my-papers', Color(0xFF38BDF8)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final fallbackHeight = MediaQuery.sizeOf(context).height * 0.68;
+          final availableHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : fallbackHeight;
+          final sheetHeight = availableHeight.clamp(280.0, 460.0);
+
+          return SizedBox(
+            height: sheetHeight,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Menu',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView(
+                    children: _items
+                        .map(
+                          (item) => ListTile(
+                            leading: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: item.$4.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(item.$2, color: item.$4, size: 18),
+                            ),
+                            title: Text(
+                              item.$1,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => onNavigate(item.$3),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

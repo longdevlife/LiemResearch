@@ -1,7 +1,52 @@
+import 'package:flutter_mobile/features/papers/data/papers_models.dart';
+
 int countWords(String value) {
   return value.trim().split(RegExp(r'\s+')).where((word) {
     return RegExp('[a-z0-9]', caseSensitive: false).hasMatch(word);
   }).length;
+}
+
+bool canResubmitPaperStatus(String? status) => status == 'rejected';
+
+class SubmitPaperDraft {
+  const SubmitPaperDraft({
+    required this.title,
+    required this.doi,
+    required this.paperLink,
+    required this.abstractText,
+    required this.publicationYear,
+    required this.paperKind,
+    required this.authorsCsv,
+    required this.keywordsCsv,
+    required this.topicsCsv,
+    required this.openAccessUrl,
+  });
+
+  factory SubmitPaperDraft.fromPaper(Paper paper) {
+    return SubmitPaperDraft(
+      title: paper.title,
+      doi: '',
+      paperLink: paper.paperLink ?? '',
+      abstractText: paper.abstractText ?? '',
+      publicationYear: paper.publicationYear.toString(),
+      paperKind: paper.paperKind ?? 'article',
+      authorsCsv: paper.authors.map((author) => author.displayName).join(', '),
+      keywordsCsv: paper.keywords.map((keyword) => keyword.keywordName).join(', '),
+      topicsCsv: paper.topics.map((topic) => topic.topicName).join(', '),
+      openAccessUrl: paper.openAccessUrl ?? '',
+    );
+  }
+
+  final String title;
+  final String doi;
+  final String paperLink;
+  final String abstractText;
+  final String publicationYear;
+  final String paperKind;
+  final String authorsCsv;
+  final String keywordsCsv;
+  final String topicsCsv;
+  final String openAccessUrl;
 }
 
 List<String> csvList(String value) {

@@ -3,6 +3,7 @@ import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
+import 'package:flutter_mobile/features/papers/domain/submit_paper_validation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,7 +44,12 @@ class MyPapersScreen extends ConsumerWidget {
                   child: ListTile(
                     title: Text(paper.title, maxLines: 2, overflow: TextOverflow.ellipsis),
                     subtitle: Text('${paper.paperStatus ?? paper.dataStatus} - ${paper.publicationYear}'),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: canResubmitPaperStatus(paper.paperStatus)
+                        ? TextButton(
+                            onPressed: () => context.push('/submit-paper?editId=${paper.id}'),
+                            child: const Text('Resubmit'),
+                          )
+                        : const Icon(Icons.chevron_right),
                     onTap: () => context.push('/paper/${paper.id}'),
                   ),
                 );

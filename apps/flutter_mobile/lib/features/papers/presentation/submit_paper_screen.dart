@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
@@ -27,6 +29,16 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
   String paperKind = 'article';
   PaperSubmitFile? pdf;
   bool submitting = false;
+  bool loadingEdit = false;
+  bool editDraftLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editId != null) {
+      unawaited(_loadEditDraft());
+    }
+  }
 
   @override
   void dispose() {
@@ -45,6 +57,32 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
       return;
     }
     setState(() => pdf = PaperSubmitFile(path: file.path!, name: file.name, mimeType: 'application/pdf'));
+  }
+
+  Future<void> _loadEditDraft() async {
+    setState(() => loadingEdit = true);
+    try {
+      final paper = await ref.read(papersApiProvider).detail(widget.editId!);
+      final draft = SubmitPaperDraft.fromPaper(paper);
+      if (!mounted) return;
+      setState(() {
+        title.text = draft.title;
+        doi.text = draft.doi;
+        paperLink.text = draft.paperLink;
+        abstractText.text = draft.abstractText;
+        year.text = draft.publicationYear;
+        paperKind = draft.paperKind;
+        authors.text = draft.authorsCsv;
+        keywords.text = draft.keywordsCsv;
+        topics.text = draft.topicsCsv;
+        openAccessUrl.text = draft.openAccessUrl;
+        editDraftLoaded = true;
+      });
+    } on Object catch (e) {
+      if (mounted) _show(e.toString());
+    } finally {
+      if (mounted) setState(() => loadingEdit = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -102,6 +140,8 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (loadingEdit && !editDraftLoaded)
+            const LinearProgressIndicator(),
           Card(
             child: ListTile(
               leading: const Icon(Icons.info_outline),
