@@ -4,8 +4,11 @@ import { env } from "../../config/env.js";
 import { validate } from "../../common/middleware/validate.js";
 import {
   ListProjectChatQuerySchema,
+  PinProjectChatMessageSchema,
+  ProjectChatMessageParamsSchema,
   ProjectChatParamsSchema,
   SendProjectChatMessageSchema,
+  StreamProjectChatQuerySchema,
 } from "./dto/project-chat.schema.js";
 import { projectChatController } from "./project-chat.controller.js";
 
@@ -36,8 +39,22 @@ projectChatRouter.post(
 );
 
 projectChatRouter.get(
+  "/events",
+  validate(ProjectChatParamsSchema, "params"),
+  validate(StreamProjectChatQuerySchema, "query"),
+  projectChatController.streamEvents,
+);
+
+projectChatRouter.get(
   "/",
   validate(ProjectChatParamsSchema, "params"),
   validate(ListProjectChatQuerySchema, "query"),
   projectChatController.listHistory,
+);
+
+projectChatRouter.patch(
+  "/:messageId/pin",
+  validate(ProjectChatMessageParamsSchema, "params"),
+  validate(PinProjectChatMessageSchema),
+  projectChatController.setPinned,
 );
