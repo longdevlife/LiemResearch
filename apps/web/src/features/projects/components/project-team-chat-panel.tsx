@@ -20,7 +20,7 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
   const historyQuery = useQuery({
     queryKey: ["project-team-chat", projectId],
     queryFn: () => projectTeamChatApi.listMessages(projectId),
-    // Thêm retry: false để tránh query lặp lại nhiều lần nếu bị chặn quyền thành viên (403/401)
+    // Avoid repeatedly retrying permission errors; let the user retry manually.
     retry: false,
   });
 
@@ -105,6 +105,15 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
                 {(historyQuery.error as any)?.response?.data?.error?.message ||
                   "You are not a member of this project or don't have access to this team chat."}
               </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 rounded-full"
+                onClick={() => void historyQuery.refetch()}
+              >
+                Retry
+              </Button>
             </div>
           ) : visibleMessages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
@@ -129,7 +138,7 @@ export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
                         <img
                           src={item.sender.avatarUrl}
                           className="h-8 w-8 rounded-full object-cover border border-slate-100 dark:border-white/5"
-                          alt="avatar"
+                          alt={item.sender.fullName || item.sender.email || "Member avatar"}
                         />
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 dark:bg-zinc-800 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-white/5">
