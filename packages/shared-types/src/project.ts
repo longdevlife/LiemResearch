@@ -92,6 +92,12 @@ export interface ProjectTeamChatMessage {
   projectId: string;
   sender: ProjectTeamChatSender;
   content: string;
+  readBy: ProjectTeamChatSender[];
+  readCount: number;
+  isDeleted: boolean;
+  deletedAt?: string;
+  deletedBy?: ProjectTeamChatSender;
+  deleteReason?: string;
   createdAt: string;
 }
 

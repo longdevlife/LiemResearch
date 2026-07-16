@@ -86,6 +86,21 @@ describe("ProjectService", () => {
       await expect(projectService.getProjectById(projectId, userId)).rejects.toThrow(AppError);
     });
 
+    it("should return project for admin moderation even when admin is not a member", async () => {
+      const mockProject = {
+        _id: projectId,
+        ownerId: new mongoose.Types.ObjectId().toString(),
+        members: [],
+      };
+      vi.mocked(ProjectModel.findById).mockReturnValue({
+        populate: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockResolvedValue(mockProject),
+      } as any);
+
+      const result = await projectService.getProjectById(projectId, userId, "admin");
+      expect(result).toEqual(mockProject);
+    });
+
     it("should throw 404 if project not found", async () => {
       vi.mocked(ProjectModel.findById).mockReturnValue({
         populate: vi.fn().mockReturnThis(),

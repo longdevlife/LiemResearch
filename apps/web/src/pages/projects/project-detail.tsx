@@ -245,7 +245,7 @@ export function ProjectDetailPage() {
           )}
           {activeTab === "team-chat" && (
             <section id="project-panel-team-chat" role="tabpanel" aria-labelledby="project-tab-team-chat">
-              <ProjectTeamChatPanel projectId={project._id} />
+              <ProjectTeamChatPanel projectId={project._id} ownerId={project.ownerId} />
             </section>
           )}
         </div>

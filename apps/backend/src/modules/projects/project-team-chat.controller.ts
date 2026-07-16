@@ -17,6 +17,27 @@ export class ProjectTeamChatController {
     const messages = await projectTeamChatService.listMessages(projectId, userId, query);
     res.json({ success: true, data: { messages }, meta: { count: messages.length } });
   }
+
+  async markRead(req: Request, res: Response) {
+    const projectId = req.params.id as string;
+    const messageId = req.params.messageId as string;
+    const userId = req.user!.sub;
+    const message = await projectTeamChatService.markRead(projectId, messageId, userId);
+    res.json({ success: true, data: { message }, meta: null });
+  }
+
+  async deleteMessage(req: Request, res: Response) {
+    const projectId = req.params.id as string;
+    const messageId = req.params.messageId as string;
+    const userId = req.user!.sub;
+    const userRole = req.user!.role;
+    const reason = (req.body as { reason?: string } | undefined)?.reason;
+    const message = await projectTeamChatService.deleteMessage(projectId, messageId, userId, {
+      reason,
+      userRole,
+    });
+    res.json({ success: true, data: { message }, meta: null });
+  }
 }
 
 export const projectTeamChatController = new ProjectTeamChatController();

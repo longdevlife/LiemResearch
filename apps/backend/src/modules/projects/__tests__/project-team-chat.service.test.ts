@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../common/exceptions/app-error.js";
+import { auditService } from "../../audit/audit.service.js";
+import { notificationService } from "../../notifications/notification.service.js";
 import { ProjectModel } from "../models/project.model.js";
 import { ProjectTeamMessageModel } from "../models/project-team-message.model.js";
 import { projectTeamChatService } from "../project-team-chat.service.js";
@@ -16,6 +18,20 @@ vi.mock("../models/project-team-message.model.js", () => ({
     create: vi.fn(),
     find: vi.fn(),
     findById: vi.fn(),
+    findOne: vi.fn(),
+    updateMany: vi.fn(),
+  },
+}));
+
+vi.mock("../../audit/audit.service.js", () => ({
+  auditService: {
+    log: vi.fn(),
+  },
+}));
+
+vi.mock("../../notifications/notification.service.js", () => ({
+  notificationService: {
+    create: vi.fn(),
   },
 }));
 
@@ -38,6 +54,7 @@ describe("projectTeamChatService", () => {
   const ownerId = new mongoose.Types.ObjectId().toString();
   const memberId = new mongoose.Types.ObjectId().toString();
   const outsiderId = new mongoose.Types.ObjectId().toString();
+  const adminId = new mongoose.Types.ObjectId().toString();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,6 +78,8 @@ describe("projectTeamChatService", () => {
         projectId,
         senderId: { _id: memberId, fullName: "Member One", email: "member@test.local" },
         content: "Please review paper 3",
+        readBy: [{ _id: memberId, fullName: "Member One", email: "member@test.local" }],
+        isDeleted: false,
         createdAt,
       }) as any,
     );
@@ -71,11 +90,28 @@ describe("projectTeamChatService", () => {
       projectId: new mongoose.Types.ObjectId(projectId),
       senderId: new mongoose.Types.ObjectId(memberId),
       content: "Please review paper 3",
+      readBy: [new mongoose.Types.ObjectId(memberId)],
+    });
+    expect(notificationService.create).toHaveBeenCalledWith({
+      userId: ownerId,
+      title: "New project team message",
+      message: "Member One sent a message in your project.",
+      type: "project_team_chat",
+      targetKind: "project",
+      targetId: projectId,
+    });
+    expect(auditService.log).toHaveBeenCalledWith("project.team_chat.message_sent", {
+      userId: memberId,
+      targetTableName: "research_projects",
+      targetRecordId: projectId,
+      details: { messageId: expect.any(String) },
     });
     expect(result).toMatchObject({
       projectId,
       sender: { id: memberId, fullName: "Member One", email: "member@test.local" },
       content: "Please review paper 3",
+      readCount: 1,
+      isDeleted: false,
       createdAt: createdAt.toISOString(),
     });
   });
@@ -108,6 +144,8 @@ describe("projectTeamChatService", () => {
       projectId,
       senderId: { _id: ownerId, fullName: "Owner", email: "owner@test.local" },
       content: "First",
+      readBy: [ownerId],
+      isDeleted: false,
       createdAt: new Date("2026-07-16T04:00:00.000Z"),
     };
     const newer = {
@@ -115,6 +153,8 @@ describe("projectTeamChatService", () => {
       projectId,
       senderId: { _id: memberId, fullName: "Member", email: "member@test.local" },
       content: "Second",
+      readBy: [memberId],
+      isDeleted: false,
       createdAt: new Date("2026-07-16T04:01:00.000Z"),
     };
     vi.mocked(ProjectTeamMessageModel.find).mockReturnValue({
@@ -127,5 +167,120 @@ describe("projectTeamChatService", () => {
     const messages = await projectTeamChatService.listMessages(projectId, memberId, { limit: 20 });
 
     expect(messages.map((message) => message.content)).toEqual(["First", "Second"]);
+    expect(ProjectTeamMessageModel.updateMany).toHaveBeenCalledWith(
+      { _id: { $in: [newer._id, older._id] }, readBy: { $ne: new mongoose.Types.ObjectId(memberId) } },
+      { $addToSet: { readBy: new mongoose.Types.ObjectId(memberId) } },
+    );
+  });
+
+  it("soft deletes a sender message and hides its content", async () => {
+    vi.mocked(ProjectModel.findById).mockReturnValue(
+      queryReturning({
+        _id: projectId,
+        ownerId,
+        members: [{ targetId: memberId, role: "member" }],
+      }) as any,
+    );
+    const messageId = new mongoose.Types.ObjectId();
+    const save = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(ProjectTeamMessageModel.findOne).mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue({
+        _id: messageId,
+        projectId,
+        senderId: memberId,
+        content: "delete me",
+        readBy: [],
+        isDeleted: false,
+        createdAt: new Date("2026-07-16T04:01:00.000Z"),
+        save,
+      }),
+    } as any);
+
+    const result = await projectTeamChatService.deleteMessage(
+      projectId,
+      messageId.toString(),
+      memberId,
+      "Duplicate request",
+    );
+
+    expect(save).toHaveBeenCalled();
+    expect(auditService.log).toHaveBeenCalledWith("project.team_chat.message_deleted", {
+      userId: memberId,
+      targetTableName: "research_projects",
+      targetRecordId: projectId,
+      details: { messageId: messageId.toString(), reason: "Duplicate request" },
+    });
+    expect(result).toMatchObject({
+      id: messageId.toString(),
+      content: "",
+      isDeleted: true,
+      deleteReason: "Duplicate request",
+    });
+  });
+
+  it("rejects deleting another member message unless owner", async () => {
+    vi.mocked(ProjectModel.findById).mockReturnValue(
+      queryReturning({
+        _id: projectId,
+        ownerId,
+        members: [{ targetId: memberId, role: "member" }],
+      }) as any,
+    );
+    const messageId = new mongoose.Types.ObjectId();
+    vi.mocked(ProjectTeamMessageModel.findOne).mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue({
+        _id: messageId,
+        projectId,
+        senderId: memberId,
+        content: "protected",
+        readBy: [],
+        isDeleted: false,
+        createdAt: new Date("2026-07-16T04:01:00.000Z"),
+        save: vi.fn(),
+      }),
+    } as any);
+
+    await expect(
+      projectTeamChatService.deleteMessage(projectId, messageId.toString(), outsiderId, "Nope"),
+    ).rejects.toThrow(AppError);
+  });
+
+  it("lets an admin soft delete a message without being a project member", async () => {
+    vi.mocked(ProjectModel.findById).mockReturnValue(
+      queryReturning({
+        _id: projectId,
+        ownerId,
+        members: [{ targetId: memberId, role: "member" }],
+      }) as any,
+    );
+    const messageId = new mongoose.Types.ObjectId();
+    const save = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(ProjectTeamMessageModel.findOne).mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue({
+        _id: messageId,
+        projectId,
+        senderId: memberId,
+        content: "moderate me",
+        readBy: [],
+        isDeleted: false,
+        createdAt: new Date("2026-07-16T04:01:00.000Z"),
+        save,
+      }),
+    } as any);
+
+    const result = await projectTeamChatService.deleteMessage(projectId, messageId.toString(), adminId, {
+      reason: "Policy violation",
+      userRole: "admin",
+    });
+
+    expect(save).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      id: messageId.toString(),
+      isDeleted: true,
+      deleteReason: "Policy violation",
+    });
   });
 });
