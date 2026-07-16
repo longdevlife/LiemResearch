@@ -83,5 +83,9 @@ export const API_ROUTES = {
       send: (id: string) => `/projects/${id}/chat`,
       history: (id: string) => `/projects/${id}/chat`,
     },
+    teamChat: {
+      send: (id: string) => `/projects/${id}/team-chat`,
+      history: (id: string) => `/projects/${id}/team-chat`,
+    },
   }
 } as const;

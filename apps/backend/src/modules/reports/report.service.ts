@@ -15,6 +15,8 @@ import type {
 import { creditService } from "../credits/credit.service.js";
 import { resolveReportCreditCost } from "../credits/credit-policy.js";
 import { collectReportEvidence } from "./report.evidence.js";
+import { projectService } from "../projects/project.service.js";
+import { resolveProjectEvidenceIds } from "../projects/project-scope.js";
 
 /**
  * HTTP-facing report operations. The heavy RAG work lives in rag.service.ts
@@ -29,6 +31,8 @@ const STALE_GENERATING_MS = 5 * 60_000;
 export const reportService = {
   /** Create a queued report + enqueue its job. Guarded against quota abuse. */
   async create(userId: string, input: CreateReportInput): Promise<{ id: string; status: string }> {
+    const selectedPaperIds = await resolveReportEvidenceScope(userId, input);
+
     // NOTE: check-then-insert is not atomic; a same-user burst can slightly
     // exceed the cap. Accepted — the per-user rate limiter on the route is the
     // real throughput throttle; this guard only bounds CONCURRENT work.
@@ -78,7 +82,7 @@ export const reportService = {
         language: input.language ?? "auto",
         deepAnalysis: input.deepAnalysis ?? false,
         fast: input.fast ?? false,
-        selectedPaperIds: input.selectedPaperIds ?? [],
+        selectedPaperIds: selectedPaperIds ?? [],
         status: "queued",
         creditTransactionId: txId,
         creditCost: cost,
@@ -109,14 +113,14 @@ export const reportService = {
     userId: string,
     input: PreviewReportEvidenceInput,
   ): Promise<PreviewReportEvidenceResponse> {
-    void userId;
+    const selectedPaperIds = await resolveReportEvidenceScope(userId, input);
     const queryVector = await getEmbeddingProvider().embed(input.query);
     const evidence = await collectReportEvidence({
       queryVector,
-      selectedPaperIds: input.selectedPaperIds,
+      selectedPaperIds,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
-      fillWithRetrieved: input.fillWithRetrieved,
+      fillWithRetrieved: input.projectId ? false : input.fillWithRetrieved,
     });
     const warnings = evidence.missingSelectedPaperIds.map(
       (id) => `Selected paper ${id} was not found in the active corpus and was skipped.`,
@@ -218,3 +222,23 @@ function toReportDto(doc: Partial<ReportDoc> & { _id: unknown }): AnalyticalRepo
 }
 
 // Code quality reviewed and formatted
+
+async function resolveReportEvidenceScope(
+  userId: string,
+  input: Pick<CreateReportInput, "projectId" | "selectedPaperIds">,
+): Promise<string[] | undefined> {
+  if (!input.projectId) return input.selectedPaperIds;
+
+  const projectPaperIds = await projectService.getProjectPaperIdsForUser(
+    input.projectId,
+    userId,
+    "report",
+  );
+  const resolved = resolveProjectEvidenceIds(projectPaperIds, input.selectedPaperIds);
+  if (resolved.invalidIds.length > 0) {
+    throw AppError.badRequest("Selected evidence papers must belong to the project.", {
+      invalidPaperIds: resolved.invalidIds,
+    });
+  }
+  return resolved.ids;
+}

@@ -23,6 +23,7 @@ export interface CreateReportRequest {
 
 export interface PreviewReportEvidenceRequest {
   query: string;
+  projectId?: string;
   topic?: string;
   yearFrom?: number;
   yearTo?: number;

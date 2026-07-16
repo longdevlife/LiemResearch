@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import mongoose from "mongoose";
 import {
   buildRetrievePipeline,
   buildVectorFilter,
@@ -8,12 +9,14 @@ import {
 
 describe("buildVectorFilter", () => {
   it("keeps indexed filters inside $vectorSearch", () => {
+    const paperId = "507f1f77bcf86cd799439011";
     expect(
       buildVectorFilter({
         filters: {
           yearFrom: 2021,
           yearTo: 2024,
           topics: ["LLM", "RAG"],
+          paperIds: [paperId],
         },
       }),
     ).toEqual({
@@ -51,12 +54,15 @@ describe("buildRetrievePipeline", () => {
         queryVector: base.queryVector,
         numCandidates: 1000,
         limit: 120,
-        filter: { dataStatus: "active" },
+        filter: {
+          dataStatus: "active",
+        },
       },
     });
     expect(pipeline).toContainEqual({ $addFields: { score: { $meta: "vectorSearchScore" } } });
     expect(pipeline).toContainEqual({
       $match: expect.objectContaining({
+        _id: { $in: [new mongoose.Types.ObjectId("507f1f77bcf86cd799439011")] },
         paperKind: { $in: ["journal-article"] },
         openAccessUrl: { $type: "string", $ne: "" },
         primaryProvider: "openalex",

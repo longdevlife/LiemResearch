@@ -269,6 +269,8 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     .fanOutGapsFromReport({
       _id: report._id,
       userId: report.userId,
+      projectId: report.projectId,
+      projectPaperIds: (report.selectedPaperIds ?? []).map((id) => String(id)),
       query: report.query,
       researchGaps: ((report.researchGaps ?? []) as unknown[]).map((raw) => {
         const g = raw as {

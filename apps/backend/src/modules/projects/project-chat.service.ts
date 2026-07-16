@@ -22,6 +22,7 @@ import {
   normalizeQuestion,
   PROJECT_CHAT_PROMPT_VERSION,
 } from "./project-chat.tokens.js";
+import { assertProjectHasPapers } from "./project-scope.js";
 
 export interface SendProjectChatMessageResult {
   answer: string;
@@ -45,6 +46,7 @@ export class ProjectChatService {
     message: string,
   ): Promise<SendProjectChatMessageResult> {
     const papers = await this.loadProjectEvidence(projectId, userId);
+    assertProjectHasPapers(papers.map((paper) => paper.id), "project chat");
 
     // Charge 1 credit for sending a message
     const tx = await creditService.chargeCreditsChecked({

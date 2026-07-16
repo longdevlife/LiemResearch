@@ -1,0 +1,244 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, SendHorizonal, XCircle, Users } from "lucide-react";
+import type { ProjectTeamChatMessage } from "@trend/shared-types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuthStore } from "@/stores/auth-store";
+import { projectTeamChatApi } from "../api/project-team-chat.api";
+
+interface ProjectTeamChatPanelProps {
+  projectId: string;
+}
+
+export function ProjectTeamChatPanel({ projectId }: ProjectTeamChatPanelProps) {
+  const currentUser = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState("");
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  const historyQuery = useQuery({
+    queryKey: ["project-team-chat", projectId],
+    queryFn: () => projectTeamChatApi.listMessages(projectId),
+    // Avoid repeatedly retrying permission errors; let the user retry manually.
+    retry: false,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (content: string) =>
+      projectTeamChatApi.sendMessage(projectId, content),
+    onSuccess: () => {
+      setMessage("");
+      void queryClient.invalidateQueries({
+        queryKey: ["project-team-chat", projectId],
+      });
+    },
+  });
+
+  const messages = historyQuery.data ?? [];
+  const pendingUserMessage = sendMutation.isPending
+    ? ({
+        id: "pending-team-msg",
+        projectId,
+        sender: {
+          id: currentUser?.id ?? "me",
+          fullName: currentUser?.fullName,
+          email: currentUser?.email,
+          avatarUrl: currentUser?.avatarUrl,
+        },
+        content: sendMutation.variables ?? message,
+        createdAt: new Date().toISOString(),
+      } satisfies ProjectTeamChatMessage)
+    : null;
+
+  const visibleMessages = useMemo(
+    () => (pendingUserMessage ? [...messages, pendingUserMessage] : messages),
+    [messages, pendingUserMessage],
+  );
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [visibleMessages.length]);
+
+  const submit = () => {
+    const text = message.trim();
+    if (!text || sendMutation.isPending || historyQuery.isError) return;
+    sendMutation.mutate(text);
+  };
+
+  const getInitials = (sender: { fullName?: string; email?: string }) => {
+    const name = sender.fullName || sender.email || "?";
+    return name.charAt(0).toUpperCase();
+  };
+
+  const isDisabled = sendMutation.isPending || historyQuery.isError;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900">
+      {/* Panel Header */}
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/10">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Team Chat</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Internal discussion workspace for project members.
+          </p>
+        </div>
+        <Badge variant="secondary" className="rounded-full flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-slate-300">
+          <Users className="w-3 h-3" />
+          Members
+        </Badge>
+      </div>
+
+      <div className="flex h-[520px] flex-col">
+        {/* Messages Area */}
+        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50/70 px-5 py-5 dark:bg-black/20">
+          {historyQuery.isLoading ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-indigo-600" />
+              Loading team messages...
+            </div>
+          ) : historyQuery.isError ? (
+            <div className="flex h-full flex-col items-center justify-center text-center p-6">
+              <XCircle className="mb-2 h-8 w-8 text-red-500 animate-pulse" />
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Access Denied / Error</p>
+              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                {(historyQuery.error as any)?.response?.data?.error?.message ||
+                  "You are not a member of this project or don't have access to this team chat."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 rounded-full"
+                onClick={() => void historyQuery.refetch()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : visibleMessages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <div className="mb-3 rounded-full bg-white dark:bg-zinc-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100/50 dark:border-white/5">
+                No team messages yet
+              </div>
+              <p className="max-w-sm text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Start the discussion with your project members.
+              </p>
+            </div>
+          ) : (
+            visibleMessages.map((item) => {
+              const isMe = item.sender.id === currentUser?.id;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  {!isMe && (
+                    <div className="flex-shrink-0 mt-1">
+                      {item.sender.avatarUrl ? (
+                        <img
+                          src={item.sender.avatarUrl}
+                          className="h-8 w-8 rounded-full object-cover border border-slate-100 dark:border-white/5"
+                          alt={item.sender.fullName || item.sender.email || "Member avatar"}
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 dark:bg-zinc-800 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-white/5">
+                          {getInitials(item.sender)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm relative ${
+                      isMe
+                        ? "bg-indigo-600 text-white"
+                        : "border border-slate-200/80 bg-white text-slate-800 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
+                    }`}
+                  >
+                    {!isMe && (
+                      <div className="mb-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>
+                          {item.sender.fullName ||
+                            item.sender.email ||
+                            "Member"}
+                        </span>
+                        <span className="text-[9px] text-slate-300 dark:text-slate-700" aria-hidden="true">•</span>
+                        <span className="font-normal text-slate-400">
+                          {new Date(item.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {isMe && (
+                      <div className="mb-1 text-[11px] font-bold text-indigo-200 flex items-center justify-end gap-1.5">
+                        <span>You</span>
+                        <span className="text-[9px] text-indigo-400" aria-hidden="true">•</span>
+                        <span className="font-normal text-indigo-300">
+                          {new Date(item.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap">{item.content}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={endRef} />
+        </div>
+
+        {/* Mutation Send Error */}
+        {sendMutation.isError && (
+          <div className="border-t border-red-100 bg-red-50 dark:border-red-950/20 dark:bg-red-950/10 px-5 py-2.5 text-xs text-red-700 dark:text-red-400 flex items-center gap-1.5">
+            <XCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {(sendMutation.error as any)?.response?.data?.error?.message ||
+                "Failed to send message. Please try again."}
+            </span>
+          </div>
+        )}
+
+        {/* Input Box */}
+        <div className="border-t border-slate-100 p-4 dark:border-white/10">
+          <div className="flex gap-3">
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  submit();
+                }
+              }}
+              maxLength={2000}
+              rows={2}
+              placeholder={
+                historyQuery.isError
+                  ? "Chat is unavailable due to access error"
+                  : "Send a message to your project team members..."
+              }
+              className="min-h-[48px] flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-800 bg-background px-3 py-2 text-sm shadow-sm outline-none transition focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-950"
+              disabled={isDisabled}
+            />
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={!message.trim() || isDisabled}
+              className="h-auto rounded-xl px-4 bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <SendHorizonal className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
