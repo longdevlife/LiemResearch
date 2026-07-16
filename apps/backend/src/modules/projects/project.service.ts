@@ -50,7 +50,7 @@ export class ProjectService {
   /**
    * Get a specific project by ID.
    */
-  async getProjectById(projectId: string, userId: string): Promise<ProjectDoc> {
+  async getProjectById(projectId: string, userId: string, userRole?: string): Promise<ProjectDoc> {
     const project = await ProjectModel.findById(projectId)
       .populate("members.targetId", "fullName email avatarUrl")
       .populate("papers.targetId", "title publicationYear authors abstractText")
@@ -59,7 +59,7 @@ export class ProjectService {
       throw AppError.notFound("Project not found");
     }
 
-    if (!canAccessProject(project, userId)) {
+    if (!canAccessProject(project, userId) && userRole !== "admin") {
       throw AppError.forbidden("Access denied to this project");
     }
 
