@@ -7,14 +7,15 @@ import {
   type TrendsOverviewParams,
 } from "../api/trends.api";
 
-export function useTrendsOverview(params?: TrendsOverviewParams) {
+export function useTrendsOverview(params?: TrendsOverviewParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["trendsOverview", params],
     queryFn: () => trendsApi.overview(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
-export function useTopicTrend(topic: string, params?: { yearFrom?: number; yearTo?: number }) {
+export function useTopicTrend(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number }) {
   return useQuery({
     queryKey: ["topicTrend", topic, params],
     queryFn: () => trendsApi.topic(topic, params),

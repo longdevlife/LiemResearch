@@ -1,88 +1,97 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { ProtectedRoute } from "@/components/protected-route";
 
-import { HomePage } from "@/pages/home";
-import { LoginPage } from "@/pages/login";
-import { RegisterPage } from "@/pages/register";
-import { OAuthCallbackPage } from "@/pages/oauth-callback";
-import { DashboardPage } from "@/pages/dashboard";
-import { SearchPage } from "@/pages/search";
-import { TrendsPage } from "@/pages/trends";
-import { TopicDetailPage } from "@/pages/trends-topic";
-import { BookmarksPage } from "@/pages/bookmarks";
-import { NotificationsPage } from "@/pages/notifications";
-import { ProfilePage } from "@/pages/profile";
-import { PaperDetailPage } from "@/pages/papers/paper-detail";
-import { SubmitPaperPage } from "@/pages/papers/submit-paper";
-import { MyPapersPage } from "@/pages/papers/my-papers";
-import { ReportsListPage } from "@/pages/reports/reports-list";
-import { ReportViewerPage } from "@/pages/reports/report-viewer";
-import { ProjectsListPage } from "@/pages/projects/projects-list";
-import { ProjectDetailPage } from "@/pages/projects/project-detail";
-import { ResearchGapsPage } from "@/pages/research-gaps";
-import { AdminSyncPage } from "@/pages/admin/sync";
-import { AdminPipelinePage } from "@/pages/admin/pipeline";
-import { AdminEvaluationPage } from "@/pages/admin/evaluation";
-import { AdminPapersPage } from "@/pages/admin/papers";
-import { AdminUsersPage } from "@/pages/admin/users";
-import { AdminHomePage } from "@/pages/admin";
-import { NotFoundPage } from "@/pages/not-found";
-import { RankingsPage } from "@/pages/rankings";
+const HomePage = lazy(() => import("@/pages/home").then((m) => ({ default: m.HomePage })));
+const LoginPage = lazy(() => import("@/pages/login").then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import("@/pages/register").then((m) => ({ default: m.RegisterPage })));
+const OAuthCallbackPage = lazy(() => import("@/pages/oauth-callback").then((m) => ({ default: m.OAuthCallbackPage })));
+const DashboardPage = lazy(() => import("@/pages/dashboard").then((m) => ({ default: m.DashboardPage })));
+const SearchPage = lazy(() => import("@/pages/search").then((m) => ({ default: m.SearchPage })));
+const TrendsPage = lazy(() => import("@/pages/trends").then((m) => ({ default: m.TrendsPage })));
+const TopicDetailPage = lazy(() => import("@/pages/trends-topic").then((m) => ({ default: m.TopicDetailPage })));
+const BookmarksPage = lazy(() => import("@/pages/bookmarks").then((m) => ({ default: m.BookmarksPage })));
+const NotificationsPage = lazy(() => import("@/pages/notifications").then((m) => ({ default: m.NotificationsPage })));
+const ProfilePage = lazy(() => import("@/pages/profile").then((m) => ({ default: m.ProfilePage })));
+const PaperDetailPage = lazy(() => import("@/pages/papers/paper-detail").then((m) => ({ default: m.PaperDetailPage })));
+const ReportsListPage = lazy(() => import("@/pages/reports/reports-list").then((m) => ({ default: m.ReportsListPage })));
+const ReportViewerPage = lazy(() => import("@/pages/reports/report-viewer").then((m) => ({ default: m.ReportViewerPage })));
+const ProjectsListPage = lazy(() => import("@/pages/projects/projects-list").then((m) => ({ default: m.ProjectsListPage })));
+const ProjectDetailPage = lazy(() => import("@/pages/projects/project-detail").then((m) => ({ default: m.ProjectDetailPage })));
+const ResearchGapsPage = lazy(() => import("@/pages/research-gaps").then((m) => ({ default: m.ResearchGapsPage })));
+const AdminSyncPage = lazy(() => import("@/pages/admin/sync").then((m) => ({ default: m.AdminSyncPage })));
+const AdminPipelinePage = lazy(() => import("@/pages/admin/pipeline").then((m) => ({ default: m.AdminPipelinePage })));
+const AdminEvaluationPage = lazy(() => import("@/pages/admin/evaluation").then((m) => ({ default: m.AdminEvaluationPage })));
+const AdminPapersPage = lazy(() => import("@/pages/admin/papers").then((m) => ({ default: m.AdminPapersPage })));
+const AdminUsersPage = lazy(() => import("@/pages/admin/users").then((m) => ({ default: m.AdminUsersPage })));
+const AdminHomePage = lazy(() => import("@/pages/admin").then((m) => ({ default: m.AdminHomePage })));
+const NotFoundPage = lazy(() => import("@/pages/not-found").then((m) => ({ default: m.NotFoundPage })));
+const RankingsPage = lazy(() => import("@/pages/rankings").then((m) => ({ default: m.RankingsPage })));
+
+function RouteLoading() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center px-6 text-sm font-semibold text-slate-500">
+      Loading page...
+    </div>
+  );
+}
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route element={<MainLayout />}>
-        {/* Public */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/papers/:id" element={<PaperDetailPage />} />
-        <Route path="/trends" element={<TrendsPage />} />
-        <Route path="/trends/:topic" element={<TopicDetailPage />} />
-
-        {/* Protected (any signed-in user) */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
+        <Route element={<MainLayout />}>
+          {/* Public */}
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/bookmarks" element={<BookmarksPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/papers/submit" element={<Navigate to="/settings/submit-paper" replace />} />
-          <Route path="/my-papers" element={<Navigate to="/settings/my-papers" replace />} />
-          <Route path="/settings" element={<Navigate to="/profile" replace />} />
-          <Route path="/settings/:section" element={<ProfilePage />} />
-          <Route path="/reports" element={<ReportsListPage />} />
-          <Route path="/reports/:id" element={<ReportViewerPage />} />
-          <Route path="/projects" element={<ProjectsListPage />} />
-          <Route path="/projects/:id" element={<ProjectDetailPage />} />
-          <Route path="/research-gaps" element={<ResearchGapsPage />} />
-          <Route path="/rankings" element={<RankingsPage />} />
+          <Route path="/papers/:id" element={<PaperDetailPage />} />
+          <Route path="/trends" element={<TrendsPage />} />
+          <Route path="/trends/:topic" element={<TopicDetailPage />} />
 
-          {/* Admin — nested under AdminLayout (sidebar + role gate) */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminHomePage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="papers" element={<AdminPapersPage />} />
-            <Route path="sync" element={<AdminSyncPage />} />
-            <Route path="pipeline" element={<AdminPipelinePage />} />
-            <Route path="evaluation" element={<AdminEvaluationPage />} />
-            <Route path="analytics" element={<DashboardPage />} />
+          {/* Protected (any signed-in user) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/papers/submit" element={<Navigate to="/settings/submit-paper" replace />} />
+            <Route path="/my-papers" element={<Navigate to="/settings/my-papers" replace />} />
+            <Route path="/settings" element={<Navigate to="/profile" replace />} />
+            <Route path="/settings/:section" element={<ProfilePage />} />
+            <Route path="/reports" element={<ReportsListPage />} />
+            <Route path="/reports/:id" element={<ReportViewerPage />} />
+            <Route path="/projects" element={<ProjectsListPage />} />
+            <Route path="/projects/:id" element={<ProjectDetailPage />} />
+            <Route path="/research-gaps" element={<ResearchGapsPage />} />
+            <Route path="/rankings" element={<RankingsPage />} />
+
+            {/* Admin — nested under AdminLayout (sidebar + role gate) */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminHomePage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="papers" element={<AdminPapersPage />} />
+              <Route path="sync" element={<AdminSyncPage />} />
+              <Route path="pipeline" element={<AdminPipelinePage />} />
+              <Route path="evaluation" element={<AdminEvaluationPage />} />
+              <Route path="analytics" element={<DashboardPage />} />
+            </Route>
           </Route>
+
+          {/* 404 catch-all */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        {/* 404 catch-all */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route> 
-
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/auth/oauth-callback" element={<OAuthCallbackPage />} />
-      </Route>
-    </Routes>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/auth/oauth-callback" element={<OAuthCallbackPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }

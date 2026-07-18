@@ -1,7 +1,10 @@
+import type { TrendTopicTaxonomy } from "@trend/shared-types";
+
 export type TrendSortKey = "momentum" | "growth" | "total";
 
 export interface TrendTopicLike {
   topic: string;
+  taxonomy?: TrendTopicTaxonomy;
   totalPapers: number;
   growthRatePct: number;
   momentum: number;

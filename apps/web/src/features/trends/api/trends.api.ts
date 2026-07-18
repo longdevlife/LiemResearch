@@ -14,6 +14,19 @@ export interface TrendsOverviewParams {
   limit?: number;
   minPapers?: number;
   sortBy?: "momentum" | "growth" | "total";
+  paperKinds?: string[];
+  openAccessStatuses?: string[];
+  providers?: string[];
+  sources?: string[];
+  citationBands?: Array<"0-9" | "10-49" | "50-99" | "100-499" | "500-999" | "1000+">;
+  domains?: string[];
+  fields?: string[];
+  subfields?: string[];
+  topics?: string[];
+  domainIds?: string[];
+  fieldIds?: string[];
+  subfieldIds?: string[];
+  topicIds?: string[];
 }
 
 export interface TrendCompareParams {
@@ -29,7 +42,7 @@ export interface TrendRelationshipParams {
   limit?: number;
 }
 
-export interface TrendExplainInput {
+export interface TrendExplainInput extends Omit<TrendsOverviewParams, "limit" | "minPapers" | "sortBy"> {
   topic?: string;
   yearFrom?: number;
   yearTo?: number;
@@ -41,7 +54,7 @@ export const trendsApi = {
     const res = await api.get("/trends", { params });
     return res.data.data;
   },
-  async topic(topic: string, params?: { yearFrom?: number; yearTo?: number }): Promise<PublicationTrend> {
+  async topic(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number }): Promise<PublicationTrend> {
     const res = await api.get(API_ROUTES.trends.topic(topic), { params });
     return res.data.data;
   },
