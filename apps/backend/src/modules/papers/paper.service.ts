@@ -1,7 +1,5 @@
 import type { Paper, PaperRef } from "@trend/shared-types";
 import mongoose from "mongoose";
-import fs from "node:fs/promises";
-import path from "node:path";
 import jwt from "jsonwebtoken";
 import { PaperModel, type PaperDoc } from "./models/paper.model.js";
 import { PaperDownloadModel } from "./models/paper-download.model.js";
@@ -24,6 +22,7 @@ import {
 } from "../auth/points.service.js";
 import { UserModel } from "../auth/models/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
+import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,19 +76,8 @@ function isSameId(
   return a.toString() === b.toString();
 }
 
-async function resolveLocalPdfPath(pdfPath: string): Promise<string> {
-  // Serve local files via relative path
-  return pdfPath;
-}
-
-async function deleteLocalPdf(pdfPath: string): Promise<void> {
-  if (!pdfPath) return;
-  try {
-    const absolutePath = path.resolve(pdfPath.startsWith("/") ? pdfPath.slice(1) : pdfPath);
-    await fs.unlink(absolutePath);
-  } catch {
-    // Ignore – file may already be gone
-  }
+async function deleteStoredPdf(pdfPath: string): Promise<void> {
+  await pdfStorageService.deletePdf(pdfPath);
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
@@ -525,7 +513,7 @@ export const paperService = {
     if (!updated) throw AppError.notFound("Paper not found");
 
     // Delete the physical file
-    if (pdfToDelete) await deleteLocalPdf(pdfToDelete);
+    if (pdfToDelete) await deleteStoredPdf(pdfToDelete);
 
     // Penalise the uploader
     if (rejectedUploaderId) {
@@ -553,7 +541,7 @@ export const paperService = {
     // "pending"), so only it refunds — a double-cancel race can't refund +100 twice.
     const deleted = await PaperModel.findOneAndDelete({ _id: paperId, paperStatus: "pending" });
     if (!deleted) throw AppError.badRequest("Only pending paper requests can be cancelled");
-    if (deleted.pdfPath) await deleteLocalPdf(deleted.pdfPath);
+    if (deleted.pdfPath) await deleteStoredPdf(deleted.pdfPath);
 
     await refundPaperRequestCredit(userId);
     await syncUserPoints(userId);
@@ -713,6 +701,8 @@ export const paperService = {
       }
     }
 
+    const directStorageUrl = await pdfStorageService.getSignedDownloadUrl(String(paper.pdfPath));
+
     // Admins and the requester/uploader don't pay for downloads
     let cost = 0;
     let isRepeatDownload = false;
@@ -731,12 +721,14 @@ export const paperService = {
       await PaperModel.findByIdAndUpdate(paperId, { $inc: { downloadCount: 1 } });
     }
 
-    const downloadToken = jwt.sign(
-      { paperId, userId },
-      env.JWT_ACCESS_SECRET,
-      { expiresIn: "5m" }
-    );
-    const downloadUrl = `${baseUrl}/api/v1/papers/${paperId}/download?token=${downloadToken}`;
+    const downloadUrl = directStorageUrl ?? (() => {
+      const downloadToken = jwt.sign(
+        { paperId, userId },
+        env.JWT_ACCESS_SECRET,
+        { expiresIn: "5m" },
+      );
+      return `${baseUrl}/api/v1/papers/${paperId}/download?token=${downloadToken}`;
+    })();
     return { downloadUrl, cost, isRepeatDownload };
   },
 
@@ -895,7 +887,7 @@ export const paperService = {
     await PaperDownloadModel.deleteMany({ paper: new mongoose.Types.ObjectId(paperId) });
 
     if (pdfToDelete) {
-      await deleteLocalPdf(pdfToDelete);
+      await deleteStoredPdf(pdfToDelete);
     }
 
     if (doRefund && requestedById) {
@@ -943,7 +935,7 @@ export const paperService = {
 
     if (!updated) throw AppError.notFound("Paper not found");
 
-    await deleteLocalPdf(pdfToDelete);
+    await deleteStoredPdf(pdfToDelete);
 
     if (uploadedById) {
       await syncUserPoints(uploadedById.toString());

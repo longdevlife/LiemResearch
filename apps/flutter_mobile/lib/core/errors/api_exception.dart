@@ -3,8 +3,8 @@ import 'package:flutter_mobile/core/network/api_envelope.dart';
 class ApiException implements Exception {
 
   ApiException({
-    this.errorDetail,
     required this.message,
+    this.errorDetail,
     this.statusCode,
   });
   final ApiErrorDetail? errorDetail;

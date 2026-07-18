@@ -1,11 +1,22 @@
-import type { AnalyticalReport, ReportListItem } from "@trend/shared-types";
+import type { AnalyticalReport, PreviewReportEvidenceResponse, ReportListItem } from "@trend/shared-types";
+import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import { reportQueue } from "../../infrastructure/queue.js";
 import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
+import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { paperService } from "../papers/paper.service.js";
 import { ReportModel, type ReportDoc } from "./models/report.model.js";
-import type { CreateReportInput, ListReportsQuery } from "./dto/report.schema.js";
+import type {
+  CreateReportInput,
+  ListReportsQuery,
+  PreviewReportEvidenceInput,
+} from "./dto/report.schema.js";
+import { creditService } from "../credits/credit.service.js";
+import { resolveReportCreditCost } from "../credits/credit-policy.js";
+import { collectReportEvidence } from "./report.evidence.js";
+import { projectService } from "../projects/project.service.js";
+import { resolveProjectEvidenceIds } from "../projects/project-scope.js";
 
 /**
  * HTTP-facing report operations. The heavy RAG work lives in rag.service.ts
@@ -20,6 +31,8 @@ const STALE_GENERATING_MS = 5 * 60_000;
 export const reportService = {
   /** Create a queued report + enqueue its job. Guarded against quota abuse. */
   async create(userId: string, input: CreateReportInput): Promise<{ id: string; status: string }> {
+    const selectedPaperIds = await resolveReportEvidenceScope(userId, input);
+
     // NOTE: check-then-insert is not atomic; a same-user burst can slightly
     // exceed the cap. Accepted — the per-user rate limiter on the route is the
     // real throughput throttle; this guard only bounds CONCURRENT work.
@@ -36,27 +49,93 @@ export const reportService = {
       );
     }
 
-    const report = await ReportModel.create({
-      userId,
-      query: input.query,
-      topic: input.topic,
-      projectId: input.projectId,
-      yearFrom: input.yearFrom,
-      yearTo: input.yearTo,
-      language: input.language ?? "auto",
-      deepAnalysis: input.deepAnalysis ?? false,
-      fast: input.fast ?? false,
-      status: "queued",
+    const reportId = new mongoose.Types.ObjectId();
+    const { action, cost } = resolveReportCreditCost({
+      fast: input.fast,
+      deepAnalysis: input.deepAnalysis,
     });
 
-    // jobId = reportId → BullMQ dedups accidental double-submits of the same doc.
-    await reportQueue.add(
-      "generate-report",
-      { reportId: String(report._id) },
-      { jobId: String(report._id) },
-    );
+    let txId: mongoose.Types.ObjectId | undefined;
+    if (cost > 0) {
+      const tx = await creditService.chargeCreditsChecked({
+        userId,
+        action,
+        amount: cost,
+        targetKind: "report",
+        targetId: reportId.toString(),
+        idempotencyKey: `report:${reportId}`,
+      });
+      if (tx) {
+        txId = tx._id;
+      }
+    }
 
-    return { id: String(report._id), status: "queued" };
+    try {
+      const report = await ReportModel.create({
+        _id: reportId,
+        userId,
+        query: input.query,
+        topic: input.topic,
+        projectId: input.projectId,
+        yearFrom: input.yearFrom,
+        yearTo: input.yearTo,
+        language: input.language ?? "auto",
+        deepAnalysis: input.deepAnalysis ?? false,
+        fast: input.fast ?? false,
+        selectedPaperIds: selectedPaperIds ?? [],
+        status: "queued",
+        creditTransactionId: txId,
+        creditCost: cost,
+        creditAction: action,
+      });
+
+      // jobId = reportId → BullMQ dedups accidental double-submits of the same doc.
+      await reportQueue.add(
+        "generate-report",
+        { reportId: String(report._id) },
+        { jobId: String(report._id) },
+      );
+
+      return { id: String(report._id), status: "queued" };
+    } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Failed to create report or enqueue job",
+        });
+      }
+      throw err;
+    }
+  },
+
+  /** Preview the exact evidence pack that report generation will use. No LLM generation here. */
+  async previewEvidence(
+    userId: string,
+    input: PreviewReportEvidenceInput,
+  ): Promise<PreviewReportEvidenceResponse> {
+    const selectedPaperIds = await resolveReportEvidenceScope(userId, input);
+    const queryVector = await getEmbeddingProvider().embed(input.query);
+    const evidence = await collectReportEvidence({
+      queryVector,
+      selectedPaperIds,
+      yearFrom: input.yearFrom,
+      yearTo: input.yearTo,
+      fillWithRetrieved: input.projectId ? false : input.fillWithRetrieved,
+    });
+    const warnings = evidence.missingSelectedPaperIds.map(
+      (id) => `Selected paper ${id} was not found in the active corpus and was skipped.`,
+    );
+    if (evidence.papers.length === 0) {
+      warnings.push("No active evidence papers were found for this query.");
+    }
+
+    return {
+      papers: evidence.papers,
+      retrievedPaperIds: evidence.retrievedPaperIds,
+      selectedPaperIds: evidence.selectedPaperIds,
+      maxEvidencePapers: evidence.maxEvidencePapers,
+      warnings,
+    };
   },
 
   /** The user's own reports (or project reports), newest first — WITHOUT heavy fields. */
@@ -143,3 +222,23 @@ function toReportDto(doc: Partial<ReportDoc> & { _id: unknown }): AnalyticalRepo
 }
 
 // Code quality reviewed and formatted
+
+async function resolveReportEvidenceScope(
+  userId: string,
+  input: Pick<CreateReportInput, "projectId" | "selectedPaperIds">,
+): Promise<string[] | undefined> {
+  if (!input.projectId) return input.selectedPaperIds;
+
+  const projectPaperIds = await projectService.getProjectPaperIdsForUser(
+    input.projectId,
+    userId,
+    "report",
+  );
+  const resolved = resolveProjectEvidenceIds(projectPaperIds, input.selectedPaperIds);
+  if (resolved.invalidIds.length > 0) {
+    throw AppError.badRequest("Selected evidence papers must belong to the project.", {
+      invalidPaperIds: resolved.invalidIds,
+    });
+  }
+  return resolved.ids;
+}

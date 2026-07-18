@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api-client";
 import { useReports, useCreateReport } from "@/features/reports/hooks/use-reports";
 import { useGaps, useAnalyzeGap, useGapAnalysisStatus } from "@/features/gaps";
-import { ProjectChatPanel } from "@/features/projects/components/project-chat-panel";
+import { ProjectDiscussionPanel } from "@/features/projects/components/project-discussion-panel";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import type { ReportLanguage } from "@trend/shared-types";
@@ -97,8 +97,12 @@ export function ProjectDetailPage() {
 
         {/* Underline Tabs */}
         <div className="border-b border-slate-200 dark:border-white/10 overflow-x-auto">
-          <div className="flex gap-6 sm:gap-8 min-w-max pb-1">
+          <div className="flex gap-6 sm:gap-8 min-w-max pb-1" role="tablist" aria-label="Project sections">
             <button
+              id="project-tab-papers"
+              role="tab"
+              aria-selected={activeTab === "papers"}
+              aria-controls="project-panel-papers"
               className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "papers" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -110,6 +114,10 @@ export function ProjectDetailPage() {
             </button>
 
             <button
+              id="project-tab-members"
+              role="tab"
+              aria-selected={activeTab === "members"}
+              aria-controls="project-panel-members"
               className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "members" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -121,6 +129,10 @@ export function ProjectDetailPage() {
             </button>
 
             <button
+              id="project-tab-reports"
+              role="tab"
+              aria-selected={activeTab === "reports"}
+              aria-controls="project-panel-reports"
               className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "reports" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -131,6 +143,10 @@ export function ProjectDetailPage() {
             </button>
 
             <button
+              id="project-tab-gaps"
+              role="tab"
+              aria-selected={activeTab === "gaps"}
+              aria-controls="project-panel-gaps"
               className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "gaps" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -141,6 +157,10 @@ export function ProjectDetailPage() {
             </button>
 
             <button
+              id="project-tab-chat"
+              role="tab"
+              aria-selected={activeTab === "chat"}
+              aria-controls="project-panel-chat"
               className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap shrink-0 ${
                 activeTab === "chat" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -152,44 +172,63 @@ export function ProjectDetailPage() {
               </span>
               {activeTab === "chat" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
             </button>
+
           </div>
         </div>
 
         <div>
           {activeTab === "papers" && (
-            <PapersTab
-              projectId={project._id}
-              papers={project.papers}
-              currentUserId={currentUser?.id}
-              ownerId={project.ownerId}
-              onNavigateToReports={() => {
-                setActiveTab("reports");
-                setAutoOpenReport(true);
-              }}
-              onNavigateToGaps={() => {
-                setActiveTab("gaps");
-                setAutoOpenGap(true);
-              }}
-            />
+            <section id="project-panel-papers" role="tabpanel" aria-labelledby="project-tab-papers">
+              <PapersTab
+                projectId={project._id}
+                papers={project.papers}
+                currentUserId={currentUser?.id}
+                ownerId={project.ownerId}
+                onNavigateToReports={() => {
+                  setActiveTab("reports");
+                  setAutoOpenReport(true);
+                }}
+                onNavigateToGaps={() => {
+                  setActiveTab("gaps");
+                  setAutoOpenGap(true);
+                }}
+              />
+            </section>
           )}
-          {activeTab === "members" && <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} currentUserId={currentUser?.id} />}
+          {activeTab === "members" && (
+            <section id="project-panel-members" role="tabpanel" aria-labelledby="project-tab-members">
+              <MembersTab projectId={project._id} members={project.members} ownerId={project.ownerId} currentUserId={currentUser?.id} />
+            </section>
+          )}
           {activeTab === "reports" && (
-            <ReportsTab
-              projectId={project._id}
-              defaultTopic={project.title}
-              openOnInit={autoOpenReport}
-              onOpenChange={setAutoOpenReport}
-            />
+            <section id="project-panel-reports" role="tabpanel" aria-labelledby="project-tab-reports">
+              <ReportsTab
+                projectId={project._id}
+                defaultTopic={project.title}
+                openOnInit={autoOpenReport}
+                onOpenChange={setAutoOpenReport}
+              />
+            </section>
           )}
           {activeTab === "gaps" && (
-            <GapsTab
-              projectId={project._id}
-              defaultTopic={project.title}
-              openOnInit={autoOpenGap}
-              onOpenChange={setAutoOpenGap}
-            />
+            <section id="project-panel-gaps" role="tabpanel" aria-labelledby="project-tab-gaps">
+              <GapsTab
+                projectId={project._id}
+                defaultTopic={project.title}
+                openOnInit={autoOpenGap}
+                onOpenChange={setAutoOpenGap}
+              />
+            </section>
           )}
-          {activeTab === "chat" && <ProjectChatPanel projectId={project._id} paperCount={project.papers?.length || 0} />}
+          {activeTab === "chat" && (
+            <section id="project-panel-chat" role="tabpanel" aria-labelledby="project-tab-chat">
+              <ProjectDiscussionPanel
+                projectId={project._id}
+                paperCount={project.papers?.length || 0}
+                ownerId={project.ownerId}
+              />
+            </section>
+          )}
         </div>
       </main>
     </div>
@@ -268,8 +307,10 @@ function ReportsTab({
       setDeepAnalysis(false);
       setFast(true);
       toast.success("Report generation started");
-    } catch (error) {
-      toast.error("Failed to create report. Please try again.");
+    } catch (error: any) {
+      console.error("Failed to create report:", error);
+      const errMsg = error.response?.data?.error?.message || "Failed to create report. Please try again.";
+      toast.error(errMsg);
     }
   };
 

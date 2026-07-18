@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/rankings/data/rankings_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class RankingsScreen extends ConsumerWidget {
   const RankingsScreen({super.key});

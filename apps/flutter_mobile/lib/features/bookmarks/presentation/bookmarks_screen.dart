@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
 import 'package:flutter_mobile/features/reports/data/reports_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class BookmarksScreen extends ConsumerStatefulWidget {
   const BookmarksScreen({super.key});
@@ -65,8 +66,9 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(bookmarksProvider);
-          ref.invalidate(reportsProvider(const ReportsParams(pageSize: 50)));
+          ref
+            ..invalidate(bookmarksProvider)
+            ..invalidate(reportsProvider(const ReportsParams(pageSize: 50)));
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
@@ -110,8 +112,8 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
                     final showPapers = _filter == 'all' || _filter == 'paper';
                     final showReports = _filter == 'all' || _filter == 'report';
 
-                    final List<Bookmark> displayPapers = showPapers ? paperBookmarks : const <Bookmark>[];
-                    final List<ReportListItem> displayReports = showReports ? reports : const <ReportListItem>[];
+                    final displayPapers = showPapers ? paperBookmarks : const <Bookmark>[];
+                    final displayReports = showReports ? reports : const <ReportListItem>[];
 
                     final totalCount = paperBookmarks.length + reports.length;
                     final filters = [
@@ -308,9 +310,9 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
                                 child: InkWell(
                                   onTap: () {
                                     if (report.status == 'ready') {
-                                      context.push('/report/${report.id}');
+                                      unawaited(context.push('/report/${report.id}'));
                                     } else {
-                                      context.push('/reports');
+                                      unawaited(context.push('/reports'));
                                     }
                                   },
                                   borderRadius: BorderRadius.circular(16),

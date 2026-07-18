@@ -2,6 +2,12 @@ import { ProjectModel, type ProjectDoc } from "./models/project.model.js";
 import type { CreateProjectRequest, UpdateProjectRequest, AddProjectMemberRequest } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import mongoose from "mongoose";
+import {
+  assertProjectHasPapers,
+  canAccessProject,
+  getProjectPaperIds,
+  type ProjectAiFeature,
+} from "./project-scope.js";
 
 export class ProjectService {
   /**
@@ -44,31 +50,41 @@ export class ProjectService {
   /**
    * Get a specific project by ID.
    */
-  async getProjectById(projectId: string, userId: string): Promise<ProjectDoc> {
+  async getProjectById(projectId: string, userId: string, userRole?: string): Promise<ProjectDoc> {
     const project = await ProjectModel.findById(projectId)
       .populate("members.targetId", "fullName email avatarUrl")
-      .populate("papers.targetId", "title publicationYear authors abstract")
+      .populate("papers.targetId", "title publicationYear authors abstractText")
       .lean();
     if (!project) {
       throw AppError.notFound("Project not found");
     }
 
-    // Verify access
-    const hasAccess =
-      project.ownerId.toString() === userId ||
-      project.members.some((m) => {
-        const targetId = m.targetId as any;
-        const id = typeof targetId === 'object' && targetId !== null && '_id' in targetId
-          ? targetId._id.toString()
-          : targetId.toString();
-        return id === userId;
-      });
-
-    if (!hasAccess) {
+    if (!canAccessProject(project, userId) && userRole !== "admin") {
       throw AppError.forbidden("Access denied to this project");
     }
 
     return project;
+  }
+
+  /**
+   * Resolve project paper ids behind one access check. AI features use this to
+   * ensure "project report/gaps/chat" are grounded in the selected workspace,
+   * not the global corpus.
+   */
+  async getProjectPaperIdsForUser(
+    projectId: string,
+    userId: string,
+    feature?: ProjectAiFeature,
+  ): Promise<string[]> {
+    const project = await ProjectModel.findById(projectId).select("ownerId members papers").lean();
+    if (!project) throw AppError.notFound("Project not found");
+    if (!canAccessProject(project, userId)) {
+      throw AppError.forbidden("Access denied to this project");
+    }
+
+    const paperIds = getProjectPaperIds(project);
+    if (feature) assertProjectHasPapers(paperIds, feature);
+    return paperIds;
   }
 
   /**

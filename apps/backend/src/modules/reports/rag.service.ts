@@ -13,9 +13,9 @@ import { assertCitationsInRange as assertGroundedCitationsInRange } from "../llm
 import { MCP_TOOL_DEFS } from "../mcp/mcp.tools.js";
 import { executeMcpTool } from "../mcp/mcp.executor.js";
 import { notificationService } from "../notifications/notification.service.js";
-import { retrieve } from "../retrieval/retriever.js";
 import { ReportModel, type ReportHydrated } from "./models/report.model.js";
 import { RagQueryModel } from "./models/rag-query.model.js";
+import { collectReportEvidence } from "./report.evidence.js";
 import {
   buildReportPrompt,
   PROMPT_VERSION,
@@ -62,19 +62,22 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   const queryVector = await getEmbeddingProvider().embed(report.query);
   const embeddingMs = Date.now() - t0;
 
-  // ② Retrieve top-K evidence via vector search.
+  // ② Build the fixed evidence pack: user-selected papers first, retrieval fills the rest.
   const t1 = Date.now();
-  const papers = await retrieveEvidence(queryVector, {
+  const selectedPaperIds = (report.selectedPaperIds ?? []).map((id) => String(id));
+  const evidence = await collectReportEvidence({
+    queryVector,
+    selectedPaperIds,
     yearFrom: report.yearFrom ?? undefined,
     yearTo: report.yearTo ?? undefined,
+    fillWithRetrieved: selectedPaperIds.length === 0,
   });
+  const papers = evidence.papers;
   const searchMs = Date.now() - t1;
 
   // ③ No evidence → permanent failure (retrying won't grow the corpus).
   if (papers.length === 0) {
-    report.status = "failed";
-    report.errorMessage = "Not enough corpus data for this query — try a broader question.";
-    await report.save();
+    await markReportFailed(job.reportId, "Not enough corpus data for this query — try a broader question.");
     await auditRagRun(report, { embeddingMs, searchMs, llmMs: 0, cacheHit: false, papers: [] });
     return;
   }
@@ -108,6 +111,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     yearFrom: report.yearFrom ?? null,
     yearTo: report.yearTo ?? null,
     deepAnalysis: Boolean(report.deepAnalysis),
+    selectedPaperIds: evidence.selectedPaperIds,
     retrievedPaperIds: papers.map((p) => p.id),
   };
   const inputHash = report.deepAnalysis ? `${DEEP_ANALYSIS_SYSTEM_PROMPT}\n${prompt}` : `${REPORT_SYSTEM_PROMPT}\n${prompt}`;
@@ -218,6 +222,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
         .filter((n) => Number.isInteger(n) && n >= 1 && n <= papers.length)
         .map((n) => papers[n - 1]!.id),
       confidence: clamp01(g.confidence),
+      probe: normalizeProbe(g.probe),
     })),
   );
   report.set(
@@ -231,6 +236,17 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   report.completedAt = new Date();
   report.errorMessage = undefined;
   await report.save();
+
+  // If it was a cache hit, refund the credits charged during create()
+  if (cacheHit && report.creditTransactionId) {
+    const { creditService } = await import("../credits/credit.service.js");
+    await creditService.refundCreditsOnce({
+      transactionId: report.creditTransactionId.toString(),
+      reason: "Report cache hit",
+    });
+    report.creditRefundedAt = new Date();
+    await report.save();
+  }
 
   // ⑦ Audit trail.
   await auditRagRun(report, { embeddingMs, searchMs, llmMs, cacheHit, papers });
@@ -253,6 +269,8 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     .fanOutGapsFromReport({
       _id: report._id,
       userId: report.userId,
+      projectId: report.projectId,
+      projectPaperIds: (report.selectedPaperIds ?? []).map((id) => String(id)),
       query: report.query,
       researchGaps: ((report.researchGaps ?? []) as unknown[]).map((raw) => {
         const g = raw as {
@@ -261,6 +279,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           rationale?: string;
           supportingPaperIds?: unknown[];
           confidence?: unknown;
+          probe?: unknown;
         };
         return {
           title: String(g.title ?? ""),
@@ -268,6 +287,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
           rationale: String(g.rationale ?? ""),
           supportingPaperIds: g.supportingPaperIds ?? [],
           confidence: Number(g.confidence ?? 0.5),
+          probe: normalizeProbe(g.probe),
         };
       }),
     })
@@ -283,21 +303,24 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
 
 /** Mark a report failed — called by the worker when retries are exhausted. */
 export async function markReportFailed(reportId: string, message: string): Promise<void> {
-  await ReportModel.updateOne(
-    { _id: reportId, status: { $ne: "ready" } },
-    { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
-  );
-}
+  const report = await ReportModel.findOneAndUpdate(
+    { _id: reportId, status: { $ne: "ready" }, creditRefundedAt: { $exists: false } },
+    { $set: { status: "failed", errorMessage: message.slice(0, 500), creditRefundedAt: new Date() } },
+    { new: true }
+  ).lean();
 
-async function retrieveEvidence(queryVector: number[], filters: { yearFrom?: number; yearTo?: number }): Promise<EvidencePaper[]> {
-  return retrieve({
-    queryVector,
-    topK: env.REPORT_TOP_K,
-    poolSize: env.REPORT_TOP_K,
-    numCandidates: 200,
-    filters,
-    projection: "report",
-  });
+  if (report && report.creditTransactionId) {
+    const { creditService } = await import("../credits/credit.service.js");
+    await creditService.refundCreditsOnce({
+      transactionId: report.creditTransactionId.toString(),
+      reason: `Report generation failed: ${message.slice(0, 100)}`,
+    });
+  } else if (!report) {
+    await ReportModel.updateOne(
+      { _id: reportId, status: { $ne: "ready" } },
+      { $set: { status: "failed", errorMessage: message.slice(0, 500) } }
+    );
+  }
 }
 
 async function auditRagRun(
@@ -332,6 +355,30 @@ function clamp01(x: unknown): number {
   const n = Number(x);
   if (!Number.isFinite(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
+}
+
+function normalizeProbe(raw: unknown):
+  | { topicA: string; topicB: string; yearFrom?: number; yearTo?: number }
+  | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const candidate = raw as {
+    topicA?: unknown;
+    topicB?: unknown;
+    yearFrom?: unknown;
+    yearTo?: unknown;
+  };
+  const topicA = typeof candidate.topicA === "string" ? candidate.topicA.trim() : "";
+  const topicB = typeof candidate.topicB === "string" ? candidate.topicB.trim() : "";
+  if (!topicA || !topicB) return undefined;
+
+  const yearFrom = Number(candidate.yearFrom);
+  const yearTo = Number(candidate.yearTo);
+  return {
+    topicA,
+    topicB,
+    ...(Number.isInteger(yearFrom) ? { yearFrom } : {}),
+    ...(Number.isInteger(yearTo) ? { yearTo } : {}),
+  };
 }
 
 /**

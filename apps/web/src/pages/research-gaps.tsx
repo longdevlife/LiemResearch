@@ -1,38 +1,35 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Sparkles, CheckCircle2, XCircle, Filter, Search, Zap, Loader2, Undo2, ListFilter, ChevronLeft, ChevronRight } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import {
+  Sparkles,
+  XCircle,
+  Filter,
+  Search,
+  Zap,
+  Loader2,
+  ListFilter,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  ChevronUp,
+  ChevronDown
+} from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AiEvaluation } from "@/components/ai-evaluation";
-import { Badge } from "@/components/ui/badge";
-import { GapDirectionsPanel } from "@/features/gaps/components/gap-directions";
 import { toast } from "sonner";
 import {
   useGaps,
   useAnalyzeGap,
   useGapAnalysisStatus,
-  usePatchGapStatus,
+  useActiveGapAnalysis,
 } from "@/features/gaps";
-import type { GapSource } from "@trend/shared-types";
+import type { GapSource, ResearchGapItem } from "@trend/shared-types";
+import { GapCard } from "@/features/gaps/components/gap-card";
+import { GapDetailDrawer } from "@/features/gaps/components/gap-detail-drawer";
+import { cn } from "@/utils/cn";
 
-function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: boolean }) {
-  const pct = Math.round(value * 100);
-  let colorClass = "bg-rose-500";
-  if (value >= 0.7) colorClass = "bg-emerald-500";
-  else if (value >= 0.4) colorClass = "bg-amber-500";
-
-  return (
-    <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-      <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-        <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className={value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>
-        {pct}% {isEvidence ? "Evidence Confidence" : "Confidence"}
-      </span>
-    </div>
-  );
-}
+type GapSortKey = "default" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
 
 function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: () => void }) {
   const { data } = useGapAnalysisStatus(analysisId);
@@ -63,7 +60,7 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 }
 
 export function ResearchGapsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [topic, setTopic] = useState("");
   const [yearFrom, setYearFrom] = useState<string>("");
   const [yearTo, setYearTo] = useState<string>("");
@@ -74,6 +71,16 @@ export function ResearchGapsPage() {
   const [page, setPage] = useState(1);
   const [minConfidence, setMinConfidence] = useState(0);
   const [debouncedConfidence, setDebouncedConfidence] = useState(0);
+  const [selectedGap, setSelectedGap] = useState<ResearchGapItem | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Search & Sort & Shortlist states
+  const [clientSearch, setClientSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortBy, setSortBy] = useState<GapSortKey>("default");
+  const [shortlistedGaps, setShortlistedGaps] = useState<ResearchGapItem[]>([]);
+  const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
+  const shortlistedIds = shortlistedGaps.map((gap) => gap.id);
 
   // Sync with URL params
   const urlSource = searchParams.get("source") as GapSource | null;
@@ -88,13 +95,19 @@ export function ResearchGapsPage() {
     }
   }, [urlSource, urlTopic]);
 
-  // Debounce slider value so we don't spam the API while dragging
+  // Debounce confidence slider value
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedConfidence(minConfidence), 300);
     return () => clearTimeout(timer);
   }, [minConfidence]);
 
-  // Reset page when filters change
+  // Debounce search box
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(clientSearch), 250);
+    return () => clearTimeout(timer);
+  }, [clientSearch]);
+
+  // Reset page when API filters change
   useEffect(() => {
     setPage(1);
   }, [filterStatus, debouncedConfidence, searchTopic, sourceFilter]);
@@ -103,7 +116,6 @@ export function ResearchGapsPage() {
     data: gapsData,
     isLoading,
     isError,
-    error,
     refetch,
   } = useGaps({
     status: filterStatus,
@@ -113,12 +125,20 @@ export function ResearchGapsPage() {
     topic: searchTopic || undefined,
     source: sourceFilter !== "all" ? sourceFilter : undefined,
   });
+
   const { mutate: analyze, isPending } = useAnalyzeGap();
-  const { mutate: patchStatus } = usePatchGapStatus();
+  const { data: activeAnalysis } = useActiveGapAnalysis();
+
+  useEffect(() => {
+    if (activeAnalysis && (activeAnalysis.status === "queued" || activeAnalysis.status === "analyzing")) {
+      setActiveAnalysisId(activeAnalysis.id);
+    }
+  }, [activeAnalysis]);
 
   const handleDone = useCallback(() => {
     setActiveAnalysisId(null);
     void refetch();
+    toast.success("Gap analysis completed successfully! Gaps list refreshed.");
   }, [refetch]);
 
   const handleAnalyze = () => {
@@ -150,6 +170,93 @@ export function ResearchGapsPage() {
       },
     );
   };
+
+  const handleToggleShortlist = useCallback((gap: ResearchGapItem) => {
+    setShortlistedGaps(prev => {
+      if (prev.some((item) => item.id === gap.id)) {
+        return prev.filter((item) => item.id !== gap.id);
+      }
+      return [...prev, gap];
+    });
+  }, []);
+
+  const handleMoveUp = useCallback((gapId: string) => {
+    setShortlistedGaps(prev => {
+      const index = prev.findIndex((gap) => gap.id === gapId);
+      if (index <= 0) return prev;
+      const next = [...prev];
+      const prevItem = next[index - 1];
+      if (prevItem === undefined) return prev;
+      next[index] = prevItem;
+      next[index - 1] = prev[index]!;
+      return next;
+    });
+  }, []);
+
+  const handleMoveDown = useCallback((gapId: string) => {
+    setShortlistedGaps(prev => {
+      const index = prev.findIndex((gap) => gap.id === gapId);
+      if (index === -1 || index >= prev.length - 1) return prev;
+      const next = [...prev];
+      const nextItem = next[index + 1];
+      if (nextItem === undefined) return prev;
+      next[index] = nextItem;
+      next[index + 1] = prev[index]!;
+      return next;
+    });
+  }, []);
+
+  // Process client-side filtering and sorting
+  const rawGaps = showShortlistedOnly ? shortlistedGaps : gapsData?.data ?? [];
+  let processedGaps = [...rawGaps];
+
+  if (debouncedSearch.trim()) {
+    const q = debouncedSearch.toLowerCase().trim();
+    processedGaps = processedGaps.filter(gap => {
+      const titleMatch = gap.title?.toLowerCase().includes(q) ?? false;
+      const descMatch = gap.description?.toLowerCase().includes(q) ?? false;
+      const topicMatch = gap.topic?.toLowerCase().includes(q) ?? false;
+      const probeAMatch = gap.probe?.topicA?.toLowerCase().includes(q) ?? false;
+      const probeBMatch = gap.probe?.topicB?.toLowerCase().includes(q) ?? false;
+      const paperMatch = gap.supportingPapers?.some(p => p.title?.toLowerCase().includes(q)) ?? false;
+      return titleMatch || descMatch || topicMatch || probeAMatch || probeBMatch || paperMatch;
+    });
+  }
+
+  if (!showShortlistedOnly) {
+    if (sortBy === "evidence") {
+      processedGaps.sort((a, b) => {
+        const order = { confirmed: 1, weak: 2, ai_only: 3 };
+        const orderA = order[a.evidenceStatus] ?? 3;
+        const orderB = order[b.evidenceStatus] ?? 3;
+        if (orderA !== orderB) return orderA - orderB;
+        return (b.evidenceConfidence ?? b.confidence ?? 0) - (a.evidenceConfidence ?? a.confidence ?? 0);
+      });
+    } else if (sortBy === "confidence") {
+      processedGaps.sort((a, b) => (b.evidenceConfidence ?? b.confidence ?? 0) - (a.evidenceConfidence ?? a.confidence ?? 0));
+    } else if (sortBy === "papers") {
+      processedGaps.sort((a, b) => (b.supportingPaperIds?.length ?? b.supportingPapers?.length ?? 0) - (a.supportingPaperIds?.length ?? a.supportingPapers?.length ?? 0));
+    } else if (sortBy === "newest") {
+      processedGaps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === "ai_only_last") {
+      processedGaps.sort((a, b) => {
+        const isAiA = a.evidenceStatus === "ai_only" ? 1 : 0;
+        const isAiB = b.evidenceStatus === "ai_only" ? 1 : 0;
+        return isAiA - isAiB;
+      });
+    } else if (sortBy === "default") {
+      processedGaps.sort((a, b) => {
+        const order = { confirmed: 1, weak: 2, ai_only: 3 };
+        const orderA = order[a.evidenceStatus] ?? 3;
+        const orderB = order[b.evidenceStatus] ?? 3;
+        if (orderA !== orderB) return orderA - orderB;
+        const confA = a.evidenceConfidence ?? a.confidence ?? 0;
+        const confB = b.evidenceConfidence ?? b.confidence ?? 0;
+        if (confB !== confA) return confB - confA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+  }
 
   return (
     <main className="container py-8 space-y-6">
@@ -219,78 +326,172 @@ export function ResearchGapsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-6 flex-wrap items-center bg-white dark:bg-[#1c1f26] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-        <div className="absolute left-0 top-0 w-1 h-full bg-cyan-500" />
+      {/* Unified Filters & Research Workflow Toolbar */}
+      <div className="bg-white dark:bg-[#1c1f26] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col gap-4 p-5">
+        <div className="absolute left-0 top-0 w-1.5 h-full bg-cyan-500" />
 
-        <div className="flex items-center gap-3">
-          <ListFilter className="w-4 h-4 text-slate-400" />
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Status:</span>
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg">
-            <Button
-              size="sm"
-              variant={filterStatus === "active" ? "default" : "ghost"}
-              className={`h-7 px-3 text-xs ${filterStatus === "active" ? "shadow-sm" : ""}`}
-              onClick={() => setFilterStatus("active")}
-            >
-              Active
-            </Button>
-            <Button
-              size="sm"
-              variant={filterStatus === "resolved" ? "default" : "ghost"}
-              className={`h-7 px-3 text-xs ${filterStatus === "resolved" ? "shadow-sm" : ""}`}
-              onClick={() => setFilterStatus("resolved")}
-            >
-              Resolved
-            </Button>
-            <Button
-              size="sm"
-              variant={filterStatus === "dismissed" ? "default" : "ghost"}
-              className={`h-7 px-3 text-xs ${filterStatus === "dismissed" ? "shadow-sm" : ""}`}
-              onClick={() => setFilterStatus("dismissed")}
-            >
-              Dismissed
-            </Button>
+        {/* Row 1: Search & Topic filters (Primary Inputs) */}
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center relative z-10">
+          {/* Client-side Search Box */}
+          <div className="flex-grow md:flex-[2] min-w-[280px] relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-450" />
+            <Input
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Search loaded gaps by title, description, papers, topic..."
+              className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
+            />
+            {clientSearch && (
+              <button
+                onClick={() => setClientSearch("")}
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                Clear
+              </button>
+            )}
           </div>
+
+          {/* Server-side Topic Box */}
+          <div className="flex-grow md:flex-[1.5] min-w-[280px] relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-455" />
+            <Input
+              value={searchTopic}
+              onChange={(e) => setSearchTopic(e.target.value)}
+              placeholder="Filter by topic concept (API query)..."
+              className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-cyan-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
+            />
+            {searchTopic && (
+              <button
+                onClick={() => setSearchTopic("")}
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap self-center md:ml-auto">
+            Search applies to loaded results
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Filter className="w-4 h-4 text-slate-400 animate-pulse" />
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Source:</span>
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as any)}
-            className="h-8 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
-          >
-            <option value="all">All Sources</option>
-            <option value="report">Report-generated</option>
-            <option value="standalone">Standalone Analysis</option>
-          </select>
-        </div>
+        {/* Divider */}
+        <div className="border-t border-dashed border-slate-100 dark:border-slate-800/60" />
 
-        <div className="flex items-center gap-3">
-           <Search className="w-4 h-4 text-slate-400" />
-           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Topic:</span>
-           <Input
-             placeholder="Filter gaps by topic..."
-             className="h-8 w-64 text-sm bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus-visible:ring-cyan-500"
-             value={searchTopic}
-             onChange={(e) => setSearchTopic(e.target.value)}
-           />
-        </div>
+        {/* Row 2: Secondary Controls (Filters & Sort & Shortlist) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+          {/* Left Group: Filters */}
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            {/* Status filter */}
+            <div className="flex items-center gap-2 h-9">
+              <ListFilter className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Status:</span>
+              <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg h-9 items-center">
+                <Button
+                  size="sm"
+                  variant={filterStatus === "active" ? "default" : "ghost"}
+                  className={`h-7 px-3 text-xs ${filterStatus === "active" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+                  onClick={() => setFilterStatus("active")}
+                >
+                  Active
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filterStatus === "resolved" ? "default" : "ghost"}
+                  className={`h-7 px-3 text-xs ${filterStatus === "resolved" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+                  onClick={() => setFilterStatus("resolved")}
+                >
+                  Resolved
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filterStatus === "dismissed" ? "default" : "ghost"}
+                  className={`h-7 px-3 text-xs ${filterStatus === "dismissed" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+                  onClick={() => setFilterStatus("dismissed")}
+                >
+                  Dismissed
+                </Button>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-3 xl:ml-auto">
-           <Zap className="w-4 h-4 text-amber-500" />
-           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-36">Min Confidence: {Math.round(minConfidence * 100)}%</span>
-           <input
-             type="range"
-             min="0"
-             max="1"
-             step="0.1"
-             value={minConfidence}
-             onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-             className="w-32 accent-cyan-500 cursor-pointer"
-           />
+            {/* Source filter */}
+            <div className="flex items-center gap-2 h-9">
+              <Filter className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Source:</span>
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as GapSource | "all")}
+                className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+              >
+                <option value="all">All Sources</option>
+                <option value="report">Report-generated</option>
+                <option value="standalone">Standalone Analysis</option>
+              </select>
+            </div>
+
+            {/* Min Confidence */}
+            <div className="flex items-center gap-2 h-9">
+               <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
+               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 min-w-[120px]">
+                 Confidence &ge; {Math.round(minConfidence * 100)}%
+               </span>
+               <input
+                 type="range"
+                 min="0"
+                 max="1"
+                 step="0.1"
+                 value={minConfidence}
+                 onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+                 className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-500 dark:bg-slate-700"
+               />
+            </div>
+          </div>
+
+          {/* Right Group: Actions */}
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Sort Select */}
+            <div className="flex items-center gap-2 h-9">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Sort:</span>
+              <select
+            value={sortBy}
+            disabled={showShortlistedOnly}
+            onChange={(e) => setSortBy(e.target.value as GapSortKey)}
+                className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+              >
+                <option value="default">Default Sort (AI priority)</option>
+                <option value="evidence">Most Evidence-backed</option>
+                <option value="confidence">Highest Confidence</option>
+                <option value="papers">Most Supporting Papers</option>
+                <option value="newest">Newest Gaps First</option>
+                <option value="ai_only_last">AI-only Last</option>
+              </select>
+            </div>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden lg:block" />
+
+            {/* Show Shortlisted Only Toggle */}
+            <div className="flex items-center gap-2 h-9">
+              <Button
+                size="sm"
+                variant={showShortlistedOnly ? "default" : "outline"}
+                className={cn(
+                  "h-9 px-3.5 text-xs font-bold gap-1.5 rounded-lg transition-all",
+                  showShortlistedOnly
+                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                    : "border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                )}
+                onClick={() => setShowShortlistedOnly(prev => !prev)}
+              >
+                <Star className={cn("w-3.5 h-3.5", showShortlistedOnly ? "fill-amber-400 text-amber-300" : "text-slate-500")} />
+            <span>Shortlist ({shortlistedGaps.length})</span>
+              </Button>
+              {showShortlistedOnly && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider animate-pulse">
+                  Session-only order
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -309,136 +510,70 @@ export function ResearchGapsPage() {
         </div>
       )}
 
-      {!isLoading && !isError && gapsData?.data?.length === 0 && (
-        <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-8 rounded-xl text-center">
-          <Sparkles className="w-8 h-8 text-cyan-500 mx-auto mb-3 opacity-50" />
-          <p className="text-slate-600 dark:text-slate-400 font-medium">No research gaps found matching your filters.</p>
-          <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Try lowering the Min Confidence slider or changing the topic.</p>
+      {/* Empty State when no results match filter */}
+      {processedGaps.length === 0 && !isLoading && !isError && (
+        <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 p-12 rounded-2xl text-center space-y-3">
+          <Sparkles className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2 opacity-50" />
+          <h3 className="text-slate-900 dark:text-white font-bold text-base">
+            {showShortlistedOnly
+              ? "Your shortlist is empty"
+              : "No gaps match your search"}
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {showShortlistedOnly
+              ? "Star interesting research opportunities from the main list to add them to your session-only shortlist."
+              : "We couldn't find any results matching your search query. Try clearing the search text or widening your confidence slider."}
+          </p>
+          <div className="pt-2">
+            {showShortlistedOnly ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-slate-200 dark:border-slate-800 text-xs font-semibold"
+                onClick={() => setShowShortlistedOnly(false)}
+              >
+                Show all gaps
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-slate-200 dark:border-slate-800 text-xs font-semibold"
+                onClick={() => setClientSearch("")}
+              >
+                Clear search
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
-      {!isError && (
+      {/* Grid container for Card List */}
+      {!isError && processedGaps.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-        {gapsData?.data?.map((gap) => (
-          <div key={gap.id} className="bg-white dark:bg-[#1c1f26] border-2 border-cyan-100 dark:border-cyan-900/40 hover:border-cyan-400 dark:hover:border-cyan-600 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full group relative overflow-hidden">
-            {/* Subtle background decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-50 dark:bg-cyan-900/10 rounded-bl-full -mr-10 -mt-10 opacity-50 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/20 transition-colors pointer-events-none" />
-
-            <div className="mb-4 relative">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                    <Search className="w-3 h-3" /> {gap.topic}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {gap.sourceReportId && (
-                    <Link to={`/reports/${gap.sourceReportId}`}>
-                      <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 px-2 py-0.5 border-transparent">
-                        View Report
-                      </Badge>
-                    </Link>
-                  )}
-                  <Badge variant="outline" className="shrink-0 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800 font-semibold px-2 py-0.5 shadow-sm text-[10px] uppercase">
-                    {gap.source === "report" ? "Report" : "Standalone"}
-                  </Badge>
-                </div>
-              </div>
-              <h3 className="font-bold text-[17px] text-slate-900 dark:text-white leading-snug flex items-start gap-2 mt-3">
-                <Sparkles className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
-                {gap.title}
-              </h3>
-            </div>
-
-            <p className="text-[14.5px] text-slate-700 dark:text-slate-300 leading-relaxed mb-5 flex-1 relative">
-              {gap.description}
-            </p>
-
-            {gap.rationale && (
-              <div className="border-l-2 border-amber-500/40 pl-3.5 py-0.5 mb-4">
-                <span className="font-bold text-slate-700 dark:text-slate-300 text-xs block mb-1 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-500" /> Rationale:
-                </span>
-                <p className="text-[13px] text-slate-600 dark:text-slate-400 italic leading-relaxed">
-                  {gap.rationale}
-                </p>
-              </div>
-            )}
-
-            {/* Evidence Block (Bằng chứng thực tế từ v2) */}
-            {gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null && gap.probe && gap.parentTrend && (
-              <div className="border-l-2 border-emerald-500/40 pl-3.5 py-0.5 mb-4">
-                <span className="font-bold text-emerald-800 dark:text-emerald-350 text-xs block mb-1 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Empirical Evidence:
-                </span>
-                <div className="text-[12.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Only <strong className="text-slate-800 dark:text-slate-200">{gap.intersectionCount ?? 0}</strong> papers exist at the intersection of <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.probe.topicA}"</code> × <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.probe.topicB}"</code> — whereas <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] font-mono">"{gap.parentTrend.topic}"</code> has <strong className="text-slate-800 dark:text-slate-200">{gap.parentTrend.topic === gap.probe.topicA ? gap.parentCounts?.a : gap.parentCounts?.b}</strong> papers and is growing at <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{gap.parentTrend.growthRatePct >= 0 ? "+" : ""}{Math.round(gap.parentTrend.growthRatePct)}%/year</strong>.
-                </div>
-              </div>
-            )}
-
-            {gap.supportingPaperIds && gap.supportingPaperIds.length > 0 && (
-               <div className="flex flex-wrap gap-1.5 mb-4 relative">
-                 {gap.supportingPaperIds.map((id) => (
-                   <Link key={id} to={`/papers/${id}`}>
-                     <Badge variant="secondary" className="text-[10px] font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 border-transparent">
-                       Paper #{id.slice(-6)}
-                     </Badge>
-                   </Link>
-                 ))}
-               </div>
-            )}
-
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto relative">
-              <ConfidenceBar
-                value={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null ? gap.evidenceConfidence : gap.confidence}
-                isEvidence={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null}
-              />
-              <div className="flex gap-2">
-                {filterStatus === "active" ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 px-3 text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors"
-                      onClick={() => patchStatus({ id: gap.id, status: "resolved" })}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Resolved
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-3 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-900/20 transition-colors"
-                      onClick={() => patchStatus({ id: gap.id, status: "dismissed" })}
-                    >
-                      <XCircle className="w-3.5 h-3.5 mr-1.5" /> Dismiss
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-3 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-blue-200 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:border-blue-900 transition-colors"
-                    onClick={() => patchStatus({ id: gap.id, status: "active" })}
-                  >
-                    <Undo2 className="w-3.5 h-3.5 mr-1.5" /> Restore to Active
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* AI Assistant blocks embedded seamlessly without box-in-box border clutter */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
-              <AiEvaluation targetKind="gap" targetId={gap.id} lazy variant="flat" />
-              <GapDirectionsPanel gapId={gap.id} variant="flat" />
-            </div>
-          </div>
-        ))}
-      </div>
+          {processedGaps.map((gap, index) => (
+            <GapCard
+              key={gap.id}
+              gap={gap}
+              filterStatus={filterStatus}
+              onViewDetails={(g) => {
+                setSelectedGap(g);
+                setIsDrawerOpen(true);
+              }}
+              isShortlisted={shortlistedIds.includes(gap.id)}
+              onToggleShortlist={handleToggleShortlist}
+              showReorderButtons={showShortlistedOnly}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              isFirst={index === 0}
+              isLast={index === processedGaps.length - 1}
+            />
+          ))}
+        </div>
       )}
 
-      {/* Pagination */}
-      {gapsData?.meta && gapsData.meta.totalPages > 1 && (
+      {/* Pagination (Only visible when not displaying shortlist) */}
+      {!showShortlistedOnly && gapsData?.meta && gapsData.meta.totalPages > 1 && (
         <div className="flex items-center justify-center gap-1 mt-10 mb-6">
           <Button
             variant="outline"
@@ -464,11 +599,21 @@ export function ResearchGapsPage() {
         </div>
       )}
 
-      {gapsData?.meta && (
+      {/* Meta Total */}
+      {!showShortlistedOnly && gapsData?.meta && (
         <p className="text-xs text-muted-foreground mt-4">
           {gapsData.meta.total} gap{gapsData.meta.total !== 1 ? "s" : ""} found
         </p>
       )}
+
+      <GapDetailDrawer
+        gap={selectedGap}
+        isOpen={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedGap(null);
+        }}
+      />
     </main>
   );
 }

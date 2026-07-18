@@ -38,6 +38,17 @@ export function useUpdateProject(id: string) {
   });
 }
 
+export function useDeleteProject(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => projectsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.removeQueries({ queryKey: ["project", id] });
+    },
+  });
+}
+
 export function useAddPaperToProject(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

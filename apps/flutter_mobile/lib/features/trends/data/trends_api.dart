@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final trendsApiProvider = Provider<TrendsApi>((ref) {
   return TrendsApi(ref.watch(apiClientProvider).dio);
@@ -17,6 +17,7 @@ final FutureProviderFamily<PublicationTrend, String> trendTopicProvider = Future
   return ref.watch(trendsApiProvider).topic(topic);
 });
 
+@immutable
 class TrendsOverviewParams {
   const TrendsOverviewParams({this.yearFrom, this.yearTo, this.limit, this.minPapers, this.sortBy});
 
@@ -49,6 +50,7 @@ class TrendsOverviewParams {
 }
 
 class TrendsOverview {
+  const TrendsOverview({required this.topics});
 
   factory TrendsOverview.fromJson(Map<String, dynamic> json) {
     return TrendsOverview(
@@ -58,12 +60,18 @@ class TrendsOverview {
           .toList(),
     );
   }
-  const TrendsOverview({required this.topics});
 
   final List<TrendingTopic> topics;
 }
 
 class TrendingTopic {
+  const TrendingTopic({
+    required this.topic,
+    required this.momentum,
+    required this.growthRatePct,
+    required this.totalPapers,
+    required this.yearlyBreakdown,
+  });
 
   factory TrendingTopic.fromJson(Map<String, dynamic> json) {
     return TrendingTopic(
@@ -77,13 +85,6 @@ class TrendingTopic {
           .toList(),
     );
   }
-  const TrendingTopic({
-    required this.topic,
-    required this.momentum,
-    required this.growthRatePct,
-    required this.totalPapers,
-    required this.yearlyBreakdown,
-  });
 
   final String topic;
   final double momentum;
@@ -93,6 +94,7 @@ class TrendingTopic {
 }
 
 class YearlyCount {
+  const YearlyCount({required this.year, required this.count});
 
   factory YearlyCount.fromJson(Map<String, dynamic> json) {
     return YearlyCount(
@@ -100,13 +102,13 @@ class YearlyCount {
       count: (json['count'] as num?)?.toInt() ?? 0,
     );
   }
-  const YearlyCount({required this.year, required this.count});
 
   final int year;
   final int count;
 }
 
 class PublicationTrend {
+  const PublicationTrend({required this.topic, required this.yearlyBreakdown, required this.keywords});
 
   factory PublicationTrend.fromJson(Map<String, dynamic> json) {
     return PublicationTrend(
@@ -120,7 +122,6 @@ class PublicationTrend {
           .toList(),
     );
   }
-  const PublicationTrend({required this.topic, required this.yearlyBreakdown, required this.keywords});
 
   final String topic;
   final List<YearlyCount> yearlyBreakdown;
@@ -128,6 +129,7 @@ class PublicationTrend {
 }
 
 class TrendKeyword {
+  const TrendKeyword({required this.keyword, required this.count});
 
   factory TrendKeyword.fromJson(Object value) {
     if (value is Map<String, dynamic>) {
@@ -135,7 +137,6 @@ class TrendKeyword {
     }
     return TrendKeyword(keyword: value.toString(), count: 0);
   }
-  const TrendKeyword({required this.keyword, required this.count});
 
   final String keyword;
   final int count;

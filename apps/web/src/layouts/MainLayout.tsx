@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser, useLogout } from "@/features/auth";
+import { useCreditBalance } from "@/features/credits";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBookmarks } from "@/features/bookmarks";
 import { useNotifications } from "@/features/notifications";
@@ -172,6 +173,7 @@ function UserMenu() {
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const { data } = useCurrentUser();
   const logout = useLogout();
+  const { data: balanceData } = useCreditBalance({ enabled: isAuthed });
 
   if (!isAuthed) {
     return (
@@ -189,7 +191,7 @@ function UserMenu() {
   const email = data?.user?.email ?? "Account";
   const fullName = data?.user?.fullName || email;
   const role = data?.user?.role;
-  const credits = data?.user?.credits ?? 0;
+  const credits = balanceData?.credits ?? data?.user?.credits ?? 0;
   const points = data?.user?.points ?? 0;
 
   return (

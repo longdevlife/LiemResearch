@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final gapsApiProvider = Provider<GapsApi>((ref) {
   return GapsApi(ref.watch(apiClientProvider).dio);
@@ -17,6 +17,7 @@ final FutureProviderFamily<GapAnalysisResult, String> gapStatusProvider = Future
   return ref.watch(gapsApiProvider).status(id);
 });
 
+@immutable
 class GapsListParams {
   const GapsListParams({this.topic, this.status = 'active', this.minConfidence, this.page = 1, this.pageSize = 30});
 
@@ -49,6 +50,7 @@ class GapsListParams {
 }
 
 class ListGapsResponse {
+  const ListGapsResponse({required this.data, required this.total});
 
   factory ListGapsResponse.fromEnvelope(Map<String, dynamic> json) {
     return ListGapsResponse(
@@ -59,13 +61,13 @@ class ListGapsResponse {
       total: ((json['meta'] as Map<String, dynamic>?)?['total'] as num?)?.toInt() ?? 0,
     );
   }
-  const ListGapsResponse({required this.data, required this.total});
 
   final List<ResearchGapItem> data;
   final int total;
 }
 
 class ResearchGapItem {
+  const ResearchGapItem({required this.id, required this.topic, required this.title, required this.description, required this.rationale, required this.confidence, required this.source, required this.status});
 
   factory ResearchGapItem.fromJson(Map<String, dynamic> json) {
     return ResearchGapItem(
@@ -79,7 +81,6 @@ class ResearchGapItem {
       status: (json['status'] ?? 'active').toString(),
     );
   }
-  const ResearchGapItem({required this.id, required this.topic, required this.title, required this.description, required this.rationale, required this.confidence, required this.source, required this.status});
 
   final String id;
   final String topic;
@@ -92,6 +93,7 @@ class ResearchGapItem {
 }
 
 class GapAnalysisResult {
+  const GapAnalysisResult({required this.id, required this.topic, required this.status, this.errorMessage});
 
   factory GapAnalysisResult.fromJson(Map<String, dynamic> json) {
     return GapAnalysisResult(
@@ -101,7 +103,6 @@ class GapAnalysisResult {
       errorMessage: json['errorMessage']?.toString(),
     );
   }
-  const GapAnalysisResult({required this.id, required this.topic, required this.status, this.errorMessage});
 
   final String id;
   final String topic;

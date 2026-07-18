@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
 import 'package:flutter_mobile/features/papers/data/papers_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final papersApiProvider = Provider<PapersApi>((ref) {
   return PapersApi(ref.watch(apiClientProvider).dio);
@@ -28,6 +28,7 @@ final FutureProvider<List<Paper>> myPapersProvider = FutureProvider.autoDispose<
   return ref.watch(papersApiProvider).myRequests();
 });
 
+@immutable
 class PapersListParams {
   const PapersListParams({this.q, this.page = 1, this.pageSize = 10});
 
@@ -61,6 +62,11 @@ class PagedPapers {
 }
 
 class PaperReferencesResult {
+  const PaperReferencesResult({
+    required this.references,
+    required this.totalReferenced,
+    required this.inCorpus,
+  });
 
   factory PaperReferencesResult.fromJson(Map<String, dynamic> json) {
     return PaperReferencesResult(
@@ -72,11 +78,6 @@ class PaperReferencesResult {
       inCorpus: (json['inCorpus'] as num?)?.toInt() ?? 0,
     );
   }
-  const PaperReferencesResult({
-    required this.references,
-    required this.totalReferenced,
-    required this.inCorpus,
-  });
 
   final List<PaperRef> references;
   final int totalReferenced;
@@ -84,6 +85,13 @@ class PaperReferencesResult {
 }
 
 class PaperRef {
+  const PaperRef({
+    required this.id,
+    required this.title,
+    required this.publicationYear,
+    required this.authors,
+    this.doi,
+  });
 
   factory PaperRef.fromJson(Map<String, dynamic> json) {
     return PaperRef(
@@ -94,13 +102,6 @@ class PaperRef {
       doi: json['doi']?.toString(),
     );
   }
-  const PaperRef({
-    required this.id,
-    required this.title,
-    required this.publicationYear,
-    required this.authors,
-    this.doi,
-  });
 
   final String id;
   final String title;

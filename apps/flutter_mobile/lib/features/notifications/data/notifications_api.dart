@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final notificationsApiProvider = Provider<NotificationsApi>((ref) {
   return NotificationsApi(ref.watch(apiClientProvider).dio);
@@ -13,6 +12,16 @@ final FutureProvider<List<AppNotification>> notificationsProvider = FutureProvid
 });
 
 class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.isRead,
+    required this.createdAt,
+    this.type,
+    this.targetKind,
+    this.targetId,
+  });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
@@ -26,14 +35,6 @@ class AppNotification {
       createdAt: (json['createdAt'] ?? '').toString(),
     );
   }
-  const AppNotification({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.isRead, required this.createdAt, this.type,
-    this.targetKind,
-    this.targetId,
-  });
 
   final String id;
   final String title;
@@ -69,7 +70,11 @@ class NotificationsApi {
   }) {
     return _dio.post<void>(
       ApiRoutes.notificationsRegisterDeviceToken,
-      data: {'token': token, 'platform': platform, 'deviceName': ?deviceName},
+      data: {
+        'token': token,
+        'platform': platform,
+        'deviceName': ?deviceName,
+      },
     );
   }
 }

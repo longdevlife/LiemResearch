@@ -12,6 +12,9 @@ export function useSearch(params: SearchParams) {
       const res = await searchApi.semantic(params);
       // Invalidate analytics summary count so it updates immediately
       queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      if (params.rerank) {
+        queryClient.invalidateQueries({ queryKey: ["credits"] });
+      }
       return res;
     },
     enabled: params.q.trim().length > 0,

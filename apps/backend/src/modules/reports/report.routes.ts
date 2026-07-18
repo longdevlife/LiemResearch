@@ -40,6 +40,7 @@ const createReportLimiter = rateLimit({
 });
 
 reportRouter.post("/", createReportLimiter, reportController.create);
+reportRouter.post("/evidence-preview", reportController.previewEvidence);
 reportRouter.get("/", reportController.list);
 reportRouter.get("/:id", reportController.getById);
 reportRouter.delete("/", reportController.deleteBatch);

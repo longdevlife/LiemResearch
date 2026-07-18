@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 
 final projectsApiProvider = Provider<ProjectsApi>((ref) {
   return ProjectsApi(ref.watch(apiClientProvider).dio);
@@ -22,6 +21,7 @@ final FutureProviderFamily<List<ProjectChatMessage>, String> projectChatProvider
 });
 
 class ProjectView {
+  const ProjectView({required this.id, required this.title, this.description, this.members = const [], this.papers = const []});
 
   factory ProjectView.fromJson(Map<String, dynamic> json) {
     return ProjectView(
@@ -32,7 +32,6 @@ class ProjectView {
       papers: json['papers'] as List<dynamic>? ?? [],
     );
   }
-  const ProjectView({required this.id, required this.title, this.description, this.members = const [], this.papers = const []});
 
   final String id;
   final String title;
@@ -42,6 +41,7 @@ class ProjectView {
 }
 
 class ProjectChatMessage {
+  const ProjectChatMessage({required this.id, required this.role, required this.content, required this.createdAt});
 
   factory ProjectChatMessage.fromJson(Map<String, dynamic> json) {
     return ProjectChatMessage(
@@ -51,7 +51,6 @@ class ProjectChatMessage {
       createdAt: (json['createdAt'] ?? '').toString(),
     );
   }
-  const ProjectChatMessage({required this.id, required this.role, required this.content, required this.createdAt});
 
   final String id;
   final String role;

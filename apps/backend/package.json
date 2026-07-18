@@ -22,6 +22,7 @@
     "quality:recompute": "tsx scripts/recompute-quality.ts",
     "score:recompute": "tsx scripts/recompute-scores.ts",
     "references:backfill": "tsx scripts/backfill-references.ts",
+    "openalex:backfill-metadata": "tsx scripts/backfill-openalex-metadata.ts",
     "promote-admin": "tsx scripts/promote-admin.ts",
     "sync:once": "tsx scripts/run-sync-once.ts",
     "embed:once": "tsx scripts/run-embed-once.ts",
@@ -36,6 +37,8 @@
     "dev:all+sync": "concurrently -n api,report,gaps,notif,embed,analysis,sync -c blue,magenta,yellow,green,cyan,white,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:sync\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
+    "@aws-sdk/s3-request-presigner": "^3.1085.0",
     "@google/genai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@trend/shared-types": "workspace:*",

@@ -1,7 +1,9 @@
 import type { ScoredPaper } from "@trend/shared-types";
 import { env } from "../../config/env.js";
+import { AppError } from "../../common/exceptions/app-error.js";
 import { cache, hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
+import { creditService } from "../credits/credit.service.js";
 import { generateJSON } from "../llm/gemini.client.js";
 import { cachedGenerate } from "../llm/llm.run.js";
 import { retrieveScored } from "../retrieval/retriever.js";
@@ -14,6 +16,11 @@ import {
   type RerankCandidate,
   type RerankLlmOutput,
 } from "./search.rerank.js";
+import {
+  annotateTaxonomyBoost,
+  effectiveRelevanceScore,
+  effectiveRerankScore,
+} from "./search.taxonomy.js";
 
 export type { ScoredPaper } from "@trend/shared-types";
 
@@ -31,6 +38,7 @@ export interface SemanticSearchParams {
   sort?: SearchSortKey;
   /** Opt-in LLM re-ranking of the top candidate pool. */
   rerank?: boolean;
+  userId?: string;
 }
 
 export interface SemanticSearchResult {
@@ -75,7 +83,7 @@ export const searchService = {
     // memory. Pool size does NOT grow with `page` — so `total` is stable and a
     // deep `page` can't push $vectorSearch limit past numCandidates (Atlas 500).
     const poolSize = Math.min(MAX_POOL, env.SEARCH_FILTER_POOL);
-    const pool = await fetchScoredPool(q, params, poolSize);
+    const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
     const sorted = sortPapers(pool, sort);
     const { items, total } = slicePage(sorted, page, pageSize);
     return { papers: items, total, reranked: false };
@@ -100,7 +108,7 @@ async function rerankedSearch(args: {
   // cost, and `total` stays deterministic. Rerank refines the head; paginating
   // past the head is meaningless and is clamped in paginatePool.
   const poolSize = Math.min(MAX_POOL, Math.max(env.RERANK_CANDIDATES, pageSize));
-  const pool = await fetchScoredPool(q, params, poolSize);
+  const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
   const candidates: RerankCandidate[] = pool.map((p) => ({
@@ -118,6 +126,27 @@ async function rerankedSearch(args: {
   if (await cache.get<Record<string, never>>(failKey)) {
     return paginatePool(pool, page, pageSize, false);
   }
+
+  if (!params.userId) {
+    throw AppError.unauthorized("Authentication is required for AI re-ranking");
+  }
+
+  // Charge 5 credits for re-ranking
+  const tx = await creditService.chargeCreditsChecked({
+    userId: params.userId,
+    action: "search_rerank",
+    amount: 5,
+    targetKind: "search",
+    idempotencyKey: `rerank:${hashKey({
+      query: q.trim().toLowerCase(),
+      filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+      candidateIds: candidates.map((c) => c.id).sort(),
+    })}`,
+  });
+
+  const txId = tx?._id;
+  let cacheHit = false;
+
   const prompt = buildRerankPrompt(q, candidates);
   let scoreMap: Record<string, number>;
   try {
@@ -131,6 +160,9 @@ async function rerankedSearch(args: {
       },
       model,
       inputHash: prompt,
+      onCacheHit: () => {
+        cacheHit = true;
+      },
       validate: (candidate) => {
         if (Object.keys(candidate).length === 0) {
           throw new Error("Rerank returned no valid scores");
@@ -150,6 +182,12 @@ async function rerankedSearch(args: {
       },
     });
   } catch (err) {
+    if (txId) {
+      await creditService.refundCreditsOnce({
+        transactionId: txId.toString(),
+        reason: "Rerank LLM generation failed",
+      });
+    }
     // Re-rank is an enhancement, not a hard dependency — degrade gracefully.
     // Negative-cache the failure briefly so an identical (deterministically
     // failing) query doesn't re-burn Gemini quota on every request.
@@ -158,11 +196,18 @@ async function rerankedSearch(args: {
     return paginatePool(pool, page, pageSize, false);
   }
 
+  if (cacheHit && txId) {
+    await creditService.refundCreditsOnce({
+      transactionId: txId.toString(),
+      reason: "Rerank cache hit",
+    });
+  }
+
   // Attach LLM scores. A paper the LLM OMITTED is NOT "scored 0" (= irrelevant)
   // — fall back to its vector score so a strong semantic hit the model forgot
   // to emit keeps its rank instead of being dumped below explicit-0 papers.
   for (const p of pool) p.rerankScore = scoreMap[p.id] ?? p.score;
-  pool.sort((a, b) => (b.rerankScore! - a.rerankScore!) || b.score - a.score);
+  pool.sort((a, b) => (effectiveRerankScore(b) - effectiveRerankScore(a)) || b.score - a.score);
 
   // An all-empty score map (negative-cache hit or total LLM omission) means no
   // real re-ranking happened — report it honestly as plain semantic order.
@@ -200,7 +245,7 @@ function sortPapers(papers: ScoredPaper[], sort: SearchSortKey): ScoredPaper[] {
   } else if (sort === "citations") {
     arr.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
   } else {
-    arr.sort((a, b) => b.score - a.score); // relevance (cosine)
+    arr.sort((a, b) => effectiveRelevanceScore(b) - effectiveRelevanceScore(a) || b.score - a.score);
   }
   return arr;
 }

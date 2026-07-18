@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/projects/data/projects_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
@@ -33,7 +32,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     }
     final project = await ref.read(projectsApiProvider).create(cleanTitle, description.text.trim());
     ref.invalidate(projectsProvider);
-    if (mounted) context.push('/project/${project.id}');
+    if (mounted) await context.push('/project/${project.id}');
   }
 
   @override

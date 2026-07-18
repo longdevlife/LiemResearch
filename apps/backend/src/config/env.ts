@@ -1,6 +1,9 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const optionalEnvString = z.preprocess((value) => (value === "" ? undefined : value), z.string().optional());
+const optionalEnvUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -10,6 +13,15 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().url().or(z.string().startsWith("mongodb")),
 
   REDIS_URL: z.string().url().or(z.string().startsWith("redis")),
+
+  // PDF storage. local keeps the existing development behavior; r2 stores PDFs
+  // in Cloudflare R2 via the S3-compatible API.
+  STORAGE_PROVIDER: z.enum(["local", "r2"]).default("local"),
+  R2_ENDPOINT: optionalEnvUrl,
+  R2_ACCESS_KEY_ID: optionalEnvString,
+  R2_SECRET_ACCESS_KEY: optionalEnvString,
+  R2_BUCKET: optionalEnvString,
+  R2_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 chars"),
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 chars"),
@@ -37,6 +49,7 @@ const EnvSchema = z.object({
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().default("llama3.1"),
   CHAT_MAX_PER_HOUR: z.coerce.number().int().positive().default(40),
+  TEAM_CHAT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(20),
   CHAT_CONTEXT_PAPERS: z.coerce.number().int().min(1).max(50).default(12),
   CHAT_HISTORY_TURNS: z.coerce.number().int().min(0).max(20).default(6),
   CHAT_MAX_PROMPT_CHARS: z.coerce.number().int().positive().default(12000),
@@ -121,6 +134,17 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
 
   INITIAL_USER_CREDITS: z.coerce.number().int().nonnegative().default(1000),
+}).superRefine((value, ctx) => {
+  if (value.STORAGE_PROVIDER !== "r2") return;
+  for (const key of ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"] as const) {
+    if (!value[key]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is required when STORAGE_PROVIDER=r2`,
+      });
+    }
+  }
 });
 
 const rawEnv = { ...process.env };

@@ -24,10 +24,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
 
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
+  if (err instanceof AppError || (err && typeof err === "object" && "statusCode" in err && "code" in err)) {
+    const errorObj = err as any;
+    res.status(errorObj.statusCode).json({
       success: false,
-      error: { code: err.code, message: err.message, details: err.details },
+      error: { code: errorObj.code, message: errorObj.message, details: errorObj.details },
     });
     return;
   }

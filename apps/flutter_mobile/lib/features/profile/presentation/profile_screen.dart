@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_mobile/core/theme/theme_provider.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
-import 'package:flutter_mobile/features/reports/data/reports_api.dart';
+import 'package:flutter_mobile/features/papers/data/papers_models.dart';
 import 'package:flutter_mobile/features/rankings/domain/level_helper.dart';
-import 'package:flutter_mobile/core/theme/theme_provider.dart';
+import 'package:flutter_mobile/features/reports/data/reports_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -44,7 +45,7 @@ class ProfileScreen extends ConsumerWidget {
     
     final paperBookmarks = bookmarks.where((b) => b.targetKind == 'paper').toList();
     final topicCount = paperBookmarks
-        .expand((bookmark) => bookmark.paperDetail?.topics ?? const [])
+        .expand((bookmark) => bookmark.paperDetail?.topics ?? const <PaperTopic>[])
         .map((topic) => topic.topicName)
         .toSet()
         .length;
@@ -315,9 +316,8 @@ class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
     required this.label,
-    this.value,
+    required this.theme, this.value,
     this.onTap,
-    required this.theme,
   });
 
   final IconData icon;

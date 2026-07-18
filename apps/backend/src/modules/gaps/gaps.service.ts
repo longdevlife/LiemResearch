@@ -1,7 +1,9 @@
 import { env } from "../../config/env.js";
+import mongoose from "mongoose";
 import { logger } from "../../infrastructure/logger.js";
 import { AppError } from "../../common/exceptions/app-error.js";
 import type { GapProbe, GapDirections } from "@trend/shared-types";
+import { creditService } from "../credits/credit.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { LlmContentError } from "../llm/gemini.client.js";
 import { cachedGenerateJSON } from "../llm/llm.run.js";
@@ -30,6 +32,8 @@ import {
   type GapsLlmOutput,
 } from "./gaps.prompt.js";
 import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
+import { canAccessGap, toGapListItem, type GapListDoc } from "./gap-presenter.js";
+import { projectService } from "../projects/project.service.js";
 
 export interface GapJob {
   analysisId: string;
@@ -55,9 +59,12 @@ function escapeRegex(s: string): string {
  *  The probe is LLM-generated free text, so it is escaped before becoming a regex. */
 function conceptFilter(
   phrases: string[],
-  years: { yearFrom?: number; yearTo?: number },
+  years: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Record<string, unknown> {
   const filter: Record<string, unknown> = { dataStatus: "active" };
+  if (years.paperIds && years.paperIds.length > 0) {
+    filter._id = { $in: years.paperIds.map((id) => new mongoose.Types.ObjectId(id)) };
+  }
   if (years.yearFrom !== undefined || years.yearTo !== undefined) {
     filter.publicationYear = {
       ...(years.yearFrom !== undefined ? { $gte: years.yearFrom } : {}),
@@ -74,13 +81,13 @@ function conceptFilter(
 /** YoY growth % of a free-text concept over the analysis window (0 if too sparse). */
 async function conceptGrowthPct(
   phrase: string,
-  years: { yearFrom?: number; yearTo?: number },
+  years: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Promise<number> {
   const now = new Date().getFullYear();
   const yearTo = years.yearTo ?? now;
   const yearFrom = years.yearFrom ?? yearTo - GAP_WINDOW_YEARS;
   const rows = await PaperModel.aggregate<{ _id: number; count: number }>([
-    { $match: conceptFilter([phrase], { yearFrom, yearTo }) },
+    { $match: conceptFilter([phrase], { yearFrom, yearTo, paperIds: years.paperIds }) },
     { $group: { _id: "$publicationYear", count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
   ]);
@@ -98,9 +105,9 @@ async function conceptGrowthPct(
  * escaped-regex on title+abstract (the probe is free text, not a canonical topic
  * name). Returns null when the probe is missing so the gap degrades gracefully.
  */
-async function scoreGapEvidence(probe: GapProbe | undefined) {
+async function scoreGapEvidence(probe: GapProbe | undefined, paperIds?: string[]) {
   if (!probe?.topicA || !probe?.topicB) return null;
-  const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo };
+  const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo, paperIds };
   const [intersectionCount, aCount, bCount, growthA, growthB] = await Promise.all([
     PaperModel.countDocuments(conceptFilter([probe.topicA, probe.topicB], years)),
     PaperModel.countDocuments(conceptFilter([probe.topicA], years)),
@@ -141,26 +148,87 @@ function toDirectionsDto(d: GapDirectionsDoc): GapDirections {
   };
 }
 
+async function loadProjectForGap(gap: { projectId?: unknown }) {
+  if (!gap.projectId) return null;
+  const { ProjectModel } = await import("../projects/models/project.model.js");
+  return ProjectModel.findById(gap.projectId).lean();
+}
+
+async function assertCanReadGap(userId: string, gap: { userId?: unknown; projectId?: unknown }): Promise<void> {
+  if (canAccessGap(userId, gap as any)) return;
+  const project = await loadProjectForGap(gap);
+  if (canAccessGap(userId, gap as any, project as any)) return;
+  throw AppError.notFound("Research gap not found");
+}
+
 export const gapsService = {
   /** Create a queued analysis row, enqueue the BullMQ job, and return the id. */
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
-    const analysis = await GapAnalysisModel.create({
+    const analysisId = new mongoose.Types.ObjectId();
+    if (dto.projectId) {
+      await projectService.getProjectPaperIdsForUser(dto.projectId, userId, "gap analysis");
+    }
+
+    const tx = await creditService.chargeCreditsChecked({
       userId,
-      projectId: dto.projectId,
-      topic: dto.topic,
-      yearFrom: dto.yearFrom,
-      yearTo: dto.yearTo,
-      status: "queued",
+      action: "generate_gaps",
+      amount: 30,
+      targetKind: "gap_analysis",
+      targetId: analysisId.toString(),
+      idempotencyKey: `gap_analysis:${analysisId}`,
     });
-    const analysisId = String(analysis._id);
-    await gapsQueue.add("gap-analysis", { analysisId });
-    return analysisId;
+
+    const txId = tx?._id;
+
+    try {
+      const analysis = await GapAnalysisModel.create({
+        _id: analysisId,
+        userId,
+        projectId: dto.projectId,
+        topic: dto.topic,
+        yearFrom: dto.yearFrom,
+        yearTo: dto.yearTo,
+        status: "queued",
+        creditTransactionId: txId,
+        creditCost: 30,
+        creditAction: "generate_gaps",
+      });
+      await gapsQueue.add("gap-analysis", { analysisId: String(analysis._id) });
+      return String(analysis._id);
+    } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Failed to create gap analysis or enqueue job",
+        });
+      }
+      throw err;
+    }
   },
 
   /** Fetch one analysis the caller owns (poll target for the FE). */
   async getAnalysis(userId: string, analysisId: string) {
     const doc = await GapAnalysisModel.findOne({ _id: analysisId, userId }).lean();
     if (!doc) throw AppError.notFound("Gap analysis not found");
+    return {
+      id: String(doc._id),
+      topic: doc.topic,
+      status: doc.status,
+      gapIds: doc.gapIds.map(String),
+      errorMessage: doc.errorMessage,
+    };
+  },
+
+  /** Resume helper for FE reloads — returns the user's latest queued/analyzing run, if any. */
+  async getActiveAnalysis(userId: string) {
+    const doc = await GapAnalysisModel.findOne({
+      userId,
+      status: { $in: ["queued", "analyzing"] },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!doc) return null;
     return {
       id: String(doc._id),
       topic: doc.topic,
@@ -188,17 +256,26 @@ export const gapsService = {
 
     // ① Embed topic
     const queryVector = await getEmbeddingProvider().embed(analysis.topic);
+    const projectPaperIds = analysis.projectId
+      ? await projectService.getProjectPaperIdsForUser(
+          String(analysis.projectId),
+          String(analysis.userId),
+          "gap analysis",
+        )
+      : undefined;
 
     // ② Vector search — BEFORE cache lookup (paper IDs needed for cache key)
     const papers = await retrieveGapEvidence(queryVector, {
       yearFrom: analysis.yearFrom ?? undefined,
       yearTo: analysis.yearTo ?? undefined,
+      paperIds: projectPaperIds,
     });
 
     if (papers.length === 0) {
-      analysis.status = "failed";
-      analysis.errorMessage = "Not enough corpus data for this topic — try a broader question.";
-      await analysis.save();
+      await this.markAnalysisFailed(
+        job.analysisId,
+        "Not enough corpus data for this topic — try a broader question."
+      );
       return;
     }
 
@@ -250,7 +327,7 @@ export const gapsService = {
     await ResearchGapModel.deleteMany({ analysisId: analysis._id });
     const gapDocs = await Promise.all(
       output.gaps.slice(0, 5).map(async (g) => {
-        const evidence = await scoreGapEvidence(g.probe);
+        const evidence = await scoreGapEvidence(g.probe, projectPaperIds);
         return ResearchGapModel.create({
           topic: analysis.topic,
           normalizedTopic,
@@ -284,6 +361,15 @@ export const gapsService = {
     analysis.modelVersion = model;
     await analysis.save();
 
+    if (cacheHit && analysis.creditTransactionId) {
+      await creditService.refundCreditsOnce({
+        transactionId: analysis.creditTransactionId.toString(),
+        reason: "Gap analysis cache hit",
+      });
+      analysis.creditRefundedAt = new Date();
+      await analysis.save();
+    }
+
     logger.info(
       { analysisId: job.analysisId, gaps: gapDocs.length, cacheHit },
       "gap analysis ready",
@@ -299,6 +385,7 @@ export const gapsService = {
     _id: unknown;
     userId: unknown;
     projectId?: unknown;
+    projectPaperIds?: unknown[];
     query: string;
     researchGaps: Array<{
       title: string;
@@ -306,13 +393,16 @@ export const gapsService = {
       rationale: string;
       supportingPaperIds: unknown[];
       confidence: number;
+      probe?: GapProbe;
     }>;
   }): Promise<void> {
     if (!report.researchGaps || report.researchGaps.length === 0) return;
     const normalizedTopic = normalizeTopicStr(report.query);
+    const scopedPaperIds = report.projectId ? (report.projectPaperIds ?? []).map(String) : undefined;
     await Promise.all(
-      report.researchGaps.map((g) =>
-        ResearchGapModel.create({
+      report.researchGaps.map(async (g) => {
+        const evidence = await scoreGapEvidence(g.probe, scopedPaperIds);
+        return ResearchGapModel.create({
           topic: report.query,
           normalizedTopic,
           title: g.title,
@@ -320,18 +410,17 @@ export const gapsService = {
           rationale: g.rationale,
           supportingPaperIds: g.supportingPaperIds,
           confidence: g.confidence,
-          // Report-path gaps carry no probe (the report LLM doesn't emit one yet),
-          // so they have no quantitative evidence. Seed evidenceConfidence from the
-          // LLM confidence so they sort fairly against standalone v2 gaps instead of
-          // sinking below them (null sorts last). Full probe-wiring for reports is a
-          // follow-up.
-          evidenceConfidence: g.confidence,
+          probe: evidence?.probe,
+          intersectionCount: evidence?.intersectionCount,
+          parentCounts: evidence?.parentCounts,
+          parentTrend: evidence?.parentTrend ?? null,
+          evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "report",
           sourceReportId: report._id,
           userId: report.userId,
           projectId: report.projectId,
-        }),
-      ),
+        });
+      }),
     );
   },
 
@@ -366,27 +455,29 @@ export const gapsService = {
       ResearchGapModel.countDocuments(filter),
     ]);
 
+    const supportingPaperIds = [
+      ...new Set(docs.flatMap((d) => (d.supportingPaperIds ?? []).map(String))),
+    ];
+    const supportingPapers = supportingPaperIds.length
+      ? await PaperModel.find({ _id: { $in: supportingPaperIds } })
+          .select("title publicationYear journalName citationCount")
+          .lean()
+      : [];
+    const supportingPapersById = new Map(
+      supportingPapers.map((p) => [
+        String(p._id),
+        {
+          id: String(p._id),
+          title: String(p.title ?? ""),
+          publicationYear: p.publicationYear,
+          journalName: p.journalName ?? undefined,
+          citationCount: p.citationCount,
+        },
+      ]),
+    );
+
     return {
-      gaps: docs.map((d) => ({
-        id: String(d._id),
-        topic: d.topic,
-        normalizedTopic: d.normalizedTopic,
-        title: d.title,
-        description: d.description,
-        rationale: d.rationale,
-        supportingPaperIds: d.supportingPaperIds.map(String),
-        confidence: d.confidence,
-        probe: d.probe,
-        intersectionCount: d.intersectionCount,
-        parentCounts: d.parentCounts,
-        parentTrend: d.parentTrend,
-        evidenceConfidence: d.evidenceConfidence,
-        source: d.source,
-        sourceReportId: d.sourceReportId ? String(d.sourceReportId) : undefined,
-        userId: String(d.userId),
-        status: d.status,
-        createdAt: d.createdAt,
-      })),
+      gaps: docs.map((d) => toGapListItem(d as unknown as GapListDoc, supportingPapersById)),
       total,
     };
   },
@@ -409,12 +500,13 @@ export const gapsService = {
    * Synchronous (no vector search): the gap doc already carries full context.
    */
   async generateDirections(
-    _userId: string,
+    userId: string,
     gapId: string,
     force?: boolean,
   ): Promise<GapDirections> {
     const gap = await ResearchGapModel.findById(gapId).lean();
     if (!gap) throw AppError.notFound("Research gap not found");
+    await assertCanReadGap(userId, gap);
 
     const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
     const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
@@ -438,6 +530,19 @@ export const gapsService = {
       return toDirectionsDto(existing as GapDirectionsDoc);
     }
 
+    // Charge credits first since we are about to trigger LLM generation
+    const tx = await creditService.chargeCreditsChecked({
+      userId,
+      action: "generate_directions",
+      amount: 15,
+      targetKind: "gap_direction",
+      targetId: gapId,
+      idempotencyKey: `directions:${gapId}:${Date.now()}`,
+    });
+
+    let txId = tx?._id;
+    let cacheHit = false;
+
     let raw: DirectionsRaw;
     const prompt = buildDirectionsPrompt(
       {
@@ -458,6 +563,9 @@ export const gapsService = {
         model: env.GEMINI_MODEL_FAST,
         bypassCache: force,
         prompt,
+        onCacheHit: () => {
+          cacheHit = true;
+        },
         validate: (candidate) => {
           const directions = sanitizeDirections(candidate, allowedPaperIds);
           if (directions.length === 0) {
@@ -472,10 +580,24 @@ export const gapsService = {
         },
       });
     } catch (err) {
+      if (txId) {
+        await creditService.refundCreditsOnce({
+          transactionId: txId.toString(),
+          reason: "Directions generation failed",
+        });
+      }
       logger.warn({ err, gapId }, "gap directions generation failed");
       throw AppError.serviceUnavailable(
         "AI gợi ý tạm thời không khả dụng. Vui lòng thử lại.",
       );
+    }
+
+    if (cacheHit && txId) {
+      await creditService.refundCreditsOnce({
+        transactionId: txId.toString(),
+        reason: "Directions cache hit",
+      });
+      txId = undefined;
     }
 
     const directions = sanitizeDirections(raw, allowedPaperIds);
@@ -491,6 +613,8 @@ export const gapsService = {
           model: env.GEMINI_MODEL_FAST,
           promptVersion: DIRECTIONS_PROMPT_VERSION,
           evidenceHash,
+          creditTransactionId: txId,
+          creditCost: txId ? 15 : 0,
         },
       },
       { upsert: true, new: true },
@@ -499,24 +623,43 @@ export const gapsService = {
   },
 
   /** Cached directions for a gap (or null if never generated). */
-  async getDirections(gapId: string): Promise<GapDirections | null> {
+  async getDirections(userId: string, gapId: string): Promise<GapDirections | null> {
+    const gap = await ResearchGapModel.findById(gapId).lean();
+    if (!gap) throw AppError.notFound("Research gap not found");
+    await assertCanReadGap(userId, gap);
     const doc = await GapDirectionsModel.findOne({ gapId });
     return doc ? toDirectionsDto(doc as GapDirectionsDoc) : null;
   },
 
   /** Mark an analysis failed — called by the worker when retries are exhausted. */
   async markAnalysisFailed(analysisId: string, message: string): Promise<void> {
-    await GapAnalysisModel.updateOne(
-      { _id: analysisId, status: { $ne: "ready" } },
-      { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
-    );
+    const analysis = await GapAnalysisModel.findOneAndUpdate(
+      { _id: analysisId, status: { $ne: "ready" }, creditRefundedAt: { $exists: false } },
+      { $set: { status: "failed", errorMessage: message.slice(0, 500), creditRefundedAt: new Date() } },
+      { new: true }
+    ).lean();
+
+    if (analysis && analysis.creditTransactionId) {
+      await creditService.refundCreditsOnce({
+        transactionId: analysis.creditTransactionId.toString(),
+        reason: `Gap analysis failed: ${message.slice(0, 100)}`,
+      });
+    } else if (!analysis) {
+      await GapAnalysisModel.updateOne(
+        { _id: analysisId, status: { $ne: "ready" } },
+        { $set: { status: "failed", errorMessage: message.slice(0, 500) } }
+      );
+    }
   },
 };
 
 async function retrieveGapEvidence(
   queryVector: number[],
-  filters: { yearFrom?: number; yearTo?: number },
+  filters: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Promise<GapEvidencePaper[]> {
+  if (filters.paperIds && filters.paperIds.length > 0) {
+    return retrieveProjectGapEvidence(queryVector, { ...filters, paperIds: filters.paperIds });
+  }
   return retrieve({
     queryVector,
     topK: env.GAPS_TOP_K,
@@ -525,4 +668,62 @@ async function retrieveGapEvidence(
     filters,
     projection: "gap",
   });
+}
+
+async function retrieveProjectGapEvidence(
+  queryVector: number[],
+  filters: { yearFrom?: number; yearTo?: number; paperIds: string[] },
+): Promise<GapEvidencePaper[]> {
+  const match: Record<string, unknown> = {
+    _id: { $in: filters.paperIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    dataStatus: "active",
+  };
+  if (filters.yearFrom !== undefined || filters.yearTo !== undefined) {
+    match.publicationYear = {
+      ...(filters.yearFrom !== undefined ? { $gte: filters.yearFrom } : {}),
+      ...(filters.yearTo !== undefined ? { $lte: filters.yearTo } : {}),
+    };
+  }
+
+  const docs = await PaperModel.find(match)
+    .select("title abstractText aiAnalysis publicationYear +embedding")
+    .lean();
+  const order = new Map(filters.paperIds.map((id, index) => [id, index]));
+
+  return docs
+    .map((doc) => {
+      const embedding = Array.isArray(doc.embedding) ? doc.embedding : undefined;
+      return {
+        id: String(doc._id),
+        title: String(doc.title ?? ""),
+        abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
+        aiAnalysis: doc.aiAnalysis ?? null,
+        publicationYear: doc.publicationYear,
+        score: embedding ? cosineSimilarity(queryVector, embedding) : Number.NEGATIVE_INFINITY,
+      };
+    })
+    .sort((a, b) => {
+      const scoreA = Number.isFinite(a.score) ? a.score : Number.NEGATIVE_INFINITY;
+      const scoreB = Number.isFinite(b.score) ? b.score : Number.NEGATIVE_INFINITY;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+    })
+    .slice(0, env.GAPS_TOP_K)
+    .map(({ score: _score, ...paper }) => paper);
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return Number.NEGATIVE_INFINITY;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    dot += av * bv;
+    normA += av * av;
+    normB += bv * bv;
+  }
+  if (normA === 0 || normB === 0) return Number.NEGATIVE_INFINITY;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }

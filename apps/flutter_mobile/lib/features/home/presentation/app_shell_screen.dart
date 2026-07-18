@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AppShellScreen extends StatelessWidget {
-  const AppShellScreen({super.key, required this.navigationShell});
+  const AppShellScreen({required this.navigationShell, super.key});
   final StatefulNavigationShell navigationShell;
 
   void _goBranch(int index) {
@@ -46,7 +46,7 @@ class AppShellScreen extends StatelessWidget {
               children: [
                 // Sliding active background pill
                 AnimatedAlign(
-                  alignment: Alignment(-1.0 + (navigationShell.currentIndex * 2.0 / 3.0), 0.0),
+                  alignment: Alignment(-1.0 + (navigationShell.currentIndex * 2.0 / 3.0), 0),
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.fastOutSlowIn,
                   child: FractionallySizedBox(

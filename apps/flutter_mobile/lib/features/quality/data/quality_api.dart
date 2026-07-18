@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/src/providers/future_provider.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:meta/meta.dart';
 
 final qualityApiProvider = Provider<QualityApi>((ref) {
   return QualityApi(ref.watch(apiClientProvider).dio);
@@ -13,6 +13,7 @@ final FutureProviderFamily<QualityView, QualityTarget> qualityViewProvider = Fut
   return ref.watch(qualityApiProvider).view(target.kind, target.id);
 });
 
+@immutable
 class QualityTarget {
   const QualityTarget(this.kind, this.id);
 
@@ -27,6 +28,7 @@ class QualityTarget {
 }
 
 class QualityView {
+  const QualityView({required this.ratingAvg, required this.ratingCount, required this.ratings, this.evaluation, this.myStars, this.myComment});
 
   factory QualityView.fromJson(Map<String, dynamic> json) {
     final summary = json['ratingSummary'] as Map<String, dynamic>? ?? {};
@@ -43,7 +45,6 @@ class QualityView {
           .toList(),
     );
   }
-  const QualityView({required this.ratingAvg, required this.ratingCount, required this.ratings, this.evaluation, this.myStars, this.myComment});
 
   final QualityEvaluation? evaluation;
   final double ratingAvg;
@@ -54,6 +55,7 @@ class QualityView {
 }
 
 class QualityEvaluation {
+  const QualityEvaluation({required this.relevance, required this.groundedness, required this.completeness, required this.overall, required this.rationale});
 
   factory QualityEvaluation.fromJson(Map<String, dynamic> json) {
     return QualityEvaluation(
@@ -64,7 +66,6 @@ class QualityEvaluation {
       rationale: (json['rationale'] ?? '').toString(),
     );
   }
-  const QualityEvaluation({required this.relevance, required this.groundedness, required this.completeness, required this.overall, required this.rationale});
 
   final double relevance;
   final double groundedness;
@@ -74,6 +75,7 @@ class QualityEvaluation {
 }
 
 class UserRating {
+  const UserRating({required this.id, required this.userName, required this.stars, this.comment});
 
   factory UserRating.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
@@ -84,7 +86,6 @@ class UserRating {
       comment: json['comment']?.toString(),
     );
   }
-  const UserRating({required this.id, required this.userName, required this.stars, this.comment});
 
   final String id;
   final String userName;
@@ -107,7 +108,12 @@ class QualityApi {
   }
 
   Future<void> rate(String kind, String id, int stars, String? comment) {
-    return _dio.post<void>(ApiRoutes.qualityRate, data: {'targetKind': kind, 'targetId': id, 'stars': stars, 'comment': ?comment});
+    return _dio.post<void>(ApiRoutes.qualityRate, data: {
+      'targetKind': kind,
+      'targetId': id,
+      'stars': stars,
+      'comment': ?comment,
+    });
   }
 
   Future<void> deleteRate(String ratingId) => _dio.delete<void>(ApiRoutes.qualityDeleteRate(ratingId));

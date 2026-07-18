@@ -1,6 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import { reportService } from "./report.service.js";
-import { CreateReportSchema, ListReportsQuerySchema, BatchDeleteSchema } from "./dto/report.schema.js";
+import {
+  BatchDeleteSchema,
+  CreateReportSchema,
+  ListReportsQuerySchema,
+  PreviewReportEvidenceSchema,
+} from "./dto/report.schema.js";
 
 /**
  * Reports endpoints. All routes sit behind requireAuth, so req.user is set.
@@ -17,6 +22,18 @@ export const reportController = {
 
     const data = await reportService.create(req.user!.sub, parsed.data);
     res.status(202).json({ success: true, data });
+  },
+
+  /** POST /api/v1/reports/evidence-preview — returns the exact evidence pack order. */
+  async previewEvidence(req: Request, res: Response, next: NextFunction) {
+    const parsed = PreviewReportEvidenceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await reportService.previewEvidence(req.user!.sub, parsed.data);
+    res.json({ success: true, data });
   },
 
   /** GET /api/v1/reports — the caller's reports, light list. */

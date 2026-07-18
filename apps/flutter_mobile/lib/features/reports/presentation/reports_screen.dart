@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_mobile/core/widgets/app_empty_state.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/core/widgets/swipe_delete_tile.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
 import 'package:flutter_mobile/features/reports/data/reports_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -63,7 +63,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       _startPolling();
       try {
         await ref.read(bookmarksApiProvider).create(targetKind: 'report', targetId: id);
-      } catch (_) {
+      } on Object catch (_) {
         // A duplicate bookmark should not block report creation.
       }
       ref.invalidate(reportsProvider(const ReportsParams()));
@@ -94,7 +94,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           const SnackBar(content: Text('Report deleted successfully')),
         );
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete report: $e'), backgroundColor: Colors.red),
@@ -270,7 +270,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Switch(
                           value: deepAnalysis,
                           onChanged: creating ? null : (value) => setState(() => deepAnalysis = value),
-                          activeColor: Colors.white,
+                          activeThumbColor: Colors.white,
                           activeTrackColor: const Color(0xFF06B6D4),
                           inactiveThumbColor: const Color(0xFFF4F3F4),
                           inactiveTrackColor: const Color(0xFF94A3B8),
@@ -433,7 +433,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       child: GestureDetector(
                         onTap: () {
                           if (report.status == 'ready') {
-                            context.push('/report/${report.id}');
+                            unawaited(context.push('/report/${report.id}'));
                           } else {
                             setState(() => _selectedId = report.id);
                             _startPolling();

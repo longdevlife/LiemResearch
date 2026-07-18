@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Lightbulb, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Lightbulb, Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { gapsApi } from "@/features/gaps/api/gaps.api";
-import type { GapDirections } from "@trend/shared-types";
+import type { GapDirections, GapSupportingPaper } from "@trend/shared-types";
 import { toast } from "sonner";
 
 /**
@@ -17,15 +18,39 @@ import { toast } from "sonner";
  */
 export function GapDirectionsPanel({
   gapId,
+  supportingPapers = [],
   className,
   variant = "default",
+  autoFetch = false,
 }: {
   gapId: string;
+  supportingPapers?: GapSupportingPaper[];
   className?: string;
   variant?: "default" | "flat";
+  autoFetch?: boolean;
 }) {
   const [data, setData] = useState<GapDirections | null>(null);
   const [generating, setGenerating] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (autoFetch && !data && !generating) {
+      const fetchCached = async () => {
+        setGenerating(true);
+        try {
+          const res = await gapsApi.getDirections(gapId);
+          if (res) {
+            setData(res);
+          }
+        } catch (err) {
+          console.error("Failed to fetch cached directions", err);
+        } finally {
+          setGenerating(false);
+        }
+      };
+      void fetchCached();
+    }
+  }, [autoFetch, gapId]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -35,6 +60,7 @@ export function GapDirectionsPanel({
       const res = await gapsApi.generateDirections(gapId, !!data);
       setData(res);
       toast.success("AI research directions suggested.");
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || "Failed to suggest directions.");
     } finally {
@@ -66,7 +92,7 @@ export function GapDirectionsPanel({
           variant={isFlat ? "outline" : "default"}
           className={
             isFlat
-              ? "h-8 px-3 rounded-lg text-xs font-semibold border-amber-200 dark:border-amber-900/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 text-amber-755 dark:text-amber-400 gap-1.5"
+              ? "h-8 px-3 rounded-lg text-xs font-semibold border-amber-200 dark:border-amber-900/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 text-amber-700 dark:text-amber-400 gap-1.5"
               : "h-9 px-4 gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold"
           }
         >
@@ -78,7 +104,7 @@ export function GapDirectionsPanel({
       {data && data.directions.length > 0 ? (
         <div className="space-y-3">
           {data.directions.map((d, i) => (
-            <div key={i} className="rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100/50 dark:border-zinc-800/30 p-3 space-y-1.5">
+            <div key={i} className="rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100/50 dark:border-zinc-800/30 p-4 space-y-2">
               <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                 {i + 1}. {d.title}
               </div>
@@ -86,23 +112,49 @@ export function GapDirectionsPanel({
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{d.rationale}</p>
               )}
               {d.suggestedApproach && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11.5px] text-slate-500 dark:text-slate-400 leading-relaxed bg-white dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Approach: </span>
                   {d.suggestedApproach}
                 </p>
               )}
               {d.relatedPaperIds.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {d.relatedPaperIds.map((id) => (
-                    <Link key={id} to={`/papers/${id}`}>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] font-medium cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 px-2 py-0.5 border-transparent"
-                      >
-                        Paper #{id.slice(-6)}
-                      </Badge>
-                    </Link>
-                  ))}
+                <div className="flex flex-col gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/40 mt-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Related Evidence:</span>
+                  <div className="space-y-1.5">
+                    {d.relatedPaperIds.map((id) => {
+                      const paper = supportingPapers.find((p) => p.id === id);
+                      if (paper) {
+                        const metadata = [
+                          paper.publicationYear,
+                          paper.journalName,
+                          paper.citationCount !== undefined ? `${paper.citationCount} citations` : null
+                        ].filter(Boolean).join(" • ");
+                        return (
+                          <div key={id} className="text-xs">
+                            <Link
+                              to={`/papers/${id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-800 dark:hover:text-blue-300 inline-flex items-center gap-1 leading-snug"
+                            >
+                              <span>{paper.title}</span>
+                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                            </Link>
+                            {metadata && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block mt-0.5">
+                                {metadata}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={id} className="text-xs text-slate-400 italic">
+                          Unknown supporting paper (ID: {id.slice(-6)})
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

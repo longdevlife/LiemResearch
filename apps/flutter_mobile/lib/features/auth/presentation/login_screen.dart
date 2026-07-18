@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter_mobile/features/auth/data/auth_models.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.initialRegisterTab = false});
@@ -83,7 +82,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             });
           }
         }
-      } catch (e) {
+      } on Object catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
@@ -107,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context.go('/');
         }
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
@@ -594,9 +593,9 @@ class _RoleButton extends StatelessWidget {
     required this.role,
     required this.label,
     required this.active,
-    this.onTap,
     required this.borderColor,
     required this.isDark,
+    this.onTap,
   });
 
   final UserRole role;

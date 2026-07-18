@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/core/constants/api_routes.dart';
 import 'package:flutter_mobile/core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final analyticsApiProvider = Provider<AnalyticsApi>((ref) {
   return AnalyticsApi(ref.watch(apiClientProvider).dio);
@@ -13,6 +12,11 @@ final FutureProvider<AnalyticsSummary> analyticsSummaryProvider = FutureProvider
 });
 
 class AnalyticsSummary {
+  const AnalyticsSummary({
+    required this.totalSearches,
+    required this.totalPapers,
+    required this.uniqueUsers,
+  });
 
   factory AnalyticsSummary.fromJson(Map<String, dynamic> json) {
     return AnalyticsSummary(
@@ -21,11 +25,6 @@ class AnalyticsSummary {
       uniqueUsers: (json['uniqueUsers'] as num?)?.toInt() ?? 0,
     );
   }
-  const AnalyticsSummary({
-    required this.totalSearches,
-    required this.totalPapers,
-    required this.uniqueUsers,
-  });
 
   final int totalSearches;
   final int totalPapers;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_mobile/features/quality/data/quality_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class QualityPanel extends ConsumerStatefulWidget {
   const QualityPanel({required this.targetKind, required this.targetId, super.key});

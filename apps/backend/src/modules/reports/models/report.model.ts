@@ -12,6 +12,22 @@ const researchGapSchema = new Schema(
     rationale: { type: String, default: "" },
     supportingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     confidence: { type: Number, min: 0, max: 1, default: 0.5 },
+    probe: {
+      topicA: { type: String },
+      topicB: { type: String },
+      yearFrom: { type: Number },
+      yearTo: { type: Number },
+    },
+    intersectionCount: { type: Number },
+    parentCounts: {
+      a: { type: Number },
+      b: { type: Number },
+    },
+    parentTrend: {
+      topic: { type: String },
+      growthRatePct: { type: Number },
+    },
+    evidenceConfidence: { type: Number, min: 0, max: 1 },
   },
   { _id: false },
 );
@@ -32,6 +48,8 @@ const reportSchema = new Schema(
     /** Markdown body — absent until status becomes "ready". */
     markdown: { type: String },
     groundingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
+    /** User-pinned evidence papers; worker places these before retrieved evidence. */
+    selectedPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     researchGaps: { type: [researchGapSchema], default: [] },
     modelVersion: { type: String, default: "" },
     promptVersion: { type: String, default: "" },
@@ -44,6 +62,10 @@ const reportSchema = new Schema(
     fast: { type: Boolean, default: false },
     errorMessage: { type: String },
     completedAt: { type: Date },
+    creditTransactionId: { type: Schema.Types.ObjectId, ref: "CreditTransaction" },
+    creditCost: { type: Number },
+    creditAction: { type: String },
+    creditRefundedAt: { type: Date },
   },
   { timestamps: true },
 );

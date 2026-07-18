@@ -1,13 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_mobile/core/storage/secure_token_store.dart';
-import 'package:flutter_mobile/core/errors/api_exception.dart';
-import 'package:flutter_mobile/core/constants/api_routes.dart';
-import 'package:flutter_mobile/features/auth/data/auth_models.dart';
-import 'package:flutter_mobile/core/network/api_envelope.dart';
-
 import 'package:flutter_mobile/core/config/app_config.dart';
+import 'package:flutter_mobile/core/constants/api_routes.dart';
+import 'package:flutter_mobile/core/errors/api_exception.dart';
+import 'package:flutter_mobile/core/network/api_envelope.dart';
+import 'package:flutter_mobile/core/storage/secure_token_store.dart';
+import 'package:flutter_mobile/features/auth/data/auth_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(const SecureTokenStore());
@@ -32,7 +30,7 @@ class ApiClient {
         }
         return handler.next(options);
       },
-      onError: (DioException e, handler) async {
+      onError: (e, handler) async {
         // Handle 401 Unauthorized
         if (e.response?.statusCode == 401 && !e.requestOptions.path.contains('/auth/refresh')) {
           final tokens = await _tokenStore.read();
@@ -46,7 +44,7 @@ class ApiClient {
                   headers: e.requestOptions.headers,
                 );
                 opts.headers?['Authorization'] = 'Bearer $newAccessToken';
-                final cloneReq = await _dio.request(
+                final cloneReq = await _dio.request<dynamic>(
                   e.requestOptions.path,
                   options: opts,
                   data: e.requestOptions.data,
@@ -54,7 +52,7 @@ class ApiClient {
                 );
                 return handler.resolve(cloneReq);
               }
-            } catch (refreshErr) {
+            } on Exception {
               await _tokenStore.delete();
               // In UI logic, this will trigger router redirect since token is gone.
             }
@@ -69,7 +67,9 @@ class ApiClient {
             if (data.containsKey('error')) {
               apiError = ApiErrorDetail.fromJson(data['error'] as Map<String, dynamic>);
             }
-          } catch (_) {}
+          } on Object catch (_) {
+            // Ignore parse errors
+          }
         }
 
         return handler.next(
@@ -98,24 +98,22 @@ class ApiClient {
       return _refreshFuture;
     }
 
-    _refreshFuture = () async {
+    return _refreshFuture = () async {
       try {
-        final response = await _dio.post(ApiRoutes.authRefresh, data: {
+        final response = await _dio.post<Map<String, dynamic>>(ApiRoutes.authRefresh, data: {
           'refreshToken': refreshToken,
         });
         
-        final dataMap = response.data['data'] as Map<String, dynamic>;
+        final dataMap = (response.data ?? {})['data'] as Map<String, dynamic>;
         final tokens = AuthTokens.fromJson(dataMap);
         
         await _tokenStore.save(tokens);
         return tokens.accessToken;
-      } catch (e) {
+      } on Exception {
         rethrow;
       } finally {
         _refreshFuture = null;
       }
     }();
-
-    return _refreshFuture;
   }
 }

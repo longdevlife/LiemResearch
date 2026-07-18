@@ -40,7 +40,7 @@ import type {
  * data only changes when a sync runs, so a 1h TTL is effectively fresh.
  * Bump CACHE_VERSION whenever shapes/formulas change to invalidate old keys.
  */
-const CACHE_VERSION = "trends-v3";
+const CACHE_VERSION = "trends-v4";
 const CACHE_TTL_SECONDS = 3600;
 
 /** Default analysis window: the last 6 calendar years (5 complete + current). */
@@ -435,11 +435,25 @@ async function getCitationTrend(
 }
 
 async function getTrendFacets(matchStage: Record<string, unknown>): Promise<TrendFacets> {
-  const [paperKinds, openAccessStatuses, providers, topSources, citationRows] = await Promise.all([
+  const [
+    paperKinds,
+    openAccessStatuses,
+    providers,
+    topSources,
+    domains,
+    fields,
+    subfields,
+    topics,
+    citationRows,
+  ] = await Promise.all([
     facetByField(matchStage, "$paperKind", 10),
     facetByField(matchStage, "$openAccessStatus", 10),
     facetByField(matchStage, "$primaryProvider", 10),
     facetByField(matchStage, "$journalName", 10),
+    facetByUnwoundField(matchStage, "$topics", "$topics.domainName", 10),
+    facetByUnwoundField(matchStage, "$topics", "$topics.fieldName", 10),
+    facetByUnwoundField(matchStage, "$topics", "$topics.subfieldName", 10),
+    facetByUnwoundField(matchStage, "$topics", "$topics.topicName", 10),
     PaperModel.aggregate<{ _id: string; count: number }>([
       { $match: matchStage },
       {
@@ -469,6 +483,10 @@ async function getTrendFacets(matchStage: Record<string, unknown>): Promise<Tren
     openAccessStatuses,
     providers,
     topSources,
+    domains,
+    fields,
+    subfields,
+    topics,
     citationBands: citationOrder
       .map((band) => ({ id: band, name: band, count: byBand.get(band) ?? 0 }))
       .filter((b) => b.count > 0 || citationBand(Number.parseInt(b.id, 10) || 0) === b.id),
@@ -485,6 +503,25 @@ async function facetByField(
     { $group: { _id: field, count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: limit },
+  ]);
+  return toFacetBuckets(rows);
+}
+
+async function facetByUnwoundField(
+  matchStage: Record<string, unknown>,
+  unwindPath: string,
+  field: string,
+  limit: number,
+): Promise<TopItem[]> {
+  const rows = await PaperModel.aggregate<{ _id: string | null; count: number }>([
+    { $match: matchStage },
+    { $unwind: unwindPath },
+    { $group: { _id: field, papers: { $addToSet: "$_id" } } },
+    { $match: { _id: { $nin: [null, ""] } } },
+    { $set: { count: { $size: "$papers" } } },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+    { $project: { count: 1 } },
   ]);
   return toFacetBuckets(rows);
 }
