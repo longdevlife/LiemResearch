@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { Input } from "@/components/ui/input";
+import { formatNumber } from "@/utils";
 
 type ReportSortKey = "newest" | "ready_first" | "failed_last" | "topic_az";
 
@@ -841,7 +842,7 @@ export function ReportsListPage() {
                         )}
                         {paper.citationCount !== undefined && (
                           <span className="rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 px-2 py-0.5 text-[10px] font-bold">
-                            {paper.citationCount.toLocaleString()} citations
+                            {formatNumber(paper.citationCount)} citations
                           </span>
                         )}
                       </div>

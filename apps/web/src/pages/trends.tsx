@@ -19,6 +19,7 @@ import {
   getTopicMetric,
   type TrendSortKey,
 } from "./trends.insights";
+import { formatNumber } from "@/utils";
 
 type CitationBand = "0-9" | "10-49" | "50-99" | "100-499" | "500-999" | "1000+";
 const CITATION_BANDS = ["0-9", "10-49", "50-99", "100-499", "500-999", "1000+"] as const;
@@ -26,11 +27,11 @@ const TREND_SORT_KEYS = ["momentum", "growth", "total"] as const satisfies reado
 type TrendTab = "overview" | "topics" | "dataset" | "compare" | "ai";
 
 const TREND_TABS: Array<{ id: TrendTab; label: string }> = [
-  { id: "overview", label: "Overview" },
-  { id: "topics", label: "Topics & Keywords" },
-  { id: "dataset", label: "Dataset Breakdown" },
-  { id: "compare", label: "Compare" },
-  { id: "ai", label: "AI Explainer" },
+  { id: "overview", label: "Start here" },
+  { id: "topics", label: "Find signals" },
+  { id: "dataset", label: "Data Scope" },
+  { id: "compare", label: "Compare topics" },
+  { id: "ai", label: "Explain trend" },
 ];
 
 function isCitationBand(value: string): value is CitationBand {
@@ -247,9 +248,71 @@ export function TrendsPage() {
     return focusTopic || fastestTopic?.topic || data?.topics[0]?.topic || "";
   }, [focusTopic, fastestTopic, data]);
 
+  const scopeString = useMemo(() => {
+    const parts: string[] = [];
+    if (domainIds.length > 0) {
+      const name = data?.facets?.domains?.find(d => d.openalexId === domainIds[0] || d.id === domainIds[0])?.name || domainIds[0];
+      if (name) parts.push(name);
+    } else if (domains.length > 0 && domains[0]) {
+      parts.push(domains[0]);
+    }
+
+    if (fieldIds.length > 0) {
+      const name = data?.facets?.fields?.find(f => f.openalexId === fieldIds[0] || f.id === fieldIds[0])?.name || fieldIds[0];
+      if (name) parts.push(name);
+    } else if (fields.length > 0 && fields[0]) {
+      parts.push(fields[0]);
+    }
+
+    if (subfieldIds.length > 0) {
+      const name = data?.facets?.subfields?.find(s => s.openalexId === subfieldIds[0] || s.id === subfieldIds[0])?.name || subfieldIds[0];
+      if (name) parts.push(name);
+    } else if (subfields.length > 0 && subfields[0]) {
+      parts.push(subfields[0]);
+    }
+
+    if (topicIds.length > 0) {
+      const name = data?.facets?.topics?.find(t => t.openalexId === topicIds[0] || t.id === topicIds[0])?.name || topicIds[0];
+      if (name) parts.push(name);
+    } else if (topicsFilter.length > 0 && topicsFilter[0]) {
+      parts.push(topicsFilter[0]);
+    }
+
+    return parts.length > 0 ? parts.join(" → ") : "All OpenAlex domains";
+  }, [data, domainIds, domains, fieldIds, fields, subfieldIds, subfields, topicIds, topicsFilter]);
+
+  const activeFiltersCount = useMemo(() => {
+    return (
+      domains.length + fields.length + subfields.length + topicsFilter.length +
+      domainIds.length + fieldIds.length + subfieldIds.length + topicIds.length +
+      paperKinds.length + openAccessStatuses.length + providers.length + sources.length +
+      citationBands.length
+    );
+  }, [
+    domains, fields, subfields, topicsFilter,
+    domainIds, fieldIds, subfieldIds, topicIds,
+    paperKinds, openAccessStatuses, providers, sources, citationBands
+  ]);
+
   // Hook queries for sub-features
   const compareQuery = useTrendCompare(
-    { topics: selectedTopics, yearFrom, yearTo },
+    {
+      topics: selectedTopics,
+      yearFrom,
+      yearTo,
+      domains,
+      fields,
+      subfields,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
+      paperKinds,
+      openAccessStatuses,
+      providers,
+      sources,
+      citationBands,
+    },
     selectedTopics.length >= 2
   );
 
@@ -279,35 +342,56 @@ export function TrendsPage() {
   };
 
   const handleBucketClick = (facet: string, val: string, openalexId?: string) => {
+    const isClear = !val && !openalexId;
     if (facet === "Domains") {
-      if (openalexId) {
+      if (isClear) {
+        setDomainIds([]);
+        setDomains([]);
+      } else if (openalexId) {
         setDomainIds(prev => prev.includes(openalexId) ? [] : [openalexId]);
+        setDomains([]);
       } else {
         setDomains(prev => prev.includes(val) ? [] : [val]);
+        setDomainIds([]);
       }
       setFieldIds([]); setFields([]);
       setSubfieldIds([]); setSubfields([]);
       setTopicIds([]); setTopicsFilter([]);
     } else if (facet === "Fields") {
-      if (openalexId) {
+      if (isClear) {
+        setFieldIds([]);
+        setFields([]);
+      } else if (openalexId) {
         setFieldIds(prev => prev.includes(openalexId) ? [] : [openalexId]);
+        setFields([]);
       } else {
         setFields(prev => prev.includes(val) ? [] : [val]);
+        setFieldIds([]);
       }
       setSubfieldIds([]); setSubfields([]);
       setTopicIds([]); setTopicsFilter([]);
     } else if (facet === "Subfields") {
-      if (openalexId) {
+      if (isClear) {
+        setSubfieldIds([]);
+        setSubfields([]);
+      } else if (openalexId) {
         setSubfieldIds(prev => prev.includes(openalexId) ? [] : [openalexId]);
+        setSubfields([]);
       } else {
         setSubfields(prev => prev.includes(val) ? [] : [val]);
+        setSubfieldIds([]);
       }
       setTopicIds([]); setTopicsFilter([]);
     } else if (facet === "Topics") {
-      if (openalexId) {
+      if (isClear) {
+        setTopicIds([]);
+        setTopicsFilter([]);
+      } else if (openalexId) {
         setTopicIds(prev => prev.includes(openalexId) ? [] : [openalexId]);
+        setTopicsFilter([]);
       } else {
         setTopicsFilter(prev => prev.includes(val) ? [] : [val]);
+        setTopicIds([]);
       }
     } else if (facet === "Paper Types") {
       toggleFilter(paperKinds, setPaperKinds, val);
@@ -381,9 +465,24 @@ export function TrendsPage() {
   return (
     <div className="w-full">
       {/* 1. Page Intro */}
-      <div className="mb-6 select-none">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">Research Topic Trends</h1>
-        <p className="text-xs text-slate-500 mt-1">Explore and compare publication volumes, citation counts, and emerging research fronts across OpenAlex-grounded scholarly taxonomy.</p>
+      <div className="mb-6 select-none space-y-2.5">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">Research Trend Workbench</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Find rising research topics, validate whether the signal is reliable, and move from trend to papers, reports, or AI explanation.</p>
+        </div>
+
+        {/* Unified Workflow mini guide (Premium UI) */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400 pt-1 select-none">
+          <span className="font-extrabold text-[#001b69] dark:text-blue-400 uppercase tracking-widest text-[8px] bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200/40 dark:border-slate-700/30">
+            Workflow Guide
+          </span>
+          <span className="font-bold text-slate-700 dark:text-slate-350">1. Choose research area</span>
+          <span className="text-slate-300 dark:text-slate-650">➔</span>
+          <span className="font-bold text-slate-700 dark:text-slate-350">2. Read trend signals</span>
+          <span className="text-slate-300 dark:text-slate-650">➔</span>
+          <span className="font-bold text-slate-700 dark:text-slate-350">3. Act on findings (papers, compare, report, AI)</span>
+        </div>
       </div>
 
       {/* 2. Trend Control Center */}
@@ -391,27 +490,33 @@ export function TrendsPage() {
         {/* Row 1: Search, Year range, Sort, Min papers, AI report */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 flex-wrap w-full">
           <div className="flex-1 w-full md:w-auto min-w-[200px] relative">
-            <button
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 z-10"
-              onClick={(e) => {
-                const input = e.currentTarget.nextElementSibling as HTMLInputElement;
-                const val = input.value.trim();
-                if (val) navigate(`/trends/${encodeURIComponent(val)}`);
-              }}
-            >
-              <Search className="w-4 h-4" />
-            </button>
-            <input
-              type="text"
-              placeholder="Search for a topic trend..."
-              className="w-full h-10 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-shadow"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const val = e.currentTarget.value.trim();
+            <div className="relative">
+              <button
+                type="button"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 z-10"
+                onClick={(e) => {
+                  const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+                  const val = input.value.trim();
                   if (val) navigate(`/trends/${encodeURIComponent(val)}`);
-                }
-              }}
-            />
+                }}
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              <input
+                type="text"
+                placeholder="Search a topic to open detail..."
+                className="w-full h-10 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-shadow"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const val = e.currentTarget.value.trim();
+                    if (val) navigate(`/trends/${encodeURIComponent(val)}`);
+                  }
+                }}
+              />
+            </div>
+            <span className="text-[10px] text-slate-550 dark:text-slate-400 block mt-1 pl-1">
+              Opens a topic page. Dashboard cards and charts update from year range, OpenAlex scope, and active filters.
+            </span>
           </div>
 
           {/* Year Range */}
@@ -476,91 +581,93 @@ export function TrendsPage() {
 
         {/* Row 2: OpenAlex Scope Taxonomy Selector (P2 Request) */}
         {data?.facets && (
-          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 select-none">
-            <div className="flex flex-col min-w-[200px] mr-2">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 select-none space-y-3">
+            <div className="flex flex-col">
               <span className="text-xs font-bold text-slate-900 dark:text-white">OpenAlex scope</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                 Narrow the paper dataset before viewing trends, topics, comparisons, and AI explanations.
               </span>
             </div>
 
-            {/* Domain Dropdown */}
-            <div className="relative">
-              <select
-                value={domainIds[0] || ""}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const name = data.facets.domains.find(d => d.openalexId === id || d.id === id)?.name || "";
-                  handleBucketClick("Domains", name, id);
-                }}
-                className="h-9 px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
-                style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
-              >
-                <option value="">All Domains</option>
-                {data.facets.domains.map(d => (
-                  <option key={d.openalexId ?? d.id} value={d.openalexId ?? d.id}>{d.name} ({d.count})</option>
-                ))}
-              </select>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+              {/* Domain Dropdown */}
+              <div className="relative w-full">
+                <select
+                  value={domainIds[0] || ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = data.facets.domains.find(d => d.openalexId === id || d.id === id)?.name || "";
+                    handleBucketClick("Domains", name, id);
+                  }}
+                  className="h-9 w-full px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
+                >
+                  <option value="">All Domains</option>
+                  {data.facets.domains.map(d => (
+                    <option key={d.openalexId ?? d.id} value={d.openalexId ?? d.id}>{d.name} ({d.count})</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Field Dropdown */}
-            <div className="relative">
-              <select
-                value={fieldIds[0] || ""}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const name = data.facets.fields?.find(f => f.openalexId === id || f.id === id)?.name || "";
-                  handleBucketClick("Fields", name, id);
-                }}
-                className="h-9 px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
-                disabled={!data.facets.fields || data.facets.fields.length === 0}
-                style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
-              >
-                <option value="">All Fields</option>
-                {data.facets.fields?.map(f => (
-                  <option key={f.openalexId ?? f.id} value={f.openalexId ?? f.id}>{f.name} ({f.count})</option>
-                ))}
-              </select>
-            </div>
+              {/* Field Dropdown */}
+              <div className="relative w-full">
+                <select
+                  value={fieldIds[0] || ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = data.facets.fields?.find(f => f.openalexId === id || f.id === id)?.name || "";
+                    handleBucketClick("Fields", name, id);
+                  }}
+                  className="h-9 w-full px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
+                  disabled={!data.facets.fields || data.facets.fields.length === 0}
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
+                >
+                  <option value="">All Fields</option>
+                  {data.facets.fields?.map(f => (
+                    <option key={f.openalexId ?? f.id} value={f.openalexId ?? f.id}>{f.name} ({f.count})</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Subfield Dropdown */}
-            <div className="relative">
-              <select
-                value={subfieldIds[0] || ""}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const name = data.facets.subfields?.find(s => s.openalexId === id || s.id === id)?.name || "";
-                  handleBucketClick("Subfields", name, id);
-                }}
-                className="h-9 px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
-                disabled={!data.facets.subfields || data.facets.subfields.length === 0}
-                style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
-              >
-                <option value="">All Subfields</option>
-                {data.facets.subfields?.map(s => (
-                  <option key={s.openalexId ?? s.id} value={s.openalexId ?? s.id}>{s.name} ({s.count})</option>
-                ))}
-              </select>
-            </div>
+              {/* Subfield Dropdown */}
+              <div className="relative w-full">
+                <select
+                  value={subfieldIds[0] || ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = data.facets.subfields?.find(s => s.openalexId === id || s.id === id)?.name || "";
+                    handleBucketClick("Subfields", name, id);
+                  }}
+                  className="h-9 w-full px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
+                  disabled={!data.facets.subfields || data.facets.subfields.length === 0}
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
+                >
+                  <option value="">All Subfields</option>
+                  {data.facets.subfields?.map(s => (
+                    <option key={s.openalexId ?? s.id} value={s.openalexId ?? s.id}>{s.name} ({s.count})</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Topic Dropdown */}
-            <div className="relative">
-              <select
-                value={topicIds[0] || ""}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const name = data.facets.topics?.find(t => t.openalexId === id || t.id === id)?.name || "";
-                  handleBucketClick("Topics", name, id);
-                }}
-                className="h-9 px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
-                disabled={!data.facets.topics || data.facets.topics.length === 0}
-                style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
-              >
-                <option value="">All Topics</option>
-                {data.facets.topics?.map(t => (
-                  <option key={t.openalexId ?? t.id} value={t.openalexId ?? t.id}>{t.name} ({t.count})</option>
-                ))}
-              </select>
+              {/* Topic Dropdown */}
+              <div className="relative w-full">
+                <select
+                  value={topicIds[0] || ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = data.facets.topics?.find(t => t.openalexId === id || t.id === id)?.name || "";
+                    handleBucketClick("Topics", name, id);
+                  }}
+                  className="h-9 w-full px-3 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer appearance-none"
+                  disabled={!data.facets.topics || data.facets.topics.length === 0}
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', backgroundRepeat: 'no-repeat' }}
+                >
+                  <option value="">All Topics</option>
+                  {data.facets.topics?.map(t => (
+                    <option key={t.openalexId ?? t.id} value={t.openalexId ?? t.id}>{t.name} ({t.count})</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
@@ -729,12 +836,43 @@ export function TrendsPage() {
         </div>
       ) : (
         <>
-          {/* 4. Tabs Navigation */}
+          {/* Current analysis dataset strip (Guided UX) */}
+          {data && (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-6 text-xs text-slate-600 dark:text-slate-400 select-none">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900 dark:text-slate-200">Current analysis dataset basis</p>
+                  <p className="font-medium text-slate-650 dark:text-slate-350">
+                    Analyzing <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{formatNumber(data.totalPapersInWindow)}</strong> active papers. Trend metrics use complete years through <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{data.lastCompleteYear}</strong>; {yearTo > data.lastCompleteYear ? `${yearTo} is shown as YTD.` : ""}.
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-450">
+                    Scope: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{scopeString}</strong>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0 md:ml-auto">
+                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200/50 dark:border-emerald-800/30">
+                    Affected by: Year range
+                  </span>
+                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200/50 dark:border-emerald-800/30">
+                    Affected by: OpenAlex scope
+                  </span>
+                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200/50 dark:border-emerald-800/30">
+                    Affected by: Facets
+                  </span>
+                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-450 font-bold border border-slate-200/50 dark:border-slate-800/30">
+                    Not affected by: Topic detail search
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Tabs Navigation (Premium Segmented Control) */}
           <div
             role="tablist"
             aria-label="Trend analysis sections"
             onKeyDown={handleTabKeyDown}
-            className="flex border-b border-slate-200 dark:border-slate-800 mb-6 gap-2 overflow-x-auto whitespace-nowrap select-none"
+            className="h-10 p-1 inline-flex items-center bg-blue-50/40 dark:bg-slate-900 border border-blue-100/70 dark:border-slate-800 rounded-xl mb-6 gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap select-none shadow-sm"
           >
             {TREND_TABS.map((tab) => {
               const selected = activeTab === tab.id;
@@ -748,10 +886,10 @@ export function TrendsPage() {
                   aria-controls={`trends-panel-${tab.id}`}
                   tabIndex={selected ? 0 : -1}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 ${
+                  className={`h-8 px-4 inline-flex items-center justify-center text-xs font-bold rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:focus-visible:ring-offset-slate-950 ${
                     selected
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                      ? "bg-blue-700 text-white shadow-md font-extrabold border border-blue-800/10"
+                      : "text-slate-650 dark:text-slate-400 hover:text-blue-700 hover:bg-blue-100/30 dark:hover:bg-slate-800/50"
                   }`}
                 >
                   {tab.label}
@@ -776,6 +914,7 @@ export function TrendsPage() {
                 establishedTopic={establishedTopic}
                 fastestKeyword={fastestKeyword}
                 navigate={navigate}
+                setActiveTab={setActiveTab}
                 getTopicTrendTarget={getTopicTrendTarget}
                 getRisingKeywordTarget={getRisingKeywordTarget}
               />

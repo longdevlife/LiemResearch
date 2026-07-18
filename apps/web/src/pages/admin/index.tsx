@@ -11,6 +11,7 @@ import { useSyncRuns, useEmbedStatus } from "@/features/admin/hooks/use-admin-sy
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api-client";
 import { Link } from "react-router-dom";
+import { formatNumber } from "@/utils";
 
 export function AdminHomePage() {
   const { data: me } = useCurrentUser();
@@ -76,7 +77,7 @@ export function AdminHomePage() {
               <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="mt-3 text-3xl font-bold tabular-nums">
-              {isLoading || value === undefined ? <Skeleton className="h-8 w-16" /> : value}
+              {isLoading || value === undefined ? <Skeleton className="h-8 w-16" /> : formatNumber(value)}
             </div>
           </div>
         ))}
@@ -107,7 +108,7 @@ export function AdminHomePage() {
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Pending Requests</span>
                 <div className="text-2xl font-bold tabular-nums flex items-baseline gap-1">
-                  {isPendingPapersLoading ? <Skeleton className="h-7 w-12" /> : pendingPapersCount ?? 0}
+                  {isPendingPapersLoading ? <Skeleton className="h-7 w-12" /> : formatNumber(pendingPapersCount)}
                   <span className="text-[10px] font-semibold text-slate-500 lowercase">papers</span>
                 </div>
               </div>
@@ -130,7 +131,7 @@ export function AdminHomePage() {
               </div>
               <div className="text-right shrink-0">
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 px-2.5 py-0.5 rounded-full border border-amber-200/30">
-                  {embedStatus?.pendingPapers ?? 0} pending
+                  {formatNumber(embedStatus?.pendingPapers)} pending
                 </span>
               </div>
             </div>
@@ -174,17 +175,17 @@ export function AdminHomePage() {
               <div className="grid grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4">
                 <div>
                   <span className="text-slate-500 block">Total Live Sync Runs</span>
-                  <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">{totalSyncRuns}</span>
+                  <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">{formatNumber(totalSyncRuns)}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Failed Sync Runs</span>
-                  <span className={`text-lg font-bold font-mono mt-0.5 block ${failedRunsCount > 0 ? "text-red-500" : "text-slate-900 dark:text-white"}`}>{failedRunsCount}</span>
+                  <span className={`text-lg font-bold font-mono mt-0.5 block ${failedRunsCount > 0 ? "text-red-500" : "text-slate-900 dark:text-white"}`}>{formatNumber(failedRunsCount)}</span>
                 </div>
               </div>
 
               {latestRun && (
                 <div className="bg-slate-50/50 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4 space-y-2">
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300">Latest Live Sync Run</h4>
+                  <h4 className="font-bold text-slate-700 dark:text-slate-350">Latest Live Sync Run</h4>
                   <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
                     <div>
                       <span>Topic:</span> <strong className="text-slate-900 dark:text-white truncate max-w-[150px] inline-block align-bottom">{latestRun.searchText}</strong>
@@ -200,7 +201,7 @@ export function AdminHomePage() {
                       )}
                     </div>
                     <div>
-                      <span>Inserted:</span> <strong className="text-emerald-600">+{latestRun.totalInserted} papers</strong>
+                      <span>Inserted:</span> <strong className="text-emerald-600">+{formatNumber(latestRun.totalInserted)} papers</strong>
                     </div>
                     <div>
                       <span>Date:</span> <strong className="text-slate-800 dark:text-white">{new Date(latestRun.startedAt).toLocaleDateString()}</strong>
@@ -211,7 +212,7 @@ export function AdminHomePage() {
 
               {embedStatus && (
                 <div className="bg-slate-50/50 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4 space-y-2">
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300">Vector Index Embedding Stats</h4>
+                  <h4 className="font-bold text-slate-700 dark:text-slate-350">Vector Index Embedding Stats</h4>
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 mb-1">
                     <span>Embedding Health Score:</span>
                     <strong className="text-slate-800 dark:text-white font-mono">{embeddingProgress}%</strong>
@@ -220,8 +221,8 @@ export function AdminHomePage() {
                     <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${embeddingProgress}%` }} />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                    <span>{embedStatus.embeddedPapers.toLocaleString()} embedded</span>
-                    <span>{embedStatus.totalPapers.toLocaleString()} total papers</span>
+                    <span>{formatNumber(embedStatus.embeddedPapers)} embedded</span>
+                    <span>{formatNumber(embedStatus.totalPapers)} total papers</span>
                   </div>
                 </div>
               )}

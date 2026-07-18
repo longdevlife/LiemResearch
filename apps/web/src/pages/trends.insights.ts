@@ -1,4 +1,5 @@
 import type { TrendTopicTaxonomy } from "@trend/shared-types";
+import { formatNumber } from "@/utils";
 
 export type TrendSortKey = "momentum" | "growth" | "total";
 
@@ -32,7 +33,7 @@ export function formatSigned(value: number, digits = 1): string {
 
 export function formatMetricValue(value: number, sortBy: TrendSortKey): string {
   if (sortBy === "growth") return `${formatSigned(value, 1)}%`;
-  if (sortBy === "total") return `${Math.round(value).toLocaleString()} papers`;
+  if (sortBy === "total") return `${formatNumber(Math.round(value))} papers`;
   return `${formatSigned(value, 2)} papers/year`;
 }
 

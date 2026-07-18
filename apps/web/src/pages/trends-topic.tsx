@@ -5,6 +5,7 @@ import { ArrowLeft, Sparkles, TrendingUp, BookOpen, Users, Hash, Loader2, Search
 import { Button } from "@/components/ui/button";
 import { useTopicTrend } from "@/features/trends/hooks/use-trends";
 import type { TrendFacetBucket } from "@trend/shared-types";
+import { formatNumber } from "@/utils";
 
 export function TopicDetailPage() {
   const { topic } = useParams<{ topic: string }>();
@@ -72,16 +73,16 @@ export function TopicDetailPage() {
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to Trends Overview
         </button>
 
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white capitalize tracking-tight">{decodedTopic}</h1>
               {data.growthRatePct > 100 ? (
-                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 animate-pulse border border-red-200/50 dark:border-red-900/30">
+                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 animate-pulse border border-red-200/50 dark:border-red-900/30 shrink-0">
                   🔥 Hot Topic
                 </span>
               ) : data.growthRatePct > 20 ? (
-                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30">
+                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30 shrink-0">
                   📈 Rising
                 </span>
               ) : null}
@@ -91,41 +92,41 @@ export function TopicDetailPage() {
             </p>
           </div>
 
-          {/* Quick Actions Panel */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Quick Actions Panel (Premium Aligned Flexbox) */}
+          <div className="flex flex-wrap items-center gap-2 md:justify-end shrink-0 select-none">
             <Button
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl font-bold gap-2 text-xs"
+              className="h-9 px-3 rounded-lg font-bold gap-1.5 text-xs border-slate-200 dark:border-slate-800 shadow-sm"
               onClick={() => navigate(`/search?q=${encodeURIComponent(decodedTopic)}`)}
             >
-              <Search className="w-4 h-4 text-slate-500" /> Search Papers
+              <Search className="w-3.5 h-3.5 text-slate-500" /> Search Papers
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl font-bold gap-2 text-xs border-amber-200/60 dark:border-amber-900/30 hover:bg-amber-50/50 dark:hover:bg-amber-950/10"
+              className="h-9 px-3 rounded-lg font-bold gap-1.5 text-xs border-amber-250 dark:border-amber-900/30 hover:bg-amber-50/50 dark:hover:bg-amber-950/10 shadow-sm text-slate-700 dark:text-slate-350"
               onClick={() => navigate(`/research-gaps?topic=${encodeURIComponent(decodedTopic)}`)}
             >
-              <BookOpen className="w-4 h-4 text-amber-600" /> Find Gaps
+              <BookOpen className="w-3.5 h-3.5 text-amber-600" /> Find Gaps
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl font-bold gap-2 text-xs"
+              className="h-9 px-3 rounded-lg font-bold gap-1.5 text-xs border-slate-200 dark:border-slate-800 shadow-sm"
               onClick={() =>
                 navigate(
                   `/trends?compare=${encodeURIComponent(decodedTopic)}&focus=${encodeURIComponent(decodedTopic)}`,
                 )
               }
             >
-              <Users className="w-4 h-4 text-blue-600" /> Compare Topic
+              <Users className="w-3.5 h-3.5 text-blue-600" /> Compare Topic
             </Button>
             <Button
-              className="h-10 bg-[#001b69] hover:bg-[#001040] text-white shadow-md rounded-xl text-xs font-bold gap-2"
+              className="h-9 px-3.5 bg-[#001b69] hover:bg-[#001040] text-white shadow-sm rounded-lg text-xs font-bold gap-1.5 border border-blue-900/10"
               onClick={() => navigate(`/reports?topic=${encodeURIComponent(decodedTopic)}&create=true`)}
             >
-              <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" fill="currentColor" /> Generate AI Report
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" fill="currentColor" /> Generate AI Report
             </Button>
           </div>
         </div>
@@ -135,7 +136,7 @@ export function TopicDetailPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPIMetricCard
           title="Total Papers"
-          value={data.totalPapers.toLocaleString()}
+          value={formatNumber(data.totalPapers)}
           subtitle="Publications in window"
           icon={<FileText className="w-5 h-5 text-blue-600" />}
         />
@@ -446,7 +447,7 @@ function TopicFacetGroup({ title, buckets, total }: { title: string; buckets: Tr
             <div key={b.id || b.name} className="text-xs group select-none">
               <div className="flex justify-between font-bold text-slate-700 dark:text-slate-300 mb-1">
                 <span className="truncate max-w-[140px] capitalize" title={b.name}>{b.name}</span>
-                <span className="text-slate-500 dark:text-slate-400 font-normal shrink-0">{b.count.toLocaleString()}</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal shrink-0">{formatNumber(b.count)}</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
                 <div
@@ -475,7 +476,7 @@ function CustomTooltip({ active, payload, label, metricName }: { active?: boolea
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-md text-xs select-none">
         <p className="font-extrabold text-slate-900 dark:text-white mb-1.5">Year: {label}</p>
         <p className="font-bold text-blue-600 dark:text-blue-400">
-          {metricName}: <span className="font-black text-slate-900 dark:text-white">{value.toLocaleString()}</span>
+          {metricName}: <span className="font-black text-slate-900 dark:text-white">{formatNumber(value)}</span>
           {data.isYTD && <span className="text-[9px] text-amber-500 font-black ml-1.5 uppercase">YTD</span>}
         </p>
       </div>

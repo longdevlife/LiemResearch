@@ -20,6 +20,7 @@ import { useBookmarks } from "@/features/bookmarks";
 import { useNotifications } from "@/features/notifications";
 import { cn } from "@/utils/cn";
 import { avatars, getLevel } from "@/utils/level";
+import { formatNumber } from "@/utils";
 
 const navItems = [
   { to: "/search", label: "Search" },
@@ -234,11 +235,11 @@ function UserMenu() {
             <div className="px-3 py-2 text-xs font-semibold text-slate-500 space-y-1.5 bg-slate-50/50 dark:bg-zinc-900/30 rounded-md animate-fadeIn">
               <div className="flex justify-between items-center">
                 <span>Balance:</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{credits.toLocaleString()} credits</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{formatNumber(credits)} credits</span>
               </div>
               <div className="flex justify-between items-center">
                 <span>Points:</span>
-                <span className="text-amber-600 dark:text-amber-500 font-bold">{points.toLocaleString()} pts</span>
+                <span className="text-amber-600 dark:text-amber-500 font-bold">{formatNumber(points)} pts</span>
               </div>
             </div>
           </>

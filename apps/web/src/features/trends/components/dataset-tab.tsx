@@ -71,7 +71,7 @@ export function DatasetTab({
       parts.push(topicsFilter[0]);
     }
 
-    return parts.length > 0 ? parts.join(" → ") : "Global Corpus (All)";
+    return parts.length > 0 ? parts.join(" → ") : "All OpenAlex domains";
   }, [data, domainIds, domains, fieldIds, fields, subfieldIds, subfields, topicIds, topicsFilter]);
 
   const activeFiltersCount = useMemo(() => {
@@ -88,60 +88,38 @@ export function DatasetTab({
   ]);
 
   return (
-    <div className="space-y-6">
-      {/* Current Dataset Summary Card (P1 Request) */}
-      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-3 select-none">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Current Dataset Basis</h3>
-          <span className="text-[9px] bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active Scope</span>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          This tab explains the dataset behind the trend results. Adjust your OpenAlex scope or metadata filters in the Control Center to narrow the corpus.
+    <div className="space-y-8">
+      {/* 1. Header (P1 Redundancy Fix) */}
+      <div className="space-y-2 select-none">
+        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Dataset Scope</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal max-w-3xl">
+          A detailed breakdown of active paper volumes across metadata fields and taxonomy categories in the currently selected dataset scope.
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 text-xs">
-          <div>
-            <span className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider block mb-0.5">Total Papers</span>
-            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-sm">{data.totalPapersInWindow?.toLocaleString() || "0"}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider block mb-0.5">Year Window</span>
-            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-sm">{yearFrom} - {yearTo}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider block mb-0.5">Taxonomy Scope</span>
-            <span className="font-extrabold text-slate-850 dark:text-slate-200 truncate block max-w-[220px]" title={scopeString}>{scopeString}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider block mb-0.5">Active Filters</span>
-            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-sm">{activeFiltersCount} filters active</span>
-          </div>
-        </div>
       </div>
 
-      {/* Taxonomy Coverage Summary */}
+      {/* 3. Taxonomy Coverage Alignment */}
       {data.taxonomyCoverage && (
         <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex-1">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white">Taxonomy Alignment & Coverage</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Evaluation of paper classification hierarchy and metadata mapping against the OpenAlex research taxonomy.
+              Coverage tells how many papers have enough OpenAlex topic metadata to support reliable scope filtering.
             </p>
           </div>
           
-          {/* Taxonomy Coverage Card */}
           <div className="w-full md:w-72 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-4 flex flex-col justify-between shrink-0 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Taxonomy Coverage</span>
               {(() => {
                 const score = data.taxonomyCoverage.fullHierarchyCoveragePct;
-                if (score >= 90) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-450 border border-emerald-200/30">Reliable</span>;
-                if (score >= 70) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-450 border border-amber-200/30">Partial</span>;
+                if (score >= 90) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-500 border border-emerald-200/30">Reliable</span>;
+                if (score >= 70) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-500 border border-amber-200/30">Partial</span>;
                 return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-800 dark:bg-red-950/20 dark:text-red-400 border border-red-200/30">Bias Warning</span>;
               })()}
             </div>
             <div className="space-y-2">
               <div>
-                <div className="flex justify-between text-[11px] font-semibold text-slate-650 dark:text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
                   <span>Full hierarchy</span>
                   <span>{data.taxonomyCoverage.fullHierarchyCoveragePct}%</span>
                 </div>
@@ -150,7 +128,7 @@ export function DatasetTab({
                 </div>
               </div>
               <div>
-                <div className="flex justify-between text-[11px] font-semibold text-slate-650 dark:text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
                   <span>Primary topic</span>
                   <span>{data.taxonomyCoverage.primaryTopicCoveragePct}%</span>
                 </div>
@@ -163,87 +141,107 @@ export function DatasetTab({
         </div>
       )}
 
-      {/* Corpus Facets Section (P2 Facet layout grid-cols-3) */}
+      {/* 4. Grouped Corpus Facets (P9 Visually Grouped Request) */}
       {data.facets && (
-        <div className="bg-white/50 dark:bg-[#121212]/50 border border-slate-200/85 dark:border-slate-800/85 rounded-2xl p-6 shadow-md backdrop-blur-md">
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Corpus Facets</h3>
-            <p className="text-xs text-slate-500 mt-1">Facets mirror OpenAlex-style scholarly metadata. Click on any bucket below to filter active dataset.</p>
+        <div className="space-y-6">
+          {/* GROUP A: Scholarly taxonomy */}
+          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded bg-blue-600"></span> Scholarly taxonomy
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Academic domain and topic classification from OpenAlex.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <FacetGroup
+                title="Domains"
+                buckets={data.facets.domains}
+                total={data.totalPapersInWindow}
+                activeValues={domainIds.length > 0 ? domainIds : domains}
+                onBucketClick={(val, openalexId) => handleBucketClick("Domains", val, openalexId)}
+              />
+              <FacetGroup
+                title="Fields"
+                buckets={data.facets.fields}
+                total={data.totalPapersInWindow}
+                activeValues={fieldIds.length > 0 ? fieldIds : fields}
+                onBucketClick={(val, openalexId) => handleBucketClick("Fields", val, openalexId)}
+              />
+              <FacetGroup
+                title="Subfields"
+                buckets={data.facets.subfields}
+                total={data.totalPapersInWindow}
+                activeValues={subfieldIds.length > 0 ? subfieldIds : subfields}
+                onBucketClick={(val, openalexId) => handleBucketClick("Subfields", val, openalexId)}
+              />
+              <FacetGroup
+                title="Topics"
+                buckets={data.facets.topics}
+                total={data.totalPapersInWindow}
+                activeValues={topicIds.length > 0 ? topicIds : topicsFilter}
+                onBucketClick={(val, openalexId) => handleBucketClick("Topics", val, openalexId)}
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* 1. Domains */}
-            <FacetGroup
-              title="Domains"
-              buckets={data.facets.domains}
-              total={data.totalPapersInWindow}
-              activeValues={domainIds.length > 0 ? domainIds : domains}
-              onBucketClick={(val, openalexId) => handleBucketClick("Domains", val, openalexId)}
-            />
-            {/* 2. Fields */}
-            <FacetGroup
-              title="Fields"
-              buckets={data.facets.fields}
-              total={data.totalPapersInWindow}
-              activeValues={fieldIds.length > 0 ? fieldIds : fields}
-              onBucketClick={(val, openalexId) => handleBucketClick("Fields", val, openalexId)}
-            />
-            {/* 3. Subfields */}
-            <FacetGroup
-              title="Subfields"
-              buckets={data.facets.subfields}
-              total={data.totalPapersInWindow}
-              activeValues={subfieldIds.length > 0 ? subfieldIds : subfields}
-              onBucketClick={(val, openalexId) => handleBucketClick("Subfields", val, openalexId)}
-            />
-            {/* 4. Topics */}
-            <FacetGroup
-              title="Topics"
-              buckets={data.facets.topics}
-              total={data.totalPapersInWindow}
-              activeValues={topicIds.length > 0 ? topicIds : topicsFilter}
-              onBucketClick={(val, openalexId) => handleBucketClick("Topics", val, openalexId)}
-            />
-            {/* 5. Paper Types */}
-            <FacetGroup
-              title="Paper Types"
-              buckets={data.facets.paperKinds}
-              total={data.totalPapersInWindow}
-              activeValues={paperKinds}
-              onBucketClick={(val) => handleBucketClick("Paper Types", val)}
-            />
-            {/* 6. Open Access */}
-            <FacetGroup
-              title="Open Access"
-              buckets={data.facets.openAccessStatuses}
-              total={data.totalPapersInWindow}
-              activeValues={openAccessStatuses}
-              onBucketClick={(val) => handleBucketClick("Open Access", val)}
-            />
-            {/* 7. Providers */}
-            <FacetGroup
-              title="Providers"
-              buckets={data.facets.providers}
-              total={data.totalPapersInWindow}
-              activeValues={providers}
-              onBucketClick={(val) => handleBucketClick("Providers", val)}
-            />
-            {/* 8. Top Sources */}
-            <FacetGroup
-              title="Top Sources"
-              buckets={data.facets.topSources}
-              total={data.totalPapersInWindow}
-              activeValues={sources}
-              onBucketClick={(val) => handleBucketClick("Top Sources", val)}
-            />
-            {/* 9. Citation Bands */}
-            <FacetGroup
-              title="Citation Bands"
-              buckets={data.facets.citationBands}
-              total={data.totalPapersInWindow}
-              activeValues={citationBands}
-              onBucketClick={(val) => handleBucketClick("Citation Bands", val)}
-            />
+          {/* GROUP B: Publication metadata & GROUP C: Impact filter */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* GROUP B: Publication metadata (2/3 columns) */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded bg-purple-600"></span> Publication metadata
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Scholarly publication formats, licensing access, sources and host providers.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FacetGroup
+                  title="Paper Types"
+                  buckets={data.facets.paperKinds}
+                  total={data.totalPapersInWindow}
+                  activeValues={paperKinds}
+                  onBucketClick={(val) => handleBucketClick("Paper Types", val)}
+                />
+                <FacetGroup
+                  title="Open Access"
+                  buckets={data.facets.openAccessStatuses}
+                  total={data.totalPapersInWindow}
+                  activeValues={openAccessStatuses}
+                  onBucketClick={(val) => handleBucketClick("Open Access", val)}
+                />
+                <FacetGroup
+                  title="Providers"
+                  buckets={data.facets.providers}
+                  total={data.totalPapersInWindow}
+                  activeValues={providers}
+                  onBucketClick={(val) => handleBucketClick("Providers", val)}
+                />
+                <FacetGroup
+                  title="Top Sources"
+                  buckets={data.facets.topSources}
+                  total={data.totalPapersInWindow}
+                  activeValues={sources}
+                  onBucketClick={(val) => handleBucketClick("Top Sources", val)}
+                />
+              </div>
+            </div>
+
+            {/* GROUP C: Impact filter (1/3 column) */}
+            <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded bg-emerald-600"></span> Impact filter
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Filter by the number of citations accumulated.</p>
+              </div>
+              <FacetGroup
+                title="Citation Bands"
+                buckets={data.facets.citationBands}
+                total={data.totalPapersInWindow}
+                activeValues={citationBands}
+                onBucketClick={(val) => handleBucketClick("Citation Bands", val)}
+              />
+            </div>
           </div>
         </div>
       )}

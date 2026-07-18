@@ -2,10 +2,12 @@ import React from "react";
 import { Users, Loader2 } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import type { TrendCompareResponse, TopicComparisonItem, TrendsOverview } from "@trend/shared-types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { getTopicMetric, formatMetricValue, formatSigned } from "../../../pages/trends.insights";
 import type { TrendSortKey } from "../../../pages/trends.insights";
+import { formatNumber } from "@/utils";
 
 export type CompareChartDatum = { year: string } & Record<string, string | number>;
 
@@ -30,8 +32,29 @@ export function CompareTab({
   yearTo,
   sortBy,
 }: CompareTabProps) {
+  const navigate = useNavigate();
+  const showVolumeWarning = React.useMemo(() => {
+    if (!compareQuery.data?.topics || compareQuery.data.topics.length < 2) return false;
+    const volumes = compareQuery.data.topics.map(t => t.totalPapers);
+    const maxVol = Math.max(...volumes);
+    const minVol = Math.min(...volumes);
+    return minVol > 0 && maxVol / minVol > 5;
+  }, [compareQuery.data]);
+
+  const getNextAction = (t: TopicComparisonItem) => {
+    if (t.momentum > 5 && t.growthRatePct > 20) return "Deep Read (Rising Star)";
+    if (t.totalPapers > 1000 && t.momentum < 2) return "Context Benchmark (Established)";
+    if (t.cagr3yPct !== null && t.cagr3yPct > 30) return "Generate AI Report (High Interest)";
+    return "Explore Papers";
+  };
+
   return (
     <div className="space-y-6">
+      {/* Tab Purpose Header */}
+      <div className="text-xs text-slate-550 dark:text-slate-400 font-medium select-none">
+        Compare candidate research directions side-by-side before choosing what to read or report on.
+      </div>
+
       {/* Selected Topics Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -144,6 +167,16 @@ export function CompareTab({
         <p className="text-sm text-red-600 py-6 text-center">Failed to load comparison data. Please try again.</p>
       ) : (
         <div className="space-y-6 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+          {/* Volume Divergence Warning (Guided UX) */}
+          {showVolumeWarning && (
+            <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-900/30 rounded-xl p-3.5 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 select-none">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+              <span className="font-semibold">
+                One topic has much larger volume than another. Compare shape, not only raw count.
+              </span>
+            </div>
+          )}
+
           {/* Compare Multi-Line Chart */}
           <div className="h-[260px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -199,12 +232,14 @@ export function CompareTab({
                     <th className="px-6 py-3 font-medium text-right">Growth YoY</th>
                     <th className="px-6 py-3 font-medium text-right">Momentum</th>
                     <th className="px-6 py-3 font-medium text-right">CAGR 3Y</th>
+                    <th className="px-6 py-3 font-medium text-right">Recommended Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {compareQuery.data?.topics.map((t: TopicComparisonItem, i: number) => {
                     const colors = ["#1d4ed8", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899"];
                     const colorClass = colors[i % colors.length];
+                    const nextAction = getNextAction(t);
                     return (
                       <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200 capitalize flex items-center gap-2">
@@ -212,7 +247,7 @@ export function CompareTab({
                           {t.topic}
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          {t.totalPapers.toLocaleString()}
+                          {formatNumber(t.totalPapers)}
                         </td>
                         <td className={`px-6 py-4 text-right font-extrabold ${t.growthRatePct > 0 ? "text-emerald-600" : t.growthRatePct < 0 ? "text-red-500" : "text-slate-500"}`}>
                           {formatSigned(t.growthRatePct, 1)}%
@@ -222,6 +257,21 @@ export function CompareTab({
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-blue-700 dark:text-blue-400">
                           {t.cagr3yPct !== null ? `${formatSigned(t.cagr3yPct, 1)}%` : "-"}
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (nextAction.includes("Report")) {
+                                navigate(`/reports?create=true&topic=${encodeURIComponent(t.topic)}`);
+                              } else {
+                                navigate(`/search?q=${encodeURIComponent(t.topic)}`);
+                              }
+                            }}
+                            className="text-xs text-blue-700 dark:text-blue-400 hover:underline font-extrabold"
+                          >
+                            {nextAction} ➔
+                          </button>
                         </td>
                       </tr>
                     );

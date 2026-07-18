@@ -45,6 +45,7 @@ import {
   FileText,
   Sparkles
 } from "lucide-react";
+import { formatNumber } from "@/utils";
 
 export function AdminSyncPage() {
   const { data: currentUserData } = useCurrentUser();
@@ -117,7 +118,7 @@ export function AdminSyncPage() {
     );
   };
 
-  // Tính toán chỉ số thống kê động từ runs thực tế
+  // Calculate live statistics from the actual sync runs.
   const totalRuns = runs?.length ?? 0;
   const totalInserted = runs?.reduce((acc, r) => acc + (r.totalInserted || 0), 0) ?? 0;
   const isPipelineRunning = runs?.some(isFreshRunningSyncRun) ?? false;
@@ -231,7 +232,7 @@ export function AdminSyncPage() {
           </div>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white">
-              {isLoading ? "—" : totalInserted}
+              {isLoading ? "—" : formatNumber(totalInserted)}
             </span>
             <span className="text-xs text-[#787774] dark:text-slate-400">papers</span>
           </div>
@@ -247,7 +248,7 @@ export function AdminSyncPage() {
           </div>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white">
-              {isLoading ? "—" : totalRuns}
+              {isLoading ? "—" : formatNumber(totalRuns)}
             </span>
             <span className="text-xs text-[#787774] dark:text-slate-400">runs</span>
           </div>
@@ -326,7 +327,7 @@ export function AdminSyncPage() {
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">AI-Analyzable Papers</span>
               <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white block mt-1">
-                {embedStatus.totalPapers}
+                {formatNumber(embedStatus.totalPapers)}
               </span>
               <span className="text-[10px] text-slate-400">Papers passing the quality gate</span>
             </div>
@@ -334,7 +335,7 @@ export function AdminSyncPage() {
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Embedded Papers</span>
               <span className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 block mt-1">
-                {embedStatus.embeddedPapers}
+                {formatNumber(embedStatus.embeddedPapers)}
               </span>
               <span className="text-[10px] text-slate-400">Vector representation active in search index</span>
             </div>
@@ -342,7 +343,7 @@ export function AdminSyncPage() {
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Pending Embeddings</span>
               <span className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 block mt-1">
-                {embedStatus.pendingPapers}
+                {formatNumber(embedStatus.pendingPapers)}
               </span>
               <span className="text-[10px] text-slate-400">Papers awaiting embedding job</span>
             </div>
@@ -416,15 +417,15 @@ export function AdminSyncPage() {
                           {run.searchText ?? "N/A"}
                         </TableCell>
                         <TableCell className="py-3.5">{renderStatusBadge(run)}</TableCell>
-                        <TableCell className="text-center font-mono text-xs font-semibold text-[#111111] dark:text-white py-3.5">{run.totalFetched}</TableCell>
-                        <TableCell className="text-center font-mono text-xs text-[#346538] dark:text-[#86EFAC] font-bold py-3.5">+{run.totalInserted}</TableCell>
-                        <TableCell className="text-center font-mono text-xs text-[#1F6C9F] dark:text-[#93C5FD] font-semibold py-3.5">{run.totalUpdated}</TableCell>
-                        <TableCell className="text-center font-mono text-xs text-[#787774] dark:text-slate-500 py-3.5">{run.totalDuplicates}</TableCell>
+                        <TableCell className="text-center font-mono text-xs font-semibold text-[#111111] dark:text-white py-3.5">{formatNumber(run.totalFetched)}</TableCell>
+                        <TableCell className="text-center font-mono text-xs text-[#346538] dark:text-[#86EFAC] font-bold py-3.5">+{formatNumber(run.totalInserted)}</TableCell>
+                        <TableCell className="text-center font-mono text-xs text-[#1F6C9F] dark:text-[#93C5FD] font-semibold py-3.5">{formatNumber(run.totalUpdated)}</TableCell>
+                        <TableCell className="text-center font-mono text-xs text-[#787774] dark:text-slate-500 py-3.5">{formatNumber(run.totalDuplicates)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-3.5">
-                          {new Date(run.startedAt).toLocaleString("vi-VN", { hour12: false })}
+                          {new Date(run.startedAt).toLocaleString("en-US", { hour12: false })}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-3.5">
-                          {run.finishedAt ? new Date(run.finishedAt).toLocaleString("vi-VN", { hour12: false }) : "—"}
+                          {run.finishedAt ? new Date(run.finishedAt).toLocaleString("en-US", { hour12: false }) : "—"}
                         </TableCell>
                       </TableRow>
                     ))

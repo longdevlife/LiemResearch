@@ -25,6 +25,7 @@ import { useHomeOverview } from "@/features/home/hooks/use-home-overview";
 import { PaperCard } from "@/components/paper-card";
 import { Bar, BarChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { HomeOverview } from "@trend/shared-types";
+import { formatNumber } from "@/utils";
 
 export function HomePage() {
   const { data: me } = useCurrentUser();
@@ -805,7 +806,7 @@ function RecentSearchesWidget({ workspace }: { workspace: NonNullable<HomeOvervi
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded">
-                {s.resultCount} res
+                {formatNumber(s.resultCount)} res
               </span>
             </div>
           ))}
@@ -846,7 +847,7 @@ function KPICard({
             {title}
           </span>
           <span className="text-3xl font-bold text-slate-900 dark:text-white block font-sans leading-none">
-            {typeof value === "number" ? value.toLocaleString() : value}
+            {typeof value === "number" ? formatNumber(value) : value}
           </span>
         </div>
         <div className={`p-3 rounded-xl transition-all duration-350 ${

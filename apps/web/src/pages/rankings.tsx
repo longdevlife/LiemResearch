@@ -5,6 +5,7 @@ import { api } from '@/services/api-client';
 import { useAuthStore } from '@/stores/auth-store';
 
 import { avatars, getLevel, getLevelProgress, getNextLevelPoints } from '@/utils/level';
+import { formatNumber } from '@/utils';
 
 interface RankingUser {
   rank: number;
@@ -145,7 +146,7 @@ function PodiumCard({ user, place, delay }: PodiumCardProps) {
 
       {/* Points */}
       <div className={`w-full py-2.5 ${config.pointBg} rounded-xl border border-transparent z-10`}>
-        <span className={`font-black text-xl ${config.pointColor}`}>{user.points.toLocaleString()}</span>
+        <span className={`font-black text-xl ${config.pointColor}`}>{formatNumber(user.points)}</span>
         <span className="text-xs text-slate-400 uppercase tracking-wider font-bold ml-1">pts</span>
       </div>
     </div>
@@ -201,7 +202,7 @@ function TableRow({ user, index }: { user: RankingUser; index: number }) {
       </td>
       <td className="px-6 py-4 text-right">
         <span className={`font-black text-base ${user.isMe ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-          {user.points.toLocaleString()}
+          {formatNumber(user.points)}
         </span>
         <span className="text-[10px] text-slate-400 ml-0.5 font-semibold">pts</span>
       </td>
@@ -587,7 +588,7 @@ export function RankingsPage() {
                     <div>
                       <div className="text-4xl font-black leading-none mb-1">#{myRanking.rank}</div>
                       <div className="text-xs text-indigo-200 font-semibold">
-                        Level {myLevel} · {myRanking.stats.points.toLocaleString()} pts
+                        Level {myLevel} · {formatNumber(myRanking.stats.points)} pts
                       </div>
                     </div>
                   </div>

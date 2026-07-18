@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEvaluationSummary } from "@/features/admin/hooks/use-evaluation-summary";
 import { useCurrentUser } from "@/features/auth";
 import { cn } from "@/utils/cn";
+import { formatNumber } from "@/utils";
 
 export function AdminEvaluationPage() {
   const { data: me, isLoading: isUserLoading } = useCurrentUser();
@@ -59,8 +60,8 @@ export function AdminEvaluationPage() {
                 <StatusBadge status={data.overallStatus === "healthy" ? "pass" : data.overallStatus === "needs_data" ? "warn" : "fail"} />
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                {overallStatusLabel(data.overallStatus)}. {data.overallScore}/{data.maxScore} benchmark points. Generated{" "}
-                {new Date(data.generatedAt).toLocaleString()}.
+                {overallStatusLabel(data.overallStatus)}. {formatNumber(data.overallScore)}/{formatNumber(data.maxScore)} benchmark points. Generated{" "}
+                {new Date(data.generatedAt).toLocaleString("en-US")}.
               </p>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -77,11 +78,11 @@ export function AdminEvaluationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-            <Metric label="Embedded / analyzable papers" value={`${data.corpus.embeddedPapers}/${data.corpus.analyzablePapers}`} sub={`${data.corpus.embeddingCoveragePct}%`} />
-            <Metric label="Structured AI analysis" value={`${data.corpus.aiAnalyzedPapers}/${data.corpus.analyzablePapers}`} sub={`${data.corpus.aiAnalysisCoveragePct}%`} />
-            <Metric label="Grounded reports" value={`${data.corpus.groundedReports}/${data.corpus.readyReports}`} sub={`${data.corpus.reportGroundingCoveragePct}%`} />
-            <Metric label="Valid report citations" value={`${data.corpus.groundedReports - data.corpus.invalidCitationReports}/${data.corpus.groundedReports}`} sub={`${data.corpus.reportCitationValidityPct}%`} />
-            <Metric label="Evidence-backed gaps" value={`${data.corpus.evidenceBackedGaps}/${data.corpus.activeGaps}`} sub={`${data.corpus.gapEvidenceCoveragePct}%`} />
+            <Metric label="Embedded / analyzable papers" value={`${formatNumber(data.corpus.embeddedPapers)}/${formatNumber(data.corpus.analyzablePapers)}`} sub={`${data.corpus.embeddingCoveragePct}%`} />
+            <Metric label="Structured AI analysis" value={`${formatNumber(data.corpus.aiAnalyzedPapers)}/${formatNumber(data.corpus.analyzablePapers)}`} sub={`${data.corpus.aiAnalysisCoveragePct}%`} />
+            <Metric label="Grounded reports" value={`${formatNumber(data.corpus.groundedReports)}/${formatNumber(data.corpus.readyReports)}`} sub={`${data.corpus.reportGroundingCoveragePct}%`} />
+            <Metric label="Valid report citations" value={`${formatNumber(data.corpus.groundedReports - data.corpus.invalidCitationReports)}/${formatNumber(data.corpus.groundedReports)}`} sub={`${data.corpus.reportCitationValidityPct}%`} />
+            <Metric label="Evidence-backed gaps" value={`${formatNumber(data.corpus.evidenceBackedGaps)}/${formatNumber(data.corpus.activeGaps)}`} sub={`${data.corpus.gapEvidenceCoveragePct}%`} />
           </CardContent>
         </Card>
       </section>

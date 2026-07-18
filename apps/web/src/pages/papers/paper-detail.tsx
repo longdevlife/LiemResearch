@@ -36,6 +36,7 @@ import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
 import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
 import { getPaperPdfPanelState } from "./paper-pdf-panel";
+import { formatNumber } from "@/utils";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -390,7 +391,7 @@ export function PaperDetailPage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
-                <Link2 className="w-4 h-4" /> {paper.citationCount.toLocaleString()} Citations
+                <Link2 className="w-4 h-4" /> {formatNumber(paper.citationCount)} Citations
               </div>
             </div>
           </div>
@@ -840,10 +841,10 @@ function PaperMetadataSidebarCard({
 
       <dl className="space-y-2.5 text-sm">
         <MetadataRow label="FWCI" value={paper.fwci !== undefined ? paper.fwci.toFixed(2) : "N/A"} />
-        <MetadataRow label="Cited by" value={paper.citationCount?.toLocaleString()} />
+        <MetadataRow label="Cited by" value={formatNumber(paper.citationCount)} />
         <MetadataRow
           label="Related to"
-          value={paper.relatedWorksCount !== undefined ? paper.relatedWorksCount.toLocaleString() : "N/A"}
+          value={paper.relatedWorksCount !== undefined ? formatNumber(paper.relatedWorksCount) : "N/A"}
         />
         <MetadataRow
           label="AI value"

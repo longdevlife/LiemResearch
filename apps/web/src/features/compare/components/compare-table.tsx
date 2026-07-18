@@ -2,6 +2,7 @@ import type { PaperComparison } from "@trend/shared-types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, BookOpen, Clock, BarChart3, Database } from "lucide-react";
+import { formatNumber } from "@/utils";
 
 interface CompareTableProps {
   comparison: PaperComparison;
@@ -10,7 +11,7 @@ interface CompareTableProps {
 export function CompareTable({ comparison }: CompareTableProps) {
   const { papers, metrics, llmComparison } = comparison;
 
-  // Lấy metric của một paper dựa trên index
+  // Get metrics for a paper by id.
   const getMetricForPaper = (paperId: string) => {
     return metrics.find((m) => m.paperId === paperId);
   };
@@ -88,7 +89,7 @@ export function CompareTable({ comparison }: CompareTableProps) {
               const metric = getMetricForPaper(paper.id);
               return (
                 <TableCell key={paper.id} className="py-3.5 px-6 text-slate-900 dark:text-slate-100 text-sm font-medium">
-                  {metric?.citationCount !== undefined ? metric.citationCount.toLocaleString() : "N/A"}
+                  {metric?.citationCount !== undefined ? formatNumber(metric.citationCount) : "N/A"}
                 </TableCell>
               );
             })}

@@ -36,6 +36,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { formatNumber } from "@/utils";
 
 export function AdminPipelinePage() {
   const { data: currentUserData } = useCurrentUser();
@@ -150,7 +151,7 @@ export function AdminPipelinePage() {
       {/* Bento Stats Summary Card Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
         {/* Redis Connection Status */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Redis Broker</span>
             <div className={cn(
@@ -163,21 +164,25 @@ export function AdminPipelinePage() {
               )} />
             </div>
           </div>
-          <div className="mt-2">
-            <span className={cn(
-              "text-xl font-bold tracking-tight block",
-              redisOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-            )}>
-              {isLoading ? "—" : (redisOk ? "Connected" : "Unavailable")}
-            </span>
-            <span className="text-[10px] text-muted-foreground block truncate">
-              {status?.redis.error ?? "Running BullMQ queues"}
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className={cn(
+                "text-xl font-bold tracking-tight block",
+                redisOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              )}>
+                {isLoading ? "—" : (redisOk ? "Connected" : "Unavailable")}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block truncate" title={status?.redis.error ?? "Running BullMQ queues"}>
+                {status?.redis.error ?? "Running BullMQ queues"}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Worker heartbeat status */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Workers Alive</span>
             <div className={cn(
@@ -190,21 +195,25 @@ export function AdminPipelinePage() {
               )} />
             </div>
           </div>
-          <div className="mt-2">
-            <span className={cn(
-              "text-3xl font-bold font-mono tracking-tight block",
-              workersAtRisk > 0 ? "text-red-500" : "text-[#111111] dark:text-white"
-            )}>
-              {isLoading ? "—" : `${workersAlive}/${workersExpected}`}
-            </span>
-            <span className="text-[10px] text-muted-foreground block">
-              Heartbeat within 2 minutes
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className={cn(
+                "text-3xl font-bold font-mono tracking-tight block",
+                workersAtRisk > 0 ? "text-red-500" : "text-[#111111] dark:text-white"
+              )}>
+                {isLoading ? "—" : `${workersAlive}/${workersExpected}`}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                Heartbeat within 2 minutes
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Total Queue Backlog */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Queue Backlog</span>
             <div className={cn(
@@ -217,18 +226,22 @@ export function AdminPipelinePage() {
               )} />
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
-              {isLoading ? "—" : totalBacklog}
-            </span>
-            <span className="text-[10px] text-muted-foreground block">
-              Waiting & delayed jobs
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
+                {isLoading ? "—" : formatNumber(totalBacklog)}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                Waiting & delayed jobs
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Failed Jobs count */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Failed Jobs</span>
             <div className={cn(
@@ -241,52 +254,64 @@ export function AdminPipelinePage() {
               )} />
             </div>
           </div>
-          <div className="mt-2">
-            <span className={cn(
-              "text-3xl font-bold font-mono tracking-tight block",
-              totalFailed > 0 ? "text-red-500" : "text-[#111111] dark:text-white"
-            )}>
-              {isLoading ? "—" : totalFailed}
-            </span>
-            <span className="text-[10px] text-muted-foreground block">
-              Exhausted all attempts
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className={cn(
+                "text-3xl font-bold font-mono tracking-tight block",
+                totalFailed > 0 ? "text-red-500" : "text-[#111111] dark:text-white"
+              )}>
+                {isLoading ? "—" : formatNumber(totalFailed)}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                Exhausted all attempts
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Embedding Coverage */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Embedding Coverage</span>
             <div className="p-1.5 rounded-lg bg-blue-500/10">
               <Database className="h-4 w-4 text-blue-500 stroke-[1.5]" />
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
-              {isLoading ? "—" : `${status?.corpus.embeddingCoveragePct}%`}
-            </span>
-            <span className="text-[10px] text-muted-foreground block">
-              Embedded / analyzable papers
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
+                {isLoading ? "—" : `${status?.corpus.embeddingCoveragePct}%`}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                Embedded / analyzable papers
+              </span>
+            </div>
           </div>
         </div>
 
         {/* AI Analysis Coverage */}
-        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between h-[120px]">
+        <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[135px] h-auto">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">AI Analysis Coverage</span>
             <div className="p-1.5 rounded-lg bg-purple-500/10">
               <Sparkles className="h-4 w-4 text-purple-500 stroke-[1.5]" />
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
-              {isLoading ? "—" : `${status?.corpus.aiAnalysisCoveragePct}%`}
-            </span>
-            <span className="text-[10px] text-muted-foreground block">
-              AI analyzed / analyzable papers
-            </span>
+          <div className="mt-3 flex flex-col justify-end">
+            <div className="h-9 flex items-center">
+              <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white block">
+                {isLoading ? "—" : `${status?.corpus.aiAnalysisCoveragePct}%`}
+              </span>
+            </div>
+            <div className="h-8 flex items-start mt-1">
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                AI analyzed / analyzable papers
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -308,7 +333,7 @@ export function AdminPipelinePage() {
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-muted-foreground">Searchable via Embeddings</span>
                   <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                    {status.corpus.embeddedPapers} / {status.corpus.analyzablePapers} papers ({status.corpus.embeddingCoveragePct}%)
+                    {formatNumber(status.corpus.embeddedPapers)} / {formatNumber(status.corpus.analyzablePapers)} papers ({status.corpus.embeddingCoveragePct}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
@@ -323,7 +348,7 @@ export function AdminPipelinePage() {
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-muted-foreground">AI Knowledge Extracted</span>
                   <span className="font-mono text-purple-600 dark:text-purple-400">
-                    {status.corpus.aiAnalyzedPapers} / {status.corpus.analyzablePapers} papers ({status.corpus.aiAnalysisCoveragePct}%)
+                    {formatNumber(status.corpus.aiAnalyzedPapers)} / {formatNumber(status.corpus.analyzablePapers)} papers ({status.corpus.aiAnalysisCoveragePct}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
@@ -340,7 +365,7 @@ export function AdminPipelinePage() {
               <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] font-bold text-slate-500 uppercase block">Total Papers</span>
                 <span className="text-lg font-bold font-mono text-[#111111] dark:text-white block mt-1">
-                  {status.corpus.totalPapers}
+                  {formatNumber(status.corpus.totalPapers)}
                 </span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
@@ -352,13 +377,13 @@ export function AdminPipelinePage() {
               <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] font-bold text-slate-500 uppercase block">Analyzable Gate</span>
                 <span className="text-lg font-bold font-mono text-[#111111] dark:text-white block mt-1">
-                  {status.corpus.analyzablePapers}
+                  {formatNumber(status.corpus.analyzablePapers)}
                 </span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] font-bold text-slate-500 uppercase block">Pending Embeds</span>
                 <span className="text-lg font-bold font-mono text-amber-600 dark:text-amber-400 block mt-1">
-                  {status.corpus.pendingEmbedding}
+                  {formatNumber(status.corpus.pendingEmbedding)}
                 </span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800 col-span-2 sm:col-span-2">
@@ -679,7 +704,7 @@ export function AdminPipelinePage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-3.5">
-                          {job.timestamp ? new Date(job.timestamp).toLocaleString("vi-VN", { hour12: false }) : "—"}
+                          {job.timestamp ? new Date(job.timestamp).toLocaleString("en-US", { hour12: false }) : "—"}
                         </TableCell>
                         <TableCell className="py-3.5 text-right">
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">

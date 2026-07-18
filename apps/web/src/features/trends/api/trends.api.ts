@@ -29,7 +29,7 @@ export interface TrendsOverviewParams {
   topicIds?: string[];
 }
 
-export interface TrendCompareParams {
+export interface TrendCompareParams extends Omit<TrendsOverviewParams, "limit" | "minPapers" | "sortBy"> {
   topics: string[];
   yearFrom?: number;
   yearTo?: number;

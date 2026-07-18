@@ -23,6 +23,7 @@ import {
   fillMissingDays
 } from "./dashboard.helpers";
 import type { TopQuery, VolumeByDay } from "@trend/shared-types";
+import { formatNumber } from "@/utils";
 
 // Hook 1: Admin Dashboard Analytics
 function useDashboard(days: number, enabled: boolean) {
@@ -155,19 +156,19 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <KPICard
               title="Papers in Corpus"
-              value={summary?.totalPapers?.toLocaleString() ?? "0"}
+              value={formatNumber(summary?.totalPapers)}
               subtitle="Total scholarly works indexed"
               icon={<Briefcase className="w-5 h-5 text-blue-600" />}
             />
             <KPICard
               title="Platform Search Volume"
-              value={summary?.totalSearches?.toLocaleString() ?? "0"}
+              value={formatNumber(summary?.totalSearches)}
               subtitle="All-time search requests served"
               icon={<Search className="w-5 h-5 text-emerald-600" />}
             />
             <KPICard
               title="Active Search Users"
-              value={summary?.uniqueUsers?.toString() ?? "0"}
+              value={formatNumber(summary?.uniqueUsers)}
               subtitle="Unique researcher accounts"
               icon={<Calendar className="w-5 h-5 text-purple-600" />}
             />
@@ -228,7 +229,7 @@ export function DashboardPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-slate-600 dark:text-slate-400">
-                        {h.resultCount.toLocaleString()} papers
+                        {formatNumber(h.resultCount)} papers
                       </td>
                       <td className="px-6 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
                         {new Date(h.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -307,7 +308,7 @@ export function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <KPICard
                   title={`Searches (${days}d)`}
-                  value={totalSearchesRange.toLocaleString()}
+                  value={formatNumber(totalSearchesRange)}
                   subtitle="Total searches in selected range"
                   icon={<Search className="w-5 h-5 text-blue-600" />}
                 />
