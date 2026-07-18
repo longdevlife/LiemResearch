@@ -1,4 +1,45 @@
 import { z } from "zod";
+import { TREND_CITATION_BANDS } from "../trend.filters.js";
+
+const csvListSchema = z.preprocess(
+  (value) => {
+    if (value === undefined) return undefined;
+    const values = Array.isArray(value) ? value : [value];
+    return values
+      .flatMap((item) => String(item).split(","))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+  z.array(z.string().min(1)).max(50).optional(),
+);
+
+const citationBandListSchema = z.preprocess(
+  (value) => {
+    if (value === undefined) return undefined;
+    const values = Array.isArray(value) ? value : [value];
+    return values
+      .flatMap((item) => String(item).split(","))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+  z.array(z.enum(TREND_CITATION_BANDS)).max(TREND_CITATION_BANDS.length).optional(),
+);
+
+const trendFacetFiltersSchema = {
+  paperKinds: csvListSchema,
+  openAccessStatuses: csvListSchema,
+  providers: csvListSchema,
+  sources: csvListSchema,
+  citationBands: citationBandListSchema,
+  domains: csvListSchema,
+  fields: csvListSchema,
+  subfields: csvListSchema,
+  topics: csvListSchema,
+  domainIds: csvListSchema,
+  fieldIds: csvListSchema,
+  subfieldIds: csvListSchema,
+  topicIds: csvListSchema,
+};
 
 /** Query params for GET /api/v1/trends (overview). */
 export const TrendsOverviewQuerySchema = z
@@ -9,6 +50,7 @@ export const TrendsOverviewQuerySchema = z
     /** Topics with fewer total papers than this are noise — hide them. */
     minPapers: z.coerce.number().int().min(1).max(1000).default(3),
     sortBy: z.enum(["momentum", "growth", "total"]).default("momentum"),
+    ...trendFacetFiltersSchema,
   })
   .refine((q) => q.yearFrom === undefined || q.yearTo === undefined || q.yearFrom <= q.yearTo, {
     message: "yearFrom must be <= yearTo",
@@ -19,6 +61,7 @@ export type TrendsOverviewQuery = z.infer<typeof TrendsOverviewQuerySchema>;
 /** Query params for GET /api/v1/trends/:topic (topic deep dive). */
 export const TopicTrendQuerySchema = z
   .object({
+    topicId: z.string().trim().min(1).max(80).optional(),
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
   })
@@ -59,6 +102,7 @@ export const TrendExplainBodySchema = z
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
     language: z.enum(["en", "vi"]).default("en"),
+    ...trendFacetFiltersSchema,
   })
   .refine((q) => q.yearFrom === undefined || q.yearTo === undefined || q.yearFrom <= q.yearTo, {
     message: "yearFrom must be <= yearTo",

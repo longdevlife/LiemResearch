@@ -8,12 +8,16 @@ import type {
   TrendCompareResponse,
   TrendingTopic,
   TrendFacets,
+  TrendTaxonomyCoverage,
+  TrendTopicTaxonomy,
   TrendsOverview,
   YearlyCitationMetric,
   YearlyCount,
+  RecommendedTrendComparison,
 } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { cache, hashKey } from "../../infrastructure/cache.js";
+import { logger } from "../../infrastructure/logger.js";
 import { cachedGenerateJSON } from "../llm/llm.run.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import {
@@ -22,8 +26,10 @@ import {
   fillMissingCitationYears,
   fillMissingYearsFromCounts,
   toFacetBuckets,
+  toTaxonomyFacetBuckets,
 } from "./trend.intelligence.js";
 import { computeMetrics, fillMissingYears, yoyGrowthPct, truncateToCompleteYears } from "./trend.formulas.js";
+import { buildTrendMatchStage, buildUnwoundTopicMatch, describeAppliedTrendFilters } from "./trend.filters.js";
 import type {
   TopicTrendQuery,
   TrendCompareQuery,
@@ -40,7 +46,7 @@ import type {
  * data only changes when a sync runs, so a 1h TTL is effectively fresh.
  * Bump CACHE_VERSION whenever shapes/formulas change to invalidate old keys.
  */
-const CACHE_VERSION = "trends-v4";
+const CACHE_VERSION = "trends-v7";
 const CACHE_TTL_SECONDS = 3600;
 
 /** Default analysis window: the last 6 calendar years (5 complete + current). */
@@ -56,39 +62,49 @@ interface GroupedSeries {
   _id: string;
   total: number;
   years: YearlyCount[];
+  taxonomy?: TrendTopicTaxonomy;
 }
 
 export const trendService = {
   /** GET /trends — top trending topics + rising keywords across the corpus. */
   async overview(query: TrendsOverviewQuery): Promise<TrendsOverview> {
+    const startedAt = Date.now();
     const now = new Date();
     const yearTo = query.yearTo ?? now.getFullYear();
     const yearFrom = query.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
     const lastCompleteYear = Math.min(yearTo, now.getFullYear() - 1);
     const { limit, minPapers, sortBy } = query;
+    const filtersApplied = describeAppliedTrendFilters({ ...query, yearFrom, yearTo });
 
-    const cacheKey = `${CACHE_VERSION}:overview:${hashKey({ yearFrom, yearTo, limit, minPapers, sortBy })}`;
+    const cacheKey = `${CACHE_VERSION}:overview:${hashKey({ yearFrom, yearTo, limit, minPapers, sortBy, filtersApplied })}`;
     const cached = await cache.get<TrendsOverview>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      logger.info(
+        { cacheHit: true, durationMs: Date.now() - startedAt, yearFrom, yearTo, filtersApplied },
+        "trend overview served",
+      );
+      return cached;
+    }
 
-    const matchStage = {
-      dataStatus: "active",
-      publicationYear: { $gte: yearFrom, $lte: yearTo },
-    };
+    const filterInput = { ...query, yearFrom, yearTo };
+    const matchStage = buildTrendMatchStage(filterInput);
+    const unwoundTopicMatch = buildUnwoundTopicMatch(filterInput);
 
-    const [topicGroups, keywordGroups, totalPapersInWindow, yearlyTotalPapers, citationTrend, facets] = await Promise.all([
-      groupYearlyCounts("$topics.topicName", "$topics", matchStage, minPapers),
+    const [topicGroups, keywordGroups, totalPapersInWindow, yearlyTotalPapers, citationTrend, facets, taxonomyCoverage] = await Promise.all([
+      groupYearlyCounts("$topics.topicName", "$topics", matchStage, minPapers, topicTaxonomyProjection(), unwoundTopicMatch),
       groupYearlyCounts("$keywords.keywordName", "$keywords", matchStage, 3),
       PaperModel.countDocuments(matchStage),
       getYearlyPaperCounts(matchStage, yearFrom, yearTo),
       getCitationTrend(matchStage, yearFrom, yearTo),
-      getTrendFacets(matchStage),
+      getTrendFacets(matchStage, unwoundTopicMatch),
+      getTaxonomyCoverage(matchStage),
     ]);
 
     const topics: TrendingTopic[] = topicGroups.map((g) => {
       const yearlyBreakdown = fillMissingYears(g.years, yearFrom, yearTo);
       return {
         topic: g._id,
+        taxonomy: compactTaxonomy(g.taxonomy),
         totalPapers: g.total,
         yearlyBreakdown,
         ...computeMetrics(yearlyBreakdown, lastCompleteYear),
@@ -131,12 +147,27 @@ export const trendService = {
       yearlyTotalPapers,
       citationTrend,
       facets,
+      taxonomyCoverage,
+      recommendedComparisons: buildRecommendedComparisons(topics),
       topics: topics.slice(0, limit),
       risingKeywords,
       computedAt: now.toISOString(),
     };
 
     await cache.set(cacheKey, result, CACHE_TTL_SECONDS);
+    logger.info(
+      {
+        cacheHit: false,
+        durationMs: Date.now() - startedAt,
+        yearFrom,
+        yearTo,
+        filtersApplied,
+        totalPapersInWindow,
+        topics: result.topics.length,
+        risingKeywords: result.risingKeywords.length,
+      },
+      "trend overview served",
+    );
     return result;
   },
 
@@ -167,6 +198,7 @@ export const trendService = {
           ]),
           getCitationTrend(matchStage, yearFrom, yearTo),
         ]);
+        const taxonomy = await getTopicTaxonomy(matchStage, topic);
         const yearlyBreakdown = fillMissingYears(
           yearGroups.map((g) => ({ year: g._id, count: g.count })),
           yearFrom,
@@ -174,6 +206,7 @@ export const trendService = {
         );
         return {
           topic,
+          taxonomy: compactTaxonomy(taxonomy),
           totalPapers: yearlyBreakdown.reduce((sum, p) => sum + p.count, 0),
           yearlyBreakdown,
           citationTrend,
@@ -241,15 +274,17 @@ export const trendService = {
     const now = new Date();
     const yearTo = input.yearTo ?? now.getFullYear();
     const yearFrom = input.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
-    const overview = await this.overview({ yearFrom, yearTo, limit: 10, minPapers: 3, sortBy: "momentum" });
-    const topicDetail = input.topic ? await this.topic(input.topic, { yearFrom, yearTo }).catch(() => null) : null;
-    const relationships = input.topic
-      ? await this.relationships({ topic: input.topic, yearFrom, yearTo, limit: 8 }).catch(() => null)
+    const { topic, language, ...filters } = input;
+    const filtersApplied = describeAppliedTrendFilters({ ...filters, yearFrom, yearTo });
+    const overview = await this.overview({ ...filters, yearFrom, yearTo, limit: 10, minPapers: 3, sortBy: "momentum" });
+    const topicDetail = topic ? await this.topic(topic, { yearFrom, yearTo }).catch(() => null) : null;
+    const relationships = topic
+      ? await this.relationships({ topic, yearFrom, yearTo, limit: 8 }).catch(() => null)
       : null;
 
     const prompt = buildTrendExplainPrompt({
-      topic: input.topic ?? null,
-      language: input.language,
+      topic: topic ?? null,
+      language,
       overview,
       topicDetail,
       relationships,
@@ -259,16 +294,17 @@ export const trendService = {
       task: "trend",
       promptVersion: "trend-explain-v1",
       keyParts: {
-        topic: input.topic ?? null,
+        topic: topic ?? null,
         yearFrom,
         yearTo,
-        language: input.language,
+        language,
+        filtersApplied,
         overviewComputedAt: overview.computedAt,
         topicComputedAt: topicDetail?.computedAt ?? null,
       },
       prompt,
       options: { temperature: 0.2, maxOutputTokens: 1000 },
-      validate: (out) => validateTrendExplanation(out, input.topic ?? null, input.language),
+      validate: (out) => validateTrendExplanation(out, topic ?? null, language),
     });
   },
 
@@ -278,23 +314,29 @@ export const trendService = {
     const yearTo = query.yearTo ?? now.getFullYear();
     const yearFrom = query.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
     const lastCompleteYear = Math.min(yearTo, now.getFullYear() - 1);
+    const topicIds = query.topicId ? expandOpenAlexEntityId(query.topicId) : [];
+    const topicCriteria = topicIds.length > 0 ? { "topics.openalexTopicId": { $in: topicIds } } : { "topics.topicName": topicName };
 
-    const cacheKey = `${CACHE_VERSION}:topic:${hashKey({ topicName, yearFrom, yearTo })}`;
+    const cacheKey = `${CACHE_VERSION}:topic:${hashKey({ topicName, topicIds, yearFrom, yearTo })}`;
     const cached = await cache.get<PublicationTrend>(cacheKey);
     if (cached) return cached;
 
     const matchStage = {
       dataStatus: "active",
-      "topics.topicName": topicName,
+      ...topicCriteria,
       publicationYear: { $gte: yearFrom, $lte: yearTo },
     };
+    const topicPostUnwindMatch = topicIds.length > 0 ? { "topics.openalexTopicId": { $in: topicIds } } : { "topics.topicName": topicName };
 
-    const [yearGroups, topJournals, topAuthors, topKeywords] = await Promise.all([
+    const [yearGroups, citationTrend, facets, taxonomy, topJournals, topAuthors, topKeywords] = await Promise.all([
       PaperModel.aggregate<{ _id: number; count: number }>([
         { $match: matchStage },
         { $group: { _id: "$publicationYear", count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
+      getCitationTrend(matchStage, yearFrom, yearTo),
+      getTrendFacets(matchStage, topicPostUnwindMatch),
+      getTopicTaxonomy(matchStage, topicName, topicIds),
       topByField(matchStage, "$journalName"),
       topByUnwound(matchStage, "$authors", "$authors.displayName"),
       topByUnwound(matchStage, "$keywords", "$keywords.keywordName"),
@@ -313,8 +355,11 @@ export const trendService = {
 
     const result: PublicationTrend = {
       topic: topicName,
+      taxonomy: compactTaxonomy(taxonomy),
       totalPapers,
       yearlyBreakdown,
+      citationTrend,
+      facets,
       lastCompleteYear,
       ...computeMetrics(yearlyBreakdown, lastCompleteYear),
       topJournals,
@@ -340,14 +385,27 @@ async function groupYearlyCounts(
   unwindPath: string,
   matchStage: Record<string, unknown>,
   minTotal: number,
+  metadataProjection?: Record<string, string>,
+  postUnwindMatch?: Record<string, unknown>,
 ): Promise<GroupedSeries[]> {
+  const metadataEntries = metadataProjection ? Object.entries(metadataProjection) : [];
+  const firstGroupMetadata = Object.fromEntries(
+    metadataEntries.map(([key, value]) => [`meta_${key}`, { $first: value }]),
+  );
+  const secondGroupTaxonomy = Object.fromEntries(
+    metadataEntries.map(([key]) => [key, `$meta_${key}`]),
+  );
+  const postUnwindStages = postUnwindMatch && Object.keys(postUnwindMatch).length > 0 ? [{ $match: postUnwindMatch }] : [];
+
   return PaperModel.aggregate<GroupedSeries>([
     { $match: matchStage },
     { $unwind: unwindPath },
+    ...postUnwindStages,
     {
       $group: {
         _id: { name: nameField, year: "$publicationYear" },
         papers: { $addToSet: "$_id" },
+        ...firstGroupMetadata,
       },
     },
     { $set: { count: { $size: "$papers" } } },
@@ -356,6 +414,7 @@ async function groupYearlyCounts(
         _id: "$_id.name",
         total: { $sum: "$count" },
         years: { $push: { year: "$_id.year", count: "$count" } },
+        ...(metadataEntries.length > 0 ? { taxonomy: { $first: secondGroupTaxonomy } } : {}),
       },
     },
     { $match: { total: { $gte: minTotal }, _id: { $ne: null } } },
@@ -434,7 +493,10 @@ async function getCitationTrend(
   );
 }
 
-async function getTrendFacets(matchStage: Record<string, unknown>): Promise<TrendFacets> {
+async function getTrendFacets(
+  matchStage: Record<string, unknown>,
+  topicPostUnwindMatch?: Record<string, unknown>,
+): Promise<TrendFacets> {
   const [
     paperKinds,
     openAccessStatuses,
@@ -450,10 +512,10 @@ async function getTrendFacets(matchStage: Record<string, unknown>): Promise<Tren
     facetByField(matchStage, "$openAccessStatus", 10),
     facetByField(matchStage, "$primaryProvider", 10),
     facetByField(matchStage, "$journalName", 10),
-    facetByUnwoundField(matchStage, "$topics", "$topics.domainName", 10),
-    facetByUnwoundField(matchStage, "$topics", "$topics.fieldName", 10),
-    facetByUnwoundField(matchStage, "$topics", "$topics.subfieldName", 10),
-    facetByUnwoundField(matchStage, "$topics", "$topics.topicName", 10),
+    facetByUnwoundTaxonomy(matchStage, "$topics.domainId", "$topics.domainName", 10, topicPostUnwindMatch),
+    facetByUnwoundTaxonomy(matchStage, "$topics.fieldId", "$topics.fieldName", 10, topicPostUnwindMatch),
+    facetByUnwoundTaxonomy(matchStage, "$topics.subfieldId", "$topics.subfieldName", 10, topicPostUnwindMatch),
+    facetByUnwoundTaxonomy(matchStage, "$topics.openalexTopicId", "$topics.topicName", 10, topicPostUnwindMatch),
     PaperModel.aggregate<{ _id: string; count: number }>([
       { $match: matchStage },
       {
@@ -524,6 +586,209 @@ async function facetByUnwoundField(
     { $project: { count: 1 } },
   ]);
   return toFacetBuckets(rows);
+}
+
+async function facetByUnwoundTaxonomy(
+  matchStage: Record<string, unknown>,
+  idField: string,
+  nameField: string,
+  limit: number,
+  postUnwindMatch?: Record<string, unknown>,
+): Promise<TopItem[]> {
+  const postUnwindStages = postUnwindMatch && Object.keys(postUnwindMatch).length > 0 ? [{ $match: postUnwindMatch }] : [];
+  const rows = await PaperModel.aggregate<{ _id: { id?: string | null; name?: string | null } | null; count: number }>([
+    { $match: matchStage },
+    { $unwind: "$topics" },
+    ...postUnwindStages,
+    {
+      $group: {
+        _id: { id: idField, name: nameField },
+        papers: { $addToSet: "$_id" },
+      },
+    },
+    { $match: { "_id.name": { $nin: [null, ""] } } },
+    { $set: { count: { $size: "$papers" } } },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+    { $project: { count: 1 } },
+  ]);
+  return toTaxonomyFacetBuckets(rows);
+}
+
+function topicTaxonomyProjection(): Record<keyof TrendTopicTaxonomy, string> {
+  return {
+    openalexTopicId: "$topics.openalexTopicId",
+    domainId: "$topics.domainId",
+    domainName: "$topics.domainName",
+    fieldId: "$topics.fieldId",
+    fieldName: "$topics.fieldName",
+    subfieldId: "$topics.subfieldId",
+    subfieldName: "$topics.subfieldName",
+  };
+}
+
+function compactTaxonomy(taxonomy?: TrendTopicTaxonomy | null): TrendTopicTaxonomy | undefined {
+  if (!taxonomy) return undefined;
+  const compact = Object.fromEntries(
+    Object.entries(taxonomy).filter(([, value]) => typeof value === "string" && value.trim().length > 0),
+  ) as TrendTopicTaxonomy;
+  return Object.keys(compact).length > 0 ? compact : undefined;
+}
+
+async function getTopicTaxonomy(
+  matchStage: Record<string, unknown>,
+  topicName: string,
+  topicIds: string[] = [],
+): Promise<TrendTopicTaxonomy | undefined> {
+  const topicMatch = topicIds.length > 0
+    ? { "topics.openalexTopicId": { $in: topicIds } }
+    : { "topics.topicName": topicName };
+  const rows = await PaperModel.aggregate<{ taxonomy: TrendTopicTaxonomy }>([
+    { $match: matchStage },
+    { $unwind: "$topics" },
+    { $match: topicMatch },
+    {
+      $sort: {
+        "topics.isPrimary": -1,
+        "topics.confidence": -1,
+        citationCount: -1,
+      },
+    },
+    {
+      $project: {
+        taxonomy: {
+          openalexTopicId: "$topics.openalexTopicId",
+          domainId: "$topics.domainId",
+          domainName: "$topics.domainName",
+          fieldId: "$topics.fieldId",
+          fieldName: "$topics.fieldName",
+          subfieldId: "$topics.subfieldId",
+          subfieldName: "$topics.subfieldName",
+        },
+      },
+    },
+    { $limit: 1 },
+  ]);
+  return compactTaxonomy(rows[0]?.taxonomy);
+}
+
+async function getTaxonomyCoverage(matchStage: Record<string, unknown>): Promise<TrendTaxonomyCoverage> {
+  const [row] = await PaperModel.aggregate<{
+    total: Array<{ count: number }>;
+    withAnyTopic: Array<{ count: number }>;
+    withPrimaryTopic: Array<{ count: number }>;
+    withFullHierarchy: Array<{ count: number }>;
+  }>([
+    { $match: matchStage },
+    {
+      $facet: {
+        total: [{ $count: "count" }],
+        withAnyTopic: [{ $match: { "topics.0": { $exists: true } } }, { $count: "count" }],
+        withPrimaryTopic: [{ $match: { topics: { $elemMatch: { isPrimary: true } } } }, { $count: "count" }],
+        withFullHierarchy: [
+          {
+            $match: {
+              topics: {
+                $elemMatch: {
+                  isPrimary: true,
+                  openalexTopicId: { $nin: [null, ""] },
+                  domainId: { $nin: [null, ""] },
+                  domainName: { $nin: [null, ""] },
+                  fieldId: { $nin: [null, ""] },
+                  fieldName: { $nin: [null, ""] },
+                  subfieldId: { $nin: [null, ""] },
+                  subfieldName: { $nin: [null, ""] },
+                },
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+      },
+    },
+  ]);
+
+  const totalPapers = row?.total[0]?.count ?? 0;
+  const papersWithAnyTopic = row?.withAnyTopic[0]?.count ?? 0;
+  const papersWithPrimaryTopic = row?.withPrimaryTopic[0]?.count ?? 0;
+  const papersWithFullHierarchy = row?.withFullHierarchy[0]?.count ?? 0;
+
+  return {
+    totalPapers,
+    papersWithAnyTopic,
+    papersWithPrimaryTopic,
+    papersWithFullHierarchy,
+    anyTopicCoveragePct: percent(papersWithAnyTopic, totalPapers),
+    primaryTopicCoveragePct: percent(papersWithPrimaryTopic, totalPapers),
+    fullHierarchyCoveragePct: percent(papersWithFullHierarchy, totalPapers),
+  };
+}
+
+function buildRecommendedComparisons(topics: TrendingTopic[]): RecommendedTrendComparison[] {
+  const recommendations: RecommendedTrendComparison[] = [];
+  const used = new Set<string>();
+
+  const add = (items: TrendingTopic[], reason: string, sharedTaxonomy?: RecommendedTrendComparison["sharedTaxonomy"]) => {
+    const unique = items.filter(Boolean).filter((topic, index, arr) => arr.findIndex((x) => x.topic === topic.topic) === index);
+    if (unique.length < 2) return;
+    const key = unique.map((t) => t.topic).sort().join("|");
+    if (used.has(key)) return;
+    used.add(key);
+    recommendations.push({
+      topics: unique.map((t) => t.topic),
+      reason,
+      ...(sharedTaxonomy ? { sharedTaxonomy } : {}),
+      metrics: unique.map((t) => ({
+        topic: t.topic,
+        totalPapers: t.totalPapers,
+        growthRatePct: t.growthRatePct,
+        momentum: t.momentum,
+      })),
+    });
+  };
+
+  add(topics.slice(0, 3), "Top momentum topics in the current filtered corpus.");
+
+  const bySubfield = new Map<string, TrendingTopic[]>();
+  for (const topic of topics) {
+    const subfield = topic.taxonomy?.subfieldName;
+    if (!subfield) continue;
+    bySubfield.set(subfield, [...(bySubfield.get(subfield) ?? []), topic]);
+  }
+  for (const [subfieldName, items] of bySubfield) {
+    if (items.length >= 2) {
+      add(items.slice(0, 3), `Compare closely related topics inside the ${subfieldName} subfield.`, {
+        domainName: items[0]?.taxonomy?.domainName,
+        fieldName: items[0]?.taxonomy?.fieldName,
+        subfieldName,
+      });
+    }
+    if (recommendations.length >= 5) break;
+  }
+
+  const fastest = [...topics].sort((a, b) => b.growthRatePct - a.growthRatePct)[0];
+  const established = [...topics].sort((a, b) => b.totalPapers - a.totalPapers)[0];
+  if (fastest && established && fastest.topic !== established.topic) {
+    add([fastest, established], "Contrast the fastest-growing topic against the most established topic.");
+  }
+
+  return recommendations.slice(0, 5);
+}
+
+function percent(part: number, total: number): number {
+  return total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
+}
+
+function expandOpenAlexEntityId(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  const expanded = new Set<string>([trimmed]);
+  const lastSegment = trimmed.split("/").filter(Boolean).at(-1);
+  if (lastSegment) {
+    expanded.add(lastSegment);
+    expanded.add(lastSegment.toUpperCase());
+  }
+  return Array.from(expanded);
 }
 
 function buildTrendExplainPrompt(args: {

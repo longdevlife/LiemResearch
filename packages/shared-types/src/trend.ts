@@ -19,6 +19,9 @@ export interface TrendFacetBucket {
   id: string;
   name: string;
   count: number;
+  /** OpenAlex entity id/key when available, e.g. https://openalex.org/T123 or T123.
+   *  Kept optional so older name-based facets remain backward compatible. */
+  openalexId?: string;
 }
 
 export interface TrendFacets {
@@ -31,6 +34,38 @@ export interface TrendFacets {
   fields: TrendFacetBucket[];
   subfields: TrendFacetBucket[];
   topics: TrendFacetBucket[];
+}
+
+export interface TrendTopicTaxonomy {
+  openalexTopicId?: string;
+  domainId?: string;
+  domainName?: string;
+  fieldId?: string;
+  fieldName?: string;
+  subfieldId?: string;
+  subfieldName?: string;
+}
+
+export interface TrendTaxonomyCoverage {
+  totalPapers: number;
+  papersWithAnyTopic: number;
+  papersWithPrimaryTopic: number;
+  papersWithFullHierarchy: number;
+  anyTopicCoveragePct: number;
+  primaryTopicCoveragePct: number;
+  fullHierarchyCoveragePct: number;
+}
+
+export interface RecommendedTrendComparison {
+  topics: string[];
+  reason: string;
+  sharedTaxonomy?: Pick<TrendTopicTaxonomy, "domainName" | "fieldName" | "subfieldName">;
+  metrics: Array<{
+    topic: string;
+    totalPapers: number;
+    growthRatePct: number;
+    momentum: number;
+  }>;
 }
 
 /**
@@ -56,6 +91,7 @@ export interface TrendMetrics {
 /** One topic in the trends overview list (GET /trends). */
 export interface TrendingTopic extends TrendMetrics {
   topic: string;
+  taxonomy?: TrendTopicTaxonomy;
   totalPapers: number;
   /** Gap years are filled with count 0; sorted by year ascending. */
   yearlyBreakdown: YearlyCount[];
@@ -81,6 +117,8 @@ export interface TrendsOverview {
   yearlyTotalPapers: YearlyCount[];
   citationTrend: YearlyCitationMetric[];
   facets: TrendFacets;
+  taxonomyCoverage: TrendTaxonomyCoverage;
+  recommendedComparisons: RecommendedTrendComparison[];
   topics: TrendingTopic[];
   risingKeywords: RisingKeyword[];
   computedAt: string;
@@ -88,6 +126,7 @@ export interface TrendsOverview {
 
 export interface TopicComparisonItem extends TrendMetrics {
   topic: string;
+  taxonomy?: TrendTopicTaxonomy;
   totalPapers: number;
   yearlyBreakdown: YearlyCount[];
   citationTrend: YearlyCitationMetric[];
@@ -136,8 +175,11 @@ export interface TrendExplanationResponse {
 /** Response shape of GET /api/v1/trends/:topic — deep dive into one topic. */
 export interface PublicationTrend extends TrendMetrics {
   topic: string;
+  taxonomy?: TrendTopicTaxonomy;
   totalPapers: number;
   yearlyBreakdown: YearlyCount[];
+  citationTrend: YearlyCitationMetric[];
+  facets: TrendFacets;
   /** Same semantics as TrendsOverview.lastCompleteYear. */
   lastCompleteYear: number;
   topJournals: TopItem[];

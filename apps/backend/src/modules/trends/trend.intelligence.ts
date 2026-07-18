@@ -31,6 +31,24 @@ export function toFacetBuckets(rows: Array<{ _id: string | null; count: number }
     .filter((r) => r.count > 0);
 }
 
+export function toTaxonomyFacetBuckets(
+  rows: Array<{ _id: { id?: string | null; name?: string | null } | null; count: number }>,
+  fallback = "unknown",
+): TrendFacetBucket[] {
+  return rows
+    .map((r) => {
+      const openalexId = r._id?.id || undefined;
+      const name = String(r._id?.name || openalexId || fallback);
+      return {
+        id: name,
+        name,
+        count: r.count,
+        ...(openalexId ? { openalexId } : {}),
+      };
+    })
+    .filter((r) => r.count > 0);
+}
+
 export function citationBand(citationCount: number): string {
   if (citationCount >= 1000) return "1000+";
   if (citationCount >= 500) return "500-999";
