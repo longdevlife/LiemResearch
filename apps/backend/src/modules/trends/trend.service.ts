@@ -178,17 +178,19 @@ export const trendService = {
     const yearFrom = query.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
     const lastCompleteYear = Math.min(yearTo, now.getFullYear() - 1);
     const topics = [...new Set(query.topics)];
+    const filtersApplied = describeAppliedTrendFilters({ ...query, yearFrom, yearTo });
 
-    const cacheKey = `${CACHE_VERSION}:compare:${hashKey({ topics, yearFrom, yearTo })}`;
+    const cacheKey = `${CACHE_VERSION}:compare:${hashKey({ topics, yearFrom, yearTo, filtersApplied })}`;
     const cached = await cache.get<TrendCompareResponse>(cacheKey);
     if (cached) return cached;
+
+    const baseMatch = buildTrendMatchStage({ ...query, yearFrom, yearTo });
 
     const items = await Promise.all(
       topics.map(async (topic) => {
         const matchStage = {
-          dataStatus: "active",
+          ...baseMatch,
           "topics.topicName": topic,
-          publicationYear: { $gte: yearFrom, $lte: yearTo },
         };
         const [yearGroups, citationTrend] = await Promise.all([
           PaperModel.aggregate<{ _id: number; count: number }>([

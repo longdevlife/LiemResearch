@@ -22,11 +22,11 @@ export interface QualityResult {
 // their stored uploadCreditReward (see paper.service updateStatus/updatePaper) so
 // clawback stays symmetric; un-granted papers pick up the new amount on next score.
 export const QUALITY_TIERS = [
-  { tier: 0, name: "Không hợp lệ", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
-  { tier: 1, name: "Cơ Bản", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 60 },
-  { tier: 2, name: "Chuẩn Học Thuật", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 90 },
-  { tier: 3, name: "Giá Trị Cao", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 130 },
-  { tier: 4, name: "Tinh Hoa", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 180 },
+  { tier: 0, name: "Invalid", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
+  { tier: 1, name: "Basic", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 60 },
+  { tier: 2, name: "Academic Standard", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 90 },
+  { tier: 3, name: "High Value", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 130 },
+  { tier: 4, name: "Elite", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 180 },
 ];
 
 function hasValue(value: string | undefined | null): boolean {

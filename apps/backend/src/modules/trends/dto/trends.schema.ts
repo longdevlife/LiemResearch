@@ -71,6 +71,8 @@ export const TopicTrendQuerySchema = z
 
 export type TopicTrendQuery = z.infer<typeof TopicTrendQuerySchema>;
 
+const { topics: _compareTopicsFilter, ...compareFacetFilters } = trendFacetFiltersSchema;
+
 export const TrendCompareQuerySchema = TopicTrendQuerySchema.and(
   z.object({
     topics: z
@@ -82,6 +84,7 @@ export const TrendCompareQuerySchema = TopicTrendQuerySchema.and(
           .filter(Boolean),
       )
       .pipe(z.array(z.string().min(1)).min(2).max(5)),
+    ...compareFacetFilters,
   }),
 );
 

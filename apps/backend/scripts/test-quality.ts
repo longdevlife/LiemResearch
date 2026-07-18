@@ -35,7 +35,7 @@ function runTests() {
     needsDuplicateReview: false,
   };
   const result2 = calculatePaperQuality(case2);
-  console.log("\nCase 2 (High Quality / Tinh Hoa):");
+  console.log("\nCase 2 (High Quality / Elite):");
   console.log(`Quality Score: ${result2.qualityScore} / 100`);
   console.log(`Tier: ${result2.qualityTier} (Download Cost: ${result2.downloadCost}, Reward: ${result2.uploadCreditReward})`);
   if (result2.qualityTier < 3) console.error("Case 2 Failed! Expected at least Tier 3 or 4");
@@ -55,7 +55,7 @@ function runTests() {
     needsDuplicateReview: false,
   };
   const result3 = calculatePaperQuality(case3);
-  console.log("\nCase 3 (Standard Academic / Chuẩn Học Thuật):");
+  console.log("\nCase 3 (Standard Academic):");
   console.log(`Quality Score: ${result3.qualityScore} / 100`);
   console.log(`Tier: ${result3.qualityTier} (Download Cost: ${result3.downloadCost}, Reward: ${result3.uploadCreditReward})`);
   
