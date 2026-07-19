@@ -5,6 +5,7 @@ import {
   TrendCompareQuerySchema,
   TrendExplainBodySchema,
   TrendRelationshipQuerySchema,
+  TrendTopicCandidatesQuerySchema,
   TrendsOverviewQuerySchema,
 } from "./dto/trends.schema.js";
 
@@ -46,6 +47,18 @@ export const trendController = {
     }
 
     const data = await trendService.compare(parsed.data);
+    res.json({ success: true, data });
+  },
+
+  /** GET /api/v1/trends/topic-candidates?q=nlp&yearFrom=&yearTo= */
+  async topicCandidates(req: Request, res: Response, next: NextFunction) {
+    const parsed = TrendTopicCandidatesQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await trendService.topicCandidates(parsed.data);
     res.json({ success: true, data });
   },
 

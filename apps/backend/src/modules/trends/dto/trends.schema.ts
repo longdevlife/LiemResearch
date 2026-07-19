@@ -90,6 +90,21 @@ export const TrendCompareQuerySchema = TopicTrendQuerySchema.and(
 
 export type TrendCompareQuery = z.infer<typeof TrendCompareQuerySchema>;
 
+export const TrendTopicCandidatesQuerySchema = z
+  .object({
+    q: z.string().trim().min(1).max(120),
+    yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
+    yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+    limit: z.coerce.number().int().min(5).max(50).default(20),
+    minPapers: z.coerce.number().int().min(1).max(1000).default(1),
+    ...trendFacetFiltersSchema,
+  })
+  .refine((q) => q.yearFrom === undefined || q.yearTo === undefined || q.yearFrom <= q.yearTo, {
+    message: "yearFrom must be <= yearTo",
+  });
+
+export type TrendTopicCandidatesQuery = z.infer<typeof TrendTopicCandidatesQuerySchema>;
+
 export const TrendRelationshipQuerySchema = TopicTrendQuerySchema.and(
   z.object({
     topic: z.string().trim().min(1),

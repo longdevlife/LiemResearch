@@ -140,6 +140,20 @@ export interface TrendCompareResponse {
   computedAt: string;
 }
 
+export interface TrendTopicCandidate extends TrendingTopic {
+  matchedBy: "topic" | "taxonomy";
+}
+
+export interface TrendTopicCandidatesResponse {
+  query: string;
+  yearFrom: number;
+  yearTo: number;
+  lastCompleteYear: number;
+  totalCandidates: number;
+  topics: TrendTopicCandidate[];
+  computedAt: string;
+}
+
 export interface TopicRelationshipNode {
   id: string;
   label: string;

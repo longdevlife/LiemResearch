@@ -1,6 +1,7 @@
 import type {
   PublicationTrend,
   TrendExplanationResponse,
+  TrendTopicCandidatesResponse,
   TopicRelationshipResponse,
   TrendCompareResponse,
   TrendsOverview,
@@ -35,6 +36,12 @@ export interface TrendCompareParams extends Omit<TrendsOverviewParams, "limit" |
   yearTo?: number;
 }
 
+export interface TrendTopicCandidatesParams extends Omit<TrendsOverviewParams, "sortBy"> {
+  q: string;
+  limit?: number;
+  minPapers?: number;
+}
+
 export interface TrendRelationshipParams {
   topic: string;
   yearFrom?: number;
@@ -49,9 +56,29 @@ export interface TrendExplainInput extends Omit<TrendsOverviewParams, "limit" | 
   language?: "en" | "vi";
 }
 
+function serializeTrendParams(params: Record<string, unknown>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      const cleaned = value.map(String).map((item) => item.trim()).filter(Boolean);
+      if (cleaned.length > 0) searchParams.set(key, cleaned.join(","));
+      continue;
+    }
+    const stringValue = String(value).trim();
+    if (stringValue.length > 0) searchParams.set(key, stringValue);
+  }
+
+  return searchParams.toString();
+}
+
 export const trendsApi = {
   async overview(params?: TrendsOverviewParams): Promise<TrendsOverview> {
-    const res = await api.get("/trends", { params });
+    const res = await api.get("/trends", {
+      params,
+      paramsSerializer: { serialize: serializeTrendParams },
+    });
     return res.data.data;
   },
   async topic(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number }): Promise<PublicationTrend> {
@@ -61,6 +88,14 @@ export const trendsApi = {
   async compare(params: TrendCompareParams): Promise<TrendCompareResponse> {
     const res = await api.get("/trends/compare", {
       params: { ...params, topics: params.topics.join(",") },
+      paramsSerializer: { serialize: serializeTrendParams },
+    });
+    return res.data.data;
+  },
+  async topicCandidates(params: TrendTopicCandidatesParams): Promise<TrendTopicCandidatesResponse> {
+    const res = await api.get("/trends/topic-candidates", {
+      params,
+      paramsSerializer: { serialize: serializeTrendParams },
     });
     return res.data.data;
   },

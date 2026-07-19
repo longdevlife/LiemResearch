@@ -6,6 +6,8 @@ import type {
   TrendExplanationResponse,
   TopicRelationshipResponse,
   TrendCompareResponse,
+  TrendTopicCandidate,
+  TrendTopicCandidatesResponse,
   TrendingTopic,
   TrendFacets,
   TrendTaxonomyCoverage,
@@ -32,6 +34,7 @@ import { computeMetrics, fillMissingYears, yoyGrowthPct, truncateToCompleteYears
 import { buildTrendMatchStage, buildUnwoundTopicMatch, describeAppliedTrendFilters } from "./trend.filters.js";
 import type {
   TopicTrendQuery,
+  TrendTopicCandidatesQuery,
   TrendCompareQuery,
   TrendExplainBody,
   TrendRelationshipQuery,
@@ -226,6 +229,95 @@ export const trendService = {
     };
 
     await cache.set(cacheKey, result, CACHE_TTL_SECONDS);
+    return result;
+  },
+
+  /** GET /trends/topic-candidates — search comparable topics inside the current Data Scope. */
+  async topicCandidates(query: TrendTopicCandidatesQuery): Promise<TrendTopicCandidatesResponse> {
+    const startedAt = Date.now();
+    const now = new Date();
+    const yearTo = query.yearTo ?? now.getFullYear();
+    const yearFrom = query.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
+    const lastCompleteYear = Math.min(yearTo, now.getFullYear() - 1);
+    const filtersApplied = describeAppliedTrendFilters({ ...query, yearFrom, yearTo });
+    const searchText = query.q.trim();
+
+    const cacheKey = `${CACHE_VERSION}:topic-candidates:${hashKey({
+      q: searchText.toLowerCase(),
+      yearFrom,
+      yearTo,
+      limit: query.limit,
+      minPapers: query.minPapers,
+      filtersApplied,
+    })}`;
+    const cached = await cache.get<TrendTopicCandidatesResponse>(cacheKey);
+    if (cached) return cached;
+
+    const filterInput = { ...query, yearFrom, yearTo };
+    const matchStage = buildTrendMatchStage(filterInput);
+    const unwoundTopicMatch = buildUnwoundTopicMatch(filterInput);
+    const searchRegex = new RegExp(escapeRegExp(searchText), "i");
+    const postUnwindMatch: Record<string, unknown> = {
+      ...(Object.keys(unwoundTopicMatch).length > 0 ? unwoundTopicMatch : {}),
+      $or: [
+        { "topics.topicName": searchRegex },
+        { "topics.domainName": searchRegex },
+        { "topics.fieldName": searchRegex },
+        { "topics.subfieldName": searchRegex },
+      ],
+    };
+
+    const groups = await groupYearlyCounts(
+      "$topics.topicName",
+      "$topics",
+      matchStage,
+      query.minPapers,
+      topicTaxonomyProjection(),
+      postUnwindMatch,
+    );
+
+    const lowerQuery = searchText.toLowerCase();
+    const candidates: TrendTopicCandidate[] = groups.map((g) => {
+      const yearlyBreakdown = fillMissingYears(g.years, yearFrom, yearTo);
+      const taxonomy = compactTaxonomy(g.taxonomy);
+      return {
+        topic: g._id,
+        taxonomy,
+        totalPapers: g.total,
+        yearlyBreakdown,
+        matchedBy: g._id.toLowerCase().includes(lowerQuery) ? "topic" : "taxonomy",
+        ...computeMetrics(yearlyBreakdown, lastCompleteYear),
+      };
+    });
+
+    candidates.sort((a, b) => {
+      const rankA = candidateMatchRank(a, lowerQuery);
+      const rankB = candidateMatchRank(b, lowerQuery);
+      return rankA - rankB || b.momentum - a.momentum || b.totalPapers - a.totalPapers;
+    });
+
+    const result: TrendTopicCandidatesResponse = {
+      query: searchText,
+      yearFrom,
+      yearTo,
+      lastCompleteYear,
+      totalCandidates: candidates.length,
+      topics: candidates.slice(0, query.limit),
+      computedAt: now.toISOString(),
+    };
+
+    await cache.set(cacheKey, result, CACHE_TTL_SECONDS);
+    logger.info(
+      {
+        durationMs: Date.now() - startedAt,
+        q: searchText,
+        yearFrom,
+        yearTo,
+        filtersApplied,
+        candidates: candidates.length,
+      },
+      "trend topic candidates served",
+    );
     return result;
   },
 
@@ -779,6 +871,24 @@ function buildRecommendedComparisons(topics: TrendingTopic[]): RecommendedTrendC
 
 function percent(part: number, total: number): number {
   return total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
+}
+
+function candidateMatchRank(candidate: TrendTopicCandidate, query: string): number {
+  const topic = candidate.topic.toLowerCase();
+  if (topic === query) return 0;
+  if (topic.startsWith(query)) return 1;
+  if (topic.includes(query)) return 2;
+  const taxonomyText = [
+    candidate.taxonomy?.domainName,
+    candidate.taxonomy?.fieldName,
+    candidate.taxonomy?.subfieldName,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (taxonomyText.includes(query)) return 3;
+  return 4;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function expandOpenAlexEntityId(value: string): string[] {

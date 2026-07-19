@@ -7,6 +7,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { queryClient } from "./services/query-client";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./theme/globals.css";
 
@@ -17,10 +18,12 @@ ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-          <Toaster richColors closeButton position="top-right" />
-        </BrowserRouter>
+        <TooltipProvider delayDuration={150}>
+          <BrowserRouter>
+            <App />
+            <Toaster richColors closeButton position="top-right" />
+          </BrowserRouter>
+        </TooltipProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </ThemeProvider>
