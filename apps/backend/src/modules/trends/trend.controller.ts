@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { trendService } from "./trend.service.js";
 import {
+  TrendExplainHistoryQuerySchema,
   TopicTrendQuerySchema,
   TrendCompareQuerySchema,
   TrendExplainBodySchema,
@@ -82,7 +83,19 @@ export const trendController = {
       return;
     }
 
-    const data = await trendService.explain(parsed.data);
+    const data = await trendService.explain(parsed.data, req.user?.sub);
+    res.json({ success: true, data });
+  },
+
+  /** GET /api/v1/trends/explain/history — user's saved explain runs. */
+  async explainHistory(req: Request, res: Response, next: NextFunction) {
+    const parsed = TrendExplainHistoryQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      next(parsed.error);
+      return;
+    }
+
+    const data = await trendService.explainHistory(req.user!.sub, parsed.data);
     res.json({ success: true, data });
   },
 };

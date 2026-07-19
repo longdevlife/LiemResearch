@@ -453,7 +453,7 @@ export function CompareTab({
               ? topicCandidatesQuery.isFetching
                 ? `Searching all scoped topics for "${debouncedSearchTerm}"...`
                 : `Found ${formatNumber(totalCandidateCount)} scoped topic candidates`
-              : `Showing ${formatNumber(visibleCandidates.length)} top candidate topics from ${formatNumber(data.totalPapersInWindow)} scoped papers`}
+              : `Showing ${formatNumber(visibleCandidates.length)} top candidates from ${formatNumber(data.uniqueTopicsInScope ?? data.topics.length)} unique scoped topics`}
           </div>
         </div>
 
@@ -549,7 +549,7 @@ export function CompareTab({
                 <span className="text-[10.5px] font-bold text-slate-400 dark:text-slate-500">
                   {isRemoteCandidateSearch
                     ? "Search results come from the backend candidate index for the current Data Scope."
-                    : "Only the strongest scoped topics are shown here. Use topic search above or change Data Scope to discover more candidates."}
+                    : "Only the strongest scoped topics are shown here. Use topic search above to browse the wider scoped topic set."}
                 </span>
               )}
 

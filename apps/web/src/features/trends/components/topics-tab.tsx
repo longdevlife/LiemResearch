@@ -382,10 +382,10 @@ export function TopicsTab({
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Ranked Topics by Scope
+                    Top Ranked Topics by Scope
                   </h3>
                   <p className="text-xs text-slate-550 dark:text-slate-400 mt-0.5 font-medium">
-                    Core research areas within scope. Click headers to sort.
+                    Showing top {formatNumber(sortedTopics.length)} of {formatNumber(data.uniqueTopicsInScope ?? data.topics.length)} unique topics in this scope. Use Compare topic search to browse more.
                   </p>
                 </div>
                 <span className="text-[9px] bg-blue-500/10 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200/30 px-2 py-1 rounded font-bold uppercase tracking-wider">

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { Sparkles, Search, Calendar, FileText, Loader2, ChevronDown, ChevronRight, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useTrendsOverview, useTrendCompare, useTrendRelationships, useExplainTrend } from "@/features/trends/hooks/use-trends";
+import { useTrendsOverview, useTrendCompare, useTrendRelationships, useExplainTrend, useTrendExplainHistory } from "@/features/trends/hooks/use-trends";
 import { getRisingKeywordTarget, getTopicTrendTarget } from "./trends.navigation";
 import { FilterChip, type RisingKeywordRow, type TrendBarChartDatum } from "@/features/trends/components/trends-shared.components";
 import { OverviewTab } from "@/features/trends/components/overview-tab";
@@ -317,11 +317,30 @@ export function TrendsPage() {
   );
 
   const relationshipsQuery = useTrendRelationships(
-    { topic: activeFocusTopic, yearFrom, yearTo, limit: 12 },
+    {
+      topic: activeFocusTopic,
+      yearFrom,
+      yearTo,
+      limit: 12,
+      domains,
+      fields,
+      subfields,
+      topics: topicsFilter,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
+      paperKinds,
+      openAccessStatuses,
+      providers,
+      sources,
+      citationBands,
+    },
     !!activeFocusTopic
   );
 
   const explainMutation = useExplainTrend();
+  const explainHistoryQuery = useTrendExplainHistory({ topic: activeFocusTopic, limit: 5 }, activeTab === "ai" && !!activeFocusTopic);
 
 
   // Taxonomy selector clear and toggle actions
@@ -864,7 +883,7 @@ export function TrendsPage() {
                   <p className="font-bold text-slate-900 dark:text-slate-200">Current analysis dataset basis</p>
                   <p className="font-medium text-slate-650 dark:text-slate-350">
                     {isFetching && !isLoading ? "Updating scoped dataset... " : ""}
-                    Analyzing <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{formatNumber(data.totalPapersInWindow)}</strong> active papers. Trend metrics use complete years through <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{data.lastCompleteYear}</strong>; {yearTo > data.lastCompleteYear ? `${yearTo} is shown as YTD.` : ""}.
+                    Analyzing <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{formatNumber(data.totalPapersInWindow)}</strong> active papers across <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{formatNumber(data.uniqueTopicsInScope ?? data.topics.length)}</strong> unique topics. Trend metrics use complete years through <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{data.lastCompleteYear}</strong>; {yearTo > data.lastCompleteYear ? `${yearTo} is shown as YTD.` : ""}.
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-450">
                     Scope: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{scopeString}</strong>
@@ -1057,6 +1076,7 @@ export function TrendsPage() {
                 setFocusTopic={setFocusTopic}
                 relationshipsQuery={relationshipsQuery}
                 explainMutation={explainMutation}
+                explainHistoryQuery={explainHistoryQuery}
                 yearFrom={yearFrom}
                 yearTo={yearTo}
                 domains={domains}

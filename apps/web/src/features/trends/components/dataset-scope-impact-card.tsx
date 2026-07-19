@@ -7,6 +7,7 @@ interface DatasetScopeImpactCardProps {
   clearAllFilters?: () => void;
   isUpdating: boolean;
   totalInWindow: number;
+  uniqueTopicsInScope: number;
   scopeString: string;
   yearFrom: number;
   yearTo: number;
@@ -18,6 +19,7 @@ export function DatasetScopeImpactCard({
   clearAllFilters,
   isUpdating,
   totalInWindow,
+  uniqueTopicsInScope,
   scopeString,
   yearFrom,
   yearTo,
@@ -68,6 +70,14 @@ export function DatasetScopeImpactCard({
               : hasAnyFilter
                 ? "Current filtered scope"
                 : "Full active dataset"}
+          </p>
+        </div>
+        <div>
+          <div className="text-lg font-extrabold text-slate-900 dark:text-white leading-none tracking-tight">
+            {formatNumber(uniqueTopicsInScope)} unique topics
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-wider">
+            Available after current filters
           </p>
         </div>
 
