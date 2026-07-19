@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_mobile/features/bookmarks/data/bookmarks_api.dart';
 import 'package:flutter_mobile/features/papers/data/papers_api.dart';
+import 'package:flutter_mobile/features/papers/data/papers_models.dart';
 import 'package:flutter_mobile/features/projects/data/projects_api.dart';
 import 'package:flutter_mobile/features/quality/data/quality_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -255,7 +257,14 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined, size: 20),
-            onPressed: () {},
+            onPressed: () async {
+              final link = paperQuery.value?.paperLink ?? paperQuery.value?.externalIds.openalexId ?? 'https://openalex.org/${widget.id}';
+              await Clipboard.setData(ClipboardData(text: link));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Paper link copied to clipboard')),
+              );
+            },
           )
         ],
       ),
@@ -281,30 +290,66 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: paper.authors.take(3).map((author) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.person, size: 12, color: Color(0xFF06B6D4)),
-                            const SizedBox(width: 6),
-                            Text(
-                              author.displayName,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      ...paper.authors.take(3).map((author) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person, size: 12, color: Color(0xFF06B6D4)),
+                              const SizedBox(width: 6),
+                              Text(
+                                author.displayName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                        );
+                      }),
+                      if (paper.authors.length > 3)
+                        TextButton(
+                          onPressed: () {
+                            unawaited(showModalBottomSheet<void>(
+                              context: context,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              builder: (context) => Container(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('All Authors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: paper.authors.length,
+                                        itemBuilder: (context, idx) => ListTile(
+                                          leading: const CircleAvatar(child: Icon(Icons.person)),
+                                          title: Text(paper.authors[idx].displayName),
+                                          subtitle: Text('Author Position: ${paper.authors[idx].position}'),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ));
+                          },
+                          child: Text('View all (${paper.authors.length})', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
-                      );
-                    }).toList(),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -384,6 +429,8 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  OpenAlexMetadataCard(paper: paper),
+                  const SizedBox(height: 20),
 
                   // Actions panel
                   Container(
@@ -406,7 +453,11 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                         _ActionButton(
                           icon: Icons.person_add,
                           label: 'Follow',
-                          onTap: () {},
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Now following updates for: ${paper.title}')),
+                            );
+                          },
                           isDark: isDark,
                         ),
                         _ActionButton(
@@ -946,7 +997,7 @@ class _ReferencesTabContent extends ConsumerWidget {
                   side: BorderSide(color: theme.dividerColor),
                 ),
                 child: InkWell(
-                  onTap: () => context.push('/paper/${reference.id}'),
+                  onTap: () => unawaited(context.push('/paper/${reference.id}')),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -1012,6 +1063,117 @@ class _ReferencesTabContent extends ConsumerWidget {
       },
       loading: () => const AppLoading(message: 'Loading references...'),
       error: (error, _) => AppErrorState(message: error.toString()),
+    );
+  }
+}
+
+class OpenAlexMetadataCard extends StatelessWidget {
+  const OpenAlexMetadataCard({required this.paper, super.key});
+  final Paper paper;
+
+  Widget _buildMetaRow(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final primaryTopic = paper.topics.firstWhere(
+      (t) => t.isPrimary == true,
+      orElse: () => paper.topics.isNotEmpty ? paper.topics.first : const PaperTopic(topicName: 'Unknown'),
+    );
+    final hasTaxonomy = paper.topics.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.shield, color: Color(0xFF06B6D4), size: 16),
+              SizedBox(width: 8),
+              Text(
+                'OpenAlex Metadata',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          _buildMetaRow('Year', paper.publicationYear.toString(), isDark),
+          _buildMetaRow('Type', paper.paperKind ?? 'Not available', isDark),
+          _buildMetaRow('Source', paper.journalName ?? 'Not available', isDark),
+          _buildMetaRow('Language', paper.language ?? 'Not available', isDark),
+          _buildMetaRow('Cited by', paper.citationCount.toString(), isDark),
+          if (paper.fwci != null)
+            _buildMetaRow('FWCI', paper.fwci!.toStringAsFixed(2), isDark),
+          if (paper.relatedWorksCount != null)
+            _buildMetaRow('Related works', paper.relatedWorksCount.toString(), isDark),
+          if (paper.primaryProvider != null)
+            _buildMetaRow('Provider', paper.primaryProvider!, isDark),
+          if (paper.openAccessStatus != null)
+            _buildMetaRow('Open Access', paper.openAccessStatus!.toUpperCase(), isDark),
+          if (paper.externalIds.doi != null)
+            _buildMetaRow('DOI', paper.externalIds.doi!, isDark),
+          if (paper.paperLink != null)
+            _buildMetaRow('Link', paper.paperLink!, isDark),
+
+          const Divider(height: 20),
+          const Text(
+            'TAXONOMY SCOPE',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 8),
+          if (!hasTaxonomy)
+            const Text(
+              'OpenAlex taxonomy metadata is not backfilled yet for this publication.',
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFFEF4444)),
+            )
+          else ...[
+            _buildMetaRow('Topic', primaryTopic.topicName, isDark),
+            if (primaryTopic.subfieldName != null)
+              _buildMetaRow('Subfield', primaryTopic.subfieldName!, isDark),
+            if (primaryTopic.fieldName != null)
+              _buildMetaRow('Field', primaryTopic.fieldName!, isDark),
+            if (primaryTopic.domainName != null)
+              _buildMetaRow('Domain', primaryTopic.domainName!, isDark),
+          ],
+        ],
+      ),
     );
   }
 }

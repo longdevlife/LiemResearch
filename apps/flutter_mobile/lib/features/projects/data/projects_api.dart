@@ -51,8 +51,14 @@ class ProjectView {
       title: (json['title'] ?? 'Untitled project').toString(),
       description: json['description']?.toString(),
       ownerId: json['ownerId']?.toString(),
-      members: json['members'] as List<dynamic>? ?? [],
-      papers: json['papers'] as List<dynamic>? ?? [],
+      members: (json['members'] as List<dynamic>? ?? [])
+          .map(ProjectMemberRef.fromUnknown)
+          .where((member) => member.id.isNotEmpty)
+          .toList(),
+      papers: (json['papers'] as List<dynamic>? ?? [])
+          .map(ProjectPaperRef.fromUnknown)
+          .where((paper) => paper.id.isNotEmpty)
+          .toList(),
     );
   }
 
@@ -60,8 +66,76 @@ class ProjectView {
   final String title;
   final String? description;
   final String? ownerId;
-  final List<dynamic> members;
-  final List<dynamic> papers;
+  final List<ProjectMemberRef> members;
+  final List<ProjectPaperRef> papers;
+}
+
+class ProjectPaperRef {
+  const ProjectPaperRef({
+    required this.id,
+    required this.title,
+    this.publicationYear,
+    this.citationCount,
+  });
+
+  factory ProjectPaperRef.fromUnknown(Object? value) {
+    if (value is String) {
+      return ProjectPaperRef(id: value, title: 'Paper $value');
+    }
+
+    if (value is! Map<String, dynamic>) {
+      return const ProjectPaperRef(id: '', title: 'Unknown paper');
+    }
+
+    final rawPaper = value['targetId'] is Map<String, dynamic>
+        ? value['targetId'] as Map<String, dynamic>
+        : value;
+
+    final id = (rawPaper['_id'] ?? rawPaper['id'] ?? value['targetId'] ?? '').toString();
+    return ProjectPaperRef(
+      id: id,
+      title: (rawPaper['title'] ?? 'Untitled paper').toString(),
+      publicationYear: (rawPaper['publicationYear'] as num?)?.toInt(),
+      citationCount: (rawPaper['citationCount'] as num?)?.toInt(),
+    );
+  }
+
+  final String id;
+  final String title;
+  final int? publicationYear;
+  final int? citationCount;
+}
+
+class ProjectMemberRef {
+  const ProjectMemberRef({
+    required this.id,
+    required this.displayName,
+  });
+
+  factory ProjectMemberRef.fromUnknown(Object? value) {
+    if (value is String) {
+      return ProjectMemberRef(id: value, displayName: value);
+    }
+
+    if (value is! Map<String, dynamic>) {
+      return const ProjectMemberRef(id: '', displayName: 'Member');
+    }
+
+    final rawUser = value['userId'] is Map<String, dynamic>
+        ? value['userId'] as Map<String, dynamic>
+        : value;
+    final id = (rawUser['_id'] ?? rawUser['id'] ?? value['userId'] ?? '').toString();
+    final name = rawUser['displayName'] ??
+        rawUser['fullName'] ??
+        rawUser['name'] ??
+        rawUser['email'] ??
+        'Member';
+
+    return ProjectMemberRef(id: id, displayName: name.toString());
+  }
+
+  final String id;
+  final String displayName;
 }
 
 class ChatSender {
@@ -201,10 +275,46 @@ class ProjectsApi {
     );
   }
 
+  Future<ProjectView> update(
+    String projectId, {
+    String? title,
+    String? description,
+  }) async {
+    final res = await _dio.put<Map<String, dynamic>>(
+      ApiRoutes.projectsUpdate(projectId),
+      data: {
+        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+        if (description != null) 'description': description.trim(),
+      },
+    );
+    return ProjectView.fromJson(
+      (res.data?['data'] as Map<String, dynamic>?) ?? {},
+    );
+  }
+
+  Future<void> delete(String projectId) =>
+      _dio.delete<void>(ApiRoutes.projectsDelete(projectId));
+
   Future<void> addPaper(String projectId, String paperId) => _dio.post<void>(
     ApiRoutes.projectsAddPaper(projectId),
     data: {'paperId': paperId},
   );
+
+  Future<void> removePaper(String projectId, String paperId) =>
+      _dio.delete<void>(ApiRoutes.projectsRemovePaper(projectId, paperId));
+
+  Future<void> addMember(
+    String projectId, {
+    required String targetId,
+    String role = 'member',
+  }) =>
+      _dio.post<void>(
+        ApiRoutes.projectsAddMember(projectId),
+        data: {'targetKind': 'User', 'targetId': targetId, 'role': role},
+      );
+
+  Future<void> removeMember(String projectId, String memberId) =>
+      _dio.delete<void>(ApiRoutes.projectsRemoveMember(projectId, memberId));
 
   Future<List<ProjectChatMessage>> listChat(
     String projectId, {

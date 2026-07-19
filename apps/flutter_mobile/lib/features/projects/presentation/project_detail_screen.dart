@@ -5,8 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/auth/providers/auth_controller.dart';
+import 'package:flutter_mobile/features/gaps/data/gaps_api.dart';
 import 'package:flutter_mobile/features/projects/data/projects_api.dart';
+import 'package:flutter_mobile/features/reports/data/reports_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 enum _ChatMode { team, privateAi, teamAi }
@@ -100,118 +103,58 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   Widget build(BuildContext context) {
     final project = ref.watch(projectProvider(widget.id));
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: project.maybeWhen(
-          data: (data) => Text(data.title),
-          orElse: () => const Text('Project detail'),
+    return DefaultTabController(
+      length: 6,
+      child: Scaffold(
+        backgroundColor: colors.surface,
+        appBar: AppBar(
+          title: project.maybeWhen(
+            data: (data) => Text(data.title),
+            orElse: () => const Text('Project Workspace'),
+          ),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            indicatorColor: Color(0xFF06B6D4),
+            labelColor: Color(0xFF06B6D4),
+            unselectedLabelColor: Color(0xFF94A3B8),
+            tabs: [
+              Tab(text: 'Papers'),
+              Tab(text: 'Chat'),
+              Tab(text: 'Reports'),
+              Tab(text: 'Gaps'),
+              Tab(text: 'Members'),
+              Tab(text: 'Settings'),
+            ],
+          ),
         ),
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: project.when(
-        data: (data) => Column(
-          children: [
-            _ChannelSwitcher(mode: _mode, onChanged: _selectMode),
-            Expanded(
-              child: _ChatPanel(
+        body: project.when(
+          data: (data) => TabBarView(
+            children: [
+              _PapersTab(project: data, projectId: widget.id, ref: ref),
+              _ChatTab(
                 projectId: widget.id,
+                project: data,
                 mode: _mode,
-                ownerId: data.ownerId,
-                paperCount: data.papers.length,
-                controller: _scrollController,
-                onRefresh: _refresh,
+                selectMode: _selectMode,
+                scrollController: _scrollController,
+                refresh: _refresh,
+                messageController: _message,
+                sending: _sending,
+                sendError: _sendError,
+                sendFn: _send,
+                colors: colors,
               ),
-            ),
-            if (_sendError != null)
-              Container(
-                width: double.infinity,
-                color: Theme.of(context).colorScheme.errorContainer,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(
-                  _sendError!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest.withValues(
-                            alpha: .5,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: colors.outlineVariant.withValues(alpha: .18),
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _message,
-                          minLines: 1,
-                          maxLines: 4,
-                          maxLength: 2000,
-                          textInputAction: TextInputAction.newline,
-                          decoration: InputDecoration(
-                            hintText: _mode == _ChatMode.team
-                                ? 'Message your project team...'
-                                : 'Ask about project papers...',
-                            counterText: '',
-                            border: InputBorder.none,
-                            prefixIcon: Icon(
-                              _mode == _ChatMode.team
-                                  ? Icons.forum_outlined
-                                  : Icons.auto_awesome_rounded,
-                              size: 20,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox.square(
-                      dimension: 48,
-                      child: IconButton.filled(
-                        style: IconButton.styleFrom(
-                          shape: const CircleBorder(),
-                          backgroundColor: const Color(0xFF1D4ED8),
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: _sending
-                            ? null
-                            : () => _send(data.papers.length),
-                        icon: _sending
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.send_rounded),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+              _ReportsTab(projectId: widget.id, ref: ref),
+              _GapsTab(projectId: widget.id, ref: ref),
+              _MembersTab(project: data, ref: ref),
+              _SettingsTab(project: data, ref: ref),
+            ],
+          ),
+          loading: () =>
+              const AppLoading(fullScreen: true, message: 'Loading project workspace...'),
+          error: (error, _) => AppErrorState(message: error.toString()),
         ),
-        loading: () =>
-            const AppLoading(fullScreen: true, message: 'Loading project...'),
-        error: (error, _) => AppErrorState(message: error.toString()),
       ),
     );
   }
@@ -972,6 +915,597 @@ class _EmptyChat extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ChatTab extends StatelessWidget {
+  const _ChatTab({
+    required this.projectId,
+    required this.project,
+    required this.mode,
+    required this.selectMode,
+    required this.scrollController,
+    required this.refresh,
+    required this.messageController,
+    required this.sending,
+    required this.sendError,
+    required this.sendFn,
+    required this.colors,
+  });
+
+  final String projectId;
+  final ProjectView project;
+  final _ChatMode mode;
+  final ValueChanged<_ChatMode> selectMode;
+  final ScrollController scrollController;
+  final VoidCallback refresh;
+  final TextEditingController messageController;
+  final bool sending;
+  final String? sendError;
+  final Future<void> Function(int) sendFn;
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ChannelSwitcher(mode: mode, onChanged: selectMode),
+        Expanded(
+          child: _ChatPanel(
+            projectId: projectId,
+            mode: mode,
+            ownerId: project.ownerId,
+            paperCount: project.papers.length,
+            controller: scrollController,
+            onRefresh: refresh,
+          ),
+        ),
+        if (sendError != null)
+          Container(
+            width: double.infinity,
+            color: colors.errorContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              sendError!,
+              style: TextStyle(color: colors.onErrorContainer),
+            ),
+          ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest.withValues(alpha: .5),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: colors.outlineVariant.withValues(alpha: .18),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: messageController,
+                      minLines: 1,
+                      maxLines: 4,
+                      maxLength: 2000,
+                      textInputAction: TextInputAction.newline,
+                      decoration: InputDecoration(
+                        hintText: mode == _ChatMode.team
+                            ? 'Message your project team...'
+                            : 'Ask about project papers...',
+                        counterText: '',
+                        border: InputBorder.none,
+                        prefixIcon: Icon(
+                          mode == _ChatMode.team
+                              ? Icons.forum_outlined
+                              : Icons.auto_awesome_rounded,
+                          size: 20,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox.square(
+                  dimension: 48,
+                  child: IconButton.filled(
+                    style: IconButton.styleFrom(
+                      shape: const CircleBorder(),
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: sending ? null : () => sendFn(project.papers.length),
+                    icon: sending
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send_rounded),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PapersTab extends StatelessWidget {
+  const _PapersTab({
+    required this.project,
+    required this.projectId,
+    required this.ref,
+  });
+
+  final ProjectView project;
+  final String projectId;
+  final WidgetRef ref;
+
+  Future<void> _remove(BuildContext context, String paperId) async {
+    try {
+      await ref.read(projectsApiProvider).removePaper(projectId, paperId);
+      ref.invalidate(projectProvider(projectId));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paper removed from project.')),
+      );
+    } on Object catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to remove paper: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (project.papers.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.article_outlined, size: 48, color: Color(0xFF94A3B8)),
+              const SizedBox(height: 12),
+              const Text('No papers inside this project workspace yet.', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              const Text(
+                'Search for publications outside and tap "Add" button to associate them here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => context.push('/search'),
+                icon: const Icon(Icons.search, size: 16),
+                label: const Text('Search publications'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: project.papers.length,
+      itemBuilder: (context, idx) {
+        final paper = project.papers[idx];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Theme.of(context).dividerColor),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => context.push('/paper/${paper.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    paper.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Year: ${paper.publicationYear ?? 'N/A'} · Citations: ${paper.citationCount ?? 0}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                        onPressed: () => _remove(context, paper.id),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ReportsTab extends StatelessWidget {
+  const _ReportsTab({required this.projectId, required this.ref});
+  final String projectId;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final query = ref.watch(reportsProvider(ReportsParams(projectId: projectId)));
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF06B6D4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => context.push('/reports?create=true&projectId=$projectId'),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Generate RAG Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: query.when(
+            data: (data) {
+              if (data.reports.isEmpty) {
+                return const Center(child: Text('No analytical reports generated yet.', style: TextStyle(fontStyle: FontStyle.italic)));
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: data.reports.length,
+                itemBuilder: (context, idx) {
+                  final report = data.reports[idx];
+                  return Card(
+                    elevation: 0,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Theme.of(context).dividerColor),
+                    ),
+                    child: ListTile(
+                      title: Text(report.topic ?? 'Dataset report', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      subtitle: Text(report.query, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                      trailing: Text(report.status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4))),
+                      onTap: () => context.push('/report/${report.id}'),
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Center(child: Text('Error loading reports: $err', style: const TextStyle(color: Colors.red))),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GapsTab extends StatelessWidget {
+  const _GapsTab({required this.projectId, required this.ref});
+  final String projectId;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final query = ref.watch(gapsProvider(GapsListParams(projectId: projectId)));
+
+    return query.when(
+      data: (data) {
+        if (data.data.isEmpty) {
+          return const Center(child: Text('No research gaps found for this workspace.', style: TextStyle(fontStyle: FontStyle.italic)));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: data.data.length,
+          itemBuilder: (context, idx) {
+            final gap = data.data[idx];
+            return Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              child: ListTile(
+                title: Text(gap.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: Text(gap.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                trailing: Text('${(gap.confidence * 100).round()}% conf', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Error loading gaps: $err', style: const TextStyle(color: Colors.red))),
+    );
+  }
+}
+
+class _MembersTab extends StatefulWidget {
+  const _MembersTab({required this.project, required this.ref});
+  final ProjectView project;
+  final WidgetRef ref;
+
+  @override
+  State<_MembersTab> createState() => _MembersTabState();
+}
+
+class _MembersTabState extends State<_MembersTab> {
+  final _emailController = TextEditingController();
+  bool _adding = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addMember() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() => _adding = true);
+
+    try {
+      await widget.ref.read(projectsApiProvider).addMember(widget.project.id, targetId: email);
+      widget.ref.invalidate(projectProvider(widget.project.id));
+      _emailController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member added successfully.')));
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add member: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  Future<void> _removeMember(String memberId) async {
+    try {
+      await widget.ref.read(projectsApiProvider).removeMember(widget.project.id, memberId);
+      widget.ref.invalidate(projectProvider(widget.project.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member removed.')));
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove member: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Add Project Member', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter member User ID or Email',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _adding ? null : _addMember,
+                  child: _adding
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 32),
+          const Text('Workspace Members', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              itemCount: widget.project.members.length,
+              itemBuilder: (context, idx) {
+                final m = widget.project.members[idx];
+                final isOwner = widget.project.ownerId == m.id;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(m.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: Text(isOwner ? 'Owner' : 'Member', style: const TextStyle(fontSize: 11)),
+                  trailing: isOwner
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
+                          onPressed: () => _removeMember(m.id),
+                        ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsTab extends StatefulWidget {
+  const _SettingsTab({required this.project, required this.ref});
+  final ProjectView project;
+  final WidgetRef ref;
+
+  @override
+  State<_SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends State<_SettingsTab> {
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.text = widget.project.title;
+    _descController.text = widget.project.description ?? '';
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+    setState(() => _saving = true);
+
+    try {
+      await widget.ref.read(projectsApiProvider).update(widget.project.id, title: title, description: _descController.text.trim());
+      widget.ref.invalidate(projectProvider(widget.project.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workspace updated.')));
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Workspace?'),
+        content: const Text('All papers and chat history in this workspace will be deleted forever.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await widget.ref.read(projectsApiProvider).delete(widget.project.id);
+        widget.ref.invalidate(projectsProvider);
+        if (mounted) {
+          context.pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workspace deleted.')));
+        }
+      } on Object catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red));
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Workspace Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _descController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF06B6D4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Save Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const Divider(height: 40),
+          const Text('Danger Zone', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFEF4444))),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _delete,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
       ),
     );
   }

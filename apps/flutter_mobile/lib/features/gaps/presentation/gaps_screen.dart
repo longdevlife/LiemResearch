@@ -5,6 +5,7 @@ import 'package:flutter_mobile/core/widgets/app_error_state.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/gaps/data/gaps_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class GapsScreen extends ConsumerStatefulWidget {
   const GapsScreen({super.key, this.initialTopic});
@@ -23,6 +24,7 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
   String? activeAnalysisId;
   Timer? pollTimer;
   bool analyzing = false;
+  String _sortBy = 'evidence';
 
   @override
   void initState() {
@@ -257,7 +259,34 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'SORT BY',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+                        ),
+                        DropdownButton<String>(
+                          value: _sortBy,
+                          underline: const SizedBox(),
+                          dropdownColor: theme.cardColor,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4)),
+                          items: const [
+                            DropdownMenuItem(value: 'evidence', child: Text('Evidence-backed')),
+                            DropdownMenuItem(value: 'confidence', child: Text('Confidence')),
+                            DropdownMenuItem(value: 'newest', child: Text('Newest')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _sortBy = val;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     const Text(
                       'MIN CONFIDENCE',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
@@ -310,15 +339,28 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
                       message: 'Try another filter or submit a topic.',
                     );
                   }
+
+                  final sortedGaps = [...data.data];
+                  if (_sortBy == 'evidence') {
+                    sortedGaps.sort((a, b) => b.evidenceCount.compareTo(a.evidenceCount));
+                  } else if (_sortBy == 'confidence') {
+                    sortedGaps.sort((a, b) => b.confidence.compareTo(a.confidence));
+                  } else if (_sortBy == 'newest') {
+                    sortedGaps.sort((a, b) => b.id.compareTo(a.id));
+                  }
+
                   return Column(
                     children: [
-                      ...data.data.map(
-                        (gap) => _GapCard(
-                          gap: gap,
-                          onStatusChange: _handleStatusChange,
-                          isDark: isDark,
-                          borderColor: borderColor,
-                          textColor: textColor,
+                      ...sortedGaps.map(
+                        (gap) => GestureDetector(
+                          onTap: () => _openGapDetailBottomSheet(gap),
+                          child: _GapCard(
+                            gap: gap,
+                            onStatusChange: _handleStatusChange,
+                            isDark: isDark,
+                            borderColor: borderColor,
+                            textColor: textColor,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -340,6 +382,183 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
         ],
       ),
     );
+  }
+
+  void _openGapDetailBottomSheet(ResearchGapItem gap) {
+    unawaited(showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            top: 16,
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        gap.title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF26334A) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        gap.source.toUpperCase(),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+
+                const Text('Summary Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                const SizedBox(height: 6),
+                Text(gap.description, style: const TextStyle(fontSize: 13, height: 1.4)),
+                const SizedBox(height: 16),
+
+                const Text('Why it matters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                const SizedBox(height: 6),
+                Text(
+                  gap.rationale.isEmpty ? 'No rationale provided.' : gap.rationale,
+                  style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Evidence & Confidence', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _ConfidenceBar(value: gap.confidence),
+                    const SizedBox(width: 16),
+                    Text(
+                      'Evidence Papers: ${gap.evidenceCount}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (gap.supportingPapers.isNotEmpty || gap.supportingPaperIds.isNotEmpty) ...[
+                  const Text('Supporting Papers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: gap.supportingPapers.isNotEmpty ? gap.supportingPapers.length : gap.supportingPaperIds.length,
+                      itemBuilder: (context, idx) {
+                        final paper = gap.supportingPapers.isNotEmpty ? gap.supportingPapers[idx] : null;
+                        final paperId = paper?.id ?? gap.supportingPaperIds[idx];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            paper?.title ?? 'Supporting paper',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: paper == null
+                              ? Text('Paper ID: $paperId', style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)))
+                              : Text(
+                                  [
+                                    if (paper.publicationYear != null) paper.publicationYear.toString(),
+                                    if (paper.journalName != null && paper.journalName!.isNotEmpty) paper.journalName!,
+                                    if (paper.citationCount != null) '${paper.citationCount} cites',
+                                  ].join(' - '),
+                                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                ),
+                          leading: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFF06B6D4)),
+                          onTap: () {
+                            Navigator.pop(context);
+                            unawaited(context.push('/paper/$paperId'));
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          unawaited(context.push(
+                            '/reports?create=true&topic=${Uri.encodeComponent(gap.topic)}&query=${Uri.encodeComponent(gap.rationale)}',
+                          ));
+                        },
+                        icon: const Icon(Icons.auto_awesome, size: 16),
+                        label: const Text('RAG Report', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (gap.status == 'active') ...[
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            unawaited(_handleStatusChange(gap.id, 'resolved'));
+                          },
+                          child: const Text('Resolve', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            unawaited(_handleStatusChange(gap.id, 'dismissed'));
+                          },
+                          child: const Text('Dismiss', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ));
   }
 }
 

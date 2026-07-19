@@ -47,6 +47,7 @@ dependencies:
   file_picker: 8.1.4
 
   meta: any
+  riverpod: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

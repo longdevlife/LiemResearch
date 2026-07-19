@@ -13,6 +13,281 @@ part of 'papers_models.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$PaperExternalIds {
+
+ String? get doi; String? get openalexId; String? get semanticScholarId; String? get arxivId; String? get pubmedId;
+/// Create a copy of PaperExternalIds
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PaperExternalIdsCopyWith<PaperExternalIds> get copyWith => _$PaperExternalIdsCopyWithImpl<PaperExternalIds>(this as PaperExternalIds, _$identity);
+
+  /// Serializes this PaperExternalIds to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PaperExternalIds&&(identical(other.doi, doi) || other.doi == doi)&&(identical(other.openalexId, openalexId) || other.openalexId == openalexId)&&(identical(other.semanticScholarId, semanticScholarId) || other.semanticScholarId == semanticScholarId)&&(identical(other.arxivId, arxivId) || other.arxivId == arxivId)&&(identical(other.pubmedId, pubmedId) || other.pubmedId == pubmedId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,doi,openalexId,semanticScholarId,arxivId,pubmedId);
+
+@override
+String toString() {
+  return 'PaperExternalIds(doi: $doi, openalexId: $openalexId, semanticScholarId: $semanticScholarId, arxivId: $arxivId, pubmedId: $pubmedId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PaperExternalIdsCopyWith<$Res>  {
+  factory $PaperExternalIdsCopyWith(PaperExternalIds value, $Res Function(PaperExternalIds) _then) = _$PaperExternalIdsCopyWithImpl;
+@useResult
+$Res call({
+ String? doi, String? openalexId, String? semanticScholarId, String? arxivId, String? pubmedId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PaperExternalIdsCopyWithImpl<$Res>
+    implements $PaperExternalIdsCopyWith<$Res> {
+  _$PaperExternalIdsCopyWithImpl(this._self, this._then);
+
+  final PaperExternalIds _self;
+  final $Res Function(PaperExternalIds) _then;
+
+/// Create a copy of PaperExternalIds
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? doi = freezed,Object? openalexId = freezed,Object? semanticScholarId = freezed,Object? arxivId = freezed,Object? pubmedId = freezed,}) {
+  return _then(_self.copyWith(
+doi: freezed == doi ? _self.doi : doi // ignore: cast_nullable_to_non_nullable
+as String?,openalexId: freezed == openalexId ? _self.openalexId : openalexId // ignore: cast_nullable_to_non_nullable
+as String?,semanticScholarId: freezed == semanticScholarId ? _self.semanticScholarId : semanticScholarId // ignore: cast_nullable_to_non_nullable
+as String?,arxivId: freezed == arxivId ? _self.arxivId : arxivId // ignore: cast_nullable_to_non_nullable
+as String?,pubmedId: freezed == pubmedId ? _self.pubmedId : pubmedId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [PaperExternalIds].
+extension PaperExternalIdsPatterns on PaperExternalIds {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PaperExternalIds value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _PaperExternalIds() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PaperExternalIds value)  $default,){
+final _that = this;
+switch (_that) {
+case _PaperExternalIds():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PaperExternalIds value)?  $default,){
+final _that = this;
+switch (_that) {
+case _PaperExternalIds() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? doi,  String? openalexId,  String? semanticScholarId,  String? arxivId,  String? pubmedId)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _PaperExternalIds() when $default != null:
+return $default(_that.doi,_that.openalexId,_that.semanticScholarId,_that.arxivId,_that.pubmedId);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? doi,  String? openalexId,  String? semanticScholarId,  String? arxivId,  String? pubmedId)  $default,) {final _that = this;
+switch (_that) {
+case _PaperExternalIds():
+return $default(_that.doi,_that.openalexId,_that.semanticScholarId,_that.arxivId,_that.pubmedId);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? doi,  String? openalexId,  String? semanticScholarId,  String? arxivId,  String? pubmedId)?  $default,) {final _that = this;
+switch (_that) {
+case _PaperExternalIds() when $default != null:
+return $default(_that.doi,_that.openalexId,_that.semanticScholarId,_that.arxivId,_that.pubmedId);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _PaperExternalIds implements PaperExternalIds {
+  const _PaperExternalIds({this.doi, this.openalexId, this.semanticScholarId, this.arxivId, this.pubmedId});
+  factory _PaperExternalIds.fromJson(Map<String, dynamic> json) => _$PaperExternalIdsFromJson(json);
+
+@override final  String? doi;
+@override final  String? openalexId;
+@override final  String? semanticScholarId;
+@override final  String? arxivId;
+@override final  String? pubmedId;
+
+/// Create a copy of PaperExternalIds
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PaperExternalIdsCopyWith<_PaperExternalIds> get copyWith => __$PaperExternalIdsCopyWithImpl<_PaperExternalIds>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PaperExternalIdsToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PaperExternalIds&&(identical(other.doi, doi) || other.doi == doi)&&(identical(other.openalexId, openalexId) || other.openalexId == openalexId)&&(identical(other.semanticScholarId, semanticScholarId) || other.semanticScholarId == semanticScholarId)&&(identical(other.arxivId, arxivId) || other.arxivId == arxivId)&&(identical(other.pubmedId, pubmedId) || other.pubmedId == pubmedId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,doi,openalexId,semanticScholarId,arxivId,pubmedId);
+
+@override
+String toString() {
+  return 'PaperExternalIds(doi: $doi, openalexId: $openalexId, semanticScholarId: $semanticScholarId, arxivId: $arxivId, pubmedId: $pubmedId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PaperExternalIdsCopyWith<$Res> implements $PaperExternalIdsCopyWith<$Res> {
+  factory _$PaperExternalIdsCopyWith(_PaperExternalIds value, $Res Function(_PaperExternalIds) _then) = __$PaperExternalIdsCopyWithImpl;
+@override @useResult
+$Res call({
+ String? doi, String? openalexId, String? semanticScholarId, String? arxivId, String? pubmedId
+});
+
+
+
+
+}
+/// @nodoc
+class __$PaperExternalIdsCopyWithImpl<$Res>
+    implements _$PaperExternalIdsCopyWith<$Res> {
+  __$PaperExternalIdsCopyWithImpl(this._self, this._then);
+
+  final _PaperExternalIds _self;
+  final $Res Function(_PaperExternalIds) _then;
+
+/// Create a copy of PaperExternalIds
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? doi = freezed,Object? openalexId = freezed,Object? semanticScholarId = freezed,Object? arxivId = freezed,Object? pubmedId = freezed,}) {
+  return _then(_PaperExternalIds(
+doi: freezed == doi ? _self.doi : doi // ignore: cast_nullable_to_non_nullable
+as String?,openalexId: freezed == openalexId ? _self.openalexId : openalexId // ignore: cast_nullable_to_non_nullable
+as String?,semanticScholarId: freezed == semanticScholarId ? _self.semanticScholarId : semanticScholarId // ignore: cast_nullable_to_non_nullable
+as String?,arxivId: freezed == arxivId ? _self.arxivId : arxivId // ignore: cast_nullable_to_non_nullable
+as String?,pubmedId: freezed == pubmedId ? _self.pubmedId : pubmedId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$PaperAuthorRef {
 
  String get displayName; int get position; String? get authorId; bool? get isCorresponding;
@@ -559,7 +834,7 @@ as double?,
 /// @nodoc
 mixin _$PaperTopic {
 
- String get topicName; String? get topicId; String? get detectedBy; double? get confidence;
+ String get topicName; String? get topicId; String? get openalexTopicId; String? get detectedBy; double? get confidence; bool? get isPrimary; String? get subfieldId; String? get subfieldName; String? get fieldId; String? get fieldName; String? get domainId; String? get domainName;
 /// Create a copy of PaperTopic
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -572,16 +847,16 @@ $PaperTopicCopyWith<PaperTopic> get copyWith => _$PaperTopicCopyWithImpl<PaperTo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PaperTopic&&(identical(other.topicName, topicName) || other.topicName == topicName)&&(identical(other.topicId, topicId) || other.topicId == topicId)&&(identical(other.detectedBy, detectedBy) || other.detectedBy == detectedBy)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PaperTopic&&(identical(other.topicName, topicName) || other.topicName == topicName)&&(identical(other.topicId, topicId) || other.topicId == topicId)&&(identical(other.openalexTopicId, openalexTopicId) || other.openalexTopicId == openalexTopicId)&&(identical(other.detectedBy, detectedBy) || other.detectedBy == detectedBy)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary)&&(identical(other.subfieldId, subfieldId) || other.subfieldId == subfieldId)&&(identical(other.subfieldName, subfieldName) || other.subfieldName == subfieldName)&&(identical(other.fieldId, fieldId) || other.fieldId == fieldId)&&(identical(other.fieldName, fieldName) || other.fieldName == fieldName)&&(identical(other.domainId, domainId) || other.domainId == domainId)&&(identical(other.domainName, domainName) || other.domainName == domainName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,topicName,topicId,detectedBy,confidence);
+int get hashCode => Object.hash(runtimeType,topicName,topicId,openalexTopicId,detectedBy,confidence,isPrimary,subfieldId,subfieldName,fieldId,fieldName,domainId,domainName);
 
 @override
 String toString() {
-  return 'PaperTopic(topicName: $topicName, topicId: $topicId, detectedBy: $detectedBy, confidence: $confidence)';
+  return 'PaperTopic(topicName: $topicName, topicId: $topicId, openalexTopicId: $openalexTopicId, detectedBy: $detectedBy, confidence: $confidence, isPrimary: $isPrimary, subfieldId: $subfieldId, subfieldName: $subfieldName, fieldId: $fieldId, fieldName: $fieldName, domainId: $domainId, domainName: $domainName)';
 }
 
 
@@ -592,7 +867,7 @@ abstract mixin class $PaperTopicCopyWith<$Res>  {
   factory $PaperTopicCopyWith(PaperTopic value, $Res Function(PaperTopic) _then) = _$PaperTopicCopyWithImpl;
 @useResult
 $Res call({
- String topicName, String? topicId, String? detectedBy, double? confidence
+ String topicName, String? topicId, String? openalexTopicId, String? detectedBy, double? confidence, bool? isPrimary, String? subfieldId, String? subfieldName, String? fieldId, String? fieldName, String? domainId, String? domainName
 });
 
 
@@ -609,13 +884,21 @@ class _$PaperTopicCopyWithImpl<$Res>
 
 /// Create a copy of PaperTopic
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? topicName = null,Object? topicId = freezed,Object? detectedBy = freezed,Object? confidence = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? topicName = null,Object? topicId = freezed,Object? openalexTopicId = freezed,Object? detectedBy = freezed,Object? confidence = freezed,Object? isPrimary = freezed,Object? subfieldId = freezed,Object? subfieldName = freezed,Object? fieldId = freezed,Object? fieldName = freezed,Object? domainId = freezed,Object? domainName = freezed,}) {
   return _then(_self.copyWith(
 topicName: null == topicName ? _self.topicName : topicName // ignore: cast_nullable_to_non_nullable
 as String,topicId: freezed == topicId ? _self.topicId : topicId // ignore: cast_nullable_to_non_nullable
+as String?,openalexTopicId: freezed == openalexTopicId ? _self.openalexTopicId : openalexTopicId // ignore: cast_nullable_to_non_nullable
 as String?,detectedBy: freezed == detectedBy ? _self.detectedBy : detectedBy // ignore: cast_nullable_to_non_nullable
 as String?,confidence: freezed == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,isPrimary: freezed == isPrimary ? _self.isPrimary : isPrimary // ignore: cast_nullable_to_non_nullable
+as bool?,subfieldId: freezed == subfieldId ? _self.subfieldId : subfieldId // ignore: cast_nullable_to_non_nullable
+as String?,subfieldName: freezed == subfieldName ? _self.subfieldName : subfieldName // ignore: cast_nullable_to_non_nullable
+as String?,fieldId: freezed == fieldId ? _self.fieldId : fieldId // ignore: cast_nullable_to_non_nullable
+as String?,fieldName: freezed == fieldName ? _self.fieldName : fieldName // ignore: cast_nullable_to_non_nullable
+as String?,domainId: freezed == domainId ? _self.domainId : domainId // ignore: cast_nullable_to_non_nullable
+as String?,domainName: freezed == domainName ? _self.domainName : domainName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -700,10 +983,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String topicName,  String? topicId,  String? detectedBy,  double? confidence)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String topicName,  String? topicId,  String? openalexTopicId,  String? detectedBy,  double? confidence,  bool? isPrimary,  String? subfieldId,  String? subfieldName,  String? fieldId,  String? fieldName,  String? domainId,  String? domainName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PaperTopic() when $default != null:
-return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence);case _:
+return $default(_that.topicName,_that.topicId,_that.openalexTopicId,_that.detectedBy,_that.confidence,_that.isPrimary,_that.subfieldId,_that.subfieldName,_that.fieldId,_that.fieldName,_that.domainId,_that.domainName);case _:
   return orElse();
 
 }
@@ -721,10 +1004,10 @@ return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String topicName,  String? topicId,  String? detectedBy,  double? confidence)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String topicName,  String? topicId,  String? openalexTopicId,  String? detectedBy,  double? confidence,  bool? isPrimary,  String? subfieldId,  String? subfieldName,  String? fieldId,  String? fieldName,  String? domainId,  String? domainName)  $default,) {final _that = this;
 switch (_that) {
 case _PaperTopic():
-return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence);case _:
+return $default(_that.topicName,_that.topicId,_that.openalexTopicId,_that.detectedBy,_that.confidence,_that.isPrimary,_that.subfieldId,_that.subfieldName,_that.fieldId,_that.fieldName,_that.domainId,_that.domainName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -741,10 +1024,10 @@ return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String topicName,  String? topicId,  String? detectedBy,  double? confidence)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String topicName,  String? topicId,  String? openalexTopicId,  String? detectedBy,  double? confidence,  bool? isPrimary,  String? subfieldId,  String? subfieldName,  String? fieldId,  String? fieldName,  String? domainId,  String? domainName)?  $default,) {final _that = this;
 switch (_that) {
 case _PaperTopic() when $default != null:
-return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence);case _:
+return $default(_that.topicName,_that.topicId,_that.openalexTopicId,_that.detectedBy,_that.confidence,_that.isPrimary,_that.subfieldId,_that.subfieldName,_that.fieldId,_that.fieldName,_that.domainId,_that.domainName);case _:
   return null;
 
 }
@@ -756,13 +1039,21 @@ return $default(_that.topicName,_that.topicId,_that.detectedBy,_that.confidence)
 @JsonSerializable()
 
 class _PaperTopic implements PaperTopic {
-  const _PaperTopic({required this.topicName, this.topicId, this.detectedBy, this.confidence});
+  const _PaperTopic({required this.topicName, this.topicId, this.openalexTopicId, this.detectedBy, this.confidence, this.isPrimary, this.subfieldId, this.subfieldName, this.fieldId, this.fieldName, this.domainId, this.domainName});
   factory _PaperTopic.fromJson(Map<String, dynamic> json) => _$PaperTopicFromJson(json);
 
 @override final  String topicName;
 @override final  String? topicId;
+@override final  String? openalexTopicId;
 @override final  String? detectedBy;
 @override final  double? confidence;
+@override final  bool? isPrimary;
+@override final  String? subfieldId;
+@override final  String? subfieldName;
+@override final  String? fieldId;
+@override final  String? fieldName;
+@override final  String? domainId;
+@override final  String? domainName;
 
 /// Create a copy of PaperTopic
 /// with the given fields replaced by the non-null parameter values.
@@ -777,16 +1068,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PaperTopic&&(identical(other.topicName, topicName) || other.topicName == topicName)&&(identical(other.topicId, topicId) || other.topicId == topicId)&&(identical(other.detectedBy, detectedBy) || other.detectedBy == detectedBy)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PaperTopic&&(identical(other.topicName, topicName) || other.topicName == topicName)&&(identical(other.topicId, topicId) || other.topicId == topicId)&&(identical(other.openalexTopicId, openalexTopicId) || other.openalexTopicId == openalexTopicId)&&(identical(other.detectedBy, detectedBy) || other.detectedBy == detectedBy)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary)&&(identical(other.subfieldId, subfieldId) || other.subfieldId == subfieldId)&&(identical(other.subfieldName, subfieldName) || other.subfieldName == subfieldName)&&(identical(other.fieldId, fieldId) || other.fieldId == fieldId)&&(identical(other.fieldName, fieldName) || other.fieldName == fieldName)&&(identical(other.domainId, domainId) || other.domainId == domainId)&&(identical(other.domainName, domainName) || other.domainName == domainName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,topicName,topicId,detectedBy,confidence);
+int get hashCode => Object.hash(runtimeType,topicName,topicId,openalexTopicId,detectedBy,confidence,isPrimary,subfieldId,subfieldName,fieldId,fieldName,domainId,domainName);
 
 @override
 String toString() {
-  return 'PaperTopic(topicName: $topicName, topicId: $topicId, detectedBy: $detectedBy, confidence: $confidence)';
+  return 'PaperTopic(topicName: $topicName, topicId: $topicId, openalexTopicId: $openalexTopicId, detectedBy: $detectedBy, confidence: $confidence, isPrimary: $isPrimary, subfieldId: $subfieldId, subfieldName: $subfieldName, fieldId: $fieldId, fieldName: $fieldName, domainId: $domainId, domainName: $domainName)';
 }
 
 
@@ -797,7 +1088,7 @@ abstract mixin class _$PaperTopicCopyWith<$Res> implements $PaperTopicCopyWith<$
   factory _$PaperTopicCopyWith(_PaperTopic value, $Res Function(_PaperTopic) _then) = __$PaperTopicCopyWithImpl;
 @override @useResult
 $Res call({
- String topicName, String? topicId, String? detectedBy, double? confidence
+ String topicName, String? topicId, String? openalexTopicId, String? detectedBy, double? confidence, bool? isPrimary, String? subfieldId, String? subfieldName, String? fieldId, String? fieldName, String? domainId, String? domainName
 });
 
 
@@ -814,13 +1105,21 @@ class __$PaperTopicCopyWithImpl<$Res>
 
 /// Create a copy of PaperTopic
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? topicName = null,Object? topicId = freezed,Object? detectedBy = freezed,Object? confidence = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? topicName = null,Object? topicId = freezed,Object? openalexTopicId = freezed,Object? detectedBy = freezed,Object? confidence = freezed,Object? isPrimary = freezed,Object? subfieldId = freezed,Object? subfieldName = freezed,Object? fieldId = freezed,Object? fieldName = freezed,Object? domainId = freezed,Object? domainName = freezed,}) {
   return _then(_PaperTopic(
 topicName: null == topicName ? _self.topicName : topicName // ignore: cast_nullable_to_non_nullable
 as String,topicId: freezed == topicId ? _self.topicId : topicId // ignore: cast_nullable_to_non_nullable
+as String?,openalexTopicId: freezed == openalexTopicId ? _self.openalexTopicId : openalexTopicId // ignore: cast_nullable_to_non_nullable
 as String?,detectedBy: freezed == detectedBy ? _self.detectedBy : detectedBy // ignore: cast_nullable_to_non_nullable
 as String?,confidence: freezed == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,isPrimary: freezed == isPrimary ? _self.isPrimary : isPrimary // ignore: cast_nullable_to_non_nullable
+as bool?,subfieldId: freezed == subfieldId ? _self.subfieldId : subfieldId // ignore: cast_nullable_to_non_nullable
+as String?,subfieldName: freezed == subfieldName ? _self.subfieldName : subfieldName // ignore: cast_nullable_to_non_nullable
+as String?,fieldId: freezed == fieldId ? _self.fieldId : fieldId // ignore: cast_nullable_to_non_nullable
+as String?,fieldName: freezed == fieldName ? _self.fieldName : fieldName // ignore: cast_nullable_to_non_nullable
+as String?,domainId: freezed == domainId ? _self.domainId : domainId // ignore: cast_nullable_to_non_nullable
+as String?,domainName: freezed == domainName ? _self.domainName : domainName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -831,7 +1130,7 @@ as double?,
 /// @nodoc
 mixin _$Paper {
 
- String get id; String get title; int get publicationYear; int get citationCount; String get dataStatus; double get dataQualityScore; bool get isAiAnalyzable; String get createdAt; String get updatedAt; String? get abstractText; List<PaperAuthorRef> get authors; String? get journalName; String? get paperKind; String? get openAccessStatus; String? get openAccessUrl; List<PaperKeyword> get keywords; List<PaperTopic> get topics; double? get downloadCost; double? get uploadCreditReward; String? get pdfPath; String? get paperLink; String? get paperStatus; String? get rejectionReason;
+ String get id; String get title; int get publicationYear; int get citationCount; String get dataStatus; double get dataQualityScore; bool get isAiAnalyzable; String get createdAt; String get updatedAt; String? get abstractText; PaperExternalIds get externalIds; List<PaperAuthorRef> get authors; String? get journalName; String? get paperKind; String? get language; String? get openAccessStatus; String? get openAccessUrl; String? get licenseName; List<PaperKeyword> get keywords; List<PaperTopic> get topics; double? get fwci; int? get relatedWorksCount; String? get primaryProvider; double? get downloadCost; double? get uploadCreditReward; String? get pdfPath; String? get paperLink; String? get paperStatus; String? get rejectionReason;
 /// Create a copy of Paper
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -844,16 +1143,16 @@ $PaperCopyWith<Paper> get copyWith => _$PaperCopyWithImpl<Paper>(this as Paper, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Paper&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.publicationYear, publicationYear) || other.publicationYear == publicationYear)&&(identical(other.citationCount, citationCount) || other.citationCount == citationCount)&&(identical(other.dataStatus, dataStatus) || other.dataStatus == dataStatus)&&(identical(other.dataQualityScore, dataQualityScore) || other.dataQualityScore == dataQualityScore)&&(identical(other.isAiAnalyzable, isAiAnalyzable) || other.isAiAnalyzable == isAiAnalyzable)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.abstractText, abstractText) || other.abstractText == abstractText)&&const DeepCollectionEquality().equals(other.authors, authors)&&(identical(other.journalName, journalName) || other.journalName == journalName)&&(identical(other.paperKind, paperKind) || other.paperKind == paperKind)&&(identical(other.openAccessStatus, openAccessStatus) || other.openAccessStatus == openAccessStatus)&&(identical(other.openAccessUrl, openAccessUrl) || other.openAccessUrl == openAccessUrl)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&const DeepCollectionEquality().equals(other.topics, topics)&&(identical(other.downloadCost, downloadCost) || other.downloadCost == downloadCost)&&(identical(other.uploadCreditReward, uploadCreditReward) || other.uploadCreditReward == uploadCreditReward)&&(identical(other.pdfPath, pdfPath) || other.pdfPath == pdfPath)&&(identical(other.paperLink, paperLink) || other.paperLink == paperLink)&&(identical(other.paperStatus, paperStatus) || other.paperStatus == paperStatus)&&(identical(other.rejectionReason, rejectionReason) || other.rejectionReason == rejectionReason));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Paper&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.publicationYear, publicationYear) || other.publicationYear == publicationYear)&&(identical(other.citationCount, citationCount) || other.citationCount == citationCount)&&(identical(other.dataStatus, dataStatus) || other.dataStatus == dataStatus)&&(identical(other.dataQualityScore, dataQualityScore) || other.dataQualityScore == dataQualityScore)&&(identical(other.isAiAnalyzable, isAiAnalyzable) || other.isAiAnalyzable == isAiAnalyzable)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.abstractText, abstractText) || other.abstractText == abstractText)&&(identical(other.externalIds, externalIds) || other.externalIds == externalIds)&&const DeepCollectionEquality().equals(other.authors, authors)&&(identical(other.journalName, journalName) || other.journalName == journalName)&&(identical(other.paperKind, paperKind) || other.paperKind == paperKind)&&(identical(other.language, language) || other.language == language)&&(identical(other.openAccessStatus, openAccessStatus) || other.openAccessStatus == openAccessStatus)&&(identical(other.openAccessUrl, openAccessUrl) || other.openAccessUrl == openAccessUrl)&&(identical(other.licenseName, licenseName) || other.licenseName == licenseName)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&const DeepCollectionEquality().equals(other.topics, topics)&&(identical(other.fwci, fwci) || other.fwci == fwci)&&(identical(other.relatedWorksCount, relatedWorksCount) || other.relatedWorksCount == relatedWorksCount)&&(identical(other.primaryProvider, primaryProvider) || other.primaryProvider == primaryProvider)&&(identical(other.downloadCost, downloadCost) || other.downloadCost == downloadCost)&&(identical(other.uploadCreditReward, uploadCreditReward) || other.uploadCreditReward == uploadCreditReward)&&(identical(other.pdfPath, pdfPath) || other.pdfPath == pdfPath)&&(identical(other.paperLink, paperLink) || other.paperLink == paperLink)&&(identical(other.paperStatus, paperStatus) || other.paperStatus == paperStatus)&&(identical(other.rejectionReason, rejectionReason) || other.rejectionReason == rejectionReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,publicationYear,citationCount,dataStatus,dataQualityScore,isAiAnalyzable,createdAt,updatedAt,abstractText,const DeepCollectionEquality().hash(authors),journalName,paperKind,openAccessStatus,openAccessUrl,const DeepCollectionEquality().hash(keywords),const DeepCollectionEquality().hash(topics),downloadCost,uploadCreditReward,pdfPath,paperLink,paperStatus,rejectionReason]);
+int get hashCode => Object.hashAll([runtimeType,id,title,publicationYear,citationCount,dataStatus,dataQualityScore,isAiAnalyzable,createdAt,updatedAt,abstractText,externalIds,const DeepCollectionEquality().hash(authors),journalName,paperKind,language,openAccessStatus,openAccessUrl,licenseName,const DeepCollectionEquality().hash(keywords),const DeepCollectionEquality().hash(topics),fwci,relatedWorksCount,primaryProvider,downloadCost,uploadCreditReward,pdfPath,paperLink,paperStatus,rejectionReason]);
 
 @override
 String toString() {
-  return 'Paper(id: $id, title: $title, publicationYear: $publicationYear, citationCount: $citationCount, dataStatus: $dataStatus, dataQualityScore: $dataQualityScore, isAiAnalyzable: $isAiAnalyzable, createdAt: $createdAt, updatedAt: $updatedAt, abstractText: $abstractText, authors: $authors, journalName: $journalName, paperKind: $paperKind, openAccessStatus: $openAccessStatus, openAccessUrl: $openAccessUrl, keywords: $keywords, topics: $topics, downloadCost: $downloadCost, uploadCreditReward: $uploadCreditReward, pdfPath: $pdfPath, paperLink: $paperLink, paperStatus: $paperStatus, rejectionReason: $rejectionReason)';
+  return 'Paper(id: $id, title: $title, publicationYear: $publicationYear, citationCount: $citationCount, dataStatus: $dataStatus, dataQualityScore: $dataQualityScore, isAiAnalyzable: $isAiAnalyzable, createdAt: $createdAt, updatedAt: $updatedAt, abstractText: $abstractText, externalIds: $externalIds, authors: $authors, journalName: $journalName, paperKind: $paperKind, language: $language, openAccessStatus: $openAccessStatus, openAccessUrl: $openAccessUrl, licenseName: $licenseName, keywords: $keywords, topics: $topics, fwci: $fwci, relatedWorksCount: $relatedWorksCount, primaryProvider: $primaryProvider, downloadCost: $downloadCost, uploadCreditReward: $uploadCreditReward, pdfPath: $pdfPath, paperLink: $paperLink, paperStatus: $paperStatus, rejectionReason: $rejectionReason)';
 }
 
 
@@ -864,11 +1163,11 @@ abstract mixin class $PaperCopyWith<$Res>  {
   factory $PaperCopyWith(Paper value, $Res Function(Paper) _then) = _$PaperCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, int publicationYear, int citationCount, String dataStatus, double dataQualityScore, bool isAiAnalyzable, String createdAt, String updatedAt, String? abstractText, List<PaperAuthorRef> authors, String? journalName, String? paperKind, String? openAccessStatus, String? openAccessUrl, List<PaperKeyword> keywords, List<PaperTopic> topics, double? downloadCost, double? uploadCreditReward, String? pdfPath, String? paperLink, String? paperStatus, String? rejectionReason
+ String id, String title, int publicationYear, int citationCount, String dataStatus, double dataQualityScore, bool isAiAnalyzable, String createdAt, String updatedAt, String? abstractText, PaperExternalIds externalIds, List<PaperAuthorRef> authors, String? journalName, String? paperKind, String? language, String? openAccessStatus, String? openAccessUrl, String? licenseName, List<PaperKeyword> keywords, List<PaperTopic> topics, double? fwci, int? relatedWorksCount, String? primaryProvider, double? downloadCost, double? uploadCreditReward, String? pdfPath, String? paperLink, String? paperStatus, String? rejectionReason
 });
 
 
-
+$PaperExternalIdsCopyWith<$Res> get externalIds;
 
 }
 /// @nodoc
@@ -881,7 +1180,7 @@ class _$PaperCopyWithImpl<$Res>
 
 /// Create a copy of Paper
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? publicationYear = null,Object? citationCount = null,Object? dataStatus = null,Object? dataQualityScore = null,Object? isAiAnalyzable = null,Object? createdAt = null,Object? updatedAt = null,Object? abstractText = freezed,Object? authors = null,Object? journalName = freezed,Object? paperKind = freezed,Object? openAccessStatus = freezed,Object? openAccessUrl = freezed,Object? keywords = null,Object? topics = null,Object? downloadCost = freezed,Object? uploadCreditReward = freezed,Object? pdfPath = freezed,Object? paperLink = freezed,Object? paperStatus = freezed,Object? rejectionReason = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? publicationYear = null,Object? citationCount = null,Object? dataStatus = null,Object? dataQualityScore = null,Object? isAiAnalyzable = null,Object? createdAt = null,Object? updatedAt = null,Object? abstractText = freezed,Object? externalIds = null,Object? authors = null,Object? journalName = freezed,Object? paperKind = freezed,Object? language = freezed,Object? openAccessStatus = freezed,Object? openAccessUrl = freezed,Object? licenseName = freezed,Object? keywords = null,Object? topics = null,Object? fwci = freezed,Object? relatedWorksCount = freezed,Object? primaryProvider = freezed,Object? downloadCost = freezed,Object? uploadCreditReward = freezed,Object? pdfPath = freezed,Object? paperLink = freezed,Object? paperStatus = freezed,Object? rejectionReason = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -893,14 +1192,20 @@ as double,isAiAnalyzable: null == isAiAnalyzable ? _self.isAiAnalyzable : isAiAn
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,abstractText: freezed == abstractText ? _self.abstractText : abstractText // ignore: cast_nullable_to_non_nullable
-as String?,authors: null == authors ? _self.authors : authors // ignore: cast_nullable_to_non_nullable
+as String?,externalIds: null == externalIds ? _self.externalIds : externalIds // ignore: cast_nullable_to_non_nullable
+as PaperExternalIds,authors: null == authors ? _self.authors : authors // ignore: cast_nullable_to_non_nullable
 as List<PaperAuthorRef>,journalName: freezed == journalName ? _self.journalName : journalName // ignore: cast_nullable_to_non_nullable
 as String?,paperKind: freezed == paperKind ? _self.paperKind : paperKind // ignore: cast_nullable_to_non_nullable
+as String?,language: freezed == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
 as String?,openAccessStatus: freezed == openAccessStatus ? _self.openAccessStatus : openAccessStatus // ignore: cast_nullable_to_non_nullable
 as String?,openAccessUrl: freezed == openAccessUrl ? _self.openAccessUrl : openAccessUrl // ignore: cast_nullable_to_non_nullable
+as String?,licenseName: freezed == licenseName ? _self.licenseName : licenseName // ignore: cast_nullable_to_non_nullable
 as String?,keywords: null == keywords ? _self.keywords : keywords // ignore: cast_nullable_to_non_nullable
 as List<PaperKeyword>,topics: null == topics ? _self.topics : topics // ignore: cast_nullable_to_non_nullable
-as List<PaperTopic>,downloadCost: freezed == downloadCost ? _self.downloadCost : downloadCost // ignore: cast_nullable_to_non_nullable
+as List<PaperTopic>,fwci: freezed == fwci ? _self.fwci : fwci // ignore: cast_nullable_to_non_nullable
+as double?,relatedWorksCount: freezed == relatedWorksCount ? _self.relatedWorksCount : relatedWorksCount // ignore: cast_nullable_to_non_nullable
+as int?,primaryProvider: freezed == primaryProvider ? _self.primaryProvider : primaryProvider // ignore: cast_nullable_to_non_nullable
+as String?,downloadCost: freezed == downloadCost ? _self.downloadCost : downloadCost // ignore: cast_nullable_to_non_nullable
 as double?,uploadCreditReward: freezed == uploadCreditReward ? _self.uploadCreditReward : uploadCreditReward // ignore: cast_nullable_to_non_nullable
 as double?,pdfPath: freezed == pdfPath ? _self.pdfPath : pdfPath // ignore: cast_nullable_to_non_nullable
 as String?,paperLink: freezed == paperLink ? _self.paperLink : paperLink // ignore: cast_nullable_to_non_nullable
@@ -909,7 +1214,16 @@ as String?,rejectionReason: freezed == rejectionReason ? _self.rejectionReason :
 as String?,
   ));
 }
+/// Create a copy of Paper
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PaperExternalIdsCopyWith<$Res> get externalIds {
 
+  return $PaperExternalIdsCopyWith<$Res>(_self.externalIds, (value) {
+    return _then(_self.copyWith(externalIds: value));
+  });
+}
 }
 
 
@@ -991,10 +1305,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? openAccessStatus,  String? openAccessUrl,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  PaperExternalIds externalIds,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? language,  String? openAccessStatus,  String? openAccessUrl,  String? licenseName,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? fwci,  int? relatedWorksCount,  String? primaryProvider,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Paper() when $default != null:
-return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.authors,_that.journalName,_that.paperKind,_that.openAccessStatus,_that.openAccessUrl,_that.keywords,_that.topics,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
+return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.externalIds,_that.authors,_that.journalName,_that.paperKind,_that.language,_that.openAccessStatus,_that.openAccessUrl,_that.licenseName,_that.keywords,_that.topics,_that.fwci,_that.relatedWorksCount,_that.primaryProvider,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
   return orElse();
 
 }
@@ -1012,10 +1326,10 @@ return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? openAccessStatus,  String? openAccessUrl,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  PaperExternalIds externalIds,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? language,  String? openAccessStatus,  String? openAccessUrl,  String? licenseName,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? fwci,  int? relatedWorksCount,  String? primaryProvider,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)  $default,) {final _that = this;
 switch (_that) {
 case _Paper():
-return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.authors,_that.journalName,_that.paperKind,_that.openAccessStatus,_that.openAccessUrl,_that.keywords,_that.topics,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
+return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.externalIds,_that.authors,_that.journalName,_that.paperKind,_that.language,_that.openAccessStatus,_that.openAccessUrl,_that.licenseName,_that.keywords,_that.topics,_that.fwci,_that.relatedWorksCount,_that.primaryProvider,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1032,10 +1346,10 @@ return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? openAccessStatus,  String? openAccessUrl,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  int publicationYear,  int citationCount,  String dataStatus,  double dataQualityScore,  bool isAiAnalyzable,  String createdAt,  String updatedAt,  String? abstractText,  PaperExternalIds externalIds,  List<PaperAuthorRef> authors,  String? journalName,  String? paperKind,  String? language,  String? openAccessStatus,  String? openAccessUrl,  String? licenseName,  List<PaperKeyword> keywords,  List<PaperTopic> topics,  double? fwci,  int? relatedWorksCount,  String? primaryProvider,  double? downloadCost,  double? uploadCreditReward,  String? pdfPath,  String? paperLink,  String? paperStatus,  String? rejectionReason)?  $default,) {final _that = this;
 switch (_that) {
 case _Paper() when $default != null:
-return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.authors,_that.journalName,_that.paperKind,_that.openAccessStatus,_that.openAccessUrl,_that.keywords,_that.topics,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
+return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_that.dataStatus,_that.dataQualityScore,_that.isAiAnalyzable,_that.createdAt,_that.updatedAt,_that.abstractText,_that.externalIds,_that.authors,_that.journalName,_that.paperKind,_that.language,_that.openAccessStatus,_that.openAccessUrl,_that.licenseName,_that.keywords,_that.topics,_that.fwci,_that.relatedWorksCount,_that.primaryProvider,_that.downloadCost,_that.uploadCreditReward,_that.pdfPath,_that.paperLink,_that.paperStatus,_that.rejectionReason);case _:
   return null;
 
 }
@@ -1047,7 +1361,7 @@ return $default(_that.id,_that.title,_that.publicationYear,_that.citationCount,_
 @JsonSerializable()
 
 class _Paper implements Paper {
-  const _Paper({required this.id, required this.title, required this.publicationYear, required this.citationCount, required this.dataStatus, required this.dataQualityScore, required this.isAiAnalyzable, required this.createdAt, required this.updatedAt, this.abstractText, final  List<PaperAuthorRef> authors = const [], this.journalName, this.paperKind, this.openAccessStatus, this.openAccessUrl, final  List<PaperKeyword> keywords = const [], final  List<PaperTopic> topics = const [], this.downloadCost, this.uploadCreditReward, this.pdfPath, this.paperLink, this.paperStatus, this.rejectionReason}): _authors = authors,_keywords = keywords,_topics = topics;
+  const _Paper({required this.id, required this.title, required this.publicationYear, required this.citationCount, required this.dataStatus, required this.dataQualityScore, required this.isAiAnalyzable, required this.createdAt, required this.updatedAt, this.abstractText, this.externalIds = const PaperExternalIds(), final  List<PaperAuthorRef> authors = const [], this.journalName, this.paperKind, this.language, this.openAccessStatus, this.openAccessUrl, this.licenseName, final  List<PaperKeyword> keywords = const [], final  List<PaperTopic> topics = const [], this.fwci, this.relatedWorksCount, this.primaryProvider, this.downloadCost, this.uploadCreditReward, this.pdfPath, this.paperLink, this.paperStatus, this.rejectionReason}): _authors = authors,_keywords = keywords,_topics = topics;
   factory _Paper.fromJson(Map<String, dynamic> json) => _$PaperFromJson(json);
 
 @override final  String id;
@@ -1060,6 +1374,7 @@ class _Paper implements Paper {
 @override final  String createdAt;
 @override final  String updatedAt;
 @override final  String? abstractText;
+@override@JsonKey() final  PaperExternalIds externalIds;
  final  List<PaperAuthorRef> _authors;
 @override@JsonKey() List<PaperAuthorRef> get authors {
   if (_authors is EqualUnmodifiableListView) return _authors;
@@ -1069,8 +1384,10 @@ class _Paper implements Paper {
 
 @override final  String? journalName;
 @override final  String? paperKind;
+@override final  String? language;
 @override final  String? openAccessStatus;
 @override final  String? openAccessUrl;
+@override final  String? licenseName;
  final  List<PaperKeyword> _keywords;
 @override@JsonKey() List<PaperKeyword> get keywords {
   if (_keywords is EqualUnmodifiableListView) return _keywords;
@@ -1085,6 +1402,9 @@ class _Paper implements Paper {
   return EqualUnmodifiableListView(_topics);
 }
 
+@override final  double? fwci;
+@override final  int? relatedWorksCount;
+@override final  String? primaryProvider;
 @override final  double? downloadCost;
 @override final  double? uploadCreditReward;
 @override final  String? pdfPath;
@@ -1105,16 +1425,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Paper&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.publicationYear, publicationYear) || other.publicationYear == publicationYear)&&(identical(other.citationCount, citationCount) || other.citationCount == citationCount)&&(identical(other.dataStatus, dataStatus) || other.dataStatus == dataStatus)&&(identical(other.dataQualityScore, dataQualityScore) || other.dataQualityScore == dataQualityScore)&&(identical(other.isAiAnalyzable, isAiAnalyzable) || other.isAiAnalyzable == isAiAnalyzable)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.abstractText, abstractText) || other.abstractText == abstractText)&&const DeepCollectionEquality().equals(other._authors, _authors)&&(identical(other.journalName, journalName) || other.journalName == journalName)&&(identical(other.paperKind, paperKind) || other.paperKind == paperKind)&&(identical(other.openAccessStatus, openAccessStatus) || other.openAccessStatus == openAccessStatus)&&(identical(other.openAccessUrl, openAccessUrl) || other.openAccessUrl == openAccessUrl)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&const DeepCollectionEquality().equals(other._topics, _topics)&&(identical(other.downloadCost, downloadCost) || other.downloadCost == downloadCost)&&(identical(other.uploadCreditReward, uploadCreditReward) || other.uploadCreditReward == uploadCreditReward)&&(identical(other.pdfPath, pdfPath) || other.pdfPath == pdfPath)&&(identical(other.paperLink, paperLink) || other.paperLink == paperLink)&&(identical(other.paperStatus, paperStatus) || other.paperStatus == paperStatus)&&(identical(other.rejectionReason, rejectionReason) || other.rejectionReason == rejectionReason));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Paper&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.publicationYear, publicationYear) || other.publicationYear == publicationYear)&&(identical(other.citationCount, citationCount) || other.citationCount == citationCount)&&(identical(other.dataStatus, dataStatus) || other.dataStatus == dataStatus)&&(identical(other.dataQualityScore, dataQualityScore) || other.dataQualityScore == dataQualityScore)&&(identical(other.isAiAnalyzable, isAiAnalyzable) || other.isAiAnalyzable == isAiAnalyzable)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.abstractText, abstractText) || other.abstractText == abstractText)&&(identical(other.externalIds, externalIds) || other.externalIds == externalIds)&&const DeepCollectionEquality().equals(other._authors, _authors)&&(identical(other.journalName, journalName) || other.journalName == journalName)&&(identical(other.paperKind, paperKind) || other.paperKind == paperKind)&&(identical(other.language, language) || other.language == language)&&(identical(other.openAccessStatus, openAccessStatus) || other.openAccessStatus == openAccessStatus)&&(identical(other.openAccessUrl, openAccessUrl) || other.openAccessUrl == openAccessUrl)&&(identical(other.licenseName, licenseName) || other.licenseName == licenseName)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&const DeepCollectionEquality().equals(other._topics, _topics)&&(identical(other.fwci, fwci) || other.fwci == fwci)&&(identical(other.relatedWorksCount, relatedWorksCount) || other.relatedWorksCount == relatedWorksCount)&&(identical(other.primaryProvider, primaryProvider) || other.primaryProvider == primaryProvider)&&(identical(other.downloadCost, downloadCost) || other.downloadCost == downloadCost)&&(identical(other.uploadCreditReward, uploadCreditReward) || other.uploadCreditReward == uploadCreditReward)&&(identical(other.pdfPath, pdfPath) || other.pdfPath == pdfPath)&&(identical(other.paperLink, paperLink) || other.paperLink == paperLink)&&(identical(other.paperStatus, paperStatus) || other.paperStatus == paperStatus)&&(identical(other.rejectionReason, rejectionReason) || other.rejectionReason == rejectionReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,publicationYear,citationCount,dataStatus,dataQualityScore,isAiAnalyzable,createdAt,updatedAt,abstractText,const DeepCollectionEquality().hash(_authors),journalName,paperKind,openAccessStatus,openAccessUrl,const DeepCollectionEquality().hash(_keywords),const DeepCollectionEquality().hash(_topics),downloadCost,uploadCreditReward,pdfPath,paperLink,paperStatus,rejectionReason]);
+int get hashCode => Object.hashAll([runtimeType,id,title,publicationYear,citationCount,dataStatus,dataQualityScore,isAiAnalyzable,createdAt,updatedAt,abstractText,externalIds,const DeepCollectionEquality().hash(_authors),journalName,paperKind,language,openAccessStatus,openAccessUrl,licenseName,const DeepCollectionEquality().hash(_keywords),const DeepCollectionEquality().hash(_topics),fwci,relatedWorksCount,primaryProvider,downloadCost,uploadCreditReward,pdfPath,paperLink,paperStatus,rejectionReason]);
 
 @override
 String toString() {
-  return 'Paper(id: $id, title: $title, publicationYear: $publicationYear, citationCount: $citationCount, dataStatus: $dataStatus, dataQualityScore: $dataQualityScore, isAiAnalyzable: $isAiAnalyzable, createdAt: $createdAt, updatedAt: $updatedAt, abstractText: $abstractText, authors: $authors, journalName: $journalName, paperKind: $paperKind, openAccessStatus: $openAccessStatus, openAccessUrl: $openAccessUrl, keywords: $keywords, topics: $topics, downloadCost: $downloadCost, uploadCreditReward: $uploadCreditReward, pdfPath: $pdfPath, paperLink: $paperLink, paperStatus: $paperStatus, rejectionReason: $rejectionReason)';
+  return 'Paper(id: $id, title: $title, publicationYear: $publicationYear, citationCount: $citationCount, dataStatus: $dataStatus, dataQualityScore: $dataQualityScore, isAiAnalyzable: $isAiAnalyzable, createdAt: $createdAt, updatedAt: $updatedAt, abstractText: $abstractText, externalIds: $externalIds, authors: $authors, journalName: $journalName, paperKind: $paperKind, language: $language, openAccessStatus: $openAccessStatus, openAccessUrl: $openAccessUrl, licenseName: $licenseName, keywords: $keywords, topics: $topics, fwci: $fwci, relatedWorksCount: $relatedWorksCount, primaryProvider: $primaryProvider, downloadCost: $downloadCost, uploadCreditReward: $uploadCreditReward, pdfPath: $pdfPath, paperLink: $paperLink, paperStatus: $paperStatus, rejectionReason: $rejectionReason)';
 }
 
 
@@ -1125,11 +1445,11 @@ abstract mixin class _$PaperCopyWith<$Res> implements $PaperCopyWith<$Res> {
   factory _$PaperCopyWith(_Paper value, $Res Function(_Paper) _then) = __$PaperCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, int publicationYear, int citationCount, String dataStatus, double dataQualityScore, bool isAiAnalyzable, String createdAt, String updatedAt, String? abstractText, List<PaperAuthorRef> authors, String? journalName, String? paperKind, String? openAccessStatus, String? openAccessUrl, List<PaperKeyword> keywords, List<PaperTopic> topics, double? downloadCost, double? uploadCreditReward, String? pdfPath, String? paperLink, String? paperStatus, String? rejectionReason
+ String id, String title, int publicationYear, int citationCount, String dataStatus, double dataQualityScore, bool isAiAnalyzable, String createdAt, String updatedAt, String? abstractText, PaperExternalIds externalIds, List<PaperAuthorRef> authors, String? journalName, String? paperKind, String? language, String? openAccessStatus, String? openAccessUrl, String? licenseName, List<PaperKeyword> keywords, List<PaperTopic> topics, double? fwci, int? relatedWorksCount, String? primaryProvider, double? downloadCost, double? uploadCreditReward, String? pdfPath, String? paperLink, String? paperStatus, String? rejectionReason
 });
 
 
-
+@override $PaperExternalIdsCopyWith<$Res> get externalIds;
 
 }
 /// @nodoc
@@ -1142,7 +1462,7 @@ class __$PaperCopyWithImpl<$Res>
 
 /// Create a copy of Paper
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? publicationYear = null,Object? citationCount = null,Object? dataStatus = null,Object? dataQualityScore = null,Object? isAiAnalyzable = null,Object? createdAt = null,Object? updatedAt = null,Object? abstractText = freezed,Object? authors = null,Object? journalName = freezed,Object? paperKind = freezed,Object? openAccessStatus = freezed,Object? openAccessUrl = freezed,Object? keywords = null,Object? topics = null,Object? downloadCost = freezed,Object? uploadCreditReward = freezed,Object? pdfPath = freezed,Object? paperLink = freezed,Object? paperStatus = freezed,Object? rejectionReason = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? publicationYear = null,Object? citationCount = null,Object? dataStatus = null,Object? dataQualityScore = null,Object? isAiAnalyzable = null,Object? createdAt = null,Object? updatedAt = null,Object? abstractText = freezed,Object? externalIds = null,Object? authors = null,Object? journalName = freezed,Object? paperKind = freezed,Object? language = freezed,Object? openAccessStatus = freezed,Object? openAccessUrl = freezed,Object? licenseName = freezed,Object? keywords = null,Object? topics = null,Object? fwci = freezed,Object? relatedWorksCount = freezed,Object? primaryProvider = freezed,Object? downloadCost = freezed,Object? uploadCreditReward = freezed,Object? pdfPath = freezed,Object? paperLink = freezed,Object? paperStatus = freezed,Object? rejectionReason = freezed,}) {
   return _then(_Paper(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1154,14 +1474,20 @@ as double,isAiAnalyzable: null == isAiAnalyzable ? _self.isAiAnalyzable : isAiAn
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,abstractText: freezed == abstractText ? _self.abstractText : abstractText // ignore: cast_nullable_to_non_nullable
-as String?,authors: null == authors ? _self._authors : authors // ignore: cast_nullable_to_non_nullable
+as String?,externalIds: null == externalIds ? _self.externalIds : externalIds // ignore: cast_nullable_to_non_nullable
+as PaperExternalIds,authors: null == authors ? _self._authors : authors // ignore: cast_nullable_to_non_nullable
 as List<PaperAuthorRef>,journalName: freezed == journalName ? _self.journalName : journalName // ignore: cast_nullable_to_non_nullable
 as String?,paperKind: freezed == paperKind ? _self.paperKind : paperKind // ignore: cast_nullable_to_non_nullable
+as String?,language: freezed == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
 as String?,openAccessStatus: freezed == openAccessStatus ? _self.openAccessStatus : openAccessStatus // ignore: cast_nullable_to_non_nullable
 as String?,openAccessUrl: freezed == openAccessUrl ? _self.openAccessUrl : openAccessUrl // ignore: cast_nullable_to_non_nullable
+as String?,licenseName: freezed == licenseName ? _self.licenseName : licenseName // ignore: cast_nullable_to_non_nullable
 as String?,keywords: null == keywords ? _self._keywords : keywords // ignore: cast_nullable_to_non_nullable
 as List<PaperKeyword>,topics: null == topics ? _self._topics : topics // ignore: cast_nullable_to_non_nullable
-as List<PaperTopic>,downloadCost: freezed == downloadCost ? _self.downloadCost : downloadCost // ignore: cast_nullable_to_non_nullable
+as List<PaperTopic>,fwci: freezed == fwci ? _self.fwci : fwci // ignore: cast_nullable_to_non_nullable
+as double?,relatedWorksCount: freezed == relatedWorksCount ? _self.relatedWorksCount : relatedWorksCount // ignore: cast_nullable_to_non_nullable
+as int?,primaryProvider: freezed == primaryProvider ? _self.primaryProvider : primaryProvider // ignore: cast_nullable_to_non_nullable
+as String?,downloadCost: freezed == downloadCost ? _self.downloadCost : downloadCost // ignore: cast_nullable_to_non_nullable
 as double?,uploadCreditReward: freezed == uploadCreditReward ? _self.uploadCreditReward : uploadCreditReward // ignore: cast_nullable_to_non_nullable
 as double?,pdfPath: freezed == pdfPath ? _self.pdfPath : pdfPath // ignore: cast_nullable_to_non_nullable
 as String?,paperLink: freezed == paperLink ? _self.paperLink : paperLink // ignore: cast_nullable_to_non_nullable
@@ -1171,7 +1497,16 @@ as String?,
   ));
 }
 
+/// Create a copy of Paper
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PaperExternalIdsCopyWith<$Res> get externalIds {
 
+  return $PaperExternalIdsCopyWith<$Res>(_self.externalIds, (value) {
+    return _then(_self.copyWith(externalIds: value));
+  });
+}
 }
 
 // dart format on

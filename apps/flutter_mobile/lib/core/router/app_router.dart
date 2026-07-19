@@ -20,6 +20,8 @@ import 'package:flutter_mobile/features/rankings/presentation/rankings_screen.da
 import 'package:flutter_mobile/features/reports/presentation/report_detail_screen.dart';
 import 'package:flutter_mobile/features/reports/presentation/reports_screen.dart';
 import 'package:flutter_mobile/features/search/presentation/keyword_papers_screen.dart';
+import 'package:flutter_mobile/features/search/presentation/search_screen.dart';
+import 'package:flutter_mobile/features/trends/data/trends_api.dart';
 import 'package:flutter_mobile/features/trends/presentation/trends_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -165,7 +167,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/reports',
         name: 'reports',
-        builder: (context, state) => const ReportsScreen(),
+        builder: (context, state) {
+          final params = state.uri.queryParameters;
+          return ReportsScreen(
+            initialProjectId: params['projectId'],
+            initialTopic: params['topic'],
+            initialQuery: params['query'],
+            initialYearFrom: int.tryParse(params['yearFrom'] ?? ''),
+            initialYearTo: int.tryParse(params['yearTo'] ?? ''),
+            initialScopeFilters: TrendScopeFilters.fromQuery(params),
+          );
+        },
       ),
       GoRoute(
         path: '/report/:id',
@@ -209,6 +221,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/keyword/:keyword',
         name: 'keyword_detail',
         builder: (context, state) => KeywordPapersScreen(keyword: state.pathParameters['keyword'] ?? ''),
+      ),
+      GoRoute(
+        path: '/search',
+        name: 'search',
+        builder: (context, state) {
+          final q = state.uri.queryParameters['q'] ?? '';
+          return SearchScreen(
+            initialQuery: q,
+            initialFilters: state.uri.queryParameters,
+          );
+        },
       ),
       GoRoute(
         path: '/admin/sync',

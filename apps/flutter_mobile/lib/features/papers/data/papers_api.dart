@@ -251,17 +251,23 @@ Paper parsePaper(Object? value) {
   final json = value is Map<String, dynamic> ? value : <String, dynamic>{};
   return Paper.fromJson({
     'id': (json['id'] ?? json['_id'] ?? '').toString(),
+    'externalIds': json['externalIds'] is Map<String, dynamic> ? json['externalIds'] : <String, dynamic>{},
     'title': (json['title'] ?? 'Untitled paper').toString(),
     'abstractText': json['abstractText'] ?? json['abstract'],
     'authors': parseAuthors(json['authors']).map((author) => author.toJson()).toList(),
     'journalName': json['journalName'],
     'publicationYear': (json['publicationYear'] as num?)?.toInt() ?? DateTime.now().year,
     'paperKind': json['paperKind'] ?? 'article',
+    'language': json['language'],
     'openAccessStatus': json['openAccessStatus'],
     'openAccessUrl': json['openAccessUrl'],
+    'licenseName': json['licenseName'],
     'citationCount': (json['citationCount'] as num?)?.toInt() ?? 0,
+    'fwci': (json['fwci'] as num?)?.toDouble(),
+    'relatedWorksCount': (json['relatedWorksCount'] as num?)?.toInt(),
     'keywords': parseKeywords(json['keywords']).map((keyword) => keyword.toJson()).toList(),
     'topics': parseTopics(json['topics']).map((topic) => topic.toJson()).toList(),
+    'primaryProvider': json['primaryProvider'],
     'dataStatus': json['dataStatus'] ?? 'active',
     'dataQualityScore': (json['dataQualityScore'] as num?)?.toDouble() ?? 0,
     'isAiAnalyzable': json['isAiAnalyzable'] == true,
@@ -305,9 +311,17 @@ List<PaperTopic> parseTopics(Object? value) {
     final json = item is Map<String, dynamic> ? item : <String, dynamic>{};
     return PaperTopic(
       topicId: json['topicId']?.toString(),
+      openalexTopicId: json['openalexTopicId']?.toString(),
       topicName: (json['topicName'] ?? json['name'] ?? item).toString(),
       detectedBy: json['detectedBy']?.toString(),
       confidence: (json['confidence'] as num?)?.toDouble(),
+      isPrimary: json['isPrimary'] as bool?,
+      subfieldId: json['subfieldId']?.toString(),
+      subfieldName: json['subfieldName']?.toString(),
+      fieldId: json['fieldId']?.toString(),
+      fieldName: json['fieldName']?.toString(),
+      domainId: json['domainId']?.toString(),
+      domainName: json['domainName']?.toString(),
     );
   }).toList();
 }

@@ -19,17 +19,29 @@ final FutureProviderFamily<GapAnalysisResult, String> gapStatusProvider = Future
 
 @immutable
 class GapsListParams {
-  const GapsListParams({this.topic, this.status = 'active', this.minConfidence, this.page = 1, this.pageSize = 30});
+  const GapsListParams({
+    this.topic,
+    this.projectId,
+    this.status = 'active',
+    this.source,
+    this.minConfidence,
+    this.page = 1,
+    this.pageSize = 30,
+  });
 
   final String? topic;
+  final String? projectId;
   final String status;
+  final String? source;
   final double? minConfidence;
   final int page;
   final int pageSize;
 
   Map<String, dynamic> toQuery() => {
         if (topic != null && topic!.trim().isNotEmpty) 'topic': topic!.trim(),
+        if (projectId != null && projectId!.trim().isNotEmpty) 'projectId': projectId!.trim(),
         'status': status,
+        if (source != null && source!.trim().isNotEmpty) 'source': source!.trim(),
         if (minConfidence != null) 'minConfidence': minConfidence,
         'page': page,
         'pageSize': pageSize,
@@ -39,14 +51,16 @@ class GapsListParams {
   bool operator ==(Object other) {
     return other is GapsListParams &&
         other.topic == topic &&
+        other.projectId == projectId &&
         other.status == status &&
+        other.source == source &&
         other.minConfidence == minConfidence &&
         other.page == page &&
         other.pageSize == pageSize;
   }
 
   @override
-  int get hashCode => Object.hash(topic, status, minConfidence, page, pageSize);
+  int get hashCode => Object.hash(topic, projectId, status, source, minConfidence, page, pageSize);
 }
 
 class ListGapsResponse {
@@ -67,7 +81,22 @@ class ListGapsResponse {
 }
 
 class ResearchGapItem {
-  const ResearchGapItem({required this.id, required this.topic, required this.title, required this.description, required this.rationale, required this.confidence, required this.source, required this.status});
+  const ResearchGapItem({
+    required this.id,
+    required this.topic,
+    required this.title,
+    required this.description,
+    required this.rationale,
+    required this.confidence,
+    required this.source,
+    required this.status,
+    this.projectId,
+    this.reportId,
+    this.supportingPaperIds = const [],
+    this.supportingPapers = const [],
+    this.parentTrendSignal = 0,
+    this.evidenceCount = 0,
+  });
 
   factory ResearchGapItem.fromJson(Map<String, dynamic> json) {
     return ResearchGapItem(
@@ -79,6 +108,15 @@ class ResearchGapItem {
       confidence: (json['evidenceConfidence'] as num?)?.toDouble() ?? (json['confidence'] as num?)?.toDouble() ?? 0,
       source: (json['source'] ?? 'standalone').toString(),
       status: (json['status'] ?? 'active').toString(),
+      projectId: json['projectId']?.toString(),
+      reportId: json['reportId']?.toString(),
+      supportingPaperIds: (json['supportingPaperIds'] as List<dynamic>? ?? []).map((item) => item.toString()).toList(),
+      supportingPapers: (json['supportingPapers'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(GapSupportingPaper.fromJson)
+          .toList(),
+      parentTrendSignal: (json['parentTrendSignal'] as num?)?.toDouble() ?? 0,
+      evidenceCount: (json['evidenceCount'] as num?)?.toInt() ?? (json['supportingPapers'] as List<dynamic>? ?? []).length,
     );
   }
 
@@ -90,6 +128,38 @@ class ResearchGapItem {
   final double confidence;
   final String source;
   final String status;
+  final String? projectId;
+  final String? reportId;
+  final List<String> supportingPaperIds;
+  final List<GapSupportingPaper> supportingPapers;
+  final double parentTrendSignal;
+  final int evidenceCount;
+}
+
+class GapSupportingPaper {
+  const GapSupportingPaper({
+    required this.id,
+    required this.title,
+    this.publicationYear,
+    this.journalName,
+    this.citationCount,
+  });
+
+  factory GapSupportingPaper.fromJson(Map<String, dynamic> json) {
+    return GapSupportingPaper(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      title: (json['title'] ?? 'Untitled paper').toString(),
+      publicationYear: (json['publicationYear'] as num?)?.toInt(),
+      journalName: json['journalName']?.toString(),
+      citationCount: (json['citationCount'] as num?)?.toInt(),
+    );
+  }
+
+  final String id;
+  final String title;
+  final int? publicationYear;
+  final String? journalName;
+  final int? citationCount;
 }
 
 class GapAnalysisResult {
@@ -115,8 +185,13 @@ class GapsApi {
 
   final Dio _dio;
 
-  Future<String> analyze(String topic) async {
-    final res = await _dio.post<Map<String, dynamic>>(ApiRoutes.gapsAnalyze, data: {'topic': topic});
+  Future<String> analyze(String topic, {String? projectId, int? yearFrom, int? yearTo}) async {
+    final data = <String, dynamic>{'topic': topic};
+    if (projectId != null && projectId.trim().isNotEmpty) data['projectId'] = projectId.trim();
+    if (yearFrom != null) data['yearFrom'] = yearFrom;
+    if (yearTo != null) data['yearTo'] = yearTo;
+
+    final res = await _dio.post<Map<String, dynamic>>(ApiRoutes.gapsAnalyze, data: data);
     return ((res.data?['data'] as Map<String, dynamic>?)?['analysisId'] ?? '').toString();
   }
 

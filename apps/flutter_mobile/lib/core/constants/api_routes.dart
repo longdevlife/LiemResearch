@@ -28,6 +28,11 @@ class ApiRoutes {
 
   // Trends
   static const String trendsOverview = '/trends';
+  static const String trendsCompare = '/trends/compare';
+  static const String trendsTopicCandidates = '/trends/topic-candidates';
+  static const String trendsRelationships = '/trends/relationships';
+  static const String trendsExplain = '/trends/explain';
+  static const String trendsExplainHistory = '/trends/explain/history';
   static String trendsTopic(String topic) =>
       '/trends/${Uri.encodeComponent(topic)}';
 
@@ -40,6 +45,7 @@ class ApiRoutes {
 
   // Reports
   static const String reportsList = '/reports';
+  static const String reportsEvidencePreview = '/reports/evidence-preview';
   static String reportsDetail(String id) => '/reports/$id';
   static const String reportsCreate = '/reports';
   static String reportsDelete(String id) => '/reports/$id';
@@ -92,4 +98,9 @@ class ApiRoutes {
   // Admin
   static const String adminSync = '/admin/sync';
   static const String adminSyncRuns = '/admin/sync/runs';
+  static const String adminEmbed = '/admin/embed';
+  static const String adminEmbedStatus = '/admin/embed/status';
+  static const String adminPipelineStatus = '/admin/pipeline/status';
+  static const String adminEvaluationSummary = '/admin/evaluation/summary';
+  static const String adminStats = '/admin/stats';
 }
