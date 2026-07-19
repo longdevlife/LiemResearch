@@ -28,10 +28,12 @@ class ApiRoutes {
 
   // Trends
   static const String trendsOverview = '/trends';
-  static String trendsTopic(String topic) => '/trends/${Uri.encodeComponent(topic)}';
+  static String trendsTopic(String topic) =>
+      '/trends/${Uri.encodeComponent(topic)}';
 
   // Quality
-  static String qualityView(String targetKind, String targetId) => '/quality/$targetKind/$targetId';
+  static String qualityView(String targetKind, String targetId) =>
+      '/quality/$targetKind/$targetId';
   static const String qualityEvaluate = '/quality/evaluate';
   static const String qualityRate = '/quality/rate';
   static String qualityDeleteRate(String ratingId) => '/quality/rate/$ratingId';
@@ -51,7 +53,8 @@ class ApiRoutes {
 
   // Notifications
   static const String notificationsList = '/notifications';
-  static const String notificationsRegisterDeviceToken = '/notifications/device-token';
+  static const String notificationsRegisterDeviceToken =
+      '/notifications/device-token';
   static String notificationsMarkRead(String id) => '/notifications/$id/read';
   static const String notificationsMarkAllRead = '/notifications/read-all';
 
@@ -71,11 +74,20 @@ class ApiRoutes {
   static String projectsUpdate(String id) => '/projects/$id';
   static String projectsDelete(String id) => '/projects/$id';
   static String projectsAddPaper(String id) => '/projects/$id/papers';
-  static String projectsRemovePaper(String id, String paperId) => '/projects/$id/papers/$paperId';
+  static String projectsRemovePaper(String id, String paperId) =>
+      '/projects/$id/papers/$paperId';
   static String projectsAddMember(String id) => '/projects/$id/members';
-  static String projectsRemoveMember(String id, String memberId) => '/projects/$id/members/$memberId';
+  static String projectsRemoveMember(String id, String memberId) =>
+      '/projects/$id/members/$memberId';
   static String projectsChatSend(String id) => '/projects/$id/chat';
   static String projectsChatHistory(String id) => '/projects/$id/chat';
+  static String projectsChatPin(String id, String messageId) =>
+      '/projects/$id/chat/$messageId/pin';
+  static String projectsTeamChat(String id) => '/projects/$id/team-chat';
+  static String projectsTeamChatRead(String id, String messageId) =>
+      '/projects/$id/team-chat/$messageId/read';
+  static String projectsTeamChatMessage(String id, String messageId) =>
+      '/projects/$id/team-chat/$messageId';
 
   // Admin
   static const String adminSync = '/admin/sync';
