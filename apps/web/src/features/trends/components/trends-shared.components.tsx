@@ -3,6 +3,11 @@ import { BookOpen, X, FileText, Calendar } from "lucide-react";
 import type { TrendFacetBucket, TrendingTopic } from "@trend/shared-types";
 import { formatMetricValue, type TrendSortKey } from "../../../pages/trends.insights";
 import { formatNumber } from "@/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Types
 export type TooltipPayload<TPayload> = Array<{ payload: TPayload }>;
@@ -72,29 +77,49 @@ export function FacetGroup({
             <div
               key={b.id || b.name}
               onClick={() => onBucketClick?.(b.id || b.name, b.openalexId)}
-              className={`text-xs group cursor-pointer p-1.5 rounded-lg border transition-all duration-150 ${
+              className={`text-xs group cursor-pointer p-1.5 rounded-lg border transition-all duration-150 select-none ${
                 isSelected
                   ? "bg-blue-50/70 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/30"
                   : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-900/30"
               }`}
             >
-              <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                <span className="truncate max-w-[125px] capitalize font-bold" title={b.name}>{b.name}</span>
-                <span className="text-slate-500 dark:text-slate-400 font-normal shrink-0">{formatNumber(b.count)}</span>
+              <div className="flex justify-between items-center font-semibold text-slate-700 dark:text-slate-350 mb-1.5 gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                    isSelected
+                      ? "bg-blue-600 border-blue-600 dark:bg-blue-550 dark:border-blue-550 text-white"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 group-hover:border-blue-500"
+                  }`}>
+                    {isSelected && (
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="truncate capitalize font-bold leading-none text-slate-850 dark:text-slate-200" title={b.name}>{b.name}</span>
+                </div>
+                <span className="text-slate-500 dark:text-slate-400 font-medium text-[11px] shrink-0">{formatNumber(b.count)}</span>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    isSelected ? "bg-blue-600 dark:bg-blue-400" : "bg-blue-600/60 dark:bg-blue-500/50 group-hover:bg-blue-600"
-                  }`}
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full bg-slate-105 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden cursor-help">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isSelected ? "bg-blue-600 dark:bg-blue-400" : "bg-blue-600/60 dark:bg-blue-500/50 group-hover:bg-blue-600"
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-popover text-popover-foreground border shadow-sm text-xs p-2">
+                  Represents <strong>{percentage}%</strong> of the current filtered dataset scope ({formatNumber(b.count)} / {formatNumber(total)} papers).
+                </TooltipContent>
+              </Tooltip>
             </div>
           );
         })}
         {(!buckets || buckets.length === 0) && (
-          <p className="text-xs text-slate-400 italic pl-1.5">No data</p>
+          <p className="text-xs text-slate-450 italic pl-1.5">No data</p>
         )}
       </div>
     </div>

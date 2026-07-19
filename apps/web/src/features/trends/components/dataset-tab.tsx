@@ -1,6 +1,14 @@
 import React, { useMemo } from "react";
 import type { TrendsOverview } from "@trend/shared-types";
-import { FacetGroup } from "./trends-shared.components";
+import { SlidersHorizontal } from "lucide-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { DatasetScopeImpactCard } from "./dataset-scope-impact-card";
+import { DatasetScopeHealthCard } from "./dataset-scope-health-card";
+import { DatasetScopeNextActions } from "./dataset-scope-next-actions";
+import { ActiveScopeChips, type ActiveChipItem } from "./active-scope-chips";
+import { DatasetScopeBuilder } from "./dataset-scope-builder";
+
+type DatasetTrendTab = "overview" | "topics" | "dataset" | "compare" | "ai";
 
 interface DatasetTabProps {
   data: TrendsOverview;
@@ -20,6 +28,11 @@ interface DatasetTabProps {
   sources: string[];
   citationBands: string[];
   handleBucketClick: (facet: string, val: string, openalexId?: string) => void;
+  setActiveTab?: (tab: DatasetTrendTab) => void;
+  navigate: (path: string) => void;
+  clearAllFilters?: () => void;
+  hasAnyFilter?: boolean;
+  isUpdating?: boolean;
 }
 
 export function DatasetTab({
@@ -40,7 +53,16 @@ export function DatasetTab({
   sources,
   citationBands,
   handleBucketClick,
+  setActiveTab,
+  navigate,
+  clearAllFilters,
+  hasAnyFilter = false,
+  isUpdating = false,
 }: DatasetTabProps) {
+
+  const totalInWindow = data.totalPapersInWindow ?? 0;
+
+  // 1. Derives active taxonomy path
   const scopeString = useMemo(() => {
     const parts: string[] = [];
     if (domainIds.length > 0) {
@@ -71,187 +93,195 @@ export function DatasetTab({
       parts.push(topicsFilter[0]);
     }
 
-    return parts.length > 0 ? parts.join(" → ") : "All OpenAlex domains";
+    return parts.length > 0 ? parts.join(" → ") : "All OpenAlex Domains";
   }, [data, domainIds, domains, fieldIds, fields, subfieldIds, subfields, topicIds, topicsFilter]);
 
-  const activeFiltersCount = useMemo(() => {
-    return (
-      domains.length + fields.length + subfields.length + topicsFilter.length +
-      domainIds.length + fieldIds.length + subfieldIds.length + topicIds.length +
-      paperKinds.length + openAccessStatuses.length + providers.length + sources.length +
-      citationBands.length
-    );
+  const scopeTarget = useMemo(() => {
+    return scopeString !== "All OpenAlex Domains"
+      ? scopeString.split(" → ").pop() || scopeString
+      : "research trends";
+  }, [scopeString]);
+
+  // 2. Extracts active filter chips info
+  const activeChips = useMemo(() => {
+    const chips: ActiveChipItem[] = [];
+
+    // Domains
+    domainIds.forEach(id => {
+      const name = data.facets?.domains?.find(d => d.openalexId === id || d.id === id)?.name || id;
+      chips.push({ facet: "Domains", val: id, label: `Domain: ${name}`, openalexId: id });
+    });
+    domains.forEach(name => {
+      chips.push({ facet: "Domains", val: name, label: `Domain: ${name}` });
+    });
+
+    // Fields
+    fieldIds.forEach(id => {
+      const name = data.facets?.fields?.find(f => f.openalexId === id || f.id === id)?.name || id;
+      chips.push({ facet: "Fields", val: id, label: `Field: ${name}`, openalexId: id });
+    });
+    fields.forEach(name => {
+      chips.push({ facet: "Fields", val: name, label: `Field: ${name}` });
+    });
+
+    // Subfields
+    subfieldIds.forEach(id => {
+      const name = data.facets?.subfields?.find(s => s.openalexId === id || s.id === id)?.name || id;
+      chips.push({ facet: "Subfields", val: id, label: `Subfield: ${name}`, openalexId: id });
+    });
+    subfields.forEach(name => {
+      chips.push({ facet: "Subfields", val: name, label: `Subfield: ${name}` });
+    });
+
+    // Topics
+    topicIds.forEach(id => {
+      const name = data.facets?.topics?.find(t => t.openalexId === id || t.id === id)?.name || id;
+      chips.push({ facet: "Topics", val: id, label: `Topic: ${name}`, openalexId: id });
+    });
+    topicsFilter.forEach(name => {
+      chips.push({ facet: "Topics", val: name, label: `Topic: ${name}` });
+    });
+
+    // Paper Types
+    paperKinds.forEach(kind => {
+      chips.push({ facet: "Paper Types", val: kind, label: `Paper: ${kind}` });
+    });
+
+    // Open Access
+    openAccessStatuses.forEach(status => {
+      chips.push({ facet: "Open Access", val: status, label: `OA: ${status}` });
+    });
+
+    // Providers
+    providers.forEach(p => {
+      chips.push({ facet: "Providers", val: p, label: `Provider: ${p}` });
+    });
+
+    // Top Sources
+    sources.forEach(src => {
+      chips.push({ facet: "Top Sources", val: src, label: `Source: ${src}` });
+    });
+
+    // Citation Bands
+    citationBands.forEach(band => {
+      chips.push({ facet: "Citation Bands", val: band, label: `Citations: ${band}` });
+    });
+
+    return chips;
   }, [
-    domains, fields, subfields, topicsFilter,
-    domainIds, fieldIds, subfieldIds, topicIds,
+    data, domainIds, domains, fieldIds, fields, subfieldIds, subfields, topicIds, topicsFilter,
     paperKinds, openAccessStatuses, providers, sources, citationBands
   ]);
 
-  return (
-    <div className="space-y-8">
-      {/* 1. Header (P1 Redundancy Fix) */}
-      <div className="space-y-2 select-none">
-        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Dataset Scope</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal max-w-3xl">
-          A detailed breakdown of active paper volumes across metadata fields and taxonomy categories in the currently selected dataset scope.
-        </p>
-      </div>
+  const hasParentSelected = domainIds.length > 0 || domains.length > 0;
 
-      {/* 3. Taxonomy Coverage Alignment */}
-      {data.taxonomyCoverage && (
-        <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white">Taxonomy Alignment & Coverage</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Coverage tells how many papers have enough OpenAlex topic metadata to support reliable scope filtering.
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="space-y-5">
+        {/* Header & Explanation */}
+        <div className="flex items-center gap-3 select-none">
+          <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-650 dark:text-blue-400 rounded-xl shrink-0">
+            <SlidersHorizontal className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-none">Dataset Scope Builder</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed animate-fadeIn">
+              Choose the paper dataset used by every Trends tab. Then continue to signals, comparison, search, or reports with the same scope.
             </p>
           </div>
-          
-          <div className="w-full md:w-72 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-4 flex flex-col justify-between shrink-0 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Taxonomy Coverage</span>
-              {(() => {
-                const score = data.taxonomyCoverage.fullHierarchyCoveragePct;
-                if (score >= 90) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-500 border border-emerald-200/30">Reliable</span>;
-                if (score >= 70) return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-500 border border-amber-200/30">Partial</span>;
-                return <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-800 dark:bg-red-950/20 dark:text-red-400 border border-red-200/30">Bias Warning</span>;
-              })()}
-            </div>
-            <div className="space-y-2">
-              <div>
-                <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
-                  <span>Full hierarchy</span>
-                  <span>{data.taxonomyCoverage.fullHierarchyCoveragePct}%</span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${data.taxonomyCoverage.fullHierarchyCoveragePct >= 90 ? "bg-emerald-500" : data.taxonomyCoverage.fullHierarchyCoveragePct >= 70 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${data.taxonomyCoverage.fullHierarchyCoveragePct}%` }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
-                  <span>Primary topic</span>
-                  <span>{data.taxonomyCoverage.primaryTopicCoveragePct}%</span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-full" style={{ width: `${data.taxonomyCoverage.primaryTopicCoveragePct}%` }} />
-                </div>
-              </div>
-            </div>
+        </div>
+
+        {/* Main 2-Column Responsive Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+          {/* LEFT COLUMN: Filters Controls (8 columns) */}
+          <div className="lg:col-span-8">
+            <DatasetScopeBuilder
+              data={data}
+              isUpdating={isUpdating}
+              domainIds={domainIds}
+              domains={domains}
+              fieldIds={fieldIds}
+              fields={fields}
+              subfieldIds={subfieldIds}
+              subfields={subfields}
+              topicIds={topicIds}
+              topicsFilter={topicsFilter}
+              paperKinds={paperKinds}
+              openAccessStatuses={openAccessStatuses}
+              providers={providers}
+              sources={sources}
+              citationBands={citationBands}
+              handleBucketClick={handleBucketClick}
+              hasParentSelected={hasParentSelected}
+            />
+          </div>
+
+          {/* RIGHT COLUMN: Sticky Sidebar cockpit (4 columns) */}
+          <div className="lg:col-span-4 lg:sticky lg:top-5 space-y-6">
+
+            {/* Zone 1 — Scope Impact Summary Card */}
+            <DatasetScopeImpactCard
+              hasAnyFilter={hasAnyFilter}
+              clearAllFilters={clearAllFilters}
+              isUpdating={isUpdating}
+              totalInWindow={totalInWindow}
+              scopeString={scopeString}
+              yearFrom={yearFrom}
+              yearTo={yearTo}
+              lastCompleteYear={data.lastCompleteYear}
+            />
+
+            {/* Zone 4 — Sticky Scoped Next Actions */}
+            <DatasetScopeNextActions
+              yearFrom={yearFrom}
+              yearTo={yearTo}
+              domainIds={domainIds}
+              domains={domains}
+              fieldIds={fieldIds}
+              fields={fields}
+              subfieldIds={subfieldIds}
+              subfields={subfields}
+              topicIds={topicIds}
+              topicsFilter={topicsFilter}
+              paperKinds={paperKinds}
+              openAccessStatuses={openAccessStatuses}
+              providers={providers}
+              sources={sources}
+              citationBands={citationBands}
+              scopeTarget={scopeTarget}
+              scopeString={scopeString}
+              setActiveTab={setActiveTab}
+              navigate={navigate}
+              isUpdating={isUpdating}
+              totalInWindow={totalInWindow}
+              activeFiltersCount={activeChips.length}
+              hasAnyFilter={hasAnyFilter}
+            />
+
+            {/* Zone 3 — Data Health & Warnings */}
+            <DatasetScopeHealthCard
+              data={data}
+              totalInWindow={totalInWindow}
+              activeFiltersCount={activeChips.length}
+              hasCitationFilter={citationBands.length > 0}
+            />
+
+            {/* Category-Grouped Active filter chips */}
+            <ActiveScopeChips
+              activeChips={activeChips}
+              handleBucketClick={handleBucketClick}
+            />
           </div>
         </div>
-      )}
 
-      {/* 4. Grouped Corpus Facets (P9 Visually Grouped Request) */}
-      {data.facets && (
-        <div className="space-y-6">
-          {/* GROUP A: Scholarly taxonomy */}
-          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded bg-blue-600"></span> Scholarly taxonomy
-              </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Academic domain and topic classification from OpenAlex.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <FacetGroup
-                title="Domains"
-                buckets={data.facets.domains}
-                total={data.totalPapersInWindow}
-                activeValues={domainIds.length > 0 ? domainIds : domains}
-                onBucketClick={(val, openalexId) => handleBucketClick("Domains", val, openalexId)}
-              />
-              <FacetGroup
-                title="Fields"
-                buckets={data.facets.fields}
-                total={data.totalPapersInWindow}
-                activeValues={fieldIds.length > 0 ? fieldIds : fields}
-                onBucketClick={(val, openalexId) => handleBucketClick("Fields", val, openalexId)}
-              />
-              <FacetGroup
-                title="Subfields"
-                buckets={data.facets.subfields}
-                total={data.totalPapersInWindow}
-                activeValues={subfieldIds.length > 0 ? subfieldIds : subfields}
-                onBucketClick={(val, openalexId) => handleBucketClick("Subfields", val, openalexId)}
-              />
-              <FacetGroup
-                title="Topics"
-                buckets={data.facets.topics}
-                total={data.totalPapersInWindow}
-                activeValues={topicIds.length > 0 ? topicIds : topicsFilter}
-                onBucketClick={(val, openalexId) => handleBucketClick("Topics", val, openalexId)}
-              />
-            </div>
-          </div>
-
-          {/* GROUP B: Publication metadata & GROUP C: Impact filter */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* GROUP B: Publication metadata (2/3 columns) */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded bg-purple-600"></span> Publication metadata
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Scholarly publication formats, licensing access, sources and host providers.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FacetGroup
-                  title="Paper Types"
-                  buckets={data.facets.paperKinds}
-                  total={data.totalPapersInWindow}
-                  activeValues={paperKinds}
-                  onBucketClick={(val) => handleBucketClick("Paper Types", val)}
-                />
-                <FacetGroup
-                  title="Open Access"
-                  buckets={data.facets.openAccessStatuses}
-                  total={data.totalPapersInWindow}
-                  activeValues={openAccessStatuses}
-                  onBucketClick={(val) => handleBucketClick("Open Access", val)}
-                />
-                <FacetGroup
-                  title="Providers"
-                  buckets={data.facets.providers}
-                  total={data.totalPapersInWindow}
-                  activeValues={providers}
-                  onBucketClick={(val) => handleBucketClick("Providers", val)}
-                />
-                <FacetGroup
-                  title="Top Sources"
-                  buckets={data.facets.topSources}
-                  total={data.totalPapersInWindow}
-                  activeValues={sources}
-                  onBucketClick={(val) => handleBucketClick("Top Sources", val)}
-                />
-              </div>
-            </div>
-
-            {/* GROUP C: Impact filter (1/3 column) */}
-            <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded bg-emerald-600"></span> Impact filter
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Filter by the number of citations accumulated.</p>
-              </div>
-              <FacetGroup
-                title="Citation Bands"
-                buckets={data.facets.citationBands}
-                total={data.totalPapersInWindow}
-                activeValues={citationBands}
-                onBucketClick={(val) => handleBucketClick("Citation Bands", val)}
-              />
-            </div>
-          </div>
+        {/* Technical footer notes */}
+        <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-900/10 border-l-2 border-slate-300 dark:border-slate-700 rounded-r-xl text-[11px] text-slate-555 dark:text-slate-400 select-none">
+          <p className="leading-relaxed">
+            <strong>Dataset Scope Basis:</strong> Active paper statistics calculated inside the filtered data window. Domain, field, subfield, and topic taxonomy hierarchy mappings are powered by OpenAlex.
+          </p>
         </div>
-      )}
-
-      {/* Data basis note */}
-      <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-900/10 border-l-2 border-slate-300 dark:border-slate-700 rounded-r-xl text-xs text-slate-500 dark:text-slate-400 select-none">
-        <p className="leading-relaxed">
-          <strong>Data Basis Hint:</strong> Trends are computed from active papers in the selected corpus window. Facets use OpenAlex-style metadata such as source/type, open access, citation band, domain, field, subfield, and topic.
-        </p>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

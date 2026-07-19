@@ -8,7 +8,7 @@ import { FilterChip, type RisingKeywordRow, type TrendBarChartDatum } from "@/fe
 import { OverviewTab } from "@/features/trends/components/overview-tab";
 import { TopicsTab } from "@/features/trends/components/topics-tab";
 import { DatasetTab } from "@/features/trends/components/dataset-tab";
-import { CompareTab, type CompareChartDatum } from "@/features/trends/components/compare-tab";
+import { CompareTab } from "@/features/trends/components/compare-tab";
 import { AITab } from "@/features/trends/components/ai-tab";
 import {
   formatMetricValue,
@@ -140,7 +140,7 @@ export function TrendsPage() {
   ]);
 
   // Hook query: Trends Overview with all active filters
-  const { data, isLoading, isError } = useTrendsOverview({
+  const { data, isLoading, isFetching, isError } = useTrendsOverview({
     yearFrom,
     yearTo,
     sortBy,
@@ -323,18 +323,6 @@ export function TrendsPage() {
 
   const explainMutation = useExplainTrend();
 
-  const compareChartData = useMemo<CompareChartDatum[]>(() => {
-    if (!compareQuery.data?.topics) return [];
-    const years = Array.from({ length: yearTo - yearFrom + 1 }, (_, i) => yearFrom + i);
-    return years.map((y) => {
-      const point: CompareChartDatum = { year: String(y) };
-      compareQuery.data.topics.forEach((t) => {
-        const breakdown = t.yearlyBreakdown.find((b) => b.year === y);
-        point[t.topic] = breakdown ? breakdown.count : 0;
-      });
-      return point;
-    });
-  }, [compareQuery.data, yearFrom, yearTo]);
 
   // Taxonomy selector clear and toggle actions
   const toggleFilter = <T extends string>(list: T[], setList: React.Dispatch<React.SetStateAction<T[]>>, val: T) => {
@@ -437,6 +425,34 @@ export function TrendsPage() {
     paperKinds, openAccessStatuses, providers, sources, citationBands
   ]);
 
+  const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
+    const params = new URLSearchParams(baseParams);
+    params.set("yearFrom", String(yearFrom));
+    params.set("yearTo", String(yearTo));
+
+    const addList = (key: string, values: string[]) => {
+      const cleaned = values.map((value) => value.trim()).filter(Boolean);
+      if (cleaned.length > 0) params.set(key, cleaned.join(","));
+    };
+
+    addList("domainIds", domainIds);
+    addList("domains", domains);
+    addList("fieldIds", fieldIds);
+    addList("fields", fields);
+    addList("subfieldIds", subfieldIds);
+    addList("subfields", subfields);
+    addList("topicIds", topicIds);
+    addList("topics", topicsFilter);
+    addList("topicsFilter", topicsFilter);
+    addList("paperKinds", paperKinds);
+    addList("openAccessStatuses", openAccessStatuses);
+    addList("providers", providers);
+    addList("sources", sources);
+    addList("citationBands", citationBands);
+
+    return `${path}?${params.toString()}`;
+  };
+
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
@@ -453,7 +469,7 @@ export function TrendsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
@@ -572,7 +588,11 @@ export function TrendsPage() {
           <div className="flex w-full md:w-auto gap-3 shrink-0 ml-auto justify-end">
             <Button
               className="flex-1 md:flex-none h-10 px-6 bg-[#001b69] hover:bg-[#001040] text-white font-bold rounded-lg gap-2 shadow-md transition-colors"
-              onClick={() => navigate('/reports?create=true')}
+              onClick={() => navigate(buildScopedUrl("/reports", {
+                create: "true",
+                topic: scopeString,
+                query: `Analyze research trends, research gaps, and future directions within ${scopeString}.`,
+              }))}
             >
               <Sparkles className="w-4 h-4" fill="currentColor" /> Generate AI Report
             </Button>
@@ -843,6 +863,7 @@ export function TrendsPage() {
                 <div className="space-y-1">
                   <p className="font-bold text-slate-900 dark:text-slate-200">Current analysis dataset basis</p>
                   <p className="font-medium text-slate-650 dark:text-slate-350">
+                    {isFetching && !isLoading ? "Updating scoped dataset... " : ""}
                     Analyzing <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{formatNumber(data.totalPapersInWindow)}</strong> active papers. Trend metrics use complete years through <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{data.lastCompleteYear}</strong>; {yearTo > data.lastCompleteYear ? `${yearTo} is shown as YTD.` : ""}.
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-450">
@@ -899,7 +920,7 @@ export function TrendsPage() {
           </div>
 
           {/* 5. Tab Panels (Senior Component Split) */}
-          <div className="w-full">
+          <div id="trends-tab-panels" className="w-full scroll-mt-24">
             {activeTab === "overview" && (
               <OverviewTab
                 data={data}
@@ -917,6 +938,23 @@ export function TrendsPage() {
                 setActiveTab={setActiveTab}
                 getTopicTrendTarget={getTopicTrendTarget}
                 getRisingKeywordTarget={getRisingKeywordTarget}
+                scopeParams={{
+                  yearFrom,
+                  yearTo,
+                  domainIds,
+                  domains,
+                  fieldIds,
+                  fields,
+                  subfieldIds,
+                  subfields,
+                  topicIds,
+                  topicsFilter,
+                  paperKinds,
+                  openAccessStatuses,
+                  providers,
+                  sources,
+                  citationBands,
+                }}
               />
             )}
 
@@ -929,6 +967,27 @@ export function TrendsPage() {
                 navigate={navigate}
                 getTopicTrendTarget={getTopicTrendTarget}
                 getRisingKeywordTarget={getRisingKeywordTarget}
+                selectedTopics={selectedTopics}
+                setSelectedTopics={setSelectedTopics}
+                setActiveTab={setActiveTab}
+                setFocusTopic={setFocusTopic}
+                scopeParams={{
+                  yearFrom,
+                  yearTo,
+                  domainIds,
+                  domains,
+                  fieldIds,
+                  fields,
+                  subfieldIds,
+                  subfields,
+                  topicIds,
+                  topicsFilter,
+                  paperKinds,
+                  openAccessStatuses,
+                  providers,
+                  sources,
+                  citationBands,
+                }}
               />
             )}
 
@@ -951,6 +1010,11 @@ export function TrendsPage() {
                 sources={sources}
                 citationBands={citationBands}
                 handleBucketClick={handleBucketClick}
+                setActiveTab={setActiveTab}
+                navigate={navigate}
+                clearAllFilters={clearAllFilters}
+                hasAnyFilter={hasAnyFilter}
+                isUpdating={isFetching}
               />
             )}
 
@@ -960,10 +1024,29 @@ export function TrendsPage() {
                 selectedTopics={selectedTopics}
                 setSelectedTopics={setSelectedTopics}
                 compareQuery={compareQuery}
-                compareChartData={compareChartData}
                 yearFrom={yearFrom}
                 yearTo={yearTo}
                 sortBy={sortBy}
+                setFocusTopic={setFocusTopic}
+                setActiveTab={setActiveTab}
+                clearAllFilters={clearAllFilters}
+                scopeParams={{
+                  yearFrom,
+                  yearTo,
+                  domainIds,
+                  domains,
+                  fieldIds,
+                  fields,
+                  subfieldIds,
+                  subfields,
+                  topicIds,
+                  topicsFilter,
+                  paperKinds,
+                  openAccessStatuses,
+                  providers,
+                  sources,
+                  citationBands,
+                }}
               />
             )}
 

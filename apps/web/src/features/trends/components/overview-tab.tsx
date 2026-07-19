@@ -24,6 +24,23 @@ interface OverviewTabProps {
   setActiveTab: (tab: "overview" | "topics" | "dataset" | "compare" | "ai") => void;
   getTopicTrendTarget: (topic: string) => string;
   getRisingKeywordTarget: (keyword: string) => string;
+  scopeParams?: {
+    yearFrom: number;
+    yearTo: number;
+    domainIds: string[];
+    domains: string[];
+    fieldIds: string[];
+    fields: string[];
+    subfieldIds: string[];
+    subfields: string[];
+    topicIds: string[];
+    topicsFilter: string[];
+    paperKinds: string[];
+    openAccessStatuses: string[];
+    providers: string[];
+    sources: string[];
+    citationBands: string[];
+  };
 }
 
 export function OverviewTab({
@@ -42,7 +59,50 @@ export function OverviewTab({
   setActiveTab,
   getTopicTrendTarget,
   getRisingKeywordTarget,
+  scopeParams,
 }: OverviewTabProps) {
+  const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
+    const params = new URLSearchParams(baseParams);
+
+    if (scopeParams) {
+      params.set("yearFrom", String(scopeParams.yearFrom));
+      params.set("yearTo", String(scopeParams.yearTo));
+
+      const addList = (key: string, values: string[]) => {
+        const cleaned = values.map((value) => value.trim()).filter(Boolean);
+        if (cleaned.length > 0) params.set(key, cleaned.join(","));
+      };
+
+      addList("domainIds", scopeParams.domainIds);
+      addList("domains", scopeParams.domains);
+      addList("fieldIds", scopeParams.fieldIds);
+      addList("fields", scopeParams.fields);
+      addList("subfieldIds", scopeParams.subfieldIds);
+      addList("subfields", scopeParams.subfields);
+      addList("topicIds", scopeParams.topicIds);
+      addList("topics", scopeParams.topicsFilter);
+      addList("topicsFilter", scopeParams.topicsFilter);
+      addList("paperKinds", scopeParams.paperKinds);
+      addList("openAccessStatuses", scopeParams.openAccessStatuses);
+      addList("providers", scopeParams.providers);
+      addList("sources", scopeParams.sources);
+      addList("citationBands", scopeParams.citationBands);
+    }
+
+    return `${path}?${params.toString()}`;
+  };
+
+  const getScopedSearchTarget = (query: string) => {
+    return scopeParams
+      ? buildScopedUrl("/search", { q: query })
+      : `/search?q=${encodeURIComponent(query)}`;
+  };
+
+  const getScopedReportTarget = (topic: string) => {
+    return scopeParams
+      ? buildScopedUrl("/reports", { create: "true", topic })
+      : `/reports?create=true&topic=${encodeURIComponent(topic)}`;
+  };
 
   // Deterministic Dataset Insight (no AI call)
   const insightText = React.useMemo(() => {
@@ -168,7 +228,7 @@ export function OverviewTab({
           actionLabel={highestGrowthTopic && highestGrowthTopic.growthRatePct > 0 ? "Explore papers" : "Compare topics"}
           onAction={() => {
             if (highestGrowthTopic && highestGrowthTopic.growthRatePct > 0) {
-              navigate(`/search?q=${encodeURIComponent(highestGrowthTopic.topic)}`);
+              navigate(getScopedSearchTarget(highestGrowthTopic.topic));
             } else {
               setActiveTab("compare");
             }
@@ -183,7 +243,7 @@ export function OverviewTab({
           meaning="Largest paper volume in the selected dataset. Useful as a stable baseline."
           sourceHint="Total volume"
           actionLabel="Generate report"
-          onAction={() => establishedTopic && navigate(`/reports?create=true&topic=${encodeURIComponent(establishedTopic.topic)}`)}
+          onAction={() => establishedTopic && navigate(getScopedReportTarget(establishedTopic.topic))}
         />
         <InsightCard
           label="Emerging keyword"
@@ -201,7 +261,7 @@ export function OverviewTab({
           ) : undefined}
           sourceHint="YoY growth"
           actionLabel="Search keyword"
-          onAction={() => fastestKeyword && navigate(getRisingKeywordTarget(fastestKeyword.keyword))}
+          onAction={() => fastestKeyword && navigate(getScopedSearchTarget(fastestKeyword.keyword))}
         />
       </div>
 
