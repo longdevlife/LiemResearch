@@ -276,7 +276,10 @@ export function OverviewTab({
           <span className="text-slate-300">·</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-            Topics: <span className="text-slate-900 dark:text-white font-extrabold">{data.topics?.length || "0"}</span>
+            Topics shown: <span className="text-slate-900 dark:text-white font-extrabold">{formatNumber(data.topics?.length || 0)}</span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              of {formatNumber(data.uniqueTopicsInScope ?? data.topics?.length ?? 0)} unique topics
+            </span>
           </span>
           <span className="text-slate-300">·</span>
           <span className="flex items-center gap-1.5">
@@ -296,7 +299,7 @@ export function OverviewTab({
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
           <span>
-            <strong>Momentum</strong> = trend slope in papers/year. <strong>Growth</strong> = year-over-year change using the last complete year. Current-year data is YTD and excluded from growth math.
+            <strong>Momentum</strong> = trend slope in papers/year. <strong>Growth</strong> = year-over-year change using the last complete year. Topic lists show the top ranked slice, not every unique topic in scope.
           </span>
         </div>
         <div className="text-slate-400 dark:text-slate-500 font-semibold md:text-right shrink-0">

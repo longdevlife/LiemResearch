@@ -8,6 +8,10 @@ import type {
   TrendCompareResponse,
   TrendTopicCandidate,
   TrendTopicCandidatesResponse,
+  TrendMetricTrace,
+  TrendMetricTraceSource,
+  TrendExplanationHistoryResponse,
+  TrendEvidenceSignal,
   TrendingTopic,
   TrendFacets,
   TrendTaxonomyCoverage,
@@ -37,9 +41,11 @@ import type {
   TrendTopicCandidatesQuery,
   TrendCompareQuery,
   TrendExplainBody,
+  TrendExplainHistoryQuery,
   TrendRelationshipQuery,
   TrendsOverviewQuery,
 } from "./dto/trends.schema.js";
+import { TrendExplanationModel } from "./models/trend-explanation.model.js";
 
 /**
  * Trends — aggregates research_papers into "what's rising, what's fading".
@@ -93,10 +99,20 @@ export const trendService = {
     const matchStage = buildTrendMatchStage(filterInput);
     const unwoundTopicMatch = buildUnwoundTopicMatch(filterInput);
 
-    const [topicGroups, keywordGroups, totalPapersInWindow, yearlyTotalPapers, citationTrend, facets, taxonomyCoverage] = await Promise.all([
+    const [
+      topicGroups,
+      keywordGroups,
+      totalPapersInWindow,
+      uniqueTopicsInScope,
+      yearlyTotalPapers,
+      citationTrend,
+      facets,
+      taxonomyCoverage,
+    ] = await Promise.all([
       groupYearlyCounts("$topics.topicName", "$topics", matchStage, minPapers, topicTaxonomyProjection(), unwoundTopicMatch),
       groupYearlyCounts("$keywords.keywordName", "$keywords", matchStage, 3),
       PaperModel.countDocuments(matchStage),
+      countUniqueTopics(matchStage, unwoundTopicMatch),
       getYearlyPaperCounts(matchStage, yearFrom, yearTo),
       getCitationTrend(matchStage, yearFrom, yearTo),
       getTrendFacets(matchStage, unwoundTopicMatch),
@@ -147,6 +163,7 @@ export const trendService = {
       yearTo,
       lastCompleteYear,
       totalPapersInWindow,
+      uniqueTopicsInScope,
       yearlyTotalPapers,
       citationTrend,
       facets,
@@ -166,6 +183,7 @@ export const trendService = {
         yearTo,
         filtersApplied,
         totalPapersInWindow,
+        uniqueTopicsInScope,
         topics: result.topics.length,
         risingKeywords: result.risingKeywords.length,
       },
@@ -326,16 +344,16 @@ export const trendService = {
     const now = new Date();
     const yearTo = query.yearTo ?? now.getFullYear();
     const yearFrom = query.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
-    const { topic, limit } = query;
+    const { topic, limit, ...filters } = query;
+    const filtersApplied = describeAppliedTrendFilters({ ...filters, yearFrom, yearTo });
 
-    const cacheKey = `${CACHE_VERSION}:relationships:${hashKey({ topic, yearFrom, yearTo, limit })}`;
+    const cacheKey = `${CACHE_VERSION}:relationships:${hashKey({ topic, yearFrom, yearTo, limit, filtersApplied })}`;
     const cached = await cache.get<TopicRelationshipResponse>(cacheKey);
     if (cached) return cached;
 
     const matchStage = {
-      dataStatus: "active",
+      ...buildTrendMatchStage({ ...filters, yearFrom, yearTo }),
       "topics.topicName": topic,
-      publicationYear: { $gte: yearFrom, $lte: yearTo },
     };
 
     const [sourceCount, related] = await Promise.all([
@@ -364,16 +382,16 @@ export const trendService = {
   },
 
   /** POST /trends/explain — AI explanation grounded only in aggregate trend metrics. */
-  async explain(input: TrendExplainBody): Promise<TrendExplanationResponse> {
+  async explain(input: TrendExplainBody, userId?: string): Promise<TrendExplanationResponse> {
     const now = new Date();
     const yearTo = input.yearTo ?? now.getFullYear();
     const yearFrom = input.yearFrom ?? yearTo - DEFAULT_WINDOW_YEARS;
     const { topic, language, ...filters } = input;
     const filtersApplied = describeAppliedTrendFilters({ ...filters, yearFrom, yearTo });
     const overview = await this.overview({ ...filters, yearFrom, yearTo, limit: 10, minPapers: 3, sortBy: "momentum" });
-    const topicDetail = topic ? await this.topic(topic, { yearFrom, yearTo }).catch(() => null) : null;
+    const topicDetail = topic ? await this.topic(topic, { ...filters, yearFrom, yearTo }).catch(() => null) : null;
     const relationships = topic
-      ? await this.relationships({ topic, yearFrom, yearTo, limit: 8 }).catch(() => null)
+      ? await this.relationships({ topic, ...filters, yearFrom, yearTo, limit: 8 }).catch(() => null)
       : null;
 
     const prompt = buildTrendExplainPrompt({
@@ -384,9 +402,10 @@ export const trendService = {
       relationships,
     });
 
-    return cachedGenerateJSON<TrendExplanationResponse>({
+    const metricTrace = buildTrendMetricTrace(overview, topicDetail, relationships);
+    const explanation = await cachedGenerateJSON<TrendExplanationResponse>({
       task: "trend",
-      promptVersion: "trend-explain-v1",
+      promptVersion: "trend-explain-v2",
       keyParts: {
         topic: topic ?? null,
         yearFrom,
@@ -398,8 +417,42 @@ export const trendService = {
       },
       prompt,
       options: { temperature: 0.2, maxOutputTokens: 1000 },
-      validate: (out) => validateTrendExplanation(out, topic ?? null, language),
+      validate: (out) => validateTrendExplanation(out, topic ?? null, language, metricTrace),
     });
+
+    if (userId) {
+      await saveTrendExplanation({
+        userId,
+        explanation,
+        yearFrom,
+        yearTo,
+        scopeFilters: filters,
+        scopeHash: hashKey({ filtersApplied, yearFrom, yearTo }),
+        scopeLabel: buildScopeLabel(filtersApplied),
+      }).catch((err) => {
+        logger.warn({ err, userId, topic: topic ?? null }, "failed to save trend explanation history");
+      });
+    }
+
+    return explanation;
+  },
+
+  async explainHistory(userId: string, query: TrendExplainHistoryQuery): Promise<TrendExplanationHistoryResponse> {
+    const filter: Record<string, unknown> = { userId };
+    if (query.topic) filter.topic = query.topic;
+
+    const docs = await TrendExplanationModel.find(filter).sort({ createdAt: -1 }).limit(query.limit).lean();
+    return {
+      items: docs.map((doc) => ({
+        ...(doc.explanation as TrendExplanationResponse),
+        id: String(doc._id),
+        yearFrom: doc.yearFrom,
+        yearTo: doc.yearTo,
+        scopeHash: doc.scopeHash,
+        scopeLabel: doc.scopeLabel,
+        createdAt: doc.createdAt.toISOString(),
+      })),
+    };
   },
 
   /** GET /trends/:topic — yearly series + metrics + top journals/authors/keywords. */
@@ -410,15 +463,16 @@ export const trendService = {
     const lastCompleteYear = Math.min(yearTo, now.getFullYear() - 1);
     const topicIds = query.topicId ? expandOpenAlexEntityId(query.topicId) : [];
     const topicCriteria = topicIds.length > 0 ? { "topics.openalexTopicId": { $in: topicIds } } : { "topics.topicName": topicName };
+    const filtersApplied = describeAppliedTrendFilters({ ...query, yearFrom, yearTo });
 
-    const cacheKey = `${CACHE_VERSION}:topic:${hashKey({ topicName, topicIds, yearFrom, yearTo })}`;
+    const cacheKey = `${CACHE_VERSION}:topic:${hashKey({ topicName, topicIds, yearFrom, yearTo, filtersApplied })}`;
     const cached = await cache.get<PublicationTrend>(cacheKey);
     if (cached) return cached;
 
+    const baseMatchStage = buildTrendMatchStage({ ...query, yearFrom, yearTo });
     const matchStage = {
-      dataStatus: "active",
+      ...baseMatchStage,
       ...topicCriteria,
-      publicationYear: { $gte: yearFrom, $lte: yearTo },
     };
     const topicPostUnwindMatch = topicIds.length > 0 ? { "topics.openalexTopicId": { $in: topicIds } } : { "topics.topicName": topicName };
 
@@ -562,6 +616,22 @@ async function getYearlyPaperCounts(
     { $sort: { _id: 1 } },
   ]);
   return fillMissingYearsFromCounts(rows.map((r) => ({ year: r._id, count: r.count })), yearFrom, yearTo);
+}
+
+async function countUniqueTopics(
+  matchStage: Record<string, unknown>,
+  topicPostUnwindMatch?: Record<string, unknown>,
+): Promise<number> {
+  const postUnwindStages = topicPostUnwindMatch && Object.keys(topicPostUnwindMatch).length > 0 ? [{ $match: topicPostUnwindMatch }] : [];
+  const rows = await PaperModel.aggregate<{ count: number }>([
+    { $match: matchStage },
+    { $unwind: "$topics" },
+    ...postUnwindStages,
+    { $match: { "topics.topicName": { $nin: [null, ""] } } },
+    { $group: { _id: "$topics.topicName" } },
+    { $count: "count" },
+  ]);
+  return rows[0]?.count ?? 0;
 }
 
 async function getCitationTrend(
@@ -891,6 +961,102 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildTrendMetricTrace(
+  overview: TrendsOverview,
+  topicDetail: PublicationTrend | null,
+  relationships: TopicRelationshipResponse | null,
+): TrendMetricTrace[] {
+  const traces: TrendMetricTrace[] = [
+    {
+      source: "yearlyTotalPapers",
+      label: "Publication activity",
+      value: `${formatNumber(overview.totalPapersInWindow)} papers, ${overview.yearFrom}-${overview.yearTo}`,
+      explanation: "Counts active papers in the current year window and Data Scope.",
+    },
+    {
+      source: "citationTrend",
+      label: "Citation activity",
+      value: `${formatNumber(sumBy(overview.citationTrend, (row) => row.totalCitations))} total citations`,
+      explanation: "Aggregates OpenAlex citation counts by publication year for the same scoped papers.",
+    },
+    {
+      source: "risingKeywords",
+      label: "Early keyword signals",
+      value: `${formatNumber(overview.risingKeywords.length)} rising keywords`,
+      explanation: "Detects fast-growing paper keywords after small-base protection.",
+    },
+    {
+      source: "facets",
+      label: "Dataset facets",
+      value: `${formatNumber(overview.facets.domains.length)} domains, ${formatNumber(overview.facets.topics.length)} top topic facets`,
+      explanation: "Summarizes the selected corpus by OpenAlex taxonomy and publication metadata.",
+    },
+  ];
+
+  if (topicDetail) {
+    traces.push({
+      source: "topicMetrics",
+      label: "Focus topic metrics",
+      value: `${formatNumber(topicDetail.totalPapers)} papers, ${formatSigned(topicDetail.momentum)} papers/year`,
+      explanation: "Computes the selected topic's volume, growth, CAGR, and momentum inside the current Data Scope.",
+    });
+  }
+
+  if (relationships) {
+    traces.push({
+      source: "relationships",
+      label: "Topic co-occurrence",
+      value: `${formatNumber(relationships.edges.length)} related topic links`,
+      explanation: "Counts topics that appear together with the focus topic on the same scoped papers.",
+    });
+  }
+
+  return traces;
+}
+
+async function saveTrendExplanation(args: {
+  userId: string;
+  explanation: TrendExplanationResponse;
+  yearFrom: number;
+  yearTo: number;
+  scopeHash: string;
+  scopeLabel: string;
+  scopeFilters: Record<string, unknown>;
+}) {
+  await TrendExplanationModel.create({
+    userId: args.userId,
+    topic: args.explanation.topic,
+    language: args.explanation.language,
+    yearFrom: args.yearFrom,
+    yearTo: args.yearTo,
+    scopeHash: args.scopeHash,
+    scopeLabel: args.scopeLabel,
+    scopeFilters: args.scopeFilters,
+    explanation: args.explanation,
+  });
+}
+
+function buildScopeLabel(filtersApplied: Record<string, unknown>): string {
+  const labels = Object.entries(filtersApplied)
+    .flatMap(([key, value]) => Array.isArray(value) ? value.map((item) => `${key}: ${item}`) : [])
+    .slice(0, 4);
+  if (labels.length === 0) return "All OpenAlex domains";
+  return labels.join(" · ");
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatSigned(value: number): string {
+  const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(Math.abs(value));
+  return `${value >= 0 ? "+" : "-"}${formatted}`;
+}
+
+function sumBy<T>(items: T[], pick: (item: T) => number): number {
+  return items.reduce((sum, item) => sum + pick(item), 0);
+}
+
 function expandOpenAlexEntityId(value: string): string[] {
   const trimmed = value.trim();
   if (!trimmed) return [];
@@ -947,9 +1113,15 @@ function buildTrendExplainPrompt(args: {
         language: args.language,
         summary: "one concise paragraph",
         whyItMatters: ["2-4 bullets"],
-        evidenceSignals: ["2-5 bullets grounded in counts, growth, momentum, citations, facets, or relationships"],
+        evidenceSignals: [
+          {
+            text: "2-5 bullets grounded in counts, growth, momentum, citations, facets, or relationships",
+            sources: ["yearlyTotalPapers", "citationTrend", "topicMetrics", "relationships"],
+          },
+        ],
         cautions: ["1-3 bullets about incomplete year, small base, missing data, or limits"],
         suggestedActions: ["2-4 user actions such as search papers, compare topics, generate report, inspect gaps"],
+        metricTrace: [],
         generatedAt: "ISO timestamp",
       },
       null,
@@ -958,10 +1130,11 @@ function buildTrendExplainPrompt(args: {
   ].join("\n");
 }
 
-function validateTrendExplanation(
+export function validateTrendExplanation(
   out: TrendExplanationResponse,
   topic: string | null,
   language: "en" | "vi",
+  metricTrace: TrendMetricTrace[],
 ): TrendExplanationResponse {
   const arrays = [out.whyItMatters, out.evidenceSignals, out.cautions, out.suggestedActions];
   if (
@@ -976,9 +1149,43 @@ function validateTrendExplanation(
     language,
     summary: out.summary.trim(),
     whyItMatters: out.whyItMatters.map(String).filter(Boolean).slice(0, 4),
-    evidenceSignals: out.evidenceSignals.map(String).filter(Boolean).slice(0, 5),
+    evidenceSignals: normalizeEvidenceSignals(out.evidenceSignals, metricTrace.map((trace) => trace.source)).slice(0, 5),
     cautions: out.cautions.map(String).filter(Boolean).slice(0, 3),
     suggestedActions: out.suggestedActions.map(String).filter(Boolean).slice(0, 4),
+    metricTrace,
     generatedAt: new Date().toISOString(),
   };
+}
+
+function normalizeEvidenceSignals(
+  rawSignals: unknown[],
+  fallbackSources: TrendMetricTraceSource[],
+): TrendEvidenceSignal[] {
+  return rawSignals
+    .map((item) => {
+      if (typeof item === "string") {
+        return { text: item.trim(), sources: fallbackSources };
+      }
+      if (item && typeof item === "object") {
+        const candidate = item as { text?: unknown; sources?: unknown };
+        const text = typeof candidate.text === "string" ? candidate.text.trim() : "";
+        const sources = Array.isArray(candidate.sources)
+          ? candidate.sources.filter(isTrendMetricSource)
+          : fallbackSources;
+        return { text, sources: sources.length > 0 ? sources : fallbackSources };
+      }
+      return { text: "", sources: fallbackSources };
+    })
+    .filter((item) => item.text.length > 0);
+}
+
+function isTrendMetricSource(value: unknown): value is TrendMetricTraceSource {
+  return [
+    "yearlyTotalPapers",
+    "citationTrend",
+    "topicMetrics",
+    "risingKeywords",
+    "facets",
+    "relationships",
+  ].includes(String(value));
 }

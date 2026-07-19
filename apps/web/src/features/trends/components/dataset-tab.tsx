@@ -226,6 +226,7 @@ export function DatasetTab({
               clearAllFilters={clearAllFilters}
               isUpdating={isUpdating}
               totalInWindow={totalInWindow}
+              uniqueTopicsInScope={data.uniqueTopicsInScope ?? data.topics.length}
               scopeString={scopeString}
               yearFrom={yearFrom}
               yearTo={yearTo}

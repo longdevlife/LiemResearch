@@ -1,5 +1,6 @@
 import type {
   PublicationTrend,
+  TrendExplanationHistoryResponse,
   TrendExplanationResponse,
   TrendTopicCandidatesResponse,
   TopicRelationshipResponse,
@@ -42,7 +43,7 @@ export interface TrendTopicCandidatesParams extends Omit<TrendsOverviewParams, "
   minPapers?: number;
 }
 
-export interface TrendRelationshipParams {
+export interface TrendRelationshipParams extends Omit<TrendsOverviewParams, "limit" | "minPapers" | "sortBy"> {
   topic: string;
   yearFrom?: number;
   yearTo?: number;
@@ -54,6 +55,11 @@ export interface TrendExplainInput extends Omit<TrendsOverviewParams, "limit" | 
   yearFrom?: number;
   yearTo?: number;
   language?: "en" | "vi";
+}
+
+export interface TrendExplainHistoryParams {
+  topic?: string;
+  limit?: number;
 }
 
 function serializeTrendParams(params: Record<string, unknown>): string {
@@ -81,8 +87,11 @@ export const trendsApi = {
     });
     return res.data.data;
   },
-  async topic(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number }): Promise<PublicationTrend> {
-    const res = await api.get(API_ROUTES.trends.topic(topic), { params });
+  async topic(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number } & Omit<TrendsOverviewParams, "limit" | "minPapers" | "sortBy">): Promise<PublicationTrend> {
+    const res = await api.get(API_ROUTES.trends.topic(topic), {
+      params,
+      paramsSerializer: { serialize: serializeTrendParams },
+    });
     return res.data.data;
   },
   async compare(params: TrendCompareParams): Promise<TrendCompareResponse> {
@@ -100,11 +109,18 @@ export const trendsApi = {
     return res.data.data;
   },
   async relationships(params: TrendRelationshipParams): Promise<TopicRelationshipResponse> {
-    const res = await api.get("/trends/relationships", { params });
+    const res = await api.get("/trends/relationships", {
+      params,
+      paramsSerializer: { serialize: serializeTrendParams },
+    });
     return res.data.data;
   },
   async explain(input: TrendExplainInput): Promise<TrendExplanationResponse> {
     const res = await api.post("/trends/explain", input);
+    return res.data.data;
+  },
+  async explainHistory(params?: TrendExplainHistoryParams): Promise<TrendExplanationHistoryResponse> {
+    const res = await api.get("/trends/explain/history", { params });
     return res.data.data;
   },
 };

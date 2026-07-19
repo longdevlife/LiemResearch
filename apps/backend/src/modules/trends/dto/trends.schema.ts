@@ -64,6 +64,7 @@ export const TopicTrendQuerySchema = z
     topicId: z.string().trim().min(1).max(80).optional(),
     yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+    ...trendFacetFiltersSchema,
   })
   .refine((q) => q.yearFrom === undefined || q.yearTo === undefined || q.yearFrom <= q.yearTo, {
     message: "yearFrom must be <= yearTo",
@@ -127,3 +128,10 @@ export const TrendExplainBodySchema = z
   });
 
 export type TrendExplainBody = z.infer<typeof TrendExplainBodySchema>;
+
+export const TrendExplainHistoryQuerySchema = z.object({
+  topic: z.string().trim().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(30).default(10),
+});
+
+export type TrendExplainHistoryQuery = z.infer<typeof TrendExplainHistoryQuerySchema>;

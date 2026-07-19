@@ -1,10 +1,13 @@
 import React from "react";
-import { Cpu, ChevronDown, Sparkles, Loader2 } from "lucide-react";
+import { Cpu, ChevronDown, Sparkles, Loader2, Search, FileText, Copy, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { TopicRelationshipEdge, TopicRelationshipResponse, TrendExplanationResponse, TrendsOverview } from "@trend/shared-types";
+import { useNavigate } from "react-router-dom";
+import type { TopicRelationshipEdge, TopicRelationshipResponse, TrendExplanationHistoryResponse, TrendExplanationResponse, TrendTopicCandidate, TrendsOverview } from "@trend/shared-types";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
-import type { TrendExplainInput, TrendsOverviewParams } from "@/features/trends/api/trends.api";
+import { useTrendTopicCandidates } from "@/features/trends/hooks/use-trends";
+import type { TrendExplainInput, TrendsOverviewParams, TrendTopicCandidatesParams } from "@/features/trends/api/trends.api";
+import { formatNumber } from "@/utils";
 
 type CitationBandFilter = NonNullable<TrendsOverviewParams["citationBands"]>;
 
@@ -14,6 +17,7 @@ interface AITabProps {
   setFocusTopic: (topic: string) => void;
   relationshipsQuery: Pick<UseQueryResult<TopicRelationshipResponse, Error>, "data" | "isLoading" | "isError">;
   explainMutation: UseMutationResult<TrendExplanationResponse, Error, TrendExplainInput, unknown>;
+  explainHistoryQuery: Pick<UseQueryResult<TrendExplanationHistoryResponse, Error>, "data" | "isLoading" | "isError">;
   yearFrom: number;
   yearTo: number;
   domains: string[];
@@ -31,12 +35,24 @@ interface AITabProps {
   citationBands: CitationBandFilter;
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debouncedValue;
+}
+
 export function AITab({
   data,
   activeFocusTopic,
   setFocusTopic,
   relationshipsQuery,
   explainMutation,
+  explainHistoryQuery,
   yearFrom,
   yearTo,
   domains,
@@ -53,7 +69,103 @@ export function AITab({
   sources,
   citationBands,
 }: AITabProps) {
+  const navigate = useNavigate();
+  const [topicSearch, setTopicSearch] = React.useState("");
+  const debouncedTopicSearch = useDebouncedValue(topicSearch.trim(), 300);
   const relationshipEdges = relationshipsQuery.data?.edges ?? [];
+  const currentExplanation = explainMutation.data;
+  const selectedTopicExistsInTopList = data.topics.some((topic) => topic.topic === activeFocusTopic);
+  const topicCandidateParams = React.useMemo<TrendTopicCandidatesParams>(() => ({
+    q: debouncedTopicSearch,
+    limit: 12,
+    minPapers: 1,
+    yearFrom,
+    yearTo,
+    domains,
+    fields,
+    subfields,
+    topics: topicsFilter,
+    domainIds,
+    fieldIds,
+    subfieldIds,
+    topicIds,
+    paperKinds,
+    openAccessStatuses,
+    providers,
+    sources,
+    citationBands,
+  }), [
+    debouncedTopicSearch,
+    yearFrom,
+    yearTo,
+    domains,
+    fields,
+    subfields,
+    topicsFilter,
+    domainIds,
+    fieldIds,
+    subfieldIds,
+    topicIds,
+    paperKinds,
+    openAccessStatuses,
+    providers,
+    sources,
+    citationBands,
+  ]);
+  const topicCandidatesQuery = useTrendTopicCandidates(topicCandidateParams, debouncedTopicSearch.length > 0);
+  const topicCandidates = topicCandidatesQuery.data?.topics ?? [];
+  const pickTopicToExplain = (topic: string) => {
+    setFocusTopic(topic);
+    setTopicSearch("");
+  };
+  const copyCurrentExplanation = async () => {
+    if (!currentExplanation) return;
+    const markdown = [
+      `# Trend explanation: ${currentExplanation.topic ?? "Overall corpus"}`,
+      "",
+      currentExplanation.summary,
+      "",
+      "## Why it matters",
+      ...currentExplanation.whyItMatters.map((item) => `- ${item}`),
+      "",
+      "## Evidence signals",
+      ...currentExplanation.evidenceSignals.map((item) => `- ${item.text} (${item.sources.join(", ")})`),
+      "",
+      "## Cautions",
+      ...currentExplanation.cautions.map((item) => `- ${item}`),
+      "",
+      "## Suggested actions",
+      ...currentExplanation.suggestedActions.map((item) => `- ${item}`),
+    ].join("\n");
+    await navigator.clipboard?.writeText(markdown);
+  };
+  const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
+    const params = new URLSearchParams(baseParams);
+    params.set("yearFrom", String(yearFrom));
+    params.set("yearTo", String(yearTo));
+
+    const addList = (key: string, values: string[]) => {
+      const cleaned = values.map((value) => value.trim()).filter(Boolean);
+      if (cleaned.length > 0) params.set(key, cleaned.join(","));
+    };
+
+    addList("domainIds", domainIds);
+    addList("domains", domains);
+    addList("fieldIds", fieldIds);
+    addList("fields", fields);
+    addList("subfieldIds", subfieldIds);
+    addList("subfields", subfields);
+    addList("topicIds", topicIds);
+    addList("topics", topicsFilter);
+    addList("topicsFilter", topicsFilter);
+    addList("paperKinds", paperKinds);
+    addList("openAccessStatuses", openAccessStatuses);
+    addList("providers", providers);
+    addList("sources", sources);
+    addList("citationBands", citationBands);
+
+    return `${path}?${params.toString()}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -67,7 +179,7 @@ export function AITab({
         <div className="lg:col-span-5 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between min-h-[460px]">
           <div>
             <div className="flex items-center justify-between gap-4 mb-4 select-none">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Topic Co-occurrence</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Topics Related to {activeFocusTopic}</h3>
 
               {/* select focusTopic */}
               <div className="relative">
@@ -76,6 +188,9 @@ export function AITab({
                   onChange={(e) => setFocusTopic(e.target.value)}
                   className="h-8 pl-3 pr-8 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 appearance-none cursor-pointer"
                 >
+                  {!selectedTopicExistsInTopList && activeFocusTopic ? (
+                    <option value={activeFocusTopic}>{activeFocusTopic}</option>
+                  ) : null}
                   {data.topics.map(t => (
                     <option key={t.topic} value={t.topic}>{t.topic}</option>
                   ))}
@@ -83,7 +198,87 @@ export function AITab({
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
               </div>
             </div>
-            <p className="text-xs text-slate-500 mb-6">Built from topics appearing together on the same papers. This is graph-ready data; Neo4j can replace the query layer later.</p>
+            <p className="text-xs text-slate-500 mb-6">
+              These are not search results. Each row counts papers that are tagged with both <strong>{activeFocusTopic}</strong> and the related topic inside the current scope.
+            </p>
+
+            <div className="mb-5 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/25 dark:bg-blue-950/10 p-3">
+              <label htmlFor="trend-explain-topic-search" className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                Search trend to explain
+              </label>
+              <div className="relative mt-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  id="trend-explain-topic-search"
+                  type="search"
+                  value={topicSearch}
+                  onChange={(event) => setTopicSearch(event.target.value)}
+                  placeholder="Search any topic inside the current scope..."
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:ring-blue-950/40"
+                />
+              </div>
+
+              <div className="mt-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                Search uses the same year range, Data Scope, publication filters, and citation filters as this Trends page.
+              </div>
+
+              {debouncedTopicSearch.length > 0 ? (
+                <div className="mt-3 max-h-52 overflow-y-auto rounded-lg border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950">
+                  {topicCandidatesQuery.isFetching ? (
+                    <div className="flex items-center gap-2 px-3 py-3 text-xs font-semibold text-slate-500">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Searching scoped topics...
+                    </div>
+                  ) : topicCandidatesQuery.isError ? (
+                    <div className="px-3 py-3 text-xs font-semibold text-red-600">
+                      Topic search failed. Try a shorter query or clear narrow filters.
+                    </div>
+                  ) : topicCandidates.length === 0 ? (
+                    <div className="px-3 py-3 text-xs font-semibold text-slate-500">
+                      No topic found in this scope. Broaden Data Scope or search a different phrase.
+                    </div>
+                  ) : (
+                    topicCandidates.map((candidate: TrendTopicCandidate) => (
+                      <button
+                        key={`${candidate.topic}-${candidate.matchedBy}`}
+                        type="button"
+                        onClick={() => pickTopicToExplain(candidate.topic)}
+                        className="flex w-full items-start justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition last:border-b-0 hover:bg-blue-50/70 dark:border-slate-800 dark:hover:bg-blue-950/20"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-extrabold text-slate-850 dark:text-slate-200">{candidate.topic}</span>
+                          <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {candidate.taxonomy?.domainName ?? "Unknown domain"}
+                            {" / "}
+                            {candidate.matchedBy === "taxonomy" ? "taxonomy match" : "topic match"}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[10px] font-extrabold text-blue-700 dark:text-blue-300">
+                          {formatNumber(candidate.totalPapers)} papers
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {data.topics.slice(0, 5).map((topic) => (
+                    <button
+                      key={topic.topic}
+                      type="button"
+                      onClick={() => pickTopicToExplain(topic.topic)}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-extrabold transition ${
+                        activeFocusTopic === topic.topic
+                          ? "border-blue-300 bg-blue-600 text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-blue-950/20"
+                      }`}
+                    >
+                      {topic.topic}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {relationshipsQuery.isLoading ? (
               <div className="h-64 flex flex-col items-center justify-center">
@@ -104,7 +299,7 @@ export function AITab({
                     <div key={idx} className="text-xs bg-slate-50/50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800/40 rounded-xl p-3 flex flex-col justify-between hover:border-slate-200/80 dark:hover:border-slate-800/80 transition-colors">
                       <div className="flex justify-between items-center mb-1.5 font-bold">
                         <span className="text-slate-800 dark:text-slate-200 capitalize">{relatedName}</span>
-                        <span className="text-blue-700 dark:text-blue-400">{edge.count} papers</span>
+                        <span className="text-blue-700 dark:text-blue-400">{edge.count} co-occurring papers</span>
                       </div>
                       <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                         <div className="bg-blue-600 dark:bg-blue-500 h-full rounded-full" style={{ width: `${percentage}%` }} />
@@ -239,10 +434,32 @@ export function AITab({
                   <div className="bg-slate-50/40 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4">
                     <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-[9px] tracking-wider">Evidence Signals</h4>
                     <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                      {explainMutation.data.evidenceSignals.map((item: string, idx: number) => (
-                        <li key={idx} className="indent-[-12px] pl-3 leading-normal">{item}</li>
+                      {explainMutation.data.evidenceSignals.map((item, idx: number) => (
+                        <li key={idx} className="indent-[-12px] pl-3 leading-normal">
+                          <span>{item.text}</span>
+                          <div className="mt-1 flex flex-wrap gap-1 pl-3">
+                            {item.sources.map((source) => (
+                              <span key={source} className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[9px] font-extrabold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300">
+                                from {source}
+                              </span>
+                            ))}
+                          </div>
+                        </li>
                       ))}
                     </ul>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800/60 rounded-xl p-4">
+                  <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-[9px] tracking-wider">Metric Trace</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {explainMutation.data.metricTrace.map((trace) => (
+                      <div key={trace.source} className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 p-2">
+                        <div className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200">{trace.label}</div>
+                        <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400">{trace.value}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">{trace.explanation}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -269,6 +486,39 @@ export function AITab({
                 <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 font-semibold border-t border-slate-100 dark:border-slate-800/60 select-none">
                   AI explanation is grounded in aggregate trend metrics, not individual paper-level citations. Generated at {new Date(explainMutation.data.generatedAt).toLocaleDateString()}.
                 </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-1 select-none">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={copyCurrentExplanation}
+                    className="h-9 rounded-xl text-xs font-extrabold gap-2"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy explanation
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(buildScopedUrl("/search", { q: activeFocusTopic }))}
+                    className="h-9 rounded-xl text-xs font-extrabold gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900/40 dark:text-blue-400 dark:hover:bg-blue-950/20"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    Search scoped papers
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => navigate(buildScopedUrl("/reports", {
+                      create: "true",
+                      topic: activeFocusTopic,
+                      query: `Explain research trends, evidence signals, cautions, and future directions for ${activeFocusTopic}.`,
+                    }))}
+                    className="h-9 rounded-xl text-xs font-extrabold gap-2 bg-blue-700 hover:bg-blue-800 text-white"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Generate scoped report
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/10 dark:bg-slate-900/5 select-none">
@@ -279,6 +529,33 @@ export function AITab({
             )}
           </div>
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Clock className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Explain History</h3>
+        </div>
+        {explainHistoryQuery.isLoading ? (
+          <Skeleton className="h-16 w-full rounded-xl" />
+        ) : explainHistoryQuery.isError ? (
+          <p className="text-xs font-semibold text-slate-500">Sign in to keep AI explanations across reloads.</p>
+        ) : (explainHistoryQuery.data?.items.length ?? 0) === 0 ? (
+          <p className="text-xs text-slate-500">No saved explanations for this topic yet. Run Explain trend with AI to save one.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {explainHistoryQuery.data!.items.map((item) => (
+              <div key={item.id} className="rounded-xl border border-slate-100 dark:border-slate-800 p-3 bg-slate-50/40 dark:bg-slate-900/20">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate">{item.topic ?? "Overall corpus"}</span>
+                  <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-2">{item.summary}</p>
+                <p className="mt-2 text-[10px] font-semibold text-blue-700 dark:text-blue-400">{item.scopeLabel}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

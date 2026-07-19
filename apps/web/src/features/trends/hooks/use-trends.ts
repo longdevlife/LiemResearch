@@ -2,6 +2,7 @@ import { useMutation, useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   trendsApi,
   type TrendExplainInput,
+  type TrendExplainHistoryParams,
   type TrendCompareParams,
   type TrendRelationshipParams,
   type TrendTopicCandidatesParams,
@@ -17,7 +18,7 @@ export function useTrendsOverview(params?: TrendsOverviewParams, options?: { ena
   });
 }
 
-export function useTopicTrend(topic: string, params?: { topicId?: string; yearFrom?: number; yearTo?: number }) {
+export function useTopicTrend(topic: string, params?: Parameters<typeof trendsApi.topic>[1]) {
   return useQuery({
     queryKey: ["topicTrend", topic, params],
     queryFn: () => trendsApi.topic(topic, params),
@@ -54,5 +55,14 @@ export function useTrendRelationships(params: TrendRelationshipParams, enabled =
 export function useExplainTrend() {
   return useMutation({
     mutationFn: (input: TrendExplainInput) => trendsApi.explain(input),
+  });
+}
+
+export function useTrendExplainHistory(params?: TrendExplainHistoryParams, enabled = true) {
+  return useQuery({
+    queryKey: ["trendExplainHistory", params],
+    queryFn: () => trendsApi.explainHistory(params),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }

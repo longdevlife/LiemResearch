@@ -114,6 +114,9 @@ export interface TrendsOverview {
    *  label them differently on charts (`yc.year > lastCompleteYear`). */
   lastCompleteYear: number;
   totalPapersInWindow: number;
+  /** Distinct topic names available in the current active corpus window after
+   *  Data Scope filters are applied. This is NOT limited by the overview `limit`. */
+  uniqueTopicsInScope: number;
   yearlyTotalPapers: YearlyCount[];
   citationTrend: YearlyCitationMetric[];
   facets: TrendFacets;
@@ -175,15 +178,49 @@ export interface TopicRelationshipResponse {
   computedAt: string;
 }
 
+export type TrendMetricTraceSource =
+  | "yearlyTotalPapers"
+  | "citationTrend"
+  | "topicMetrics"
+  | "risingKeywords"
+  | "facets"
+  | "relationships";
+
+export interface TrendMetricTrace {
+  source: TrendMetricTraceSource;
+  label: string;
+  value: string;
+  explanation: string;
+}
+
+export interface TrendEvidenceSignal {
+  text: string;
+  sources: TrendMetricTraceSource[];
+}
+
 export interface TrendExplanationResponse {
   topic: string | null;
   language: "en" | "vi";
   summary: string;
   whyItMatters: string[];
-  evidenceSignals: string[];
+  evidenceSignals: TrendEvidenceSignal[];
   cautions: string[];
   suggestedActions: string[];
+  metricTrace: TrendMetricTrace[];
   generatedAt: string;
+}
+
+export interface TrendExplanationHistoryItem extends TrendExplanationResponse {
+  id: string;
+  yearFrom: number;
+  yearTo: number;
+  scopeHash: string;
+  scopeLabel: string;
+  createdAt: string;
+}
+
+export interface TrendExplanationHistoryResponse {
+  items: TrendExplanationHistoryItem[];
 }
 
 /** Response shape of GET /api/v1/trends/:topic — deep dive into one topic. */
