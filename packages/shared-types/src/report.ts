@@ -4,6 +4,22 @@ import type { PaperRef } from "./paper.js";
 export type ReportStatus = "queued" | "generating" | "ready" | "failed";
 export type ReportLanguage = "auto" | "en" | "vi";
 
+export interface ReportScopeFilters {
+  paperKinds?: string[];
+  openAccessStatuses?: string[];
+  providers?: string[];
+  sources?: string[];
+  citationBands?: string[];
+  domains?: string[];
+  fields?: string[];
+  subfields?: string[];
+  topics?: string[];
+  domainIds?: string[];
+  fieldIds?: string[];
+  subfieldIds?: string[];
+  topicIds?: string[];
+}
+
 /** Body of POST /api/v1/reports. */
 export interface CreateReportRequest {
   /** The analytical question. The report language is controlled by `language`. */
@@ -15,6 +31,8 @@ export interface CreateReportRequest {
   yearTo?: number;
   /** auto detects from query + topic; en/vi force all report and gap text. */
   language?: ReportLanguage;
+  /** Optional dataset scope inherited from Trends. Retrieval is limited by these filters. */
+  scopeFilters?: ReportScopeFilters;
   deepAnalysis?: boolean; // Phase D — opt-in Gemini function-calling mode (Pro + tools, slowest)
   fast?: boolean; // Fast mode — use the Flash model (faster, lighter). Ignored if deepAnalysis.
   /** Optional fixed evidence set chosen by the user before generation. */
@@ -28,6 +46,8 @@ export interface PreviewReportEvidenceRequest {
   yearFrom?: number;
   yearTo?: number;
   language?: ReportLanguage;
+  /** Optional dataset scope inherited from Trends. Retrieval is limited by these filters. */
+  scopeFilters?: ReportScopeFilters;
   selectedPaperIds?: string[];
   /** Defaults true. Set false when editing an already-reviewed pack so removed papers stay removed. */
   fillWithRetrieved?: boolean;
@@ -58,6 +78,7 @@ export interface GapProbe {
   topicB: string;
   yearFrom?: number;
   yearTo?: number;
+  scopeFilters?: ReportScopeFilters;
   language?: ReportLanguage;
 }
 

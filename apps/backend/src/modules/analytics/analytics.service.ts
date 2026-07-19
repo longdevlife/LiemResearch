@@ -13,7 +13,7 @@ export interface LogSearchParams {
   mode: "semantic" | "semantic+rerank";
   resultCount: number;
   durationMs: number;
-  filters: { yearFrom?: number; yearTo?: number };
+  filters: Record<string, unknown>;
 }
 
 export const analyticsService = {

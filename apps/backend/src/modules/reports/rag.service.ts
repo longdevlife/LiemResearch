@@ -70,6 +70,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     selectedPaperIds,
     yearFrom: report.yearFrom ?? undefined,
     yearTo: report.yearTo ?? undefined,
+    scopeFilters: normalizeReportScopeFilters(report.scopeFilters),
     fillWithRetrieved: selectedPaperIds.length === 0,
   });
   const papers = evidence.papers;
@@ -110,6 +111,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     resolvedLanguage,
     yearFrom: report.yearFrom ?? null,
     yearTo: report.yearTo ?? null,
+    scopeFilters: normalizeReportScopeFilters(report.scopeFilters),
     deepAnalysis: Boolean(report.deepAnalysis),
     selectedPaperIds: evidence.selectedPaperIds,
     retrievedPaperIds: papers.map((p) => p.id),
@@ -299,6 +301,33 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
     { reportId: String(report._id), papers: papers.length, embeddingMs, searchMs, llmMs, cacheHit },
     "report ready",
   );
+}
+
+function normalizeReportScopeFilters(scopeFilters: unknown) {
+  if (!scopeFilters || typeof scopeFilters !== "object") return undefined;
+  const source = scopeFilters as Record<string, unknown>;
+  const normalized: Record<string, string[]> = {};
+  for (const key of [
+    "paperKinds",
+    "openAccessStatuses",
+    "providers",
+    "sources",
+    "citationBands",
+    "domains",
+    "fields",
+    "subfields",
+    "topics",
+    "domainIds",
+    "fieldIds",
+    "subfieldIds",
+    "topicIds",
+  ]) {
+    const values = source[key];
+    if (!Array.isArray(values)) continue;
+    const cleaned = Array.from(new Set(values.map(String).map((value) => value.trim()).filter(Boolean)));
+    if (cleaned.length > 0) normalized[key] = cleaned;
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
 /** Mark a report failed — called by the worker when retries are exhausted. */

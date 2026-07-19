@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search, SlidersHorizontal, Calendar, Unlock, FileText, Database, Sparkles, Cpu } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X, Plus, Search, SlidersHorizontal, Calendar, Unlock, FileText, Database, Sparkles, Cpu, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
 import type { Paper, SearchSortKey } from "@trend/shared-types";
@@ -13,6 +13,52 @@ import { PaperCard } from "@/components/paper-card";
 import { useAuthStore } from "@/stores/auth-store";
 
 const PAGE_SIZE = 10;
+
+const SCOPE_FILTER_KEYS = [
+  "paperKinds",
+  "openAccessStatuses",
+  "providers",
+  "sources",
+  "citationBands",
+  "domains",
+  "fields",
+  "subfields",
+  "topics",
+  "domainIds",
+  "fieldIds",
+  "subfieldIds",
+  "topicIds",
+] as const;
+
+const RELAXABLE_SCOPE_FILTER_KEYS = [
+  "paperKinds",
+  "openAccessStatuses",
+  "providers",
+  "sources",
+  "citationBands",
+] as const;
+
+const SCOPE_FILTER_LABELS: Record<(typeof SCOPE_FILTER_KEYS)[number], string> = {
+  paperKinds: "Type",
+  openAccessStatuses: "OA",
+  providers: "Provider",
+  sources: "Source",
+  citationBands: "Citations",
+  domains: "Domain",
+  fields: "Field",
+  subfields: "Subfield",
+  topics: "Topic",
+  domainIds: "Domain",
+  fieldIds: "Field",
+  subfieldIds: "Subfield",
+  topicIds: "Topic",
+};
+
+function parseCsvParam(params: URLSearchParams, key: string): string[] {
+  const raw = params.get(key);
+  if (!raw) return [];
+  return raw.split(",").map((value) => value.trim()).filter(Boolean);
+}
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,13 +95,65 @@ export function SearchPage() {
     () => searchParams.get("rerank") === "true"
   );
 
+  const scopeFilters = useMemo(() => ({
+    paperKinds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[0]),
+    openAccessStatuses: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[1]),
+    providers: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[2]),
+    sources: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[3]),
+    citationBands: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[4]),
+    domains: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[5]),
+    fields: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[6]),
+    subfields: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[7]),
+    topics: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[8]),
+    domainIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[9]),
+    fieldIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[10]),
+    subfieldIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[11]),
+    topicIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[12]),
+  }), [searchParams]);
+
+  const activeScopeFilterCount = useMemo(
+    () => Object.values(scopeFilters).reduce((sum, values) => sum + values.length, 0),
+    [scopeFilters],
+  );
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (yearFrom !== "2020" || yearTo !== "2026") count += 1;
     if (openAccessOnly) count += 1;
     if (searchMode === "semantic" && aiScoreThreshold > 0) count += 1;
+    count += activeScopeFilterCount;
     return count;
-  }, [yearFrom, yearTo, openAccessOnly, aiScoreThreshold, searchMode]);
+  }, [yearFrom, yearTo, openAccessOnly, aiScoreThreshold, searchMode, activeScopeFilterCount]);
+
+  const removeScopeFilterValue = useCallback((key: (typeof SCOPE_FILTER_KEYS)[number], value: string) => {
+    setSearchParams(prev => {
+      const current = parseCsvParam(prev, key);
+      const next = current.filter(v => v !== value);
+      if (next.length > 0) {
+        prev.set(key, next.join(","));
+      } else {
+        prev.delete(key);
+      }
+      prev.set("page", "1");
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  const relaxTrendScope = useCallback(() => {
+    setSearchParams(prev => {
+      RELAXABLE_SCOPE_FILTER_KEYS.forEach(key => prev.delete(key));
+      prev.set("page", "1");
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  const clearTrendScope = useCallback(() => {
+    setSearchParams(prev => {
+      SCOPE_FILTER_KEYS.forEach(key => prev.delete(key));
+      prev.set("page", "1");
+      return prev;
+    });
+  }, [setSearchParams]);
 
   // Dropdown visibility states
   const [isOpenModeDropdown, setIsOpenModeDropdown] = useState<boolean>(false);
@@ -110,6 +208,7 @@ export function SearchPage() {
     openAccess: openAccessOnly || undefined,
     provider: primaryProvider !== "all" ? primaryProvider : undefined,
     sort: beSort,
+    ...scopeFilters,
   };
 
   // Server-side pagination + filters. No more POOL_SIZE or client slicing.
@@ -151,6 +250,52 @@ export function SearchPage() {
     if (!bookmarks) return new Map<string, string>();
     return new Map(bookmarks.filter(b => b.targetKind === "paper").map(b => [b.targetId, b.id]));
   }, [bookmarks]);
+
+  const resolvedNamesMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const STATIC_NAME_MAP: Record<string, string> = {
+      "1": "Physical Sciences",
+      "2": "Health Sciences",
+      "3": "Social Sciences",
+      "4": "Life Sciences",
+      "11": "Computer Science",
+      "12": "Medicine",
+      "13": "Engineering",
+      "14": "Social Sciences",
+      "T10028": "Topic Modeling",
+      "T10502": "Artificial Intelligence in Healthcare and Education",
+      "T10123": "Natural Language Processing Techniques",
+      "T10850": "Machine Learning in Healthcare",
+      "T11294": "Radiomics and Machine Learning in Medical Imaging",
+    };
+    Object.entries(STATIC_NAME_MAP).forEach(([k, v]) => map.set(k, v));
+
+    papers.forEach(paper => {
+      const pTopics = paper.topics || [];
+      pTopics.forEach(t => {
+        if (t.domainId && t.domainName) map.set(t.domainId, t.domainName);
+        if (t.fieldId && t.fieldName) map.set(t.fieldId, t.fieldName);
+        if (t.subfieldId && t.subfieldName) map.set(t.subfieldId, t.subfieldName);
+        if (t.openalexTopicId && t.topicName) map.set(t.openalexTopicId, t.topicName);
+        if (t.topicId && t.topicName) map.set(t.topicId, t.topicName);
+      });
+    });
+
+    return map;
+  }, [papers]);
+
+  const activeScopeChips = useMemo(() => {
+    return Object.entries(scopeFilters).flatMap(([key, values]) =>
+      values.map((value) => {
+        const resolvedName = resolvedNamesMap.get(value) || value;
+        return {
+          key: key as (typeof SCOPE_FILTER_KEYS)[number],
+          value,
+          label: `${SCOPE_FILTER_LABELS[key as (typeof SCOPE_FILTER_KEYS)[number]]}: ${resolvedName}`,
+        };
+      }),
+    );
+  }, [scopeFilters, resolvedNamesMap]);
 
   const yearlyDistribution = useMemo(() => {
     const map = new Map<number, number>();
@@ -812,6 +957,64 @@ export function SearchPage() {
         <div className="mb-6 animate-fadeIn duration-150">
           {renderSearchBox()}
         </div>
+
+        {activeScopeFilterCount > 0 && (
+          <div className="mb-6 rounded-2xl border border-blue-150/40 bg-gradient-to-br from-blue-50/50 to-blue-50/20 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.015)] dark:border-blue-900/30 dark:from-blue-950/20 dark:to-blue-950/5 animate-fadeIn">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="p-2 bg-blue-100/60 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl shrink-0 mt-0.5 select-none">
+                  <Info className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white leading-none">
+                    Scoped Search Active
+                  </div>
+                  <p className="text-[11.5px] leading-relaxed text-slate-550 dark:text-slate-400 font-semibold max-w-3xl">
+                    These results are filtered by the active Trends dataset scope. If you get no papers, the scope may be too narrow.
+                  </p>
+                  
+                  {/* Chips */}
+                  <div className="pt-2 flex flex-wrap gap-1.5">
+                    {activeScopeChips.map((chip) => (
+                      <button
+                        key={`${chip.key}:${chip.value}`}
+                        type="button"
+                        onClick={() => removeScopeFilterValue(chip.key, chip.value)}
+                        className="inline-flex max-w-[260px] items-center gap-1.5 rounded-xl border border-blue-200/50 bg-white dark:border-slate-800 dark:bg-slate-900 px-3 py-1 text-[11px] font-extrabold text-blue-700 dark:text-blue-400 hover:border-red-300 dark:hover:border-red-900 hover:text-red-650 transition-all shadow-sm"
+                        title={`Remove ${chip.label}`}
+                      >
+                        <span className="truncate">{chip.label}</span>
+                        <X className="h-3 w-3 shrink-0 text-blue-455 hover:text-red-500" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Actions buttons */}
+              <div className="flex shrink-0 flex-wrap gap-2.5 self-end lg:self-center select-none">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={relaxTrendScope}
+                  className="h-8.5 px-3.5 rounded-xl border-blue-200/50 hover:border-blue-300 bg-white hover:bg-blue-50/50 text-[11.5px] font-extrabold text-blue-700 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-850 shadow-sm transition-all"
+                >
+                  Relax filters
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearTrendScope}
+                  className="h-8.5 px-3.5 rounded-xl border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-[11.5px] font-extrabold text-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-850 shadow-sm transition-all"
+                >
+                  Clear Trends scope
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">

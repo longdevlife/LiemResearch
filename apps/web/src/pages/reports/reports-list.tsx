@@ -29,7 +29,7 @@ import {
   useReportEvidencePreview
 } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
-import type { PreviewReportEvidenceResponse, ReportLanguage } from "@trend/shared-types";
+import type { PreviewReportEvidenceResponse, ReportLanguage, ReportScopeFilters } from "@trend/shared-types";
 import { searchApi, type ScoredPaper } from "@/features/search";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +38,39 @@ import { Input } from "@/components/ui/input";
 import { formatNumber } from "@/utils";
 
 type ReportSortKey = "newest" | "ready_first" | "failed_last" | "topic_az";
+const REPORT_SCOPE_KEYS = [
+  "paperKinds",
+  "openAccessStatuses",
+  "providers",
+  "sources",
+  "citationBands",
+  "domains",
+  "fields",
+  "subfields",
+  "topics",
+  "domainIds",
+  "fieldIds",
+  "subfieldIds",
+  "topicIds",
+] as const;
+
+function parseCsvParam(params: URLSearchParams, key: string): string[] {
+  const raw = params.get(key);
+  if (!raw) return [];
+  return raw.split(",").map((value) => value.trim()).filter(Boolean);
+}
+
+function parseReportScopeFilters(params: URLSearchParams): ReportScopeFilters {
+  return Object.fromEntries(
+    REPORT_SCOPE_KEYS
+      .map((key) => [key, parseCsvParam(params, key)] as const)
+      .filter(([, values]) => values.length > 0),
+  ) as ReportScopeFilters;
+}
+
+function hasReportScopeFilters(filters: ReportScopeFilters): boolean {
+  return Object.values(filters).some((values) => Array.isArray(values) && values.length > 0);
+}
 
 export function ReportsListPage() {
   const { data: reports, isLoading } = useReports();
@@ -45,6 +78,8 @@ export function ReportsListPage() {
   const deleteReport = useDeleteReport();
   const deleteBatchReports = useDeleteBatchReports();
   const previewEvidence = useReportEvidencePreview();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
@@ -53,6 +88,9 @@ export function ReportsListPage() {
   const [language, setLanguage] = useState<ReportLanguage>("auto");
   const [yearFrom, setYearFrom] = useState<string>("");
   const [yearTo, setYearTo] = useState<string>("");
+  const [reportScopeFilters, setReportScopeFilters] = useState<ReportScopeFilters>(() =>
+    parseReportScopeFilters(searchParams),
+  );
   const [deepAnalysis, setDeepAnalysis] = useState(false);
   const [fast, setFast] = useState(true);
 
@@ -81,13 +119,17 @@ export function ReportsListPage() {
     return () => clearTimeout(timer);
   }, [reportSearch]);
 
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const evidenceSectionRef = React.useRef<HTMLDivElement | null>(null);
   const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
   const currentYear = new Date().getFullYear();
   const reasoningMode = deepAnalysis ? "deep" : fast ? "fast" : "balanced";
   const canPreviewEvidence = query.trim().length >= 3 && !previewEvidence.isPending;
+  const activeReportScopeFilters = hasReportScopeFilters(reportScopeFilters)
+    ? reportScopeFilters
+    : undefined;
+  const activeReportScopeCount = activeReportScopeFilters
+    ? Object.values(activeReportScopeFilters).reduce((sum, values) => sum + (values?.length ?? 0), 0)
+    : 0;
 
   React.useEffect(() => {
     if (!previewScrollToken) return;
@@ -108,9 +150,15 @@ export function ReportsListPage() {
       const urlTopic = searchParams.get("topic") || "";
       const urlQuery = searchParams.get("query") || searchParams.get("q") || "";
       const urlPaperId = searchParams.get("paperId") || "";
+      const urlYearFrom = searchParams.get("yearFrom") || "";
+      const urlYearTo = searchParams.get("yearTo") || "";
+      const urlScopeFilters = parseReportScopeFilters(searchParams);
 
       if (urlTopic) setTopic(urlTopic);
       if (urlQuery) setQuery(urlQuery);
+      if (urlYearFrom) setYearFrom(urlYearFrom);
+      if (urlYearTo) setYearTo(urlYearTo);
+      if (hasReportScopeFilters(urlScopeFilters)) setReportScopeFilters(urlScopeFilters);
       if (urlPaperId) {
         setSelectedPaperIds([urlPaperId]);
         toast.info("Paper pre-selected from context", {
@@ -125,6 +173,9 @@ export function ReportsListPage() {
         prev.delete("query");
         prev.delete("q");
         prev.delete("paperId");
+        prev.delete("yearFrom");
+        prev.delete("yearTo");
+        REPORT_SCOPE_KEYS.forEach((key) => prev.delete(key));
         return prev;
       });
     }
@@ -201,6 +252,7 @@ export function ReportsListPage() {
         language: language === "auto" ? "auto" : language,
         yearFrom: fromYear,
         yearTo: toYear,
+        scopeFilters: activeReportScopeFilters,
         selectedPaperIds: selectedPaperIds.length > 0 ? selectedPaperIds : undefined,
       });
 
@@ -260,6 +312,7 @@ export function ReportsListPage() {
         pageSize: 8,
         yearFrom: fromYear,
         yearTo: toYear,
+        ...activeReportScopeFilters,
         rerank: false,
       });
       setPaperSearchResults(response.papers);
@@ -295,6 +348,7 @@ export function ReportsListPage() {
         language: language === "auto" ? "auto" : language,
         yearFrom: fromYear,
         yearTo: toYear,
+        scopeFilters: activeReportScopeFilters,
         selectedPaperIds: newSelectedIds,
         fillWithRetrieved: false,
       });
@@ -329,6 +383,7 @@ export function ReportsListPage() {
         fast,
         yearFrom: fromYear,
         yearTo: toYear,
+        scopeFilters: activeReportScopeFilters,
         selectedPaperIds: forceNoPreview
           ? undefined
           : currentEvidencePaperIds.length > 0
@@ -341,6 +396,7 @@ export function ReportsListPage() {
       setYearFrom("");
       setYearTo("");
       setLanguage("auto");
+      setReportScopeFilters({});
       setDeepAnalysis(false);
       setFast(true);
 
@@ -470,6 +526,23 @@ export function ReportsListPage() {
                 Reset setup
               </button>
             </div>
+            {activeReportScopeFilters && (
+              <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-extrabold">Scoped from Trends.</span>{" "}
+                    Evidence preview and generation will retrieve papers inside {activeReportScopeCount} active scope filter{activeReportScopeCount === 1 ? "" : "s"}.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReportScopeFilters({})}
+                    className="font-extrabold text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
+                  >
+                    Clear report scope
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2.5">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Output Language</span>

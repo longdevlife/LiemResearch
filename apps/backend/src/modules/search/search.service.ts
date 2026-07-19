@@ -8,6 +8,7 @@ import { generateJSON } from "../llm/gemini.client.js";
 import { cachedGenerate } from "../llm/llm.run.js";
 import { retrieveScored } from "../retrieval/retriever.js";
 import type { SearchSortKey } from "../papers/dto/paper-filters.schema.js";
+import type { TrendCitationBand } from "../trends/trend.filters.js";
 import {
   buildRerankPrompt,
   RERANK_PROMPT_VERSION,
@@ -33,7 +34,19 @@ export interface SemanticSearchParams {
   // Cách 2 — server-side filters applied AFTER the vector search.
   paperKinds?: string[];
   openAccess?: boolean;
+  openAccessStatuses?: string[];
   provider?: string;
+  providers?: string[];
+  sources?: string[];
+  citationBands?: TrendCitationBand[] | string[];
+  domains?: string[];
+  fields?: string[];
+  subfields?: string[];
+  topics?: string[];
+  domainIds?: string[];
+  fieldIds?: string[];
+  subfieldIds?: string[];
+  topicIds?: string[];
   minScore?: number;
   sort?: SearchSortKey;
   /** Opt-in LLM re-ranking of the top candidate pool. */
@@ -82,7 +95,7 @@ export const searchService = {
     // Plain semantic path: pull a FIXED-size filtered pool, sort, paginate in
     // memory. Pool size does NOT grow with `page` — so `total` is stable and a
     // deep `page` can't push $vectorSearch limit past numCandidates (Atlas 500).
-    const poolSize = Math.min(MAX_POOL, env.SEARCH_FILTER_POOL);
+    const poolSize = resolveSearchPoolSize(params, pageSize);
     const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
     const sorted = sortPapers(pool, sort);
     const { items, total } = slicePage(sorted, page, pageSize);
@@ -107,7 +120,7 @@ async function rerankedSearch(args: {
   // grow with `page`) — so a deep `page` can't inflate the Gemini prompt / token
   // cost, and `total` stays deterministic. Rerank refines the head; paginating
   // past the head is meaningless and is clamped in paginatePool.
-  const poolSize = Math.min(MAX_POOL, Math.max(env.RERANK_CANDIDATES, pageSize));
+  const poolSize = resolveSearchPoolSize(params, Math.max(env.RERANK_CANDIDATES, pageSize));
   const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
@@ -120,7 +133,7 @@ async function rerankedSearch(args: {
   const model = env.GEMINI_MODEL_FAST;
   const failKey = `rerank-fail:${hashKey({
     query: q.trim().toLowerCase(),
-    filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+    filters: getSearchFilterKeyParts(params),
     candidateIds: candidates.map((c) => c.id).sort(),
   })}`;
   if (await cache.get<Record<string, never>>(failKey)) {
@@ -137,11 +150,11 @@ async function rerankedSearch(args: {
     action: "search_rerank",
     amount: 5,
     targetKind: "search",
-    idempotencyKey: `rerank:${hashKey({
-      query: q.trim().toLowerCase(),
-      filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
-      candidateIds: candidates.map((c) => c.id).sort(),
-    })}`,
+      idempotencyKey: `rerank:${hashKey({
+        query: q.trim().toLowerCase(),
+        filters: getSearchFilterKeyParts(params),
+        candidateIds: candidates.map((c) => c.id).sort(),
+      })}`,
   });
 
   const txId = tx?._id;
@@ -155,7 +168,7 @@ async function rerankedSearch(args: {
       promptVersion: RERANK_PROMPT_VERSION,
       keyParts: {
         query: q.trim().toLowerCase(),
-        filters: { yearFrom: params.yearFrom ?? null, yearTo: params.yearTo ?? null },
+        filters: getSearchFilterKeyParts(params),
         candidateIds: candidates.map((c) => c.id).sort(),
       },
       model,
@@ -264,9 +277,73 @@ async function fetchScoredPool(
       yearTo: params.yearTo,
       paperKinds: params.paperKinds,
       openAccess: params.openAccess,
+      openAccessStatuses: params.openAccessStatuses,
       provider: params.provider,
+      providers: params.providers,
+      sources: params.sources,
+      citationBands: params.citationBands,
+      domains: params.domains,
+      fields: params.fields,
+      subfields: params.subfields,
+      topics: params.topics,
+      domainIds: params.domainIds,
+      fieldIds: params.fieldIds,
+      subfieldIds: params.subfieldIds,
+      topicIds: params.topicIds,
       minScore: params.minScore,
     },
     projection: "search",
   });
+}
+
+function resolveSearchPoolSize(params: SemanticSearchParams, minimum: number): number {
+  // Scope filters from Trends are applied after vector search because nested
+  // taxonomy fields are not vector-index-safe filters. Pull a wider candidate
+  // pool so a legitimate scoped result is not dropped simply because the
+  // global top-200 semantic candidates were mostly from another domain/source.
+  if (hasPostVectorScopeFilters(params)) return MAX_POOL;
+  return Math.min(MAX_POOL, Math.max(env.SEARCH_FILTER_POOL, minimum));
+}
+
+function hasPostVectorScopeFilters(params: SemanticSearchParams): boolean {
+  return [
+    params.paperKinds,
+    params.openAccessStatuses,
+    params.providers,
+    params.sources,
+    params.citationBands,
+    params.domains,
+    params.fields,
+    params.subfields,
+    params.topics,
+    params.domainIds,
+    params.fieldIds,
+    params.subfieldIds,
+    params.topicIds,
+  ].some((values) => Array.isArray(values) && values.length > 0)
+    || Boolean(params.openAccess)
+    || Boolean(params.provider);
+}
+
+function getSearchFilterKeyParts(params: SemanticSearchParams): Record<string, unknown> {
+  return {
+    yearFrom: params.yearFrom ?? null,
+    yearTo: params.yearTo ?? null,
+    paperKinds: params.paperKinds ?? [],
+    openAccess: params.openAccess ?? false,
+    openAccessStatuses: params.openAccessStatuses ?? [],
+    provider: params.provider ?? null,
+    providers: params.providers ?? [],
+    sources: params.sources ?? [],
+    citationBands: params.citationBands ?? [],
+    domains: params.domains ?? [],
+    fields: params.fields ?? [],
+    subfields: params.subfields ?? [],
+    topics: params.topics ?? [],
+    domainIds: params.domainIds ?? [],
+    fieldIds: params.fieldIds ?? [],
+    subfieldIds: params.subfieldIds ?? [],
+    topicIds: params.topicIds ?? [],
+    minScore: params.minScore ?? 0,
+  };
 }

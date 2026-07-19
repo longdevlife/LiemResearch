@@ -8,7 +8,7 @@ import {
 } from "../retriever.js";
 
 describe("buildVectorFilter", () => {
-  it("keeps indexed filters inside $vectorSearch", () => {
+  it("keeps only vector-index-safe filters inside $vectorSearch", () => {
     const paperId = "507f1f77bcf86cd799439011";
     expect(
       buildVectorFilter({
@@ -22,7 +22,6 @@ describe("buildVectorFilter", () => {
     ).toEqual({
       dataStatus: "active",
       publicationYear: { $gte: 2021, $lte: 2024 },
-      topics: { $in: ["LLM", "RAG"] },
     });
   });
 
@@ -39,7 +38,10 @@ describe("buildRetrievePipeline", () => {
       paperIds: ["507f1f77bcf86cd799439011"],
       paperKinds: ["journal-article"],
       openAccess: true,
+      openAccessStatuses: ["gold"],
       provider: "openalex",
+      topics: ["LLM"],
+      domainIds: ["https://openalex.org/domains/1"],
       minScore: 0.71,
     },
   };
@@ -65,7 +67,14 @@ describe("buildRetrievePipeline", () => {
         _id: { $in: [new mongoose.Types.ObjectId("507f1f77bcf86cd799439011")] },
         paperKind: { $in: ["journal-article"] },
         openAccessUrl: { $type: "string", $ne: "" },
+        openAccessStatus: { $in: ["gold"] },
         primaryProvider: "openalex",
+        topics: {
+          $elemMatch: {
+            topicName: { $in: ["LLM"] },
+            domainId: { $in: ["https://openalex.org/domains/1", "1"] },
+          },
+        },
         score: { $gte: 0.71 },
       }),
     });

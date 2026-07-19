@@ -12,8 +12,21 @@ export interface SearchParams {
   yearTo?: number;
   /** CSV or repeated values — server accepts both. */
   paperKind?: string[];
+  paperKinds?: string[];
   openAccess?: boolean;
+  openAccessStatuses?: string[];
   provider?: string;
+  providers?: string[];
+  sources?: string[];
+  citationBands?: string[];
+  domains?: string[];
+  fields?: string[];
+  subfields?: string[];
+  topics?: string[];
+  domainIds?: string[];
+  fieldIds?: string[];
+  subfieldIds?: string[];
+  topicIds?: string[];
   /** Cosine similarity floor 0..1 (semantic only). */
   minScore?: number;
   sort?: SearchSortKey;
@@ -25,11 +38,32 @@ export const searchApi = {
   /** Semantic search (Phase B) — GET /api/v1/search. Same envelope as /papers,
    *  but each paper carries a relevance `score` (and `rerankScore` if rerank). */
   async semantic(params: SearchParams) {
-    // Flatten paperKind[] → CSV for the query string.
+    // Flatten array filters → CSV for the query string.
     const { paperKind, ...rest } = params;
     const query: Record<string, unknown> = { ...rest };
     if (paperKind && paperKind.length > 0) {
       query.paperKind = paperKind.join(",");
+    }
+    for (const key of [
+      "paperKinds",
+      "openAccessStatuses",
+      "providers",
+      "sources",
+      "citationBands",
+      "domains",
+      "fields",
+      "subfields",
+      "topics",
+      "domainIds",
+      "fieldIds",
+      "subfieldIds",
+      "topicIds",
+    ] as const) {
+      const values = query[key];
+      if (Array.isArray(values)) {
+        if (values.length > 0) query[key] = values.join(",");
+        else delete query[key];
+      }
     }
     const res = await api.get(API_ROUTES.search.semantic, { params: query });
     return {

@@ -79,6 +79,7 @@ export const reportService = {
         projectId: input.projectId,
         yearFrom: input.yearFrom,
         yearTo: input.yearTo,
+        scopeFilters: input.scopeFilters,
         language: input.language ?? "auto",
         deepAnalysis: input.deepAnalysis ?? false,
         fast: input.fast ?? false,
@@ -120,6 +121,7 @@ export const reportService = {
       selectedPaperIds,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
+      scopeFilters: input.scopeFilters,
       fillWithRetrieved: input.projectId ? false : input.fillWithRetrieved,
     });
     const warnings = evidence.missingSelectedPaperIds.map(

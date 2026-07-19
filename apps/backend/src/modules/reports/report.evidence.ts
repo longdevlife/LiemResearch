@@ -1,7 +1,7 @@
 import type { EvidencePaper } from "./report.prompt.js";
 import { env } from "../../config/env.js";
 import { PaperModel } from "../papers/models/paper.model.js";
-import { retrieve } from "../retrieval/retriever.js";
+import { retrieve, type RetrieveFilters } from "../retrieval/retriever.js";
 
 export type ReportEvidenceSource = "selected" | "retrieved";
 
@@ -20,6 +20,7 @@ export interface CollectReportEvidenceInput {
   selectedPaperIds?: string[];
   yearFrom?: number;
   yearTo?: number;
+  scopeFilters?: Omit<RetrieveFilters, "yearFrom" | "yearTo" | "paperIds" | "openAccess" | "minScore" | "provider">;
   fillWithRetrieved?: boolean;
 }
 
@@ -67,6 +68,7 @@ export async function collectReportEvidence(
           filters: {
             yearFrom: input.yearFrom,
             yearTo: input.yearTo,
+            ...input.scopeFilters,
           },
           projection: "report",
         }).then((papers) => papers.map((p) => ({ ...p, source: "retrieved" as const })))
