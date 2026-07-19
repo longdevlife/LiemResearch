@@ -13,8 +13,25 @@ import { errorHandler, notFoundHandler } from "./common/middleware/error-handler
 import { apiRouter } from "./routes/index.js";
 import { openapiSpec } from "./openapi.js";
 
+export function isAllowedCorsOrigin(origin: string | undefined, allowedOrigins: string[], nodeEnv: string): boolean {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  if (nodeEnv !== "production") {
+    try {
+      const url = new URL(origin);
+      return ["localhost", "127.0.0.1"].includes(url.hostname) && ["http:", "https:"].includes(url.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
 export function createApp(): Express {
   const app = express();
+  const allowedCorsOrigins = env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean);
 
   // Trust the first proxy (Render/Vercel/Nginx) so `req.ip` is the real client IP
   // from X-Forwarded-For — without this the rerank rate-limiter (keyed on req.ip)
@@ -26,7 +43,9 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CORS_ORIGIN.split(",").map((s) => s.trim()),
+      origin(origin, callback) {
+        callback(null, isAllowedCorsOrigin(origin, allowedCorsOrigins, env.NODE_ENV));
+      },
       credentials: true,
     }),
   );
