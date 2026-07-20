@@ -3,6 +3,10 @@ import { z } from "zod";
 
 const optionalEnvString = z.preprocess((value) => (value === "" ? undefined : value), z.string().optional());
 const optionalEnvUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
+const optionalMongoUri = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().url().or(z.string().startsWith("mongodb")).optional(),
+);
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -11,6 +15,10 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
 
   MONGODB_URI: z.string().url().or(z.string().startsWith("mongodb")),
+  // Read only by explicit migration scripts. The running API and workers always
+  // use MONGODB_URI, so an old database cannot accidentally remain on the
+  // normal runtime path after cutover.
+  MIGRATION_SOURCE_MONGODB_URI: optionalMongoUri,
 
   REDIS_URL: z.string().url().or(z.string().startsWith("redis")),
 
