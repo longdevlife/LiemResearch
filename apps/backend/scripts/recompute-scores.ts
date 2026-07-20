@@ -13,7 +13,12 @@ async function main(): Promise<void> {
   await connectMongo();
   const currentYear = new Date().getFullYear();
   const computedAt = new Date().toISOString();
-  const cursor = PaperModel.find({}, "publicationYear citationCount dataQualityScore").lean().cursor();
+  const cursor = PaperModel.find(
+    {},
+    "publicationYear citationCount dataQualityScore fwci citationNormalizedPercentile",
+  )
+    .lean()
+    .cursor();
 
   let scanned = 0;
   let ops: AnyBulkWriteOperation[] = [];
@@ -30,6 +35,8 @@ async function main(): Promise<void> {
         publicationYear: doc.publicationYear ?? 0,
         citationCount: doc.citationCount ?? 0,
         dataQualityScore: doc.dataQualityScore ?? 0,
+        fwci: doc.fwci,
+        citationNormalizedPercentile: doc.citationNormalizedPercentile,
       },
       currentYear,
       computedAt,

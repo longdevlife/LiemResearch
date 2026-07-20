@@ -256,7 +256,7 @@ export const paperService = {
     //    instead of waiting for the next batch score:recompute. isAiAnalyzable is already
     //    true, so the embedding worker picks it up for semantic search/RAG/compare.
     const aiScore = computePaperScore(
-      { publicationYear: input.publicationYear, citationCount: 0, dataQualityScore: 0 },
+      { publicationYear: input.publicationYear, citationCount: 0, dataQualityScore: quality.qualityScore / 100 },
       new Date().getFullYear(),
       new Date().toISOString(),
     );

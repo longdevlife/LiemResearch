@@ -15,6 +15,11 @@ export interface OpenAlexWork {
   type?: string | null; // "article", "review", "preprint", ...
   cited_by_count?: number | null;
   fwci?: number | null;
+  citation_normalized_percentile?: {
+    value?: number | null;
+    is_in_top_1_percent?: boolean | null;
+    is_in_top_10_percent?: boolean | null;
+  } | null;
   abstract_inverted_index?: Record<string, number[]> | null;
   referenced_works?: string[] | null; // ["https://openalex.org/W123", ...]
   related_works?: string[] | null; // ["https://openalex.org/W456", ...]

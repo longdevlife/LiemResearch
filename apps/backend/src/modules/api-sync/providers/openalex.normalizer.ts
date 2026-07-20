@@ -31,6 +31,11 @@ export interface NormalizedPaper {
   licenseName?: string;
   citationCount: number;
   fwci?: number;
+  citationNormalizedPercentile?: {
+    value: number;
+    isInTop1Percent?: boolean;
+    isInTop10Percent?: boolean;
+  };
   keywords: { keywordName: string; detectedBy: DetectedBy; confidence?: number }[];
   topics: NormalizedTopic[];
   referencedWorks: string[];
@@ -82,6 +87,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
     licenseName: w.primary_location?.license ?? undefined,
     citationCount: w.cited_by_count ?? 0,
     fwci: typeof w.fwci === "number" ? w.fwci : undefined,
+    citationNormalizedPercentile: normalizeCitationPercentile(w.citation_normalized_percentile),
     keywords: (w.keywords ?? [])
       .filter((k) => k.display_name)
       .map((k) => ({
@@ -94,6 +100,17 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
     relatedWorks: (w.related_works ?? []).map((r) => stripPrefix(r, "https://openalex.org/")!),
     relatedWorksCount: w.related_works?.length ?? 0,
     primaryProvider: "openalex",
+  };
+}
+
+function normalizeCitationPercentile(
+  value?: OpenAlexWork["citation_normalized_percentile"],
+): NormalizedPaper["citationNormalizedPercentile"] {
+  if (typeof value?.value !== "number") return undefined;
+  return {
+    value: Math.max(0, Math.min(1, value.value)),
+    isInTop1Percent: value.is_in_top_1_percent ?? undefined,
+    isInTop10Percent: value.is_in_top_10_percent ?? undefined,
   };
 }
 

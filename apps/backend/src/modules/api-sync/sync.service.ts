@@ -183,6 +183,8 @@ async function ingestPage(
         publicationYear: paper.publicationYear,
         citationCount: paper.citationCount,
         dataQualityScore: qualityScore,
+        fwci: paper.fwci,
+        citationNormalizedPercentile: paper.citationNormalizedPercentile,
       },
       currentYear,
       computedAt,
@@ -247,6 +249,9 @@ async function upsertPaper(
   // Merge: only overwrite when the incoming value is clearly better.
   existing.citationCount = Math.max(existing.citationCount ?? 0, n.citationCount);
   if (n.fwci !== undefined && (existing.fwci === undefined || existing.fwci === null)) existing.fwci = n.fwci;
+  if (n.citationNormalizedPercentile && !existing.citationNormalizedPercentile) {
+    existing.set("citationNormalizedPercentile", n.citationNormalizedPercentile);
+  }
   if (n.relatedWorksCount > (existing.relatedWorksCount ?? 0)) existing.relatedWorksCount = n.relatedWorksCount;
   if (n.abstractText && n.abstractText.length > (existing.abstractText?.length ?? 0)) {
     existing.abstractText = n.abstractText;

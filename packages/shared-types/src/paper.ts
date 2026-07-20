@@ -69,6 +69,7 @@ export interface Paper {
   licenseName?: string;
   citationCount: number;
   fwci?: number;
+  citationNormalizedPercentile?: PaperCitationNormalizedPercentile;
   relatedWorksCount?: number;
   keywords: PaperKeyword[];
   topics: PaperTopic[];
@@ -116,11 +117,20 @@ export interface Paper {
 }
 
 /** Paper-INTRINSIC AI score — deterministic, query-independent. */
+export interface PaperCitationNormalizedPercentile {
+  value: number; // 0..1 — OpenAlex citation percentile among comparable works
+  isInTop1Percent?: boolean;
+  isInTop10Percent?: boolean;
+}
+
 export interface PaperAiScore {
   recencyScore: number; // 0..1 — newer = higher
-  citationImpactScore: number; // 0..1 — normalized log(citationCount)
+  citationImpactScore: number; // 0..1 — OpenAlex-normalized when available, fallback otherwise
+  citationPercentileScore?: number; // 0..1 — OpenAlex citation_normalized_percentile.value
+  fwciScore?: number; // 0..1 — normalized FWCI proxy
   metadataQualityScore: number; // 0..1 — = dataQualityScore
   finalScore: number; // 0..1 — weighted blend
+  scoreBasis?: "openalex-percentile-fwci" | "openalex-fwci" | "citations-per-year-fallback";
   modelVersion: string;
   computedAt: ISODateString;
 }

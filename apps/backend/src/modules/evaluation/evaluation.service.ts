@@ -100,7 +100,7 @@ export async function buildEvaluationSummary(
     maxScore,
     rubric: {
       paperScoreFormula:
-        "finalScore = 0.6 * citationImpactScore(citations/year, log-scaled) + 0.4 * recencyScore(10-year window). Metadata quality is shown separately, not blended into paper value.",
+        "paper-score-v3: finalScore = 0.75 * normalized citation impact + 0.20 * recencyScore(10-year window) + 0.05 * metadataQualityScore. Citation impact uses OpenAlex citation_normalized_percentile + FWCI when available, then falls back to citations/year.",
       scoreBands: SCORE_BANDS,
     },
     corpus,
@@ -329,7 +329,7 @@ function buildPaperScoreRubricCheck(now: Date): EvaluationCheck {
     score: pass ? 10 : 0,
     maxScore: 10,
     basis:
-      "The rank is derived from deterministic backend paperScore, not an LLM opinion: age-adjusted citation impact plus recency.",
+      "The rank is derived from deterministic backend paperScore, not an LLM opinion: OpenAlex-normalized citation impact when available, plus recency and a small metadata trust signal.",
     evidence: `Fixture scores weak=${weak.finalScore}->rank${ranks[0]}, moderate=${moderate.finalScore}->rank${ranks[1]}, strong=${strong.finalScore}->rank${ranks[2]}.`,
     action: "If this fails, the UI should not show score ranks until the rubric and formula are aligned.",
   };

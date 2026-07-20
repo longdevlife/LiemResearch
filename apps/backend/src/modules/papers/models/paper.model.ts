@@ -96,6 +96,17 @@ const paperSchema = new Schema(
     licenseName: { type: String },
     citationCount: { type: Number, default: 0, index: true },
     fwci: { type: Number },
+    citationNormalizedPercentile: {
+      type: new Schema(
+        {
+          value: { type: Number, min: 0, max: 1 },
+          isInTop1Percent: Boolean,
+          isInTop10Percent: Boolean,
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
     relatedWorksCount: { type: Number, default: 0 },
     keywords: { type: [paperKeywordSchema], default: [] },
     topics: { type: [paperTopicSchema], default: [] },
@@ -157,8 +168,14 @@ const paperSchema = new Schema(
         {
           recencyScore: Number,
           citationImpactScore: Number,
+          citationPercentileScore: Number,
+          fwciScore: Number,
           metadataQualityScore: Number,
           finalScore: Number,
+          scoreBasis: {
+            type: String,
+            enum: ["openalex-percentile-fwci", "openalex-fwci", "citations-per-year-fallback"],
+          },
           modelVersion: String,
           computedAt: Date,
         },

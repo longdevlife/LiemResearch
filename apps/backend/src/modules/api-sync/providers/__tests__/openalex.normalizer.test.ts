@@ -31,6 +31,11 @@ describe("normalizeOpenAlexWork", () => {
     type: "article",
     cited_by_count: 87,
     fwci: 2.35,
+    citation_normalized_percentile: {
+      value: 0.91,
+      is_in_top_1_percent: false,
+      is_in_top_10_percent: true,
+    },
     abstract_inverted_index: { This: [0], paper: [1] },
     authorships: [
       {
@@ -57,6 +62,11 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.paperKind).toBe("article");
     expect(n.citationCount).toBe(87);
     expect(n.fwci).toBe(2.35);
+    expect(n.citationNormalizedPercentile).toEqual({
+      value: 0.91,
+      isInTop1Percent: false,
+      isInTop10Percent: true,
+    });
     expect(n.relatedWorksCount).toBe(0);
     expect(n.openAccessStatus).toBe("gold");
     expect(n.openAccessUrl).toBe("https://oa.example/paper.pdf");

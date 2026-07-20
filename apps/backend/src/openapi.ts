@@ -75,6 +75,14 @@ export const openapiSpec = {
           publicationYear: { type: "integer", example: 2023 },
           citationCount: { type: "integer", example: 4826 },
           fwci: { type: "number", example: 2.35 },
+          citationNormalizedPercentile: {
+            type: "object",
+            properties: {
+              value: { type: "number", example: 0.96 },
+              isInTop1Percent: { type: "boolean", example: false },
+              isInTop10Percent: { type: "boolean", example: true },
+            },
+          },
           relatedWorksCount: { type: "integer", example: 10 },
           topics: {
             type: "array",
