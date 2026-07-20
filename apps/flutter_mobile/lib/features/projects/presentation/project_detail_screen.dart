@@ -119,23 +119,24 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
             labelColor: Color(0xFF06B6D4),
             unselectedLabelColor: Color(0xFF94A3B8),
             tabs: [
+              Tab(text: 'Overview'),
               Tab(text: 'Papers'),
               Tab(text: 'Chat'),
-              Tab(text: 'Reports'),
-              Tab(text: 'Gaps'),
+              Tab(text: 'AI Assistant'),
+              Tab(text: 'Outputs'),
               Tab(text: 'Members'),
-              Tab(text: 'Settings'),
             ],
           ),
         ),
         body: project.when(
           data: (data) => TabBarView(
             children: [
+              _OverviewTab(project: data, projectId: widget.id, ref: ref),
               _PapersTab(project: data, projectId: widget.id, ref: ref),
               _ChatTab(
                 projectId: widget.id,
                 project: data,
-                mode: _mode,
+                mode: _ChatMode.team,
                 selectMode: _selectMode,
                 scrollController: _scrollController,
                 refresh: _refresh,
@@ -145,14 +146,27 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                 sendFn: _send,
                 colors: colors,
               ),
-              _ReportsTab(projectId: widget.id, ref: ref),
-              _GapsTab(projectId: widget.id, ref: ref),
-              _MembersTab(project: data, ref: ref),
-              _SettingsTab(project: data, ref: ref),
+              _AiAssistantTab(
+                projectId: widget.id,
+                project: data,
+                mode: _mode == _ChatMode.team ? _ChatMode.privateAi : _mode,
+                selectMode: _selectMode,
+                scrollController: _scrollController,
+                refresh: _refresh,
+                messageController: _message,
+                sending: _sending,
+                sendError: _sendError,
+                sendFn: _send,
+                colors: colors,
+              ),
+              _OutputsTab(projectId: widget.id, ref: ref),
+              _MembersSettingsTab(project: data, ref: ref),
             ],
           ),
-          loading: () =>
-              const AppLoading(fullScreen: true, message: 'Loading project workspace...'),
+          loading: () => const AppLoading(
+            fullScreen: true,
+            message: 'Loading project workspace...',
+          ),
           error: (error, _) => AppErrorState(message: error.toString()),
         ),
       ),
@@ -982,7 +996,9 @@ class _ChatTab extends StatelessWidget {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest.withValues(alpha: .5),
+                      color: colors.surfaceContainerHighest.withValues(
+                        alpha: .5,
+                      ),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: colors.outlineVariant.withValues(alpha: .18),
@@ -1006,7 +1022,10 @@ class _ChatTab extends StatelessWidget {
                               : Icons.auto_awesome_rounded,
                           size: 20,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -1020,11 +1039,16 @@ class _ChatTab extends StatelessWidget {
                       backgroundColor: const Color(0xFF1D4ED8),
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: sending ? null : () => sendFn(project.papers.length),
+                    onPressed: sending
+                        ? null
+                        : () => sendFn(project.papers.length),
                     icon: sending
                         ? const SizedBox.square(
                             dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.send_rounded),
                   ),
@@ -1060,7 +1084,10 @@ class _PapersTab extends StatelessWidget {
     } on Object catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to remove paper: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to remove paper: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -1074,9 +1101,16 @@ class _PapersTab extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.article_outlined, size: 48, color: Color(0xFF94A3B8)),
+              const Icon(
+                Icons.article_outlined,
+                size: 48,
+                color: Color(0xFF94A3B8),
+              ),
               const SizedBox(height: 12),
-              const Text('No papers inside this project workspace yet.', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'No papers inside this project workspace yet.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 6),
               const Text(
                 'Search for publications outside and tap "Add" button to associate them here.',
@@ -1117,7 +1151,10 @@ class _PapersTab extends StatelessWidget {
                 children: [
                   Text(
                     paper.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1127,10 +1164,17 @@ class _PapersTab extends StatelessWidget {
                     children: [
                       Text(
                         'Year: ${paper.publicationYear ?? 'N/A'} · Citations: ${paper.citationCount ?? 0}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF94A3B8),
+                        ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: 18,
+                        ),
                         onPressed: () => _remove(context, paper.id),
                       ),
                     ],
@@ -1145,6 +1189,8 @@ class _PapersTab extends StatelessWidget {
   }
 }
 
+// Legacy tab retained while the combined Reports & Gaps mobile tab is active.
+// ignore: unused_element
 class _ReportsTab extends StatelessWidget {
   const _ReportsTab({required this.projectId, required this.ref});
   final String projectId;
@@ -1152,7 +1198,9 @@ class _ReportsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final query = ref.watch(reportsProvider(ReportsParams(projectId: projectId)));
+    final query = ref.watch(
+      reportsProvider(ReportsParams(projectId: projectId)),
+    );
 
     return Column(
       children: [
@@ -1163,11 +1211,21 @@ class _ReportsTab extends StatelessWidget {
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF06B6D4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              onPressed: () => context.push('/reports?create=true&projectId=$projectId'),
+              onPressed: () => unawaited(
+                context.push('/reports?create=true&projectId=$projectId'),
+              ),
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Generate RAG Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Generate RAG Report',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ),
@@ -1175,7 +1233,12 @@ class _ReportsTab extends StatelessWidget {
           child: query.when(
             data: (data) {
               if (data.reports.isEmpty) {
-                return const Center(child: Text('No analytical reports generated yet.', style: TextStyle(fontStyle: FontStyle.italic)));
+                return const Center(
+                  child: Text(
+                    'No analytical reports generated yet.',
+                    style: TextStyle(fontStyle: FontStyle.italic),
+                  ),
+                );
               }
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1190,17 +1253,41 @@ class _ReportsTab extends StatelessWidget {
                       side: BorderSide(color: Theme.of(context).dividerColor),
                     ),
                     child: ListTile(
-                      title: Text(report.topic ?? 'Dataset report', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      subtitle: Text(report.query, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-                      trailing: Text(report.status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4))),
-                      onTap: () => context.push('/report/${report.id}'),
+                      title: Text(
+                        report.topic ?? 'Dataset report',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      subtitle: Text(
+                        report.query,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: Text(
+                        report.status.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF06B6D4),
+                        ),
+                      ),
+                      onTap: () =>
+                          unawaited(context.push('/report/${report.id}')),
                     ),
                   );
                 },
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error loading reports: $err', style: const TextStyle(color: Colors.red))),
+            error: (err, _) => Center(
+              child: Text(
+                'Error loading reports: $err',
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
           ),
         ),
       ],
@@ -1208,6 +1295,8 @@ class _ReportsTab extends StatelessWidget {
   }
 }
 
+// Legacy tab retained while the combined Reports & Gaps mobile tab is active.
+// ignore: unused_element
 class _GapsTab extends StatelessWidget {
   const _GapsTab({required this.projectId, required this.ref});
   final String projectId;
@@ -1220,7 +1309,12 @@ class _GapsTab extends StatelessWidget {
     return query.when(
       data: (data) {
         if (data.data.isEmpty) {
-          return const Center(child: Text('No research gaps found for this workspace.', style: TextStyle(fontStyle: FontStyle.italic)));
+          return const Center(
+            child: Text(
+              'No research gaps found for this workspace.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          );
         }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -1235,135 +1329,474 @@ class _GapsTab extends StatelessWidget {
                 side: BorderSide(color: Theme.of(context).dividerColor),
               ),
               child: ListTile(
-                title: Text(gap.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                subtitle: Text(gap.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                trailing: Text('${(gap.confidence * 100).round()}% conf', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                title: Text(
+                  gap.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                subtitle: Text(
+                  gap.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: Text(
+                  '${(gap.confidence * 100).round()}% conf',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             );
           },
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Error loading gaps: $err', style: const TextStyle(color: Colors.red))),
+      error: (err, _) => Center(
+        child: Text(
+          'Error loading gaps: $err',
+          style: const TextStyle(color: Colors.red),
+        ),
+      ),
     );
   }
 }
 
-class _MembersTab extends StatefulWidget {
-  const _MembersTab({required this.project, required this.ref});
+class _OverviewTab extends StatelessWidget {
+  const _OverviewTab({
+    required this.project,
+    required this.projectId,
+    required this.ref,
+  });
+
   final ProjectView project;
+  final String projectId;
   final WidgetRef ref;
 
   @override
-  State<_MembersTab> createState() => _MembersTabState();
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    final reportsAsync = ref.watch(
+      reportsProvider(ReportsParams(projectId: projectId)),
+    );
+    final gapsAsync = ref.watch(
+      gapsProvider(GapsListParams(projectId: projectId)),
+    );
+
+    final reportsCount = reportsAsync.maybeWhen(
+      data: (d) => d.reports.length,
+      orElse: () => 0,
+    );
+    final gapsCount = gapsAsync.maybeWhen(
+      data: (d) => d.data.length,
+      orElse: () => 0,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: theme.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: theme.dividerColor),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  project.title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (project.description != null &&
+                    project.description!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    project.description!,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Workspace counters Grid
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.8,
+          children: [
+            _buildCounterCard(
+              context,
+              'Papers',
+              project.papers.length.toString(),
+              Icons.article_outlined,
+              const Color(0xFF06B6D4),
+            ),
+            _buildCounterCard(
+              context,
+              'Team Members',
+              project.members.length.toString(),
+              Icons.people_outline,
+              const Color(0xFF22C55E),
+            ),
+            _buildCounterCard(
+              context,
+              'Reports',
+              reportsCount.toString(),
+              Icons.description_outlined,
+              const Color(0xFFA78BFA),
+            ),
+            _buildCounterCard(
+              context,
+              'Gaps Detected',
+              gapsCount.toString(),
+              Icons.bolt_outlined,
+              const Color(0xFFF59E0B),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Add Papers CTA Card
+        Card(
+          elevation: 0,
+          color: const Color(0xFF06B6D4).withValues(alpha: 0.08),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF06B6D4), width: 1.5),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.add_circle_outline,
+                  color: Color(0xFF06B6D4),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ground Your Research',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        'Add publications to power grounding reports, chat, and gap detection.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  onPressed: () => DefaultTabController.of(
+                    context,
+                  ).animateTo(1), // Go to Papers Tab
+                  child: const Text(
+                    'Add',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Activity log snapshot
+        const Text(
+          'Workspace Activity Log',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          elevation: 0,
+          color: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: theme.dividerColor),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.history_toggle_off,
+                  color: Color(0xFF94A3B8),
+                  size: 18,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Workspace initialized and ready for research.',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCounterCard(
+    BuildContext context,
+    String label,
+    String count,
+    IconData icon,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: theme.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    count,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _MembersTabState extends State<_MembersTab> {
-  final _emailController = TextEditingController();
-  bool _adding = false;
+class _AiAssistantTab extends StatelessWidget {
+  const _AiAssistantTab({
+    required this.projectId,
+    required this.project,
+    required this.mode,
+    required this.selectMode,
+    required this.scrollController,
+    required this.refresh,
+    required this.messageController,
+    required this.sending,
+    required this.sendError,
+    required this.sendFn,
+    required this.colors,
+  });
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _addMember() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
-    setState(() => _adding = true);
-
-    try {
-      await widget.ref.read(projectsApiProvider).addMember(widget.project.id, targetId: email);
-      widget.ref.invalidate(projectProvider(widget.project.id));
-      _emailController.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member added successfully.')));
-      }
-    } on Object catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add member: $e'), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) setState(() => _adding = false);
-    }
-  }
-
-  Future<void> _removeMember(String memberId) async {
-    try {
-      await widget.ref.read(projectsApiProvider).removeMember(widget.project.id, memberId);
-      widget.ref.invalidate(projectProvider(widget.project.id));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member removed.')));
-      }
-    } on Object catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove member: $e'), backgroundColor: Colors.red));
-      }
-    }
-  }
+  final String projectId;
+  final ProjectView project;
+  final _ChatMode mode;
+  final ValueChanged<_ChatMode> selectMode;
+  final ScrollController scrollController;
+  final VoidCallback refresh;
+  final TextEditingController messageController;
+  final bool sending;
+  final String? sendError;
+  final Future<void> Function(int) sendFn;
+  final ColorScheme colors;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Add Project Member', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter member User ID or Email',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF06B6D4),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: _adding ? null : _addMember,
-                  child: _adding
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+    return Column(
+      children: [
+        _AiChannelSwitcher(mode: mode, onChanged: selectMode),
+        Expanded(
+          child: _ChatPanel(
+            projectId: projectId,
+            mode: mode,
+            ownerId: project.ownerId,
+            paperCount: project.papers.length,
+            controller: scrollController,
+            onRefresh: refresh,
           ),
-          const Divider(height: 32),
-          const Text('Workspace Members', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              itemCount: widget.project.members.length,
-              itemBuilder: (context, idx) {
-                final m = widget.project.members[idx];
-                final isOwner = widget.project.ownerId == m.id;
-
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(child: Icon(Icons.person)),
-                  title: Text(m.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  subtitle: Text(isOwner ? 'Owner' : 'Member', style: const TextStyle(fontSize: 11)),
-                  trailing: isOwner
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
-                          onPressed: () => _removeMember(m.id),
-                        ),
-                );
-              },
+        ),
+        if (sendError != null)
+          Container(
+            width: double.infinity,
+            color: colors.errorContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              sendError!,
+              style: TextStyle(color: colors.onErrorContainer),
             ),
+          ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest.withValues(
+                        alpha: .5,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: colors.outlineVariant.withValues(alpha: .18),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: messageController,
+                      minLines: 1,
+                      maxLines: 4,
+                      maxLength: 2000,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText:
+                            'Ask AI Assistant about project publications...',
+                        counterText: '',
+                        border: InputBorder.none,
+                        prefixIcon: Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 20,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox.square(
+                  dimension: 48,
+                  child: IconButton.filled(
+                    style: IconButton.styleFrom(
+                      shape: const CircleBorder(),
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: sending
+                        ? null
+                        : () => sendFn(project.papers.length),
+                    icon: sending
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AiChannelSwitcher extends StatelessWidget {
+  const _AiChannelSwitcher({required this.mode, required this.onChanged});
+
+  final _ChatMode mode;
+  final ValueChanged<_ChatMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: .38),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: .55),
+        ),
+      ),
+      child: Row(
+        children: [
+          _ChannelTab(
+            label: 'My AI (Private)',
+            icon: Icons.auto_awesome_rounded,
+            selected: mode == _ChatMode.privateAi,
+            onTap: () => onChanged(_ChatMode.privateAi),
+          ),
+          _ChannelTab(
+            label: 'Team AI (Shared)',
+            icon: Icons.smart_toy_rounded,
+            selected: mode == _ChatMode.teamAi,
+            onTap: () => onChanged(_ChatMode.teamAi),
           ),
         ],
       ),
@@ -1371,18 +1804,221 @@ class _MembersTabState extends State<_MembersTab> {
   }
 }
 
-class _SettingsTab extends StatefulWidget {
-  const _SettingsTab({required this.project, required this.ref});
+class _OutputsTab extends StatelessWidget {
+  const _OutputsTab({required this.projectId, required this.ref});
+  final String projectId;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final reportsQuery = ref.watch(
+      reportsProvider(ReportsParams(projectId: projectId)),
+    );
+    final gapsQuery = ref.watch(
+      gapsProvider(GapsListParams(projectId: projectId)),
+    );
+    final theme = Theme.of(context);
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Action card to generate a report
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF06B6D4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => unawaited(
+              context.push('/reports?create=true&projectId=$projectId'),
+            ),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Generate RAG Report',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Reports Expansion Section
+        ExpansionTile(
+          initiallyExpanded: true,
+          leading: const Icon(
+            Icons.description_outlined,
+            color: Color(0xFFA78BFA),
+          ),
+          title: const Text(
+            'RAG Analytical Reports',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          children: [
+            reportsQuery.when(
+              data: (data) {
+                if (data.reports.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No analytical reports generated yet.',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: data.reports.length,
+                  itemBuilder: (context, idx) {
+                    final report = data.reports[idx];
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: theme.dividerColor),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          report.topic ?? 'Dataset report',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Status: ${report.status.toUpperCase()} · ${report.query}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 16),
+                        onTap: () =>
+                            unawaited(context.push('/report/${report.id}')),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Error loading reports: $err',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Gaps Expansion Section
+        ExpansionTile(
+          initiallyExpanded: true,
+          leading: const Icon(Icons.bolt_outlined, color: Color(0xFFF59E0B)),
+          title: const Text(
+            'Discovered Research Gaps',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          children: [
+            gapsQuery.when(
+              data: (data) {
+                if (data.data.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No research gaps found for this workspace.',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: data.data.length,
+                  itemBuilder: (context, idx) {
+                    final gap = data.data[idx];
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: theme.dividerColor),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          gap.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${(gap.confidence * 100).round()}% confidence · ${gap.description}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 16),
+                        onTap: () => unawaited(context.push('/gaps')),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Error loading gaps: $err',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MembersSettingsTab extends StatefulWidget {
+  const _MembersSettingsTab({required this.project, required this.ref});
   final ProjectView project;
   final WidgetRef ref;
 
   @override
-  State<_SettingsTab> createState() => _SettingsTabState();
+  State<_MembersSettingsTab> createState() => _MembersSettingsTabState();
 }
 
-class _SettingsTabState extends State<_SettingsTab> {
+class _MembersSettingsTabState extends State<_MembersSettingsTab> {
+  final _emailController = TextEditingController();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  bool _adding = false;
   bool _saving = false;
 
   @override
@@ -1394,25 +2030,90 @@ class _SettingsTabState extends State<_SettingsTab> {
 
   @override
   void dispose() {
+    _emailController.dispose();
     _titleController.dispose();
     _descController.dispose();
     super.dispose();
+  }
+
+  Future<void> _addMember() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() => _adding = true);
+    try {
+      await widget.ref
+          .read(projectsApiProvider)
+          .addMember(widget.project.id, targetId: email);
+      widget.ref.invalidate(projectProvider(widget.project.id));
+      _emailController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Member added successfully.')),
+        );
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add member: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  Future<void> _removeMember(String memberId) async {
+    try {
+      await widget.ref
+          .read(projectsApiProvider)
+          .removeMember(widget.project.id, memberId);
+      widget.ref.invalidate(projectProvider(widget.project.id));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Member removed.')));
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to remove member: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
     setState(() => _saving = true);
-
     try {
-      await widget.ref.read(projectsApiProvider).update(widget.project.id, title: title, description: _descController.text.trim());
+      await widget.ref
+          .read(projectsApiProvider)
+          .update(
+            widget.project.id,
+            title: title,
+            description: _descController.text.trim(),
+          );
       widget.ref.invalidate(projectProvider(widget.project.id));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workspace updated.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Workspace updated.')));
       }
     } on Object catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1424,10 +2125,18 @@ class _SettingsTabState extends State<_SettingsTab> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Workspace?'),
-        content: const Text('All papers and chat history in this workspace will be deleted forever.'),
+        content: const Text(
+          'All papers and chat history in this workspace will be deleted forever.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -1438,11 +2147,18 @@ class _SettingsTabState extends State<_SettingsTab> {
         widget.ref.invalidate(projectsProvider);
         if (mounted) {
           context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workspace deleted.')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Workspace deleted.')));
         }
       } on Object catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -1450,63 +2166,227 @@ class _SettingsTabState extends State<_SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Workspace Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _titleController,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+      children: [
+        // Section: Members
+        ExpansionTile(
+          initiallyExpanded: true,
+          leading: const Icon(Icons.people_outline, color: Color(0xFF22C55E)),
+          title: const Text(
+            'Workspace Members',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
-          const SizedBox(height: 16),
-          const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _descController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF06B6D4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter User ID or Email',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF06B6D4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _adding ? null : _addMember,
+                        child: _adding
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Add',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: widget.project.members.length,
+                    itemBuilder: (context, idx) {
+                      final m = widget.project.members[idx];
+                      final isOwner = widget.project.ownerId == m.id;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(
+                          m.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        subtitle: Text(
+                          isOwner ? 'Owner' : 'Member',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: isOwner
+                            ? null
+                            : IconButton(
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
+                                onPressed: () => _removeMember(m.id),
+                              ),
+                      );
+                    },
+                  ),
+                ],
               ),
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Save Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Section: Workspace Settings
+        ExpansionTile(
+          leading: const Icon(
+            Icons.settings_outlined,
+            color: Color(0xFF94A3B8),
           ),
-          const Divider(height: 40),
-          const Text('Danger Zone', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFEF4444))),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text(
+            'Workspace Settings',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Workspace Name',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Description',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _descController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Save Settings',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const Divider(height: 32),
+                  const Text(
+                    'Danger Zone',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _delete,
+                      icon: const Icon(Icons.delete_forever),
+                      label: const Text(
+                        'Delete Workspace',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              onPressed: _delete,
-              icon: const Icon(Icons.delete_forever),
-              label: const Text('Delete Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }

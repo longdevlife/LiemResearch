@@ -23,7 +23,6 @@ class PaperDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
-  String _activeTab = 'abstract';
   int rating = 0;
   final commentController = TextEditingController();
 
@@ -46,7 +45,9 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
   Future<void> _submitRating() async {
     if (rating < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select 1-5 stars before submitting.')),
+        const SnackBar(
+          content: Text('Please select 1-5 stars before submitting.'),
+        ),
       );
       return;
     }
@@ -57,7 +58,9 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
         'paper',
         widget.id,
         rating,
-        commentController.text.trim().isEmpty ? null : commentController.text.trim(),
+        commentController.text.trim().isEmpty
+            ? null
+            : commentController.text.trim(),
       );
       ref.invalidate(qualityViewProvider(target));
       if (mounted) {
@@ -89,6 +92,8 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
     }
   }
 
+  // Kept for the review delete action when mobile ratings are reconnected.
+  // ignore: unused_element
   Future<void> _deleteReview(String ratingId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -96,7 +101,10 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
         title: const Text('Delete review'),
         content: const Text('Remove your review for this paper?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -117,112 +125,148 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
   }
 
   void _openProjectPicker(BuildContext context) {
-    unawaited(showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Consumer(
-          builder: (context, ref, child) {
-            final projectsAsync = ref.watch(projectsProvider);
-            final theme = Theme.of(context);
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Add to project',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    projectsAsync.when(
-                      data: (projects) {
-                        if (projects.isEmpty) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 24),
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  unawaited(context.push('/projects'));
-                                },
-                                child: const Text('Create your first project'),
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) {
+          return Consumer(
+            builder: (context, ref, child) {
+              final projectsAsync = ref.watch(projectsProvider);
+              final theme = Theme.of(context);
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Add to project',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      projectsAsync.when(
+                        data: (projects) {
+                          if (projects.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 24,
+                                ),
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    unawaited(context.push('/projects'));
+                                  },
+                                  child: const Text(
+                                    'Create your first project',
+                                  ),
+                                ),
                               ),
+                            );
+                          }
+                          return Flexible(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: projects.length,
+                              itemBuilder: (context, index) {
+                                final project = projects[index];
+                                return ListTile(
+                                  leading: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: Colors.cyan.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.folder,
+                                      color: Color(0xFF06B6D4),
+                                      size: 17,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    project.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${project.papers.length} papers',
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.add,
+                                    color: Color(0xFF06B6D4),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(context);
+                                    try {
+                                      await ref
+                                          .read(projectsApiProvider)
+                                          .addPaper(project.id, widget.id);
+                                      ref.invalidate(projectsProvider);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Added paper to project',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } on Exception catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Failed to add: $e'),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                );
+                              },
                             ),
                           );
-                        }
-                        return Flexible(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: projects.length,
-                            itemBuilder: (context, index) {
-                              final project = projects[index];
-                              return ListTile(
-                                leading: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: Colors.cyan.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.folder, color: Color(0xFF06B6D4), size: 17),
-                                ),
-                                title: Text(project.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text('${project.papers.length} papers'),
-                                trailing: const Icon(Icons.add, color: Color(0xFF06B6D4)),
-                                onTap: () async {
-                                  Navigator.pop(context);
-                                  try {
-                                    await ref.read(projectsApiProvider).addPaper(project.id, widget.id);
-                                    ref.invalidate(projectsProvider);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Added paper to project')),
-                                      );
-                                    }
-                                  } on Exception catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Failed to add: $e')),
-                                      );
-                                    }
-                                  }
-                                },
-                              );
-                            },
-                          ),
-                        );
-                      },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => Text('Error loading projects: $e'),
-                    ),
-                  ],
+                        },
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => Text('Error loading projects: $e'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    ));
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final paperQuery = ref.watch(paperProvider(widget.id));
-    final statusQuery = ref.watch(bookmarkStatusProvider(BookmarkTarget('paper', widget.id)));
+    final statusQuery = ref.watch(
+      bookmarkStatusProvider(BookmarkTarget('paper', widget.id)),
+    );
     final qualityTarget = QualityTarget('paper', widget.id);
     final qualityQuery = ref.watch(qualityViewProvider(qualityTarget));
     final currentUser = ref.watch(currentUserProvider);
@@ -253,19 +297,25 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
           icon: const Icon(Icons.chevron_left, size: 28),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Paper Detail', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Paper Detail',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined, size: 20),
             onPressed: () async {
-              final link = paperQuery.value?.paperLink ?? paperQuery.value?.externalIds.openalexId ?? 'https://openalex.org/${widget.id}';
+              final link =
+                  paperQuery.value?.paperLink ??
+                  paperQuery.value?.externalIds.openalexId ??
+                  'https://openalex.org/${widget.id}';
               await Clipboard.setData(ClipboardData(text: link));
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Paper link copied to clipboard')),
               );
             },
-          )
+          ),
         ],
       ),
       body: paperQuery.when(
@@ -276,535 +326,53 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
           return Stack(
             children: [
               ListView(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, paper.openAccessUrl != null ? 112 : 24),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  paper.openAccessUrl != null ? 112 : 24,
+                ),
                 children: [
-                  Text(
-                    paper.title,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      height: 1.3,
-                    ),
+                  // SECTION 1: Header Card
+                  _buildHeaderCard(context, paper, theme, isDark),
+                  const SizedBox(height: 16),
+
+                  // SECTION 2: Actions Panel
+                  _buildActionsPanel(
+                    context,
+                    paper,
+                    theme,
+                    isDark,
+                    isBookmarked,
+                    bookmarkId,
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      ...paper.authors.take(3).map((author) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: theme.dividerColor),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.person, size: 12, color: Color(0xFF06B6D4)),
-                              const SizedBox(width: 6),
-                              Text(
-                                author.displayName,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                      if (paper.authors.length > 3)
-                        TextButton(
-                          onPressed: () {
-                            unawaited(showModalBottomSheet<void>(
-                              context: context,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                              ),
-                              builder: (context) => Container(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('All Authors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        itemCount: paper.authors.length,
-                                        itemBuilder: (context, idx) => ListTile(
-                                          leading: const CircleAvatar(child: Icon(Icons.person)),
-                                          title: Text(paper.authors[idx].displayName),
-                                          subtitle: Text('Author Position: ${paper.authors[idx].position}'),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ));
-                          },
-                          child: Text('View all (${paper.authors.length})', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                    ],
+
+                  // SECTION 3: Abstract Block
+                  _buildAbstractBlock(context, paper, theme),
+                  const SizedBox(height: 16),
+
+                  // SECTION 4: Figures & Media Grid
+                  _buildFiguresMediaGrid(context, paper, theme, isDark),
+                  const SizedBox(height: 16),
+
+                  // SECTION 5: Taxonomy Badges
+                  _buildTaxonomyBadges(context, paper, theme, isDark),
+                  const SizedBox(height: 16),
+
+                  // SECTION 6: Analytical Insights
+                  _buildAnalyticalInsights(
+                    context,
+                    paper,
+                    theme,
+                    isDark,
+                    qualityQuery,
+                    currentUser,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    '${paper.journalName != null ? "${paper.journalName} · " : ""}${paper.publicationYear}',
-                    style: const TextStyle(
-                      color: Color(0xFF06B6D4),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1B4B),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${paper.citationCount} Citations',
-                          style: const TextStyle(
-                            color: Color(0xFFA5B4FC),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (paper.isAiAnalyzable)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF064E3B),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.auto_awesome, color: Color(0xFF34D399), size: 10),
-                              SizedBox(width: 4),
-                              Text(
-                                'AI Analyzable',
-                                style: TextStyle(
-                                  color: Color(0xFF34D399),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (paper.openAccessUrl != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF451A03),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.lock_open, color: Color(0xFFFBBF24), size: 10),
-                              SizedBox(width: 4),
-                              Text(
-                                'Open Access',
-                                style: TextStyle(
-                                  color: Color(0xFFFBBF24),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  OpenAlexMetadataCard(paper: paper),
-                  const SizedBox(height: 20),
 
-                  // Actions panel
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _ActionButton(
-                          icon: Icons.bookmark,
-                          label: isBookmarked ? 'Saved' : 'Save',
-                          active: isBookmarked,
-                          onTap: () => _toggleBookmark(isBookmarked, bookmarkId),
-                          isDark: isDark,
-                        ),
-                        _ActionButton(
-                          icon: Icons.person_add,
-                          label: 'Follow',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Now following updates for: ${paper.title}')),
-                            );
-                          },
-                          isDark: isDark,
-                        ),
-                        _ActionButton(
-                          icon: Icons.add_box,
-                          label: 'Add',
-                          onTap: () => _openProjectPicker(context),
-                          isDark: isDark,
-                        ),
-                        _ActionButton(
-                          icon: Icons.picture_as_pdf,
-                          label: 'PDF',
-                          disabled: paper.openAccessUrl == null,
-                          onTap: paper.openAccessUrl == null
-                              ? null
-                              : () => launchUrl(Uri.parse(paper.openAccessUrl!)),
-                          isDark: isDark,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // AI Analysis Card
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF082F49),
-                      border: Border.all(color: const Color(0xFF06B6D4)),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0E7490),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.auto_awesome, color: Color(0xFFA5F3FC), size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'AI Analysis: ${paper.dataQualityScore.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Strong metadata quality and citation context make this paper suitable for semantic search, trend analysis, and report grounding.',
-                                style: TextStyle(
-                                  color: Color(0xFFCFFAFE),
-                                  fontSize: 12,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // AI Quality review panel & Community ratings
-                  qualityQuery.when(
-                    data: (view) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // AI Quality review card
-                          Container(
-                            decoration: BoxDecoration(
-                              color: theme.cardColor,
-                              border: Border.all(color: theme.dividerColor),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            margin: const EdgeInsets.only(bottom: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.auto_awesome, color: Color(0xFF06B6D4), size: 18),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'AI quality review',
-                                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: _runAiEvaluation,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF1D4ED8),
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                      ),
-                                      child: Text(
-                                        view.evaluation != null ? 'Refresh' : 'Evaluate',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                if (view.evaluation != null) ...[
-                                  Row(
-                                    children: [
-                                      _QualityBadge(label: 'Overall', score: view.evaluation!.overall),
-                                      const SizedBox(width: 8),
-                                      _QualityBadge(label: 'Relevant', score: view.evaluation!.relevance),
-                                      const SizedBox(width: 8),
-                                      _QualityBadge(label: 'Grounded', score: view.evaluation!.groundedness),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    view.evaluation!.rationale,
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      fontSize: 14,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ] else ...[
-                                  Text(
-                                    "Run AI evaluation to score relevance, groundedness, and completeness from this paper's metadata.",
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      fontSize: 14,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-
-                          // Community rating card
-                          Container(
-                            decoration: BoxDecoration(
-                              color: theme.cardColor,
-                              border: Border.all(color: theme.dividerColor),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            margin: const EdgeInsets.only(bottom: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Community rating',
-                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${view.ratingCount} ratings · average ${view.ratingAvg.toStringAsFixed(1)}',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: List.generate(5, (index) {
-                                    final starVal = index + 1;
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => rating = starVal),
-                                        child: Icon(
-                                          starVal <= rating ? Icons.star : Icons.star_border,
-                                          color: const Color(0xFFF59E0B),
-                                          size: 32,
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ),
-                                const SizedBox(height: 12),
-                                TextField(
-                                  controller: commentController,
-                                  maxLines: 3,
-                                  style: const TextStyle(fontSize: 14),
-                                  decoration: InputDecoration(
-                                    hintText: 'Write a short review...',
-                                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: theme.dividerColor),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: theme.dividerColor),
-                                    ),
-                                    contentPadding: const EdgeInsets.all(12),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: rating == 0 ? null : _submitRating,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1D4ED8),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    child: const Text('Submit review', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                ),
-                                if (view.ratings.isNotEmpty) ...[
-                                  const SizedBox(height: 16),
-                                  ...view.ratings.map((item) {
-                                    final isMine = item.userName == currentUser?.fullName;
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          top: BorderSide(color: theme.dividerColor),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                item.userName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.star, color: Color(0xFFF59E0B), size: 14),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    '${item.stars}',
-                                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                                  ),
-                                                  if (isMine) ...[
-                                                    const SizedBox(width: 12),
-                                                    GestureDetector(
-                                                      onTap: () => _deleteReview(item.id),
-                                                      child: const Icon(Icons.delete, color: Colors.red, size: 16),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          if (item.comment != null && item.comment!.isNotEmpty) ...[
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              item.comment!,
-                                              style: TextStyle(
-                                                color: theme.colorScheme.onSurfaceVariant,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Text(e.toString()),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Custom Underlined Tabs selector
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: theme.dividerColor)),
-                    ),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      children: [
-                        _buildTabButton('abstract', 'Abstract', theme),
-                        _buildTabButton('topics', 'Topics', theme),
-                        _buildTabButton('references', 'References', theme),
-                      ],
-                    ),
-                  ),
-
-                  // Tab content
-                  if (_activeTab == 'abstract')
-                    Text(
-                      paper.abstractText ?? 'No abstract available for this paper.',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                        height: 1.6,
-                      ),
-                    )
-                  else if (_activeTab == 'topics')
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: paper.topics.isNotEmpty
-                          ? paper.topics.map((topic) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: theme.cardColor,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: theme.dividerColor),
-                                ),
-                                child: Text(
-                                  topic.topicName,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              );
-                            }).toList()
-                          : [
-                              Text(
-                                'No topics available.',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              )
-                            ],
-                    )
-                  else if (_activeTab == 'references')
-                    _ReferencesTabContent(id: widget.id, theme: theme),
+                  // SECTION 7: Interactive Chat Widget
+                  _buildInteractiveChatWidget(context, paper, theme, isDark),
                 ],
               ),
               if (paper.openAccessUrl != null)
@@ -816,11 +384,18 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: theme.scaffoldBackgroundColor,
-                      border: Border(top: BorderSide(color: theme.dividerColor)),
+                      border: Border(
+                        top: BorderSide(color: theme.dividerColor),
+                      ),
                     ),
                     child: ElevatedButton.icon(
-                      onPressed: () => launchUrl(Uri.parse(paper.openAccessUrl!)),
-                      icon: const Icon(Icons.open_in_new, size: 16, color: Color(0xFF0F1B2D)),
+                      onPressed: () =>
+                          launchUrl(Uri.parse(paper.openAccessUrl!)),
+                      icon: const Icon(
+                        Icons.open_in_new,
+                        size: 16,
+                        color: Color(0xFF0F1B2D),
+                      ),
                       label: const Text(
                         'Open full text',
                         style: TextStyle(
@@ -831,7 +406,9 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF06B6D4),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -840,33 +417,784 @@ class _PaperDetailScreenState extends ConsumerState<PaperDetailScreen> {
             ],
           );
         },
-        loading: () => const AppLoading(fullScreen: true, message: 'Loading paper...'),
+        loading: () =>
+            const AppLoading(fullScreen: true, message: 'Loading paper...'),
         error: (error, _) => AppErrorState(message: error.toString()),
       ),
     );
   }
 
-  Widget _buildTabButton(String tabValue, String tabLabel, ThemeData theme) {
-    final active = _activeTab == tabValue;
-    return GestureDetector(
-      onTap: () => setState(() => _activeTab = tabValue),
-      child: Container(
-        padding: const EdgeInsets.only(bottom: 12),
-        margin: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(
-          border: active
-              ? const Border(bottom: BorderSide(color: Color(0xFF06B6D4), width: 2))
-              : null,
-        ),
-        child: Text(
-          tabLabel,
-          style: TextStyle(
-            color: active ? const Color(0xFF06B6D4) : theme.colorScheme.onSurfaceVariant,
-            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14,
-          ),
+  Widget _buildHeaderCard(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: theme.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              paper.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${paper.journalName != null ? "${paper.journalName} · " : ""}${paper.publicationYear}',
+              style: const TextStyle(
+                color: Color(0xFF06B6D4),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1B4B),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${paper.citationCount} Citations',
+                    style: const TextStyle(
+                      color: Color(0xFFA5B4FC),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (paper.isAiAnalyzable)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF064E3B),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          color: Color(0xFF34D399),
+                          size: 10,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'AI Analyzable',
+                          style: TextStyle(
+                            color: Color(0xFF34D399),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (paper.openAccessUrl != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF451A03),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_open,
+                          color: Color(0xFFFBBF24),
+                          size: 10,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Open Access',
+                          style: TextStyle(
+                            color: Color(0xFFFBBF24),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'AUTHORS',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ...paper.authors.take(3).map((author) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Text(
+                      author.displayName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }),
+                if (paper.authors.length > 3)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      unawaited(
+                        showModalBottomSheet<void>(
+                          context: context,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                          ),
+                          builder: (context) => Container(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'All Authors',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: paper.authors.length,
+                                    itemBuilder: (context, idx) => ListTile(
+                                      leading: const CircleAvatar(
+                                        child: Icon(Icons.person),
+                                      ),
+                                      title: Text(
+                                        paper.authors[idx].displayName,
+                                      ),
+                                      subtitle: Text(
+                                        'Author Position: ${paper.authors[idx].position}',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'View all (${paper.authors.length})',
+                      style: const TextStyle(
+                        color: Color(0xFF06B6D4),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActionsPanel(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+    bool isBookmarked,
+    String? bookmarkId,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _ActionButton(
+            icon: Icons.bookmark,
+            label: isBookmarked ? 'Saved' : 'Save',
+            active: isBookmarked,
+            onTap: () => _toggleBookmark(isBookmarked, bookmarkId),
+            isDark: isDark,
+          ),
+          _ActionButton(
+            icon: Icons.add_box,
+            label: 'Add to Project',
+            onTap: () => _openProjectPicker(context),
+            isDark: isDark,
+          ),
+          _ActionButton(
+            icon: Icons.format_quote,
+            label: 'Cite Paper',
+            onTap: () {
+              unawaited(
+                showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Cite Publication'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'APA Style:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          '${paper.authors.isNotEmpty ? paper.authors.first.displayName : "Unknown"} et al. (${paper.publicationYear}). ${paper.title}. ${paper.journalName ?? ""}.',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const Divider(height: 24),
+                        const Text(
+                          'MLA Style:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          '${paper.authors.isNotEmpty ? paper.authors.first.displayName : "Unknown"}, et al. "${paper.title}." ${paper.journalName ?? "N/A"}, ${paper.publicationYear}.',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            isDark: isDark,
+          ),
+          _ActionButton(
+            icon: Icons.picture_as_pdf,
+            label: 'PDF Link',
+            disabled: paper.openAccessUrl == null,
+            onTap: paper.openAccessUrl == null
+                ? null
+                : () => launchUrl(Uri.parse(paper.openAccessUrl!)),
+            isDark: isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbstractBlock(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+  ) {
+    return ExpansionTile(
+      initiallyExpanded: true,
+      leading: const Icon(Icons.subject, color: Color(0xFF06B6D4)),
+      title: const Text(
+        'Abstract & Description',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            paper.abstractText ??
+                'No abstract description available for this publication.',
+            style: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFiguresMediaGrid(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return ExpansionTile(
+      leading: const Icon(Icons.image_outlined, color: Color(0xFF22C55E)),
+      title: const Text(
+        'Figures & Scientific Media',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.4,
+            children: [
+              _buildMockMediaItem(
+                context,
+                'Methodology Flowchart',
+                Icons.account_tree_outlined,
+                const Color(0xFF06B6D4),
+              ),
+              _buildMockMediaItem(
+                context,
+                'Statistical Performance',
+                Icons.bar_chart_outlined,
+                const Color(0xFF22C55E),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMockMediaItem(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaxonomyBadges(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final primaryTopic = paper.topics.firstWhere(
+      (t) => t.isPrimary == true,
+      orElse: () => paper.topics.isNotEmpty
+          ? paper.topics.first
+          : const PaperTopic(topicName: 'Unknown'),
+    );
+    final hasTaxonomy = paper.topics.isNotEmpty;
+
+    return ExpansionTile(
+      initiallyExpanded: true,
+      leading: const Icon(Icons.category_outlined, color: Color(0xFFA78BFA)),
+      title: const Text(
+        'OpenAlex Taxonomy Scope',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!hasTaxonomy)
+                const Text(
+                  'No taxonomy scope metadata found.',
+                  style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                )
+              else ...[
+                _buildTaxonomyRow(
+                  'Domain',
+                  primaryTopic.domainName ?? 'N/A',
+                  const Color(0xFF3B82F6),
+                ),
+                const SizedBox(height: 8),
+                _buildTaxonomyRow(
+                  'Field',
+                  primaryTopic.fieldName ?? 'N/A',
+                  const Color(0xFF10B981),
+                ),
+                const SizedBox(height: 8),
+                _buildTaxonomyRow(
+                  'Subfield',
+                  primaryTopic.subfieldName ?? 'N/A',
+                  const Color(0xFFF59E0B),
+                ),
+                const SizedBox(height: 8),
+                _buildTaxonomyRow(
+                  'Topic',
+                  primaryTopic.topicName,
+                  const Color(0xFF8B5CF6),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaxonomyRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 70,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            label.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnalyticalInsights(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+    AsyncValue<QualityView> qualityQuery,
+    dynamic currentUser,
+  ) {
+    return ExpansionTile(
+      initiallyExpanded: true,
+      leading: const Icon(Icons.analytics_outlined, color: Color(0xFFF59E0B)),
+      title: const Text(
+        'Analytical Insights & Critique',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // RAG Quality Score Card
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF1F5F9),
+                  border: Border.all(color: const Color(0xFF06B6D4)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome,
+                      color: Color(0xFF06B6D4),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'RAG Grounding Suitability: ${(paper.dataQualityScore * 100).round()}%',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // AI Critique (overall, relevance, groundedness)
+              qualityQuery.when(
+                data: (view) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _QualityBadge(
+                            label: 'Overall',
+                            score: view.evaluation?.overall ?? 0.0,
+                          ),
+                          const SizedBox(width: 6),
+                          _QualityBadge(
+                            label: 'Relevance',
+                            score: view.evaluation?.relevance ?? 0.0,
+                          ),
+                          const SizedBox(width: 6),
+                          _QualityBadge(
+                            label: 'Groundedness',
+                            score: view.evaluation?.groundedness ?? 0.0,
+                          ),
+                        ],
+                      ),
+                      if (view.evaluation != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          view.evaluation!.rationale,
+                          style: const TextStyle(fontSize: 12, height: 1.4),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _runAiEvaluation,
+                            icon: const Icon(Icons.refresh, size: 14),
+                            label: const Text(
+                              'Generate AI Quality Critique',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const Divider(height: 32),
+
+                      // User Reviews & Feedback
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Workspace Reviews',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            '${view.ratingCount} ratings · ${view.ratingAvg.toStringAsFixed(1)} avg',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: List.generate(5, (index) {
+                          final starVal = index + 1;
+                          return GestureDetector(
+                            onTap: () => setState(() => rating = starVal),
+                            child: Icon(
+                              starVal <= rating
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: const Color(0xFFF59E0B),
+                              size: 26,
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: commentController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Add review notes...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.all(10),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: rating == 0 ? null : _submitRating,
+                          child: const Text(
+                            'Submit Review',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text(
+                  'Error loading quality: $e',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInteractiveChatWidget(
+    BuildContext context,
+    Paper paper,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return ExpansionTile(
+      initiallyExpanded: true,
+      leading: const Icon(Icons.chat_bubble_outline, color: Color(0xFF8B5CF6)),
+      title: const Text(
+        'Workspace Interactive Chat',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF8B5CF6),
+                  size: 24,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ground Grounding Assistant',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Add this paper to a project workspace workspace to start asking questions, writing papers, and detecting research gaps.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _openProjectPicker(context),
+                  icon: const Icon(Icons.add, color: Colors.white, size: 16),
+                  label: const Text(
+                    'Add to Project Workspace',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -893,10 +1221,10 @@ class _ActionButton extends StatelessWidget {
     final color = disabled
         ? const Color(0xFF475569)
         : active
-            ? const Color(0xFF06B6D4)
-            : isDark
-                ? const Color(0xFF94A3B8)
-                : const Color(0xFF64748B);
+        ? const Color(0xFF06B6D4)
+        : isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
 
     return GestureDetector(
       onTap: disabled ? null : onTap,
@@ -961,6 +1289,8 @@ class _QualityBadge extends StatelessWidget {
   }
 }
 
+// Kept for the references tab flow while the redesigned detail layout is active.
+// ignore: unused_element
 class _ReferencesTabContent extends ConsumerWidget {
   const _ReferencesTabContent({required this.id, required this.theme});
 
@@ -987,7 +1317,10 @@ class _ReferencesTabContent extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             ...data.references.map((reference) {
-              final authors = reference.authors.map((a) => a.displayName).take(3).join(', ');
+              final authors = reference.authors
+                  .map((a) => a.displayName)
+                  .take(3)
+                  .join(', ');
               return Card(
                 elevation: 0,
                 margin: const EdgeInsets.only(bottom: 12),
@@ -997,7 +1330,8 @@ class _ReferencesTabContent extends ConsumerWidget {
                   side: BorderSide(color: theme.dividerColor),
                 ),
                 child: InkWell(
-                  onTap: () => unawaited(context.push('/paper/${reference.id}')),
+                  onTap: () =>
+                      unawaited(context.push('/paper/${reference.id}')),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -1036,7 +1370,8 @@ class _ReferencesTabContent extends ConsumerWidget {
                                 fontSize: 12,
                               ),
                             ),
-                            if (reference.doi != null && reference.doi!.isNotEmpty) ...[
+                            if (reference.doi != null &&
+                                reference.doi!.isNotEmpty) ...[
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -1084,7 +1419,9 @@ class OpenAlexMetadataCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                color: isDark
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFF64748B),
               ),
             ),
           ),
@@ -1093,7 +1430,9 @@ class OpenAlexMetadataCard extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+                color: isDark
+                    ? const Color(0xFFF8FAFC)
+                    : const Color(0xFF1E293B),
               ),
             ),
           ),
@@ -1109,7 +1448,9 @@ class OpenAlexMetadataCard extends StatelessWidget {
 
     final primaryTopic = paper.topics.firstWhere(
       (t) => t.isPrimary == true,
-      orElse: () => paper.topics.isNotEmpty ? paper.topics.first : const PaperTopic(topicName: 'Unknown'),
+      orElse: () => paper.topics.isNotEmpty
+          ? paper.topics.first
+          : const PaperTopic(topicName: 'Unknown'),
     );
     final hasTaxonomy = paper.topics.isNotEmpty;
 
@@ -1142,11 +1483,19 @@ class OpenAlexMetadataCard extends StatelessWidget {
           if (paper.fwci != null)
             _buildMetaRow('FWCI', paper.fwci!.toStringAsFixed(2), isDark),
           if (paper.relatedWorksCount != null)
-            _buildMetaRow('Related works', paper.relatedWorksCount.toString(), isDark),
+            _buildMetaRow(
+              'Related works',
+              paper.relatedWorksCount.toString(),
+              isDark,
+            ),
           if (paper.primaryProvider != null)
             _buildMetaRow('Provider', paper.primaryProvider!, isDark),
           if (paper.openAccessStatus != null)
-            _buildMetaRow('Open Access', paper.openAccessStatus!.toUpperCase(), isDark),
+            _buildMetaRow(
+              'Open Access',
+              paper.openAccessStatus!.toUpperCase(),
+              isDark,
+            ),
           if (paper.externalIds.doi != null)
             _buildMetaRow('DOI', paper.externalIds.doi!, isDark),
           if (paper.paperLink != null)
@@ -1155,13 +1504,21 @@ class OpenAlexMetadataCard extends StatelessWidget {
           const Divider(height: 20),
           const Text(
             'TAXONOMY SCOPE',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF94A3B8),
+            ),
           ),
           const SizedBox(height: 8),
           if (!hasTaxonomy)
             const Text(
               'OpenAlex taxonomy metadata is not backfilled yet for this publication.',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFFEF4444)),
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFFEF4444),
+              ),
             )
           else ...[
             _buildMetaRow('Topic', primaryTopic.topicName, isDark),

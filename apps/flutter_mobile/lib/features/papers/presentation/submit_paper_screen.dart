@@ -115,6 +115,21 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _autoFillTestData() {
+    setState(() {
+      title.text = 'Attention Is All You Need';
+      doi.text = '10.48550/arXiv.1706.03762';
+      paperLink.text = 'https://arxiv.org/abs/1706.03762';
+      abstractText.text = 'The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.';
+      year.text = '2017';
+      paperKind = 'preprint';
+      authors.text = 'Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin';
+      keywords.text = 'attention mechanism, transformer, deep learning, NLP';
+      topics.text = 'Deep Learning, Natural Language Processing';
+      openAccessUrl.text = 'https://arxiv.org/pdf/1706.03762.pdf';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final kinds = [
@@ -131,6 +146,23 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
         title: Text(widget.editId == null ? 'Submit Paper' : 'Resubmit Paper'),
         centerTitle: false,
         scrolledUnderElevation: 0,
+        actions: [
+          if (widget.editId == null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: _autoFillTestData,
+                icon: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF06B6D4)),
+                label: const Text(
+                  'Fill Test',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF06B6D4),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -263,7 +295,7 @@ class _SubmitPaperScreenState extends ConsumerState<SubmitPaperScreen> {
                 labelStyle: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                  color: selected ? colors.onPrimaryContainer : colors.onSurfaceVariant,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(11),

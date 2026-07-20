@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_mobile/core/widgets/app_loading.dart';
 import 'package:flutter_mobile/features/reports/data/reports_api.dart';
 import 'package:flutter_mobile/features/trends/data/trends_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-final FutureProvider<List<TrendExplanationHistoryItem>> explainHistoryProvider = FutureProvider.autoDispose<List<TrendExplanationHistoryItem>>((ref) {
-  return ref.watch(trendsApiProvider).explainHistory();
-});
+final FutureProvider<List<TrendExplanationHistoryItem>> explainHistoryProvider =
+    FutureProvider.autoDispose<List<TrendExplanationHistoryItem>>((ref) {
+      return ref.watch(trendsApiProvider).explainHistory();
+    });
 
 class TrendsAiTab extends ConsumerStatefulWidget {
   const TrendsAiTab({
@@ -44,7 +49,8 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
   @override
   void didUpdateWidget(covariant TrendsAiTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialTopic != null && widget.initialTopic != oldWidget.initialTopic) {
+    if (widget.initialTopic != null &&
+        widget.initialTopic != oldWidget.initialTopic) {
       setState(() {
         _selectedTopic = widget.initialTopic;
       });
@@ -59,11 +65,15 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
     });
 
     try {
-      final res = await ref.read(trendsApiProvider).explain(
+      final res = await ref
+          .read(trendsApiProvider)
+          .explain(
             topic: _selectedTopic,
             yearFrom: widget.params.yearFrom,
             yearTo: widget.params.yearTo,
-            language: _language == ReportLanguage.auto ? 'en' : _language.wireValue,
+            language: _language == ReportLanguage.auto
+                ? 'en'
+                : _language.wireValue,
             scopeFilters: widget.params.scopeFilters,
           );
       setState(() {
@@ -73,7 +83,10 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI Explanation failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('AI Explanation failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -81,7 +94,12 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
     }
   }
 
-  Widget _buildListSection(String title, List<String> items, IconData icon, Color color) {
+  Widget _buildListSection(
+    String title,
+    List<String> items,
+    IconData icon,
+    Color color,
+  ) {
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -91,26 +109,40 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
           children: [
             Icon(icon, color: color, size: 16),
             const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
           ],
         ),
         const SizedBox(height: 8),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 6, left: 24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Expanded(child: Text(item, style: const TextStyle(fontSize: 12, height: 1.4))),
-                ],
-              ),
-            )),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6, left: 24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontSize: 12, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _buildMetricTrace(List<TrendMetricTrace> traces, bool isDark, ThemeData theme) {
+  Widget _buildMetricTrace(
+    List<TrendMetricTrace> traces,
+    bool isDark,
+    ThemeData theme,
+  ) {
     if (traces.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -120,7 +152,10 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
           children: [
             Icon(Icons.query_stats, color: Color(0xFF06B6D4), size: 16),
             SizedBox(width: 8),
-            Text('Metric Trace Evidence', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              'Metric Trace Evidence',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -131,7 +166,11 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: cardBg,
-              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8F0),
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -140,14 +179,38 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(trace.label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                    Text(trace.value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4))),
+                    Text(
+                      trace.label.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    Text(
+                      trace.value,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF06B6D4),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(trace.explanation, style: const TextStyle(fontSize: 11, height: 1.3)),
+                Text(
+                  trace.explanation,
+                  style: const TextStyle(fontSize: 11, height: 1.3),
+                ),
                 const SizedBox(height: 2),
-                Text('Source: ${trace.source}', style: const TextStyle(fontSize: 9, color: Color(0xFF64748B), fontStyle: FontStyle.italic)),
+                Text(
+                  'Source: ${trace.source}',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: Color(0xFF64748B),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ],
             ),
           );
@@ -164,11 +227,23 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 32),
-        const Text('Saved Explanation History', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const Text(
+          'Saved Explanation History',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 10),
         historyQuery.when(
           data: (items) {
-            if (items.isEmpty) return const Text('No history saved yet.', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFF94A3B8)));
+            if (items.isEmpty) {
+              return const Text(
+                'No history saved yet.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: Color(0xFF94A3B8),
+                ),
+              );
+            }
             return ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -176,17 +251,36 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, idx) {
                 final item = items[idx];
-                final cardBg = isDark ? const Color(0xFF1E293B) : theme.cardColor;
+                final cardBg = isDark
+                    ? const Color(0xFF1E293B)
+                    : theme.cardColor;
 
                 return ListTile(
                   tileColor: cardBg,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    side: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                  title: Text(item.topic ?? 'Dataset Overview', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text('Language: ${item.language.toUpperCase()} · ${item.createdAt}', style: const TextStyle(fontSize: 11)),
-                  trailing: const Icon(Icons.chevron_right, size: 16, color: Color(0xFF06B6D4)),
+                  title: Text(
+                    item.topic ?? 'Dataset Overview',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Language: ${item.language.toUpperCase()} · ${item.createdAt}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: Color(0xFF06B6D4),
+                  ),
                   onTap: () {
                     setState(() {
                       _explanation = item;
@@ -197,8 +291,16 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
               },
             );
           },
-          loading: () => const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator())),
-          error: (err, _) => Text('Error loading history: $err', style: const TextStyle(color: Colors.red)),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (err, _) => Text(
+            'Error loading history: $err',
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       ],
     );
@@ -221,50 +323,94 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8F0),
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Step 1: Select Topic', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                const Text(
+                  'Step 1: Select Topic',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedTopic,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   items: topics.map((t) {
-                    return DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis));
+                    return DropdownMenuItem(
+                      value: t,
+                      child: Text(t, overflow: TextOverflow.ellipsis),
+                    );
                   }).toList(),
-                  onChanged: _loading ? null : (val) {
-                    setState(() {
-                      _selectedTopic = val;
-                    });
-                  },
+                  onChanged: _loading
+                      ? null
+                      : (val) {
+                          setState(() {
+                            _selectedTopic = val;
+                          });
+                        },
                 ),
                 const SizedBox(height: 12),
-                const Text('Step 2: Language', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF94A3B8))),
+                const Text(
+                  'Step 2: Language',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<ReportLanguage>(
                   initialValue: _language,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   items: const [
-                    DropdownMenuItem(value: ReportLanguage.auto, child: Text('Auto-detect')),
-                    DropdownMenuItem(value: ReportLanguage.en, child: Text('English (en)')),
-                    DropdownMenuItem(value: ReportLanguage.vi, child: Text('Vietnamese (vi)')),
+                    DropdownMenuItem(
+                      value: ReportLanguage.auto,
+                      child: Text('Auto-detect'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReportLanguage.en,
+                      child: Text('English (en)'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReportLanguage.vi,
+                      child: Text('Vietnamese (vi)'),
+                    ),
                   ],
-                  onChanged: _loading ? null : (val) {
-                    if (val != null) {
-                      setState(() {
-                        _language = val;
-                      });
-                    }
-                  },
+                  onChanged: _loading
+                      ? null
+                      : (val) {
+                          if (val != null) {
+                            setState(() {
+                              _language = val;
+                            });
+                          }
+                        },
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -273,11 +419,25 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8B5CF6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onPressed: _loading || _selectedTopic == null ? null : _explain,
-                    icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-                    label: const Text('Explain Trend with AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    onPressed: _loading || _selectedTopic == null
+                        ? null
+                        : _explain,
+                    icon: const Icon(
+                      Icons.auto_awesome,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: const Text(
+                      'Explain Trend with AI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -293,16 +453,25 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
               children: [
                 Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 18),
                 SizedBox(width: 8),
-                Text('AI Summary Rationale', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  'AI Summary Rationale',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ],
             ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               child: MarkdownBody(
                 data: _explanation!.summary,
@@ -313,10 +482,126 @@ class _TrendsAiTabState extends ConsumerState<TrendsAiTab> {
             ),
             const SizedBox(height: 20),
 
-            _buildListSection('Why it matters', _explanation!.whyItMatters, Icons.lightbulb_outline, const Color(0xFFF59E0B)),
-            _buildListSection('Cautions & Limitations', _explanation!.cautions, Icons.warning_amber_outlined, const Color(0xFFEF4444)),
-            _buildListSection('Suggested Actions', _explanation!.suggestedActions, Icons.task_alt_outlined, const Color(0xFF10B981)),
+            _buildListSection(
+              'Why it matters',
+              _explanation!.whyItMatters,
+              Icons.lightbulb_outline,
+              const Color(0xFFF59E0B),
+            ),
+            _buildListSection(
+              'Cautions & Limitations',
+              _explanation!.cautions,
+              Icons.warning_amber_outlined,
+              const Color(0xFFEF4444),
+            ),
+            _buildListSection(
+              'Suggested Actions',
+              _explanation!.suggestedActions,
+              Icons.task_alt_outlined,
+              const Color(0xFF10B981),
+            ),
             _buildMetricTrace(_explanation!.metricTrace, isDark, theme),
+
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF06B6D4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      unawaited(
+                        context.push(
+                          '/search?q=${Uri.encodeComponent(_selectedTopic ?? "")}',
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.search,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Search Papers',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      unawaited(
+                        context.push(
+                          '/reports?create=true&topic=${Uri.encodeComponent(_selectedTopic ?? "")}',
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.description,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Generate Report',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  final text =
+                      'Topic: $_selectedTopic\n\nSummary:\n${_explanation!.summary}';
+                  unawaited(
+                    Clipboard.setData(ClipboardData(text: text)).then((_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Explanation copied to clipboard'),
+                        ),
+                      );
+                    }),
+                  );
+                },
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text(
+                  'Copy Explanation Text',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
 
           _buildHistoryList(isDark, theme),
