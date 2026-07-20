@@ -2,6 +2,7 @@ import type { AnalyticalReport, PreviewReportEvidenceResponse, ReportListItem } 
 import mongoose from "mongoose";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
+import { logger } from "../../infrastructure/logger.js";
 import { reportQueue } from "../../infrastructure/queue.js";
 import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
@@ -115,18 +116,34 @@ export const reportService = {
     input: PreviewReportEvidenceInput,
   ): Promise<PreviewReportEvidenceResponse> {
     const selectedPaperIds = await resolveReportEvidenceScope(userId, input);
-    const queryVector = await getEmbeddingProvider().embed(input.query);
+    const fillWithRetrieved = input.projectId ? false : input.fillWithRetrieved;
+    let queryVector: number[] | undefined;
+    let usedTextFallback = false;
+
+    if (fillWithRetrieved ?? true) {
+      try {
+        queryVector = await getEmbeddingProvider().embed(input.query);
+      } catch (err) {
+        usedTextFallback = true;
+        logger.warn({ err }, "report evidence preview embedding failed; using text fallback");
+      }
+    }
+
     const evidence = await collectReportEvidence({
+      queryText: input.query,
       queryVector,
       selectedPaperIds,
       yearFrom: input.yearFrom,
       yearTo: input.yearTo,
       scopeFilters: input.scopeFilters,
-      fillWithRetrieved: input.projectId ? false : input.fillWithRetrieved,
+      fillWithRetrieved,
     });
     const warnings = evidence.missingSelectedPaperIds.map(
       (id) => `Selected paper ${id} was not found in the active corpus and was skipped.`,
     );
+    if (usedTextFallback) {
+      warnings.push("Semantic embedding was unavailable, so the evidence preview used keyword fallback.");
+    }
     if (evidence.papers.length === 0) {
       warnings.push("No active evidence papers were found for this query.");
     }

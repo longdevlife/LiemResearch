@@ -57,15 +57,26 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
   report.status = "generating";
   await report.save();
 
-  // ① Embed the question.
+  // ① Embed the question only when retrieval needs it. If the user already
+  // curated a fixed evidence set, selected papers are enough to build the
+  // grounded report. If embedding is unavailable, fall back to Mongo text
+  // retrieval so the job can still produce an evidence-grounded report.
   const t0 = Date.now();
-  const queryVector = await getEmbeddingProvider().embed(report.query);
+  const selectedPaperIds = (report.selectedPaperIds ?? []).map((id) => String(id));
+  let queryVector: number[] | undefined;
+  if (selectedPaperIds.length === 0) {
+    try {
+      queryVector = await getEmbeddingProvider().embed(report.query);
+    } catch (err) {
+      logger.warn({ err, reportId: String(report._id) }, "report embedding failed; using text fallback retrieval");
+    }
+  }
   const embeddingMs = Date.now() - t0;
 
   // ② Build the fixed evidence pack: user-selected papers first, retrieval fills the rest.
   const t1 = Date.now();
-  const selectedPaperIds = (report.selectedPaperIds ?? []).map((id) => String(id));
   const evidence = await collectReportEvidence({
+    queryText: report.query,
     queryVector,
     selectedPaperIds,
     yearFrom: report.yearFrom ?? undefined,
