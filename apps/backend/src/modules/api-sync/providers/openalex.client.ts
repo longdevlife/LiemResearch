@@ -6,6 +6,7 @@ const BASE_URL = "https://api.openalex.org/works";
 const RATE_LIMIT_DELAY_MS = 100; // ≤ 10 req/s — OpenAlex polite pool
 const MAX_RETRIES = 3;
 export const OPENALEX_MAX_PER_PAGE = 100;
+const OPENALEX_MAX_GROUPS_PER_PAGE = 200;
 
 export interface FetchPageParams {
   /** Legacy topic sync search. Omit for a planned scale-ingest partition. */
@@ -25,8 +26,15 @@ export interface FetchPageParams {
 
 export interface FetchGroupCountsParams {
   filterExpression?: string;
-  groupBy: "primary_topic.domain.id" | "primary_topic.field.id" | "primary_topic.subfield.id" | "primary_topic.id";
+  groupBy: OpenAlexGroupBy;
 }
+
+export type OpenAlexGroupBy =
+  | "primary_topic.domain.id"
+  | "primary_topic.field.id"
+  | "primary_topic.subfield.id"
+  | "primary_topic.id"
+  | "publication_year";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -59,7 +67,10 @@ export async function fetchOpenAlexGroupCounts(params: FetchGroupCountsParams): 
   const url = new URL(BASE_URL);
   if (params.filterExpression) url.searchParams.set("filter", params.filterExpression);
   url.searchParams.set("group_by", params.groupBy);
-  url.searchParams.set("per_page", String(OPENALEX_MAX_PER_PAGE));
+  // Grouped responses are capped independently from list-work pages. OpenAlex
+  // permits up to 200 group buckets, which keeps annual campaign planning from
+  // silently dropping older year buckets.
+  url.searchParams.set("per_page", String(OPENALEX_MAX_GROUPS_PER_PAGE));
   appendOpenAlexIdentity(url);
   const json = (await fetchWithRetry(url.toString())) as unknown as OpenAlexGroupPage;
   return {

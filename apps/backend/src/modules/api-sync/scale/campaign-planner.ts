@@ -13,6 +13,20 @@ export interface DomainAllocation extends Allocation {
   floor: number;
 }
 
+export interface SeededSamplePartitionPlan {
+  partitionKey: string;
+  stratumKey: string;
+  filterExpression: string;
+  plannedPopulation: number;
+  targetCount: number;
+  seed: number;
+}
+
+// OpenAlex accepts sample values up to 10k, but list responses remain capped
+// at 100 and sampled requests do not expose a usable next_cursor. A durable
+// campaign must therefore request one 100-work sample per partition.
+export const OPENALEX_CAMPAIGN_SAMPLE_SIZE = 100;
+
 /**
  * Allocate a bounded target proportionally without allowing a bucket to receive
  * more records than its known provider population. Ties are broken by key so a
@@ -104,4 +118,51 @@ export function planDomainBaseline(
     floor: item.floor,
     quota: item.floor + (proportionalByKey.get(item.key) ?? 0),
   }));
+}
+
+/**
+ * OpenAlex list responses are one page of at most 100 works for this sampled
+ * path. Split a stratum into deterministic one-page requests with an
+ * apportioned population basis. The sample requests are independent, so
+ * campaigns remain at-least-once and deduplicate on
+ * DOI/OpenAlex ID at write time. A follow-up refill campaign is required when
+ * an operator needs an exact unique-work threshold after deduplication.
+ */
+export function splitSeededSampleQuota(input: {
+  partitionPrefix: string;
+  stratumKey: string;
+  filterExpression: string;
+  population: number;
+  quota: number;
+  seedNamespace: string;
+}): SeededSamplePartitionPlan[] {
+  const quota = Math.min(Math.max(0, Math.floor(input.quota)), Math.max(0, Math.floor(input.population)));
+  if (quota === 0 || input.population <= 0) return [];
+
+  const targetChunks: number[] = [];
+  for (let remaining = quota; remaining > 0; remaining -= OPENALEX_CAMPAIGN_SAMPLE_SIZE) {
+    targetChunks.push(Math.min(OPENALEX_CAMPAIGN_SAMPLE_SIZE, remaining));
+  }
+  const populationChunks = allocateLargestRemainder(
+    Math.floor(input.population),
+    targetChunks.map((targetCount, index) => ({ key: String(index), population: targetCount })),
+  );
+  return targetChunks.map((targetCount, index) => ({
+    partitionKey: `${input.partitionPrefix}:${index + 1}`,
+    stratumKey: input.stratumKey,
+    filterExpression: input.filterExpression,
+    plannedPopulation: populationChunks[index]?.quota ?? targetCount,
+    targetCount,
+    seed: stableSeed(`${input.seedNamespace}:${input.partitionPrefix}:${index + 1}`),
+  }));
+}
+
+/** Stable positive 32-bit seed accepted by OpenAlex's sample API. */
+export function stableSeed(value: string): number {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0) || 1;
 }

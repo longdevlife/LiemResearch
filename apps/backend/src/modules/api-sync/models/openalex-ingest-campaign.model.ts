@@ -32,6 +32,7 @@ const openAlexIngestCampaignSchema = new Schema(
       completedPartitions: { type: Number, default: 0 },
       committedPages: { type: Number, default: 0 },
       acceptedWorks: { type: Number, default: 0 },
+      uniqueWorks: { type: Number, default: 0 },
       rejectedWorks: { type: Number, default: 0 },
       conflictWorks: { type: Number, default: 0 },
     },

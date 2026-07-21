@@ -14,6 +14,7 @@ import { normalizeOpenAlexWork } from "../providers/openalex.normalizer.js";
 import { fetchOpenAlexPage } from "../providers/openalex.client.js";
 import { ingestOpenAlexWorks } from "../sync.service.js";
 import { ingestCampaignService } from "./ingest-campaign.service.js";
+import { OPENALEX_CAMPAIGN_SAMPLE_SIZE } from "./campaign-planner.js";
 
 export type CampaignPartitionRunResult =
   | { status: "not-running" | "no-partition" }
@@ -47,11 +48,11 @@ export async function runCampaignPartitionPage(input: {
   const remaining = Math.max(0, partition.targetCount - (partition.checkpoint?.acceptedCount ?? 0));
   if (remaining === 0) {
     await ingestCampaignService.markPartition({ partitionId, workerId: input.workerId, state: "completed" });
-    await ingestCampaignService.reconcileCampaignProgress(input.campaignId);
+    await ingestCampaignService.reconcileCampaignProgressIfDue(input.campaignId);
     return { status: "completed", campaignId: input.campaignId, partitionId, acceptedCount: 0 };
   }
 
-  if (partition.selectionMethod === "seeded-sample" && (!Number.isInteger(partition.seed) || remaining > 10_000)) {
+  if (partition.selectionMethod === "seeded-sample" && (!Number.isInteger(partition.seed) || remaining > OPENALEX_CAMPAIGN_SAMPLE_SIZE)) {
     await deadLetter({
       campaignId: input.campaignId,
       partitionId,
@@ -62,7 +63,7 @@ export async function runCampaignPartitionPage(input: {
       partitionId,
       workerId: input.workerId,
       state: "dead_letter",
-      errorMessage: "Seeded sample partition requires an integer seed and a target no greater than 10000",
+      errorMessage: `Seeded campaign sample requires an integer seed and a target no greater than ${OPENALEX_CAMPAIGN_SAMPLE_SIZE}`,
     });
     return { status: "completed", campaignId: input.campaignId, partitionId, acceptedCount: 0 };
   }
@@ -149,6 +150,17 @@ export async function runCampaignPartitionPage(input: {
     await Promise.all([
       writeCohortMemberships({ campaign, partition, records: ingested.records }),
       writeIdentityRegistry({ campaignId: input.campaignId, records: ingested.records }),
+      ...ingested.rejectedWorks.map(({ work, errorMessage }) =>
+        deadLetter({
+          campaignId: input.campaignId,
+          partitionId,
+          attemptId: attempt._id.toString(),
+          reasonCode: "PAPER_INGEST_REJECTED",
+          requestFingerprint,
+          sourceIdentity: work.id ?? work.doi ?? undefined,
+          details: { errorMessage: errorMessage.slice(0, 2_000) },
+        }),
+      ),
     ]);
 
     const acceptedCount = ingested.records.length;
@@ -203,7 +215,7 @@ async function finalizePartitionPage(
     workerId: input.workerId,
     state: finished ? "completed" : "retry_wait",
   });
-  await ingestCampaignService.reconcileCampaignProgress(input.campaignId);
+  await ingestCampaignService.reconcileCampaignProgressIfDue(input.campaignId);
   if (finished) await ingestCampaignService.completeIfFinished(input.campaignId);
   return { status: finished ? "completed" : "continued", campaignId: input.campaignId, partitionId, acceptedCount };
 }
@@ -292,7 +304,7 @@ async function writeCohortMemberships(input: {
   await PaperCohortMembershipModel.collection.bulkWrite(
     input.records.map(({ paper }) => ({
       updateOne: {
-        filter: { paperId: paper._id, cohortId: input.partition.cohortId },
+        filter: { paperId: paper._id, cohortId: input.partition.cohortId, campaignId: input.campaign._id },
         update: {
           $setOnInsert: {
             paperId: paper._id,
