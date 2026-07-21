@@ -8,3 +8,7 @@ export const TriggerSyncSchema = z.object({
 });
 
 export type TriggerSyncInput = z.infer<typeof TriggerSyncSchema>;
+
+export const IngestCampaignParamsSchema = z.object({
+  campaignId: z.string().regex(/^[a-f\d]{24}$/i, "campaignId must be a MongoDB ObjectId"),
+});

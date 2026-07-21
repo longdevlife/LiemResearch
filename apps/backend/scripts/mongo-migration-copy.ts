@@ -38,7 +38,7 @@ async function main(): Promise<void> {
 
   try {
     [sourceConnection, targetConnection] = await Promise.all([
-      openMongoConnection(sourceUri),
+      openMongoConnection(sourceUri, env.MIGRATION_SOURCE_DATABASE),
       openMongoConnection(env.MONGODB_URI),
     ]);
     const sourceDb = sourceConnection.db;
@@ -148,27 +148,80 @@ async function copyIndexes(
   sourceCollection: ReturnType<NonNullable<Awaited<ReturnType<typeof openMongoConnection>>["db"]>["collection"]>,
   targetCollection: ReturnType<NonNullable<Awaited<ReturnType<typeof openMongoConnection>>["db"]>["collection"]>,
 ): Promise<void> {
-  const sourceIndexes = await sourceCollection.indexInformation({ full: true });
+  const [sourceIndexes, targetIndexes] = await Promise.all([
+    sourceCollection.indexInformation({ full: true }),
+    targetCollection.indexInformation({ full: true }),
+  ]);
+  const targetByName = new Map(targetIndexes.map((index) => [index.name, index]));
   const definitions = sourceIndexes
     .filter((index) => index.name !== "_id_")
     .map(toIndexDefinition)
-    .filter((definition): definition is IndexDescription => definition !== undefined);
+    .filter((definition): definition is IndexDescription => definition !== undefined)
+    .filter((definition) => {
+      const existing = targetByName.get(definition.name);
+      if (!existing) return true;
+      if (canonicalIndexKey(existing) !== canonicalIndexKey(definition)) {
+        throw new Error(`Index ${definition.name} exists on the target with a different key. Resolve this schema drift before copying.`);
+      }
+
+      // A target index can be intentionally stricter (for example `unique`)
+      // than an old source index. Never weaken it during a data migration.
+      if (Boolean(existing.unique) !== Boolean(definition.unique)) {
+        console.warn(`Keeping existing target index ${definition.name}; unique option differs from source.`);
+      }
+      return false;
+    });
   if (definitions.length > 0) await targetCollection.createIndexes(definitions);
+}
+
+function canonicalIndexKey(index: Pick<IndexDescriptionInfo, "key" | "weights"> | IndexDescription): string {
+  const key = index.key;
+  const weights = "weights" in index && index.weights && typeof index.weights === "object" ? index.weights : undefined;
+  if (key && Object.prototype.hasOwnProperty.call(key, "_fts") && weights) {
+    return JSON.stringify(Object.keys(weights).sort().map((field) => [field, "text"]));
+  }
+  return JSON.stringify(Object.entries(key ?? {}).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function toIndexDefinition(index: IndexDescriptionInfo): IndexDescription | undefined {
   if (!index.key || !index.name) return undefined;
-  return {
-    key: index.key,
+  // listIndexes() on older/self-managed Mongo versions may return optional
+  // booleans as `null`. createIndexes() rejects null, so preserve only values
+  // that are explicitly supported by the target driver/server contract.
+  const isTextIndex = Object.prototype.hasOwnProperty.call(index.key, "_fts");
+  const textWeights = isTextIndex && index.weights && typeof index.weights === "object" ? index.weights : undefined;
+  if (isTextIndex && (!textWeights || Object.keys(textWeights).length === 0)) {
+    throw new Error(`Cannot reconstruct text index ${index.name}: source metadata has no text field weights.`);
+  }
+
+  const definition: IndexDescription = {
+    // MongoDB exposes an existing text index internally as {_fts, _ftsx}.
+    // createIndexes requires the original fields, reconstructed from weights.
+    key: isTextIndex
+      ? Object.fromEntries(Object.keys(textWeights!).map((field) => [field, "text"]))
+      : index.key,
     name: index.name,
-    background: index.background,
-    unique: index.unique,
-    sparse: index.sparse,
-    expireAfterSeconds: index.expireAfterSeconds,
-    partialFilterExpression: index.partialFilterExpression,
-    collation: index.collation,
-    hidden: index.hidden,
   };
+  if (index.background === true) definition.background = true;
+  if (index.unique === true) definition.unique = true;
+  if (index.sparse === true) definition.sparse = true;
+  if (typeof index.expireAfterSeconds === "number") definition.expireAfterSeconds = index.expireAfterSeconds;
+  if (index.partialFilterExpression) definition.partialFilterExpression = index.partialFilterExpression;
+  if (index.collation) definition.collation = index.collation;
+  if (index.hidden === true) definition.hidden = true;
+  if (isTextIndex) {
+    const textOptions = definition as IndexDescription & {
+      weights?: Record<string, number>;
+      default_language?: string;
+      language_override?: string;
+      textIndexVersion?: number;
+    };
+    textOptions.weights = textWeights as Record<string, number>;
+    if (typeof index.default_language === "string") textOptions.default_language = index.default_language;
+    if (typeof index.language_override === "string") textOptions.language_override = index.language_override;
+    if (typeof index.textIndexVersion === "number") textOptions.textIndexVersion = index.textIndexVersion;
+  }
+  return definition;
 }
 
 async function writeBatch(

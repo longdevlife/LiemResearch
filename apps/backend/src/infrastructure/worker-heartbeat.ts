@@ -13,6 +13,7 @@ const WORKER_KEYS = [
   "worker:paper-analysis",
   "worker:notifications",
   "worker:sync",
+  "worker:openalex-ingest",
 ] as const;
 
 export type WorkerName = (typeof WORKER_KEYS)[number];

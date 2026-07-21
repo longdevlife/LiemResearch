@@ -23,6 +23,7 @@ const defaultJobOptions: QueueOptions["defaultJobOptions"] = {
 
 export const QUEUE_NAMES = {
   apiSync: "api-sync",
+  openAlexIngest: "openalex-ingest",
   embedding: "embedding",
   paperAnalysis: "paper-analysis",
   report: "report",
@@ -31,6 +32,12 @@ export const QUEUE_NAMES = {
 } as const;
 
 export const apiSyncQueue = new Queue(QUEUE_NAMES.apiSync, {
+  connection: makeConnection(),
+  defaultJobOptions,
+});
+
+/** Million-scale campaign partitions. Kept separate from the legacy topic sync. */
+export const openAlexIngestQueue = new Queue(QUEUE_NAMES.openAlexIngest, {
   connection: makeConnection(),
   defaultJobOptions,
 });

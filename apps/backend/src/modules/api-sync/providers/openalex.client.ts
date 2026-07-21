@@ -1,17 +1,31 @@
 import { env } from "../../../config/env.js";
 import { logger } from "../../../infrastructure/logger.js";
-import type { OpenAlexPage, OpenAlexWork } from "./openalex.types.js";
+import type { OpenAlexGroupPage, OpenAlexPage, OpenAlexWork } from "./openalex.types.js";
 
 const BASE_URL = "https://api.openalex.org/works";
 const RATE_LIMIT_DELAY_MS = 100; // ≤ 10 req/s — OpenAlex polite pool
 const MAX_RETRIES = 3;
+export const OPENALEX_MAX_PER_PAGE = 100;
 
 export interface FetchPageParams {
-  searchText: string;
-  yearFrom: number;
+  /** Legacy topic sync search. Omit for a planned scale-ingest partition. */
+  searchText?: string;
+  /** Legacy topic sync lower publication-year bound. */
+  yearFrom?: number;
+  /** Exact, planner-recorded OpenAlex filter for a scale-ingest partition. */
+  filterExpression?: string;
   /** "*" for the first page; thereafter use the previous page's nextCursor. */
-  cursor: string;
+  cursor?: string;
+  /** Reproducible random selection for a planner-approved bounded stratum. */
+  sample?: number;
+  /** OpenAlex sample seed. Required whenever sample is supplied. */
+  seed?: number;
   perPage?: number;
+}
+
+export interface FetchGroupCountsParams {
+  filterExpression?: string;
+  groupBy: "primary_topic.domain.id" | "primary_topic.field.id" | "primary_topic.subfield.id" | "primary_topic.id";
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -25,19 +39,67 @@ export async function fetchOpenAlexPage(params: FetchPageParams): Promise<{
   nextCursor: string | null;
   total: number;
 }> {
-  const url = new URL(BASE_URL);
-  url.searchParams.set("search", params.searchText);
-  url.searchParams.set("filter", `from_publication_date:${params.yearFrom}-01-01`);
-  url.searchParams.set("per-page", String(params.perPage ?? env.SYNC_BATCH_SIZE));
-  url.searchParams.set("cursor", params.cursor);
-  if (env.OPENALEX_MAILTO) url.searchParams.set("mailto", env.OPENALEX_MAILTO);
-
-  const json = await fetchWithRetry(url.toString());
+  const json = await fetchWithRetry(buildOpenAlexPageUrl(params).toString());
   return {
     results: json.results ?? [],
     nextCursor: json.meta?.next_cursor ?? null,
     total: json.meta?.count ?? 0,
   };
+}
+
+/**
+ * Read an OpenAlex aggregation snapshot for campaign planning. This is kept
+ * separate from paging so a planner never mistakes a sampled page for source
+ * population.
+ */
+export async function fetchOpenAlexGroupCounts(params: FetchGroupCountsParams): Promise<{
+  total: number;
+  groups: Array<{ key: string; displayName?: string; count: number }>;
+}> {
+  const url = new URL(BASE_URL);
+  if (params.filterExpression) url.searchParams.set("filter", params.filterExpression);
+  url.searchParams.set("group_by", params.groupBy);
+  url.searchParams.set("per_page", String(OPENALEX_MAX_PER_PAGE));
+  appendOpenAlexIdentity(url);
+  const json = (await fetchWithRetry(url.toString())) as unknown as OpenAlexGroupPage;
+  return {
+    total: json.meta?.count ?? 0,
+    groups: (json.group_by ?? []).map((group) => ({
+      key: group.key,
+      displayName: group.key_display_name,
+      count: group.count,
+    })),
+  };
+}
+
+/**
+ * Builds the documented OpenAlex list request. Exported so a contract test can
+ * catch accidental reintroduction of the legacy `per-page` parameter or a page
+ * size above the provider limit before a large ingest campaign starts.
+ */
+export function buildOpenAlexPageUrl(params: FetchPageParams): URL {
+  const url = new URL(BASE_URL);
+  const perPage = Math.min(Math.max(1, params.perPage ?? env.SYNC_BATCH_SIZE), OPENALEX_MAX_PER_PAGE);
+  if (params.searchText) url.searchParams.set("search", params.searchText);
+  const filterExpression = params.filterExpression ??
+    (params.yearFrom ? `from_publication_date:${params.yearFrom}-01-01` : undefined);
+  if (filterExpression) url.searchParams.set("filter", filterExpression);
+  url.searchParams.set("per_page", String(perPage));
+  if (params.sample !== undefined) {
+    if (!Number.isInteger(params.sample) || params.sample < 1 || params.sample > 10_000) {
+      throw new Error("OpenAlex sample must be an integer between 1 and 10000");
+    }
+    if (!Number.isInteger(params.seed)) throw new Error("OpenAlex sample requests require an integer seed");
+    url.searchParams.set("sample", String(params.sample));
+    url.searchParams.set("seed", String(params.seed));
+  }
+  if (params.cursor) {
+    url.searchParams.set("cursor", params.cursor);
+  } else if (params.sample === undefined) {
+    throw new Error("OpenAlex cursor is required unless using a seeded sample");
+  }
+  appendOpenAlexIdentity(url);
+  return url;
 }
 
 /**
@@ -68,11 +130,16 @@ export async function fetchOpenAlexWorksByIds(
   const url = new URL(BASE_URL);
   url.searchParams.set("filter", `openalex_id:${ids.join("|")}`);
   url.searchParams.set("select", select);
-  url.searchParams.set("per-page", String(ids.length));
-  if (env.OPENALEX_MAILTO) url.searchParams.set("mailto", env.OPENALEX_MAILTO);
+  url.searchParams.set("per_page", String(Math.min(ids.length, OPENALEX_MAX_PER_PAGE)));
+  appendOpenAlexIdentity(url);
 
   const json = await fetchWithRetry(url.toString());
   return json.results ?? [];
+}
+
+function appendOpenAlexIdentity(url: URL): void {
+  if (env.OPENALEX_MAILTO) url.searchParams.set("mailto", env.OPENALEX_MAILTO);
+  if (env.OPENALEX_API_KEY) url.searchParams.set("api_key", env.OPENALEX_API_KEY);
 }
 
 async function fetchWithRetry(url: string, attempt = 1): Promise<OpenAlexPage> {

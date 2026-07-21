@@ -19,6 +19,10 @@ const EnvSchema = z.object({
   // use MONGODB_URI, so an old database cannot accidentally remain on the
   // normal runtime path after cutover.
   MIGRATION_SOURCE_MONGODB_URI: optionalMongoUri,
+  MIGRATION_SOURCE_DATABASE: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  ),
 
   REDIS_URL: z.string().url().or(z.string().startsWith("redis")),
 
@@ -65,11 +69,17 @@ const EnvSchema = z.object({
   CHAT_ABSTRACT_MAX_CHARS: z.coerce.number().int().positive().default(800),
 
   OPENALEX_MAILTO: z.string().email().optional(),
+  // The normal application can read the existing corpus without an OpenAlex
+  // key. Treat an empty Compose/.env value as absent; the scale-campaign start
+  // endpoint performs the explicit key-required check before a provider call.
+  OPENALEX_API_KEY: optionalEnvString,
   SEMANTIC_SCHOLAR_API_KEY: z.string().optional(),
   CROSSREF_MAILTO: z.string().email().optional(),
 
   SYNC_CRON: z.string().default("0 2 * * *"),
-  SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(200),
+  // OpenAlex Works list requests currently allow at most 100 results/page.
+  // Keep this bound in configuration as well as the provider adapter.
+  SYNC_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(100),
   SYNC_MAX_PAGES_PER_RUN: z.coerce.number().int().positive().default(10),
   // Store the full provider JSON (rawMetadata) on each source record. It is HEAVY
   // (50-300 KB/paper) and read by nothing — default OFF to protect Atlas M0 (512 MB).
@@ -77,6 +87,10 @@ const EnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // Million-scale campaign worker. These values are intentionally conservative;
+  // a campaign must be explicitly planned and started by an admin.
+  OPENALEX_INGEST_LEASE_SECONDS: z.coerce.number().int().min(30).max(3600).default(180),
+  OPENALEX_INGEST_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
 
   // Phase B — embedding worker.
   EMBED_CRON: z.string().default("0 3 * * *"),
