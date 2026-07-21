@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
 import { usePipelineStatus } from "@/features/admin/hooks/use-pipeline-status";
+import { OpenAlexCampaignMonitor } from "@/features/admin/components/openalex-campaign-monitor";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -96,6 +97,9 @@ export function AdminPipelinePage() {
   const workersAlive = status?.workers.alive ?? 0;
   const workersExpected = status?.workers.expected ?? 0;
   const workersAtRisk = (status?.workers.stale ?? 0) + (status?.workers.missing ?? 0);
+  const ingestWorkerStatus = status?.workers.heartbeats.find(
+    (worker) => worker.workerName === "worker:openalex-ingest",
+  )?.status ?? "missing";
 
   const renderHealthBadge = (queue: { isBacklogged: boolean; hasFailures: boolean }) => {
     if (!redisOk) {
@@ -315,6 +319,8 @@ export function AdminPipelinePage() {
           </div>
         </div>
       </div>
+
+      <OpenAlexCampaignMonitor enabled={isAdmin} workerStatus={ingestWorkerStatus} />
 
       {/* Corpus Readiness Details Segment */}
       <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-6">

@@ -59,6 +59,12 @@ export const API_ROUTES = {
     userStatus: (id: string) => `/admin/users/${id}/status`,
     stats: "/admin/stats",
     pipelineStatus: "/admin/pipeline/status",
+    openAlexIngestPreflight: "/admin/openalex-ingest/preflight",
+    openAlexIngestCampaigns: "/admin/openalex-ingest/campaigns",
+    openAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}`,
+    startOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/start`,
+    pauseOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/pause`,
+    cancelOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/cancel`,
     evaluationSummary: "/admin/evaluation/summary",
   },
   gaps: {
