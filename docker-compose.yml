@@ -113,6 +113,11 @@ services:
     profiles: ["workers"]
     command: ["pnpm", "--filter", "backend", "worker:notifications"]
 
+  worker-corpus-validation:
+    <<: *backend-common
+    profiles: ["workers"]
+    command: ["pnpm", "--filter", "backend", "worker:corpus-validation"]
+
   # The campaign is explicit and needs OPENALEX_API_KEY. It never starts a
   # campaign by itself; an admin must first plan and start one through the API.
   worker-openalex-ingest:

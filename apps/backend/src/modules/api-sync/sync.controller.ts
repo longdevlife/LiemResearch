@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
-import { apiSyncQueue, openAlexIngestQueue } from "../../infrastructure/queue.js";
+import { apiSyncQueue, corpusValidationQueue, openAlexIngestQueue } from "../../infrastructure/queue.js";
 import { env } from "../../config/env.js";
 import { ApiSyncRunModel } from "./models/api-sync-run.model.js";
 import type { TriggerSyncInput } from "./dto/trigger-sync.schema.js";
 import type { PlanOpenAlexCampaignInput } from "./dto/trigger-sync.schema.js";
+import type { TriggerCorpusValidationInput } from "./dto/trigger-sync.schema.js";
 import { ingestCampaignAdminService } from "./scale/ingest-campaign-admin.service.js";
 import { ingestCampaignService } from "./scale/ingest-campaign.service.js";
 import { openAlexPreflightService } from "./scale/openalex-preflight.service.js";
 import { openAlexCampaignPlannerService } from "./scale/openalex-campaign-planner.service.js";
+import { CORPUS_VALIDATOR_VERSION, corpusValidationService } from "./scale/corpus-validation.service.js";
 
 /**
  * Thin HTTP layer. Triggering a sync only ENQUEUES a BullMQ job and returns
@@ -64,6 +66,41 @@ export const syncController = {
 
   async getIngestCampaign(req: Request<{ campaignId: string }>, res: Response) {
     const data = await ingestCampaignAdminService.getDetail(req.params.campaignId);
+    res.json({ success: true, data });
+  },
+
+  async triggerCorpusValidation(req: Request<{ campaignId: string }, unknown, TriggerCorpusValidationInput>, res: Response) {
+    const result = await corpusValidationService.createRun(req.params.campaignId, { force: req.body.force });
+    if (result.created) {
+      try {
+        await corpusValidationQueue.add(
+          "validate-campaign-corpus",
+          { validationRunId: result.runId },
+          { jobId: `corpus-validation-${result.runId}-${Date.now()}` },
+        );
+      } catch (error) {
+        await corpusValidationService.markQueueFailure(result.runId, error);
+        throw error;
+      }
+    }
+    res.status(result.created ? 202 : 200).json({
+      success: true,
+      data: {
+        validationRunId: result.runId,
+        state: result.state,
+        reused: !result.created,
+        validatorVersion: CORPUS_VALIDATOR_VERSION,
+      },
+    });
+  },
+
+  async getLatestCorpusValidation(req: Request<{ campaignId: string }>, res: Response) {
+    const data = await corpusValidationService.getLatest(req.params.campaignId);
+    res.json({ success: true, data });
+  },
+
+  async getCorpusValidation(req: Request<{ validationRunId: string }>, res: Response) {
+    const data = await corpusValidationService.getRun(req.params.validationRunId);
     res.json({ success: true, data });
   },
 

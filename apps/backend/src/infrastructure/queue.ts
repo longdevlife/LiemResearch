@@ -24,6 +24,7 @@ const defaultJobOptions: QueueOptions["defaultJobOptions"] = {
 export const QUEUE_NAMES = {
   apiSync: "api-sync",
   openAlexIngest: "openalex-ingest",
+  corpusValidation: "corpus-validation",
   embedding: "embedding",
   paperAnalysis: "paper-analysis",
   report: "report",
@@ -40,6 +41,14 @@ export const apiSyncQueue = new Queue(QUEUE_NAMES.apiSync, {
 export const openAlexIngestQueue = new Queue(QUEUE_NAMES.openAlexIngest, {
   connection: makeConnection(),
   defaultJobOptions,
+});
+
+export const corpusValidationQueue = new Queue(QUEUE_NAMES.corpusValidation, {
+  connection: makeConnection(),
+  defaultJobOptions: {
+    ...defaultJobOptions,
+    backoff: { type: "exponential", delay: 10_000 },
+  },
 });
 
 export const embeddingQueue = new Queue(QUEUE_NAMES.embedding, {

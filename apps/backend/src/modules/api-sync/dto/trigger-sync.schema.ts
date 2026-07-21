@@ -13,6 +13,16 @@ export const IngestCampaignParamsSchema = z.object({
   campaignId: z.string().regex(/^[a-f\d]{24}$/i, "campaignId must be a MongoDB ObjectId"),
 });
 
+export const CorpusValidationParamsSchema = z.object({
+  validationRunId: z.string().regex(/^[a-f\d]{24}$/i, "validationRunId must be a MongoDB ObjectId"),
+});
+
+export const TriggerCorpusValidationSchema = z.object({
+  force: z.boolean().optional().default(false),
+}).default({});
+
+export type TriggerCorpusValidationInput = z.infer<typeof TriggerCorpusValidationSchema>;
+
 export const PlanOpenAlexCampaignSchema = z.object({
   campaignKey: z.string().trim().min(3).max(120).regex(/^[a-z0-9][a-z0-9._-]*$/i, "campaignKey must be URL-safe"),
   targetUniqueWorks: z.coerce.number().int().min(1_000).max(5_000_000).default(1_000_000),

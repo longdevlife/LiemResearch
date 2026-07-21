@@ -1,6 +1,6 @@
 import type { Job } from "bullmq";
 import type { Queue } from "bullmq";
-import { apiSyncQueue, embeddingQueue, gapsQueue, notificationQueue, openAlexIngestQueue, paperAnalysisQueue, reportQueue } from "../../infrastructure/queue.js";
+import { apiSyncQueue, corpusValidationQueue, embeddingQueue, gapsQueue, notificationQueue, openAlexIngestQueue, paperAnalysisQueue, reportQueue } from "../../infrastructure/queue.js";
 import { readWorkerHeartbeats, type WorkerHeartbeatRecord } from "../../infrastructure/worker-heartbeat.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ReportModel } from "../reports/models/report.model.js";
@@ -17,6 +17,7 @@ const WORKER_HEARTBEAT_STALE_MS = 2 * 60_000;
 export type PipelineQueueName =
   | "api-sync"
   | "openalex-ingest"
+  | "corpus-validation"
   | "embedding"
   | "paper-analysis"
   | "report"
@@ -487,6 +488,7 @@ export const pipelineService = createPipelineStatusService({
   queueAdapters: [
     queueAdapter("api-sync", "API Sync", apiSyncQueue),
     queueAdapter("openalex-ingest", "OpenAlex Campaign Ingest", openAlexIngestQueue),
+    queueAdapter("corpus-validation", "Corpus Validation", corpusValidationQueue),
     queueAdapter("embedding", "Embeddings", embeddingQueue),
     queueAdapter("paper-analysis", "Paper Analysis", paperAnalysisQueue),
     queueAdapter("report", "Reports", reportQueue),
@@ -546,4 +548,5 @@ const EXPECTED_WORKERS: Array<{ workerName: string; queueName: PipelineQueueName
   { workerName: "worker:notifications", queueName: "notifications" },
   { workerName: "worker:sync", queueName: "api-sync" },
   { workerName: "worker:openalex-ingest", queueName: "openalex-ingest" },
+  { workerName: "worker:corpus-validation", queueName: "corpus-validation" },
 ];

@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../../common/middleware/auth.js";
 import { validate } from "../../common/middleware/validate.js";
 import { logger } from "../../infrastructure/logger.js";
 import { syncController } from "./sync.controller.js";
-import { IngestCampaignParamsSchema, PlanOpenAlexCampaignSchema, TriggerSyncSchema } from "./dto/trigger-sync.schema.js";
+import { CorpusValidationParamsSchema, IngestCampaignParamsSchema, PlanOpenAlexCampaignSchema, TriggerCorpusValidationSchema, TriggerSyncSchema } from "./dto/trigger-sync.schema.js";
 
 /**
  * Admin sync routes. Gated by requireAuth + requireRole("admin").
@@ -30,6 +30,15 @@ syncRouter.get("/openalex-ingest/campaigns", ...adminGuard, syncController.listI
 syncRouter.post("/openalex-ingest/preflight", ...adminGuard, syncController.preflightOpenAlexIngest);
 syncRouter.post("/openalex-ingest/campaigns/plan", ...adminGuard, validate(PlanOpenAlexCampaignSchema), syncController.planOpenAlexIngestCampaign);
 syncRouter.get("/openalex-ingest/campaigns/:campaignId", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.getIngestCampaign);
+syncRouter.post(
+  "/openalex-ingest/campaigns/:campaignId/validations",
+  ...adminGuard,
+  validate(IngestCampaignParamsSchema, "params"),
+  validate(TriggerCorpusValidationSchema),
+  syncController.triggerCorpusValidation,
+);
+syncRouter.get("/openalex-ingest/campaigns/:campaignId/validations/latest", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.getLatestCorpusValidation);
+syncRouter.get("/openalex-ingest/validations/:validationRunId", ...adminGuard, validate(CorpusValidationParamsSchema, "params"), syncController.getCorpusValidation);
 syncRouter.post("/openalex-ingest/campaigns/:campaignId/start", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.startIngestCampaign);
 syncRouter.post("/openalex-ingest/campaigns/:campaignId/pause", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.pauseIngestCampaign);
 syncRouter.post("/openalex-ingest/campaigns/:campaignId/cancel", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.cancelIngestCampaign);
