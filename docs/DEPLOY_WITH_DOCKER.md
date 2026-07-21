@@ -1,0 +1,87 @@
+# Docker Compose Runtime
+
+This Compose stack is a reproducible **local/demo runtime** for LiemResearch:
+
+- React web app through Nginx on `http://localhost:8080`
+- Express API on `http://localhost:4000`
+- MongoDB and Redis with persistent named volumes
+- opt-in BullMQ workers through Compose profiles
+
+It is suitable for a lecturer to inspect the project architecture and run the
+application locally. It is not a replacement for managed production hosting.
+
+## 1. Configure secrets
+
+From the repository root:
+
+```powershell
+Copy-Item .env.compose.example .env.compose
+```
+
+Set unique `MONGO_ROOT_PASSWORD`, `JWT_ACCESS_SECRET`,
+`JWT_REFRESH_SECRET`, and `GEMINI_API_KEY` in `.env.compose`. Do not send or
+commit this file. Generate a JWT secret with:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+## 2. Start the app
+
+```powershell
+docker compose up --build
+```
+
+Open `http://localhost:8080`. API health is at `http://localhost:4000/health`
+and API documentation is at `http://localhost:4000/api-docs`.
+
+Stop while retaining data:
+
+```powershell
+docker compose down
+```
+
+Delete local Mongo/Redis/upload data as well:
+
+```powershell
+docker compose down -v
+```
+
+## 3. Workers are explicit
+
+The default command starts only web, API, MongoDB, and Redis. This prevents a
+demo from unexpectedly consuming Gemini quota or processing a large queue.
+
+```powershell
+# Reports, gaps, embedding, paper analysis, and notifications
+docker compose --profile workers up --build
+
+# Million-scale OpenAlex campaign worker; requires OPENALEX_API_KEY.
+docker compose --profile ingest up --build
+
+# Optional Mongo Express, bound only to localhost:8081.
+docker compose --profile tools up
+```
+
+The OpenAlex campaign worker does not begin a campaign on startup. An admin
+must plan and explicitly start a campaign through the API/dashboard.
+
+## 4. Important vector-search boundary
+
+The official `mongo:7` image in this Compose file is MongoDB Community. It does
+not contain MongoDB Atlas Vector Search (`mongot`), so `$vectorSearch`-based
+semantic search, RAG retrieval, and embedding-backed features cannot be fully
+demonstrated against this local Mongo container.
+
+For those features, point `MONGODB_URI` at MongoDB Atlas or a self-hosted
+MongoDB deployment where the administrator has installed and configured
+`mongot`/Vector Search. Do not claim that plain MongoDB Community provides
+Atlas Vector Search.
+
+## 5. OpenAlex authentication
+
+Older project syncs used `OPENALEX_MAILTO` (the historical polite-pool
+mechanism). OpenAlex now requires an API key for new API access. Add the free
+key as `OPENALEX_API_KEY` before starting the million-scale ingest worker.
+The legacy corpus remains valid; the key is required for future provider calls,
+not to read existing papers from MongoDB.
