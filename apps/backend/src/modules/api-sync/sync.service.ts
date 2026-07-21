@@ -65,7 +65,11 @@ export async function runSync(job: RunSyncJob): Promise<ApiSyncRunDoc> {
         "openalex page fetched",
       );
 
-      await ingestPage(results, provider._id, run);
+      const ingestResult = await ingestOpenAlexWorks(results, provider._id);
+      run.totalFetched += ingestResult.fetchedCount;
+      run.totalInserted += ingestResult.insertedCount;
+      run.totalUpdated += ingestResult.updatedCount;
+      run.totalDuplicates += ingestResult.updatedCount;
 
       await run.save(); // persist running stats after each page
       if (!nextCursor || results.length === 0) break;
@@ -114,13 +118,33 @@ export async function runSync(job: RunSyncJob): Promise<ApiSyncRunDoc> {
  * writes are then flushed in BULK — so a 200-paper page does ~3 bulk DB ops
  * instead of ~1200 sequential round-trips (the old hot path on Atlas M0).
  */
-async function ingestPage(
+type IngestedOpenAlexWork = {
+  paper: PaperHydrated;
+  work: OpenAlexWork;
+  action: "insert" | "update";
+};
+
+export type OpenAlexIngestResult = {
+  records: IngestedOpenAlexWork[];
+  fetchedCount: number;
+  insertedCount: number;
+  updatedCount: number;
+  rejectedCount: number;
+};
+
+/**
+ * Ingest one OpenAlex page through the canonical normalization, deduplication,
+ * source-record, and quality paths. Both the legacy sync and the scale campaign
+ * call this function so a paper never receives different write semantics merely
+ * because it arrived through a different scheduler.
+ */
+export async function ingestOpenAlexWorks(
   works: OpenAlexWork[],
   providerId: ApiSyncRunDoc["providerId"],
-  run: ApiSyncRunDoc,
-): Promise<void> {
+): Promise<OpenAlexIngestResult> {
   // ① Upsert papers concurrently (keeps the conditional merge semantics intact).
   const ingested: Array<{ paper: PaperHydrated; work: OpenAlexWork; action: "insert" | "update" }> = [];
+  let rejectedCount = 0;
   for (let i = 0; i < works.length; i += UPSERT_CONCURRENCY) {
     const slice = works.slice(i, i + UPSERT_CONCURRENCY);
     const settled = await Promise.allSettled(
@@ -132,11 +156,22 @@ async function ingestPage(
     );
     for (const r of settled) {
       if (r.status === "fulfilled") ingested.push(r.value);
-      else logger.error({ err: r.reason }, "paper ingest failed — skipped");
+      else {
+        rejectedCount += 1;
+        logger.error({ err: r.reason }, "paper ingest failed — skipped");
+      }
     }
   }
 
-  if (ingested.length === 0) return;
+  if (ingested.length === 0) {
+    return {
+      records: [],
+      fetchedCount: works.length,
+      insertedCount: 0,
+      updatedCount: 0,
+      rejectedCount,
+    };
+  }
 
   // ② Upsert ONE source record per (paper, provider). Keyed by (paperId, providerId)
   //    — re-syncing the same paper UPDATES that record (refresh fetchedAt/hash)
@@ -223,16 +258,13 @@ async function ingestPage(
     logger.error({ err }, "quality bulk write partially failed (non-fatal)");
   }
 
-  // ④ Counters.
-  for (const { action } of ingested) {
-    run.totalFetched += 1;
-    if (action === "insert") {
-      run.totalInserted += 1;
-    } else {
-      run.totalUpdated += 1;
-      run.totalDuplicates += 1;
-    }
-  }
+  return {
+    records: ingested,
+    fetchedCount: works.length,
+    insertedCount: ingested.filter((record) => record.action === "insert").length,
+    updatedCount: ingested.filter((record) => record.action === "update").length,
+    rejectedCount,
+  };
 }
 
 /** Dedup by DOI, fallback OpenAlex ID; insert new or merge into existing. */
