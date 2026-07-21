@@ -20,6 +20,8 @@ const paperCohortMembershipSchema = new Schema(
 // campaign rather than letting an old cohort row hide a new campaign's progress.
 paperCohortMembershipSchema.index({ paperId: 1, cohortId: 1, campaignId: 1 }, { unique: true, name: "paper_cohort_campaign_unique" });
 paperCohortMembershipSchema.index({ cohortId: 1, stratumKey: 1 });
+paperCohortMembershipSchema.index({ campaignId: 1, paperId: 1 });
+paperCohortMembershipSchema.index({ campaignId: 1, cohortId: 1, stratumKey: 1, paperId: 1 });
 
 export type PaperCohortMembershipDoc = InferSchemaType<typeof paperCohortMembershipSchema> & {
   _id: mongoose.Types.ObjectId;

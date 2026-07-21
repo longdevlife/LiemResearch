@@ -40,14 +40,15 @@
     "paper-analysis:once": "tsx scripts/run-paper-analysis-once.ts",
     "worker:sync": "tsx src/workers/sync.worker.ts",
     "worker:openalex-ingest": "tsx src/workers/openalex-ingest.worker.ts",
+    "worker:corpus-validation": "tsx src/workers/corpus-validation.worker.ts",
     "worker:embedding": "tsx src/workers/embedding.worker.ts",
     "worker:paper-analysis": "tsx src/workers/paper-analysis.worker.ts",
     "worker:report": "tsx src/workers/report.worker.ts",
     "worker:gaps": "tsx src/workers/gaps.worker.ts",
     "worker:notifications": "tsx src/workers/notification.worker.ts",
     "dev:check": "tsx scripts/check-dev-deps.ts",
-    "dev:all": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis -c blue,magenta,yellow,green,cyan,white \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\"",
-    "dev:all+ingest": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,ingest -c blue,magenta,yellow,green,cyan,white,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:openalex-ingest\"",
+    "dev:all": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,validate -c blue,magenta,yellow,green,cyan,white,gray \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:corpus-validation\"",
+    "dev:all+ingest": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,validate,ingest -c blue,magenta,yellow,green,cyan,white,gray,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:corpus-validation\" \"pnpm worker:openalex-ingest\"",
     "dev:all+sync": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,sync -c blue,magenta,yellow,green,cyan,white,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:sync\""
   },
   "dependencies": {
