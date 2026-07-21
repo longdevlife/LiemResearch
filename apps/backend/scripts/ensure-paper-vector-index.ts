@@ -86,9 +86,15 @@ async function waitForReady(collection: ReturnType<NonNullable<Awaited<ReturnTyp
 }
 
 function assertExpectedDefinition(index: SearchIndex): void {
-  const vector = index.latestDefinition?.fields?.find((field) => field.type === "vector" && field.path === "embedding");
+  const fields = index.latestDefinition?.fields ?? [];
+  const vector = fields.find((field) => field.type === "vector" && field.path === "embedding");
   if (!vector || vector.numDimensions !== 768 || vector.similarity !== "cosine") {
     throw new Error(`${VECTOR_INDEX} exists but does not match embedding: 768 dimensions, cosine. Refusing to replace it automatically.`);
+  }
+  const filterPaths = new Set(fields.filter((field) => field.type === "filter").map((field) => field.path));
+  const missingFilters = ["dataStatus", "publicationYear"].filter((path) => !filterPaths.has(path));
+  if (missingFilters.length > 0) {
+    throw new Error(`${VECTOR_INDEX} is missing required filter fields: ${missingFilters.join(", ")}. Refusing to replace it automatically.`);
   }
 }
 

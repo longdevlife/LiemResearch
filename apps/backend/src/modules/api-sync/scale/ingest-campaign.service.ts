@@ -106,7 +106,10 @@ export const ingestCampaignService = {
       );
       return campaign;
     } catch (error) {
-      await OpenAlexIngestCampaignModel.deleteOne({ _id: campaign._id });
+      await Promise.all([
+        OpenAlexIngestPartitionModel.deleteMany({ campaignId: campaign._id }),
+        OpenAlexIngestCampaignModel.deleteOne({ _id: campaign._id }),
+      ]);
       throw error;
     }
   },
@@ -190,6 +193,13 @@ export const ingestCampaignService = {
     const campaignId = objectId(input.campaignId, "campaignId");
     const partitionId = objectId(input.partitionId, "partitionId");
     const idempotencyKey = buildAttemptIdempotencyKey(input);
+    const retried = await OpenAlexIngestPageAttemptModel.findOneAndUpdate(
+      { partitionId, idempotencyKey, state: "failed" },
+      { $set: { state: "started" }, $unset: { errorMessage: 1 } },
+      { new: true },
+    );
+    if (retried) return retried;
+
     return OpenAlexIngestPageAttemptModel.findOneAndUpdate(
       { partitionId, idempotencyKey },
       {
@@ -204,6 +214,25 @@ export const ingestCampaignService = {
       },
       { upsert: true, new: true },
     );
+  },
+
+  async renewPartitionLease(input: { partitionId: string; workerId: string; leaseMs: number }): Promise<void> {
+    const partitionId = objectId(input.partitionId, "partitionId");
+    const now = new Date();
+    const result = await OpenAlexIngestPartitionModel.updateOne(
+      {
+        _id: partitionId,
+        "lease.ownerId": input.workerId,
+        state: { $in: ["leased", "fetching", "writing", "checkpointing"] },
+      },
+      {
+        $set: {
+          "lease.heartbeatAt": now,
+          "lease.expiresAt": new Date(now.getTime() + input.leaseMs),
+        },
+      },
+    );
+    if (result.matchedCount === 0) throw AppError.conflict("Partition lease was lost before it could be renewed");
   },
 
   /**
@@ -304,6 +333,25 @@ export const ingestCampaignService = {
             state: "failed",
             completedAt: new Date(),
             failureReason: `${deadLetterPartitions} partition(s) require dead-letter review`,
+          },
+        },
+      );
+      return result.modifiedCount === 1;
+    }
+    const sealed = await OpenAlexIngestCampaignModel.findById(campaignId)
+      .select("targetUniqueWorks progress.uniqueWorks")
+      .lean();
+    if (!sealed) throw AppError.notFound("Ingest campaign not found");
+    const uniqueWorks = sealed.progress?.uniqueWorks ?? 0;
+    if (uniqueWorks < sealed.targetUniqueWorks) {
+      const shortfall = sealed.targetUniqueWorks - uniqueWorks;
+      const result = await OpenAlexIngestCampaignModel.updateOne(
+        { _id: campaignId, state: "running" },
+        {
+          $set: {
+            state: "completed_with_shortfall",
+            completedAt: new Date(),
+            completionNote: `${shortfall} additional unique work(s) require a refill campaign`,
           },
         },
       );

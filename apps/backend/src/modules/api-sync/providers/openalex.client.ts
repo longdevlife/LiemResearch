@@ -5,6 +5,7 @@ import type { OpenAlexGroupPage, OpenAlexPage, OpenAlexWork } from "./openalex.t
 const BASE_URL = "https://api.openalex.org/works";
 const RATE_LIMIT_DELAY_MS = 100; // ≤ 10 req/s — OpenAlex polite pool
 const MAX_RETRIES = 3;
+const REQUEST_TIMEOUT_MS = 30_000;
 export const OPENALEX_MAX_PER_PAGE = 100;
 const OPENALEX_MAX_GROUPS_PER_PAGE = 200;
 
@@ -158,6 +159,7 @@ async function fetchWithRetry(url: string, attempt = 1): Promise<OpenAlexPage> {
   const t0 = Date.now();
   try {
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         "User-Agent": `TrendSystem/0.1 (mailto:${env.OPENALEX_MAILTO ?? "unknown"})`,
         Accept: "application/json",

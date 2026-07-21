@@ -12,7 +12,7 @@
 import type { IndexDescription, IndexDescriptionInfo } from "mongodb";
 
 import { env } from "../src/config/env.js";
-import { closeMongoConnection, inspectDatabase, openMongoConnection } from "./lib/mongo-migration.js";
+import { closeMongoConnection, fingerprintCollection, inspectDatabase, openMongoConnection } from "./lib/mongo-migration.js";
 
 const COPY_BATCH_SIZE = 500;
 
@@ -61,7 +61,7 @@ async function main(): Promise<void> {
       await copyCollection(sourceConnection, targetConnection, collection.name);
     }
 
-    const verification = await verifyCounts(sourceConnection, targetConnection, plan.collections.map((collection) => collection.name));
+    const verification = await verifyCopiedData(sourceConnection, targetConnection, plan.collections.map((collection) => collection.name));
     console.log(JSON.stringify({ mode: "execute", backupReference: args.backupReference, plan, verification }, null, 2));
     if (!verification.passed) process.exitCode = 2;
   } finally {
@@ -258,25 +258,49 @@ async function writeBatch(
   );
 }
 
-async function verifyCounts(
+async function verifyCopiedData(
   sourceConnection: Awaited<ReturnType<typeof openMongoConnection>>,
   targetConnection: Awaited<ReturnType<typeof openMongoConnection>>,
   collectionNames: string[],
-): Promise<{ passed: boolean; collections: Array<{ name: string; sourceCount: number; targetCount: number; matches: boolean }> }> {
+): Promise<{
+  passed: boolean;
+  collections: Array<{
+    name: string;
+    sourceCount: number;
+    targetCount: number;
+    countMatches: boolean;
+    sourceHash: string;
+    targetHash: string;
+    hashMatches: boolean;
+  }>;
+}> {
   const sourceDb = sourceConnection.db;
   const targetDb = targetConnection.db;
   if (!sourceDb || !targetDb) throw new Error("Source or target Mongo connection has no database handle");
 
   const collections = await Promise.all(
     collectionNames.map(async (name) => {
-      const [sourceCount, targetCount] = await Promise.all([
+      const [sourceCount, targetCount, sourceHash, targetHash] = await Promise.all([
         sourceDb.collection(name).countDocuments({}),
         targetDb.collection(name).countDocuments({}),
+        fingerprintCollection(sourceConnection, name),
+        fingerprintCollection(targetConnection, name),
       ]);
-      return { name, sourceCount, targetCount, matches: sourceCount === targetCount };
+      return {
+        name,
+        sourceCount,
+        targetCount,
+        countMatches: sourceCount === targetCount,
+        sourceHash,
+        targetHash,
+        hashMatches: sourceHash === targetHash,
+      };
     }),
   );
-  return { passed: collections.every((collection) => collection.matches), collections };
+  return {
+    passed: collections.every((collection) => collection.countMatches && collection.hashMatches),
+    collections,
+  };
 }
 
 function sameMongoTarget(sourceUri: string, targetUri: string): boolean {

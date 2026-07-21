@@ -130,7 +130,17 @@ export async function runCampaignPartitionPage(input: {
       { _id: partition._id, "lease.ownerId": input.workerId },
       { $set: { state: "fetching", "lease.heartbeatAt": new Date() } },
     );
+    await ingestCampaignService.renewPartitionLease({
+      partitionId,
+      workerId: input.workerId,
+      leaseMs: input.leaseMs,
+    });
     const page = await fetchOpenAlexPage(request);
+    await ingestCampaignService.renewPartitionLease({
+      partitionId,
+      workerId: input.workerId,
+      leaseMs: input.leaseMs,
+    });
     await OpenAlexIngestPartitionModel.updateOne(
       { _id: partition._id, "lease.ownerId": input.workerId },
       { $set: { state: "writing", "lease.heartbeatAt": new Date() } },
@@ -146,6 +156,11 @@ export async function runCampaignPartitionPage(input: {
     const provider = await ApiProviderModel.findOne({ providerName: "openalex" }).select("_id").lean();
     if (!provider) throw new Error("openalex provider is not seeded");
 
+    await ingestCampaignService.renewPartitionLease({
+      partitionId,
+      workerId: input.workerId,
+      leaseMs: input.leaseMs,
+    });
     const ingested = await ingestOpenAlexWorks(screened.acceptedWorks, provider._id);
     await Promise.all([
       writeCohortMemberships({ campaign, partition, records: ingested.records }),
@@ -162,6 +177,11 @@ export async function runCampaignPartitionPage(input: {
         }),
       ),
     ]);
+    await ingestCampaignService.renewPartitionLease({
+      partitionId,
+      workerId: input.workerId,
+      leaseMs: input.leaseMs,
+    });
 
     const acceptedCount = ingested.records.length;
     const rejectedCount = ingested.rejectedCount;

@@ -70,9 +70,9 @@ POST /api/v1/admin/openalex-ingest/campaigns/plan
 }
 ```
 
-The target is a desired unique-work threshold. Random samples can overlap, so
-after completion compare `progress.uniqueWorks` to `targetUniqueWorks` and plan
-a refill campaign for any shortfall. Trends should use the
+The target is a desired unique-work threshold. Random samples can overlap, so a
+run below the threshold closes as `completed_with_shortfall`, never as a false
+success. Plan a refill campaign for the reported shortfall. Trends should use the
 `analytics-baseline` cohort by default; CS/AI enrichment must not be presented
 as an unbiased all-domain population.
 
