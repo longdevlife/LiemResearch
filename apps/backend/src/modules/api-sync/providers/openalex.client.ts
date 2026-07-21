@@ -1,6 +1,6 @@
 import { env } from "../../../config/env.js";
 import { logger } from "../../../infrastructure/logger.js";
-import type { OpenAlexPage, OpenAlexWork } from "./openalex.types.js";
+import type { OpenAlexGroupPage, OpenAlexPage, OpenAlexWork } from "./openalex.types.js";
 
 const BASE_URL = "https://api.openalex.org/works";
 const RATE_LIMIT_DELAY_MS = 100; // ≤ 10 req/s — OpenAlex polite pool
@@ -23,6 +23,11 @@ export interface FetchPageParams {
   perPage?: number;
 }
 
+export interface FetchGroupCountsParams {
+  filterExpression?: string;
+  groupBy: "primary_topic.domain.id" | "primary_topic.field.id" | "primary_topic.subfield.id" | "primary_topic.id";
+}
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
@@ -39,6 +44,31 @@ export async function fetchOpenAlexPage(params: FetchPageParams): Promise<{
     results: json.results ?? [],
     nextCursor: json.meta?.next_cursor ?? null,
     total: json.meta?.count ?? 0,
+  };
+}
+
+/**
+ * Read an OpenAlex aggregation snapshot for campaign planning. This is kept
+ * separate from paging so a planner never mistakes a sampled page for source
+ * population.
+ */
+export async function fetchOpenAlexGroupCounts(params: FetchGroupCountsParams): Promise<{
+  total: number;
+  groups: Array<{ key: string; displayName?: string; count: number }>;
+}> {
+  const url = new URL(BASE_URL);
+  if (params.filterExpression) url.searchParams.set("filter", params.filterExpression);
+  url.searchParams.set("group_by", params.groupBy);
+  url.searchParams.set("per_page", String(OPENALEX_MAX_PER_PAGE));
+  appendOpenAlexIdentity(url);
+  const json = (await fetchWithRetry(url.toString())) as unknown as OpenAlexGroupPage;
+  return {
+    total: json.meta?.count ?? 0,
+    groups: (json.group_by ?? []).map((group) => ({
+      key: group.key,
+      displayName: group.key_display_name,
+      count: group.count,
+    })),
   };
 }
 

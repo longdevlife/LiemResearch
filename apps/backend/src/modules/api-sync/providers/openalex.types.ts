@@ -77,3 +77,8 @@ export interface OpenAlexPage {
   meta: { count: number; next_cursor: string | null; per_page: number };
   results: OpenAlexWork[];
 }
+
+export interface OpenAlexGroupPage {
+  meta: { count: number; per_page: number };
+  group_by: Array<{ key: string; key_display_name?: string; count: number }>;
+}

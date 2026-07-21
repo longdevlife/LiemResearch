@@ -5,6 +5,7 @@ import { ApiSyncRunModel } from "./models/api-sync-run.model.js";
 import type { TriggerSyncInput } from "./dto/trigger-sync.schema.js";
 import { ingestCampaignAdminService } from "./scale/ingest-campaign-admin.service.js";
 import { ingestCampaignService } from "./scale/ingest-campaign.service.js";
+import { openAlexPreflightService } from "./scale/openalex-preflight.service.js";
 
 /**
  * Thin HTTP layer. Triggering a sync only ENQUEUES a BullMQ job and returns
@@ -28,6 +29,11 @@ export const syncController = {
   async listIngestCampaigns(_req: Request, res: Response) {
     const campaigns = await ingestCampaignAdminService.listRecent();
     res.json({ success: true, data: campaigns, meta: { total: campaigns.length } });
+  },
+
+  async preflightOpenAlexIngest(_req: Request, res: Response) {
+    const data = await openAlexPreflightService.run();
+    res.json({ success: true, data });
   },
 
   async getIngestCampaign(req: Request<{ campaignId: string }>, res: Response) {

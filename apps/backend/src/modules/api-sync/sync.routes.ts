@@ -27,6 +27,7 @@ syncRouter.get("/sync/runs", ...adminGuard, syncController.listRuns);
 // lifecycle controls for an already-planned campaign; they never synthesize a
 // biased "download pages until N" campaign inside an HTTP request.
 syncRouter.get("/openalex-ingest/campaigns", ...adminGuard, syncController.listIngestCampaigns);
+syncRouter.post("/openalex-ingest/preflight", ...adminGuard, syncController.preflightOpenAlexIngest);
 syncRouter.get("/openalex-ingest/campaigns/:campaignId", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.getIngestCampaign);
 syncRouter.post("/openalex-ingest/campaigns/:campaignId/start", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.startIngestCampaign);
 syncRouter.post("/openalex-ingest/campaigns/:campaignId/pause", ...adminGuard, validate(IngestCampaignParamsSchema, "params"), syncController.pauseIngestCampaign);
