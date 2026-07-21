@@ -73,8 +73,8 @@ const paperSchema = new Schema(
       arxivId: { type: String, index: true, sparse: true },
       pubmedId: { type: String, index: true, sparse: true },
     },
-    title: { type: String, required: true, index: "text" },
-    abstractText: { type: String, index: "text" },
+    title: { type: String, required: true },
+    abstractText: { type: String },
     authors: { type: [paperAuthorSchema], default: [] },
     journalId: { type: Schema.Types.ObjectId, ref: "Journal" },
     journalName: { type: String },
@@ -86,6 +86,10 @@ const paperSchema = new Schema(
       default: "article",
     },
     language: { type: String, default: "en" },
+    // OpenAlex exposes ISO language codes such as `ko` and `id`. MongoDB's
+    // text-index language override accepts a different, limited vocabulary, so
+    // keep the provider fact separate from the deterministic index setting.
+    textSearchLanguage: { type: String, default: "none", select: false },
     openAccessStatus: {
       type: String,
       enum: ["gold", "green", "hybrid", "bronze", "closed", "unknown"],
@@ -200,6 +204,15 @@ paperSchema.index({ "topics.domainName": 1, publicationYear: -1 });
 paperSchema.index({ publicationYear: -1, citationCount: -1 });
 paperSchema.index({ "aiScore.finalScore": -1 });
 paperSchema.index({ isAiAnalyzable: 1, dataStatus: 1, "aiAnalysis.analysisPromptVersion": 1 });
+paperSchema.index(
+  { title: "text", abstractText: "text" },
+  {
+    name: "paper_search_text",
+    default_language: "none",
+    language_override: "textSearchLanguage",
+    weights: { title: 10, abstractText: 2 },
+  },
+);
 
 /** Lean (plain-object) type — use for `.lean()` reads. */
 export type PaperDoc = InferSchemaType<typeof paperSchema> & { _id: mongoose.Types.ObjectId };
