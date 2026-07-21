@@ -26,6 +26,7 @@ export interface NormalizedPaper {
   publicationDate?: Date;
   paperKind: PaperKind;
   language: string;
+  textSearchLanguage: "none";
   openAccessStatus: OpenAccessStatus;
   openAccessUrl?: string;
   licenseName?: string;
@@ -65,7 +66,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
       doi: stripPrefix(w.doi, "https://doi.org/")?.toLowerCase(),
       openalexId: stripPrefix(w.id, "https://openalex.org/"),
     },
-    title: (w.title ?? w.display_name ?? "Untitled").trim(),
+    title: normalizeTitle(w.title, w.display_name),
     abstractText: reconstructAbstract(w.abstract_inverted_index),
     authors: (w.authorships ?? []).map((a, i) => ({
       displayName: a.author?.display_name?.trim() ?? "Unknown",
@@ -78,6 +79,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
     publicationDate: w.publication_date ? new Date(w.publication_date) : undefined,
     paperKind: mapPaperKind(w.type),
     language: w.language ?? "en",
+    textSearchLanguage: "none",
     openAccessStatus: mapOpenAccessStatus(w.open_access?.oa_status),
     openAccessUrl:
       w.open_access?.oa_url ??
@@ -216,4 +218,8 @@ function mapOpenAccessStatus(status?: string): OpenAccessStatus {
     default:
       return "unknown";
   }
+}
+
+function normalizeTitle(title?: string | null, displayName?: string | null): string {
+  return title?.trim() || displayName?.trim() || "Untitled";
 }

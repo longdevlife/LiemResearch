@@ -3,9 +3,11 @@ import { apiSyncQueue, openAlexIngestQueue } from "../../infrastructure/queue.js
 import { env } from "../../config/env.js";
 import { ApiSyncRunModel } from "./models/api-sync-run.model.js";
 import type { TriggerSyncInput } from "./dto/trigger-sync.schema.js";
+import type { PlanOpenAlexCampaignInput } from "./dto/trigger-sync.schema.js";
 import { ingestCampaignAdminService } from "./scale/ingest-campaign-admin.service.js";
 import { ingestCampaignService } from "./scale/ingest-campaign.service.js";
 import { openAlexPreflightService } from "./scale/openalex-preflight.service.js";
+import { openAlexCampaignPlannerService } from "./scale/openalex-campaign-planner.service.js";
 
 /**
  * Thin HTTP layer. Triggering a sync only ENQUEUES a BullMQ job and returns
@@ -34,6 +36,30 @@ export const syncController = {
   async preflightOpenAlexIngest(_req: Request, res: Response) {
     const data = await openAlexPreflightService.run();
     res.json({ success: true, data });
+  },
+
+  async planOpenAlexIngestCampaign(req: Request<unknown, unknown, PlanOpenAlexCampaignInput>, res: Response) {
+    if (!env.OPENALEX_API_KEY) {
+      res.status(409).json({
+        success: false,
+        error: {
+          code: "OPENALEX_API_KEY_REQUIRED",
+          message: "Million-scale OpenAlex campaigns require OPENALEX_API_KEY before planning can run.",
+        },
+      });
+      return;
+    }
+    const campaign = await openAlexCampaignPlannerService.planBackfill(req.body);
+    res.status(201).json({
+      success: true,
+      data: {
+        campaignId: campaign._id.toString(),
+        campaignKey: campaign.campaignKey,
+        state: campaign.state,
+        targetUniqueWorks: campaign.targetUniqueWorks,
+        plannedPartitions: campaign.progress?.plannedPartitions ?? 0,
+      },
+    });
   },
 
   async getIngestCampaign(req: Request<{ campaignId: string }>, res: Response) {

@@ -15,9 +15,15 @@
     "clean": "rimraf dist .turbo",
     "test:mongo": "tsx scripts/test-mongo.ts",
     "mongo:preflight": "tsx scripts/mongo-preflight.ts",
+    "mongo:vector-smoke": "tsx scripts/mongo-vector-smoke.ts",
+    "mongo:discover-search-indexes": "tsx scripts/mongo-search-index-discovery.ts",
+    "mongo:ensure-paper-text-index": "tsx scripts/ensure-paper-text-index.ts",
+    "mongo:ensure-paper-vector-index": "tsx scripts/ensure-paper-vector-index.ts",
+    "mongo:ensure-paper-cohort-index": "tsx scripts/ensure-paper-cohort-index.ts",
     "mongo:migration-inventory": "tsx scripts/mongo-migration-inventory.ts",
     "mongo:migration-source-databases": "tsx scripts/mongo-migration-source-databases.ts",
     "mongo:migration-verify": "tsx scripts/mongo-migration-verify.ts",
+    "mongo:migration-paper-overlap": "tsx scripts/mongo-migration-paper-overlap.ts",
     "mongo:migration-copy": "tsx scripts/mongo-migration-copy.ts",
     "corpus:stats": "tsx scripts/corpus-stats.ts",
     "gemini:probe": "tsx scripts/probe-gemini.ts",
@@ -41,6 +47,7 @@
     "worker:notifications": "tsx src/workers/notification.worker.ts",
     "dev:check": "tsx scripts/check-dev-deps.ts",
     "dev:all": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis -c blue,magenta,yellow,green,cyan,white \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\"",
+    "dev:all+ingest": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,ingest -c blue,magenta,yellow,green,cyan,white,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:openalex-ingest\"",
     "dev:all+sync": "pnpm dev:check && concurrently --kill-others-on-fail -n api,report,gaps,notif,embed,analysis,sync -c blue,magenta,yellow,green,cyan,white,red \"pnpm dev\" \"pnpm worker:report\" \"pnpm worker:gaps\" \"pnpm worker:notifications\" \"pnpm worker:embedding\" \"pnpm worker:paper-analysis\" \"pnpm worker:sync\""
   },
   "dependencies": {

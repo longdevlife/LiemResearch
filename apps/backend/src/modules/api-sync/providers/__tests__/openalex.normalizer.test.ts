@@ -60,6 +60,8 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.abstractText).toBe("This paper");
     expect(n.publicationYear).toBe(2024);
     expect(n.paperKind).toBe("article");
+    expect(n.language).toBe("en");
+    expect(n.textSearchLanguage).toBe("none");
     expect(n.citationCount).toBe(87);
     expect(n.fwci).toBe(2.35);
     expect(n.citationNormalizedPercentile).toEqual({
@@ -106,6 +108,10 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.topics).toEqual([]);
     expect(n.openAccessStatus).toBe("unknown");
     expect(n.paperKind).toBe("other");
+  });
+
+  it("uses a safe title when OpenAlex provides a blank display value", () => {
+    expect(normalizeOpenAlexWork({ ...base, title: "  ", display_name: "" }).title).toBe("Untitled");
   });
 
   it("maps referenced_works, stripping the OpenAlex URL prefix", () => {

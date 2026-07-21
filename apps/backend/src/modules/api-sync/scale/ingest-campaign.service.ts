@@ -4,6 +4,8 @@ import { AppError } from "../../../common/exceptions/app-error.js";
 import { OpenAlexIngestCampaignModel, type OpenAlexIngestCampaignDoc } from "../models/openalex-ingest-campaign.model.js";
 import { OpenAlexIngestPageAttemptModel, type OpenAlexIngestPageAttemptDoc } from "../models/openalex-ingest-page-attempt.model.js";
 import { OpenAlexIngestPartitionModel, type OpenAlexIngestPartitionDoc } from "../models/openalex-ingest-partition.model.js";
+import { PaperCohortMembershipModel } from "../models/paper-cohort-membership.model.js";
+import { OPENALEX_CAMPAIGN_SAMPLE_SIZE } from "./campaign-planner.js";
 
 export interface CreateCampaignInput {
   campaignKey: string;
@@ -86,8 +88,8 @@ export const ingestCampaignService = {
         "Backfill partitions must use a planner-approved seeded sample; cursor scans are reserved for repair/refresh paths.",
       );
     }
-    if (input.partitions.some((partition) => partition.selectionMethod === "seeded-sample" && partition.targetCount > 10_000)) {
-      throw AppError.badRequest("A seeded OpenAlex sample partition cannot exceed 10000 works");
+    if (input.partitions.some((partition) => partition.selectionMethod === "seeded-sample" && partition.targetCount > OPENALEX_CAMPAIGN_SAMPLE_SIZE)) {
+      throw AppError.badRequest(`A seeded OpenAlex campaign sample partition cannot exceed ${OPENALEX_CAMPAIGN_SAMPLE_SIZE} works`);
     }
     const campaign = await OpenAlexIngestCampaignModel.create({
       campaignKey: input.campaignKey,
@@ -104,7 +106,10 @@ export const ingestCampaignService = {
       );
       return campaign;
     } catch (error) {
-      await OpenAlexIngestCampaignModel.deleteOne({ _id: campaign._id });
+      await Promise.all([
+        OpenAlexIngestPartitionModel.deleteMany({ campaignId: campaign._id }),
+        OpenAlexIngestCampaignModel.deleteOne({ _id: campaign._id }),
+      ]);
       throw error;
     }
   },
@@ -188,6 +193,13 @@ export const ingestCampaignService = {
     const campaignId = objectId(input.campaignId, "campaignId");
     const partitionId = objectId(input.partitionId, "partitionId");
     const idempotencyKey = buildAttemptIdempotencyKey(input);
+    const retried = await OpenAlexIngestPageAttemptModel.findOneAndUpdate(
+      { partitionId, idempotencyKey, state: "failed" },
+      { $set: { state: "started" }, $unset: { errorMessage: 1 } },
+      { new: true },
+    );
+    if (retried) return retried;
+
     return OpenAlexIngestPageAttemptModel.findOneAndUpdate(
       { partitionId, idempotencyKey },
       {
@@ -202,6 +214,25 @@ export const ingestCampaignService = {
       },
       { upsert: true, new: true },
     );
+  },
+
+  async renewPartitionLease(input: { partitionId: string; workerId: string; leaseMs: number }): Promise<void> {
+    const partitionId = objectId(input.partitionId, "partitionId");
+    const now = new Date();
+    const result = await OpenAlexIngestPartitionModel.updateOne(
+      {
+        _id: partitionId,
+        "lease.ownerId": input.workerId,
+        state: { $in: ["leased", "fetching", "writing", "checkpointing"] },
+      },
+      {
+        $set: {
+          "lease.heartbeatAt": now,
+          "lease.expiresAt": new Date(now.getTime() + input.leaseMs),
+        },
+      },
+    );
+    if (result.matchedCount === 0) throw AppError.conflict("Partition lease was lost before it could be renewed");
   },
 
   /**
@@ -283,11 +314,49 @@ export const ingestCampaignService = {
 
   async completeIfFinished(campaignIdInput: string): Promise<boolean> {
     const campaignId = objectId(campaignIdInput, "campaignId");
-    const remaining = await OpenAlexIngestPartitionModel.countDocuments({
-      campaignId,
-      state: { $in: ["planned", "leased", "fetching", "writing", "checkpointing", "retry_wait"] },
-    });
+    const [remaining, deadLetterPartitions] = await Promise.all([
+      OpenAlexIngestPartitionModel.countDocuments({
+        campaignId,
+        state: { $in: ["planned", "leased", "fetching", "writing", "checkpointing", "retry_wait"] },
+      }),
+      OpenAlexIngestPartitionModel.countDocuments({ campaignId, state: "dead_letter" }),
+    ]);
     if (remaining > 0) return false;
+    // The last page may not align with the periodic reconciliation interval.
+    // Seal exact ledger-derived counters before making the campaign terminal.
+    await this.reconcileCampaignProgress(campaignIdInput);
+    if (deadLetterPartitions > 0) {
+      const result = await OpenAlexIngestCampaignModel.updateOne(
+        { _id: campaignId, state: "running" },
+        {
+          $set: {
+            state: "failed",
+            completedAt: new Date(),
+            failureReason: `${deadLetterPartitions} partition(s) require dead-letter review`,
+          },
+        },
+      );
+      return result.modifiedCount === 1;
+    }
+    const sealed = await OpenAlexIngestCampaignModel.findById(campaignId)
+      .select("targetUniqueWorks progress.uniqueWorks")
+      .lean();
+    if (!sealed) throw AppError.notFound("Ingest campaign not found");
+    const uniqueWorks = sealed.progress?.uniqueWorks ?? 0;
+    if (uniqueWorks < sealed.targetUniqueWorks) {
+      const shortfall = sealed.targetUniqueWorks - uniqueWorks;
+      const result = await OpenAlexIngestCampaignModel.updateOne(
+        { _id: campaignId, state: "running" },
+        {
+          $set: {
+            state: "completed_with_shortfall",
+            completedAt: new Date(),
+            completionNote: `${shortfall} additional unique work(s) require a refill campaign`,
+          },
+        },
+      );
+      return result.modifiedCount === 1;
+    }
     const result = await OpenAlexIngestCampaignModel.updateOne(
       { _id: campaignId, state: "running" },
       { $set: { state: "completed", completedAt: new Date() } },
@@ -295,16 +364,35 @@ export const ingestCampaignService = {
     return result.modifiedCount === 1;
   },
 
+  /**
+   * Full reconciliation groups the immutable attempt ledger and distinct paper
+   * memberships. At million-paper scale that must not run after every page.
+   * Progress is refreshed every N committed pages and once unconditionally
+   * when the worker observes that no partition remains.
+   */
+  async reconcileCampaignProgressIfDue(campaignIdInput: string, intervalPages = 100): Promise<boolean> {
+    const campaignId = objectId(campaignIdInput, "campaignId");
+    const committedPages = await OpenAlexIngestPageAttemptModel.countDocuments({ campaignId, state: "committed" });
+    if (committedPages === 0 || committedPages % Math.max(1, intervalPages) !== 0) return false;
+    await this.reconcileCampaignProgress(campaignIdInput);
+    return true;
+  },
+
   /** Counters are rebuilt from committed ledger rows, not crash-prone increments. */
   async reconcileCampaignProgress(campaignIdInput: string): Promise<void> {
     const campaignId = objectId(campaignIdInput, "campaignId");
-    const [attempts, partitionCount, completedPartitions] = await Promise.all([
+    const [attempts, partitionCount, completedPartitions, uniqueWorks] = await Promise.all([
       OpenAlexIngestPageAttemptModel.aggregate<{ accepted: number; rejected: number; conflicts: number; pages: number }>([
         { $match: { campaignId, state: "committed" } },
         { $group: { _id: null, accepted: { $sum: "$acceptedCount" }, rejected: { $sum: "$rejectedCount" }, conflicts: { $sum: "$conflictCount" }, pages: { $sum: 1 } } },
       ]),
       OpenAlexIngestPartitionModel.countDocuments({ campaignId }),
       OpenAlexIngestPartitionModel.countDocuments({ campaignId, state: "completed" }),
+      PaperCohortMembershipModel.aggregate<{ count: number }>([
+        { $match: { campaignId } },
+        { $group: { _id: "$paperId" } },
+        { $count: "count" },
+      ]),
     ]);
     const totals = attempts[0] ?? { accepted: 0, rejected: 0, conflicts: 0, pages: 0 };
     await OpenAlexIngestCampaignModel.updateOne(
@@ -315,6 +403,7 @@ export const ingestCampaignService = {
           "progress.completedPartitions": completedPartitions,
           "progress.committedPages": totals.pages,
           "progress.acceptedWorks": totals.accepted,
+          "progress.uniqueWorks": uniqueWorks[0]?.count ?? 0,
           "progress.rejectedWorks": totals.rejected,
           "progress.conflictWorks": totals.conflicts,
         },

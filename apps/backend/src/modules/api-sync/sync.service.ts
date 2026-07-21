@@ -124,12 +124,18 @@ type IngestedOpenAlexWork = {
   action: "insert" | "update";
 };
 
+type RejectedOpenAlexWork = {
+  work: OpenAlexWork;
+  errorMessage: string;
+};
+
 export type OpenAlexIngestResult = {
   records: IngestedOpenAlexWork[];
   fetchedCount: number;
   insertedCount: number;
   updatedCount: number;
   rejectedCount: number;
+  rejectedWorks: RejectedOpenAlexWork[];
 };
 
 /**
@@ -144,6 +150,7 @@ export async function ingestOpenAlexWorks(
 ): Promise<OpenAlexIngestResult> {
   // ① Upsert papers concurrently (keeps the conditional merge semantics intact).
   const ingested: Array<{ paper: PaperHydrated; work: OpenAlexWork; action: "insert" | "update" }> = [];
+  const rejectedWorks: RejectedOpenAlexWork[] = [];
   let rejectedCount = 0;
   for (let i = 0; i < works.length; i += UPSERT_CONCURRENCY) {
     const slice = works.slice(i, i + UPSERT_CONCURRENCY);
@@ -154,10 +161,14 @@ export async function ingestOpenAlexWorks(
         return { paper, work, action } as const;
       }),
     );
-    for (const r of settled) {
+    for (const [index, r] of settled.entries()) {
       if (r.status === "fulfilled") ingested.push(r.value);
       else {
         rejectedCount += 1;
+        rejectedWorks.push({
+          work: slice[index]!,
+          errorMessage: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        });
         logger.error({ err: r.reason }, "paper ingest failed — skipped");
       }
     }
@@ -170,6 +181,7 @@ export async function ingestOpenAlexWorks(
       insertedCount: 0,
       updatedCount: 0,
       rejectedCount,
+      rejectedWorks,
     };
   }
 
@@ -264,6 +276,7 @@ export async function ingestOpenAlexWorks(
     insertedCount: ingested.filter((record) => record.action === "insert").length,
     updatedCount: ingested.filter((record) => record.action === "update").length,
     rejectedCount,
+    rejectedWorks,
   };
 }
 
