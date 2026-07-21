@@ -19,7 +19,9 @@ x-backend-common: &backend-common
     - .env.compose
   environment:
     NODE_ENV: production
-    MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/publication_trend?authSource=admin
+    # URI credentials must be URL-encoded. For example, a raw # in a Mongo
+    # password becomes %23 here while Mongo itself receives the raw password.
+    MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD_URI}@mongo:27017/publication_trend?authSource=admin
     REDIS_URL: redis://redis:6379
     CORS_ORIGIN: http://localhost:8080,http://localhost:5173
     GOOGLE_CALLBACK_URL: http://localhost:4000/api/v1/auth/google/callback

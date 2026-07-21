@@ -20,13 +20,16 @@ From the repository root:
 Copy-Item .env.compose.example .env.compose
 ```
 
-Set unique `MONGO_ROOT_PASSWORD`, `JWT_ACCESS_SECRET`,
+Set unique `MONGO_ROOT_PASSWORD`, `MONGO_ROOT_PASSWORD_URI`, `JWT_ACCESS_SECRET`,
 `JWT_REFRESH_SECRET`, and `GEMINI_API_KEY` in `.env.compose`. Do not send or
 commit this file. Generate a JWT secret with:
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
+
+`MONGO_ROOT_PASSWORD_URI` is the same Mongo password URL-encoded for use in
+the connection URI. For example, `#` becomes `%23`.
 
 ## 2. Start the app
 
