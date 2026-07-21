@@ -19,9 +19,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:up": "docker compose --env-file .env.compose up -d",
+    "docker:down": "docker compose --env-file .env.compose down",
+    "docker:logs": "docker compose --env-file .env.compose logs -f"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

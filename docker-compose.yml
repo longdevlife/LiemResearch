@@ -38,8 +38,6 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env.compose}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env.compose}
       MONGO_INITDB_DATABASE: publication_trend
-    ports:
-      - "127.0.0.1:27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -52,8 +50,6 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data

@@ -69,7 +69,10 @@ const EnvSchema = z.object({
   CHAT_ABSTRACT_MAX_CHARS: z.coerce.number().int().positive().default(800),
 
   OPENALEX_MAILTO: z.string().email().optional(),
-  OPENALEX_API_KEY: z.string().min(1).optional(),
+  // The normal application can read the existing corpus without an OpenAlex
+  // key. Treat an empty Compose/.env value as absent; the scale-campaign start
+  // endpoint performs the explicit key-required check before a provider call.
+  OPENALEX_API_KEY: optionalEnvString,
   SEMANTIC_SCHOLAR_API_KEY: z.string().optional(),
   CROSSREF_MAILTO: z.string().email().optional(),
 

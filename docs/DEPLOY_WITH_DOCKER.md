@@ -9,6 +9,8 @@ This Compose stack is a reproducible **local/demo runtime** for LiemResearch:
 
 It is suitable for a lecturer to inspect the project architecture and run the
 application locally. It is not a replacement for managed production hosting.
+MongoDB and Redis are intentionally internal-only; this prevents collisions
+with a developer's existing local database and keeps them off the host network.
 
 ## 1. Configure secrets
 
@@ -29,7 +31,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ## 2. Start the app
 
 ```powershell
-docker compose up --build
+docker compose --env-file .env.compose up --build
 ```
 
 Open `http://localhost:8080`. API health is at `http://localhost:4000/health`
@@ -38,13 +40,13 @@ and API documentation is at `http://localhost:4000/api-docs`.
 Stop while retaining data:
 
 ```powershell
-docker compose down
+docker compose --env-file .env.compose down
 ```
 
 Delete local Mongo/Redis/upload data as well:
 
 ```powershell
-docker compose down -v
+docker compose --env-file .env.compose down -v
 ```
 
 ## 3. Workers are explicit
@@ -54,13 +56,13 @@ demo from unexpectedly consuming Gemini quota or processing a large queue.
 
 ```powershell
 # Reports, gaps, embedding, paper analysis, and notifications
-docker compose --profile workers up --build
+docker compose --env-file .env.compose --profile workers up --build
 
 # Million-scale OpenAlex campaign worker; requires OPENALEX_API_KEY.
-docker compose --profile ingest up --build
+docker compose --env-file .env.compose --profile ingest up --build
 
 # Optional Mongo Express, bound only to localhost:8081.
-docker compose --profile tools up
+docker compose --env-file .env.compose --profile tools up
 ```
 
 The OpenAlex campaign worker does not begin a campaign on startup. An admin
