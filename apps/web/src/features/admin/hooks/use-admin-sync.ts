@@ -42,3 +42,40 @@ export function useTriggerEmbedding() {
     },
   });
 }
+
+const OPENALEX_CAMPAIGNS_KEY = ["admin", "openalex-ingest-campaigns"] as const;
+
+export function useOpenAlexCampaigns(enabled = true) {
+  return useQuery({
+    queryKey: OPENALEX_CAMPAIGNS_KEY,
+    queryFn: adminApi.listOpenAlexCampaigns,
+    enabled,
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((campaign) => campaign.state === "running") ? 5000 : 30000,
+  });
+}
+
+export function useOpenAlexCampaignDetail(campaignId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...OPENALEX_CAMPAIGNS_KEY, campaignId],
+    queryFn: () => adminApi.getOpenAlexCampaign(campaignId as string),
+    enabled: enabled && Boolean(campaignId),
+    refetchInterval: (query) => query.state.data?.campaign.state === "running" ? 5000 : 30000,
+  });
+}
+
+export function useOpenAlexCampaignAction(action: "start" | "pause" | "cancel") {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => {
+      if (action === "start") return adminApi.startOpenAlexCampaign(campaignId);
+      if (action === "pause") return adminApi.pauseOpenAlexCampaign(campaignId);
+      return adminApi.cancelOpenAlexCampaign(campaignId);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: OPENALEX_CAMPAIGNS_KEY }),
+  });
+}
+
+export function useOpenAlexIngestPreflight() {
+  return useMutation({ mutationFn: adminApi.preflightOpenAlexIngest });
+}

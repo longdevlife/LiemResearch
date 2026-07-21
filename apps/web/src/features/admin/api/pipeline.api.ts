@@ -2,7 +2,7 @@ import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants/api";
 
 export interface QueueStatus {
-  name: "api-sync" | "embedding" | "paper-analysis" | "report" | "gaps" | "notifications";
+  name: "api-sync" | "openalex-ingest" | "embedding" | "paper-analysis" | "report" | "gaps" | "notifications";
   label: string;
   waiting: number;
   active: number;
