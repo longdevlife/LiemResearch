@@ -17,7 +17,7 @@ async function main(): Promise<void> {
 
   let connection: Awaited<ReturnType<typeof openMongoConnection>> | undefined;
   try {
-    connection = await openMongoConnection(sourceUri);
+    connection = await openMongoConnection(sourceUri, env.MIGRATION_SOURCE_DATABASE);
     const inventory = await inspectDatabase(connection, { exactCounts: process.argv.includes("--exact") });
     console.log(JSON.stringify(inventory, null, 2));
   } finally {

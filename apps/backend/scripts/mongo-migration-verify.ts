@@ -42,7 +42,7 @@ async function main(): Promise<void> {
 
   try {
     [sourceConnection, targetConnection] = await Promise.all([
-      openMongoConnection(sourceUri),
+      openMongoConnection(sourceUri, env.MIGRATION_SOURCE_DATABASE),
       openMongoConnection(env.MONGODB_URI),
     ]);
     const [source, target] = await Promise.all([

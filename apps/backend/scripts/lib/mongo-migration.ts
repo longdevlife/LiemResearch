@@ -53,10 +53,11 @@ export type MongoInventory = {
   totalEstimatedDocuments: number;
 };
 
-export async function openMongoConnection(uri: string): Promise<Connection> {
+export async function openMongoConnection(uri: string, databaseName?: string): Promise<Connection> {
   const connection = mongoose.createConnection(uri, {
     serverSelectionTimeoutMS: 10_000,
     maxPoolSize: 5,
+    ...(databaseName ? { dbName: databaseName } : {}),
   });
   await connection.asPromise();
   if (!connection.db) {
