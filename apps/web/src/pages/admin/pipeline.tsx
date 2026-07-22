@@ -100,6 +100,9 @@ export function AdminPipelinePage() {
   const ingestWorkerStatus = status?.workers.heartbeats.find(
     (worker) => worker.workerName === "worker:openalex-ingest",
   )?.status ?? "missing";
+  const corpusValidationWorkerStatus = status?.workers.heartbeats.find(
+    (worker) => worker.workerName === "worker:corpus-validation",
+  )?.status ?? "missing";
 
   const renderHealthBadge = (queue: { isBacklogged: boolean; hasFailures: boolean }) => {
     if (!redisOk) {
@@ -320,7 +323,11 @@ export function AdminPipelinePage() {
         </div>
       </div>
 
-      <OpenAlexCampaignMonitor enabled={isAdmin} workerStatus={ingestWorkerStatus} />
+      <OpenAlexCampaignMonitor
+        enabled={isAdmin}
+        ingestWorkerStatus={ingestWorkerStatus}
+        corpusValidationWorkerStatus={corpusValidationWorkerStatus}
+      />
 
       {/* Corpus Readiness Details Segment */}
       <div className="bg-card dark:bg-[#111B27] border border-[#EAEAEA] dark:border-[#26334A] rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-6">
