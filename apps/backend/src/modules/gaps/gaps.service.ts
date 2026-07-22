@@ -10,9 +10,16 @@ import { cachedGenerateJSON } from "../llm/llm.run.js";
 import { retrieve } from "../retrieval/retriever.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { computeGapEvidence } from "./gap-evidence.js";
-import { fillMissingYears, truncateToCompleteYears, yoyGrowthPct } from "../trends/trend.formulas.js";
+import {
+  fillMissingYears,
+  truncateToCompleteYears,
+  yoyGrowthPct,
+} from "../trends/trend.formulas.js";
 import { ResearchGapModel } from "./models/research-gap.model.js";
-import { GapDirectionsModel, type GapDirectionsDoc } from "./models/gap-directions.model.js";
+import {
+  GapDirectionsModel,
+  type GapDirectionsDoc,
+} from "./models/gap-directions.model.js";
 import {
   buildDirectionsPrompt,
   buildDirectionsEvidenceHash,
@@ -31,8 +38,16 @@ import {
   type GapEvidencePaper,
   type GapsLlmOutput,
 } from "./gaps.prompt.js";
-import type { AnalyzeGapDto, ListGapsQuery, PatchGapDto } from "./dto/gaps.schema.js";
-import { canAccessGap, toGapListItem, type GapListDoc } from "./gap-presenter.js";
+import type {
+  AnalyzeGapDto,
+  ListGapsQuery,
+  PatchGapDto,
+} from "./dto/gaps.schema.js";
+import {
+  canAccessGap,
+  toGapListItem,
+  type GapListDoc,
+} from "./gap-presenter.js";
 import { projectService } from "../projects/project.service.js";
 
 export interface GapJob {
@@ -63,7 +78,9 @@ function conceptFilter(
 ): Record<string, unknown> {
   const filter: Record<string, unknown> = { dataStatus: "active" };
   if (years.paperIds && years.paperIds.length > 0) {
-    filter._id = { $in: years.paperIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    filter._id = {
+      $in: years.paperIds.map((id) => new mongoose.Types.ObjectId(id)),
+    };
   }
   if (years.yearFrom !== undefined || years.yearTo !== undefined) {
     filter.publicationYear = {
@@ -87,7 +104,13 @@ async function conceptGrowthPct(
   const yearTo = years.yearTo ?? now;
   const yearFrom = years.yearFrom ?? yearTo - GAP_WINDOW_YEARS;
   const rows = await PaperModel.aggregate<{ _id: number; count: number }>([
-    { $match: conceptFilter([phrase], { yearFrom, yearTo, paperIds: years.paperIds }) },
+    {
+      $match: conceptFilter([phrase], {
+        yearFrom,
+        yearTo,
+        paperIds: years.paperIds,
+      }),
+    },
     { $group: { _id: "$publicationYear", count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
   ]);
@@ -96,7 +119,9 @@ async function conceptGrowthPct(
     yearFrom,
     yearTo,
   );
-  return yoyGrowthPct(truncateToCompleteYears(series, Math.min(yearTo, now - 1)));
+  return yoyGrowthPct(
+    truncateToCompleteYears(series, Math.min(yearTo, now - 1)),
+  );
 }
 
 /**
@@ -105,16 +130,22 @@ async function conceptGrowthPct(
  * escaped-regex on title+abstract (the probe is free text, not a canonical topic
  * name). Returns null when the probe is missing so the gap degrades gracefully.
  */
-async function scoreGapEvidence(probe: GapProbe | undefined, paperIds?: string[]) {
+async function scoreGapEvidence(
+  probe: GapProbe | undefined,
+  paperIds?: string[],
+) {
   if (!probe?.topicA || !probe?.topicB) return null;
   const years = { yearFrom: probe.yearFrom, yearTo: probe.yearTo, paperIds };
-  const [intersectionCount, aCount, bCount, growthA, growthB] = await Promise.all([
-    PaperModel.countDocuments(conceptFilter([probe.topicA, probe.topicB], years)),
-    PaperModel.countDocuments(conceptFilter([probe.topicA], years)),
-    PaperModel.countDocuments(conceptFilter([probe.topicB], years)),
-    conceptGrowthPct(probe.topicA, years),
-    conceptGrowthPct(probe.topicB, years),
-  ]);
+  const [intersectionCount, aCount, bCount, growthA, growthB] =
+    await Promise.all([
+      PaperModel.countDocuments(
+        conceptFilter([probe.topicA, probe.topicB], years),
+      ),
+      PaperModel.countDocuments(conceptFilter([probe.topicA], years)),
+      PaperModel.countDocuments(conceptFilter([probe.topicB], years)),
+      conceptGrowthPct(probe.topicA, years),
+      conceptGrowthPct(probe.topicB, years),
+    ]);
   const parentTrend =
     growthA >= growthB
       ? { topic: probe.topicA, growthRatePct: growthA }
@@ -154,7 +185,10 @@ async function loadProjectForGap(gap: { projectId?: unknown }) {
   return ProjectModel.findById(gap.projectId).lean();
 }
 
-async function assertCanReadGap(userId: string, gap: { userId?: unknown; projectId?: unknown }): Promise<void> {
+async function assertCanReadGap(
+  userId: string,
+  gap: { userId?: unknown; projectId?: unknown },
+): Promise<void> {
   if (canAccessGap(userId, gap as any)) return;
   const project = await loadProjectForGap(gap);
   if (canAccessGap(userId, gap as any, project as any)) return;
@@ -166,7 +200,11 @@ export const gapsService = {
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
     const analysisId = new mongoose.Types.ObjectId();
     if (dto.projectId) {
-      await projectService.getProjectPaperIdsForUser(dto.projectId, userId, "gap analysis");
+      await projectService.getProjectPaperIdsForUser(
+        dto.projectId,
+        userId,
+        "gap analysis",
+      );
     }
 
     const tx = await creditService.chargeCreditsChecked({
@@ -208,7 +246,10 @@ export const gapsService = {
 
   /** Fetch one analysis the caller owns (poll target for the FE). */
   async getAnalysis(userId: string, analysisId: string) {
-    const doc = await GapAnalysisModel.findOne({ _id: analysisId, userId }).lean();
+    const doc = await GapAnalysisModel.findOne({
+      _id: analysisId,
+      userId,
+    }).lean();
     if (!doc) throw AppError.notFound("Gap analysis not found");
     return {
       id: String(doc._id),
@@ -246,7 +287,10 @@ export const gapsService = {
   async runGapPipeline(job: GapJob): Promise<void> {
     const analysis = await GapAnalysisModel.findById(job.analysisId);
     if (!analysis) {
-      logger.warn({ analysisId: job.analysisId }, "gap analysis vanished before processing");
+      logger.warn(
+        { analysisId: job.analysisId },
+        "gap analysis vanished before processing",
+      );
       return;
     }
     if (analysis.status === "ready") return; // replayed job — already done
@@ -274,7 +318,7 @@ export const gapsService = {
     if (papers.length === 0) {
       await this.markAnalysisFailed(
         job.analysisId,
-        "Not enough corpus data for this topic — try a broader question."
+        "Not enough corpus data for this topic — try a broader question.",
       );
       return;
     }
@@ -307,7 +351,11 @@ export const gapsService = {
         cacheHit = true;
       },
       validate: (candidate) => {
-        if (!candidate || !Array.isArray(candidate.gaps) || candidate.gaps.length === 0) {
+        if (
+          !candidate ||
+          !Array.isArray(candidate.gaps) ||
+          candidate.gaps.length === 0
+        ) {
           throw new LlmContentError("LLM returned empty gaps output");
         }
         return candidate;
@@ -346,7 +394,8 @@ export const gapsService = {
           // No probe → no quantitative evidence; fall back to the LLM confidence so a
           // probe-less gap still sorts sanely instead of sinking below evidence-scored ones
           // (Mongo sorts a missing field last under -1).
-          evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
+          evidenceConfidence:
+            evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "standalone",
           userId: analysis.userId,
           projectId: analysis.projectId,
@@ -398,7 +447,9 @@ export const gapsService = {
   }): Promise<void> {
     if (!report.researchGaps || report.researchGaps.length === 0) return;
     const normalizedTopic = normalizeTopicStr(report.query);
-    const scopedPaperIds = report.projectId ? (report.projectPaperIds ?? []).map(String) : undefined;
+    const scopedPaperIds = report.projectId
+      ? (report.projectPaperIds ?? []).map(String)
+      : undefined;
     await Promise.all(
       report.researchGaps.map(async (g) => {
         const evidence = await scoreGapEvidence(g.probe, scopedPaperIds);
@@ -414,7 +465,8 @@ export const gapsService = {
           intersectionCount: evidence?.intersectionCount,
           parentCounts: evidence?.parentCounts,
           parentTrend: evidence?.parentTrend ?? null,
-          evidenceConfidence: evidence?.evidenceConfidence ?? clamp01(g.confidence),
+          evidenceConfidence:
+            evidence?.evidenceConfidence ?? clamp01(g.confidence),
           source: "report",
           sourceReportId: report._id,
           userId: report.userId,
@@ -429,19 +481,26 @@ export const gapsService = {
     let filter: Record<string, unknown> = { userId, status: query.status };
 
     if (query.projectId) {
-      const { ProjectModel } = await import("../projects/models/project.model.js");
+      const { ProjectModel } =
+        await import("../projects/models/project.model.js");
       const project = await ProjectModel.findById(query.projectId).lean();
       if (!project) throw AppError.notFound("Project not found");
-      const hasAccess = project.ownerId.toString() === userId || project.members.some((m) => m.targetId.toString() === userId);
+      const hasAccess =
+        project.ownerId.toString() === userId ||
+        project.members.some((m) => m.targetId.toString() === userId);
       if (!hasAccess) throw AppError.notFound("Project not found");
       filter = { projectId: query.projectId, status: query.status }; // Show all gaps for this project
     }
 
     if (query.topic) {
-      filter.normalizedTopic = { $regex: normalizeTopicStr(query.topic), $options: "i" };
+      filter.normalizedTopic = {
+        $regex: normalizeTopicStr(query.topic),
+        $options: "i",
+      };
     }
     if (query.source) filter.source = query.source;
-    if (query.minConfidence !== undefined) filter.confidence = { $gte: query.minConfidence };
+    if (query.minConfidence !== undefined)
+      filter.confidence = { $gte: query.minConfidence };
 
     const { page, pageSize } = query;
     const [docs, total] = await Promise.all([
@@ -477,7 +536,9 @@ export const gapsService = {
     );
 
     return {
-      gaps: docs.map((d) => toGapListItem(d as unknown as GapListDoc, supportingPapersById)),
+      gaps: docs.map((d) =>
+        toGapListItem(d as unknown as GapListDoc, supportingPapersById),
+      ),
       total,
     };
   },
@@ -509,7 +570,9 @@ export const gapsService = {
     await assertCanReadGap(userId, gap);
 
     const allowedPaperIds = (gap.supportingPaperIds ?? []).map(String);
-    const papers = await PaperModel.find({ _id: { $in: gap.supportingPaperIds ?? [] } })
+    const papers = await PaperModel.find({
+      _id: { $in: gap.supportingPaperIds ?? [] },
+    })
       .select("title abstractText aiAnalysis")
       .lean();
     const directionPapers = papers.map((p) => ({
@@ -551,7 +614,9 @@ export const gapsService = {
         description: gap.description,
         rationale: gap.rationale,
         intersectionCount: gap.intersectionCount ?? undefined,
-        parentTrend: gap.parentTrend as { topic: string; growthRatePct: number } | undefined,
+        parentTrend: gap.parentTrend as
+          | { topic: string; growthRatePct: number }
+          | undefined,
       },
       directionPapers,
     );
@@ -569,7 +634,9 @@ export const gapsService = {
         validate: (candidate) => {
           const directions = sanitizeDirections(candidate, allowedPaperIds);
           if (directions.length === 0) {
-            throw new LlmContentError("LLM returned no valid research directions");
+            throw new LlmContentError(
+              "LLM returned no valid research directions",
+            );
           }
           return candidate;
         },
@@ -602,7 +669,9 @@ export const gapsService = {
 
     const directions = sanitizeDirections(raw, allowedPaperIds);
     if (directions.length === 0) {
-      throw AppError.serviceUnavailable("AI không trả về gợi ý hợp lệ. Vui lòng thử lại.");
+      throw AppError.serviceUnavailable(
+        "AI không trả về gợi ý hợp lệ. Vui lòng thử lại.",
+      );
     }
 
     const doc = await GapDirectionsModel.findOneAndUpdate(
@@ -623,7 +692,10 @@ export const gapsService = {
   },
 
   /** Cached directions for a gap (or null if never generated). */
-  async getDirections(userId: string, gapId: string): Promise<GapDirections | null> {
+  async getDirections(
+    userId: string,
+    gapId: string,
+  ): Promise<GapDirections | null> {
     const gap = await ResearchGapModel.findById(gapId).lean();
     if (!gap) throw AppError.notFound("Research gap not found");
     await assertCanReadGap(userId, gap);
@@ -634,9 +706,19 @@ export const gapsService = {
   /** Mark an analysis failed — called by the worker when retries are exhausted. */
   async markAnalysisFailed(analysisId: string, message: string): Promise<void> {
     const analysis = await GapAnalysisModel.findOneAndUpdate(
-      { _id: analysisId, status: { $ne: "ready" }, creditRefundedAt: { $exists: false } },
-      { $set: { status: "failed", errorMessage: message.slice(0, 500), creditRefundedAt: new Date() } },
-      { new: true }
+      {
+        _id: analysisId,
+        status: { $ne: "ready" },
+        creditRefundedAt: { $exists: false },
+      },
+      {
+        $set: {
+          status: "failed",
+          errorMessage: message.slice(0, 500),
+          creditRefundedAt: new Date(),
+        },
+      },
+      { new: true },
     ).lean();
 
     if (analysis && analysis.creditTransactionId) {
@@ -647,7 +729,7 @@ export const gapsService = {
     } else if (!analysis) {
       await GapAnalysisModel.updateOne(
         { _id: analysisId, status: { $ne: "ready" } },
-        { $set: { status: "failed", errorMessage: message.slice(0, 500) } }
+        { $set: { status: "failed", errorMessage: message.slice(0, 500) } },
       );
     }
   },
@@ -658,7 +740,10 @@ async function retrieveGapEvidence(
   filters: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
 ): Promise<GapEvidencePaper[]> {
   if (filters.paperIds && filters.paperIds.length > 0) {
-    return retrieveProjectGapEvidence(queryVector, { ...filters, paperIds: filters.paperIds });
+    return retrieveProjectGapEvidence(queryVector, {
+      ...filters,
+      paperIds: filters.paperIds,
+    });
   }
   return retrieve({
     queryVector,
@@ -692,21 +777,32 @@ async function retrieveProjectGapEvidence(
 
   return docs
     .map((doc) => {
-      const embedding = Array.isArray(doc.embedding) ? doc.embedding : undefined;
+      const embedding = Array.isArray(doc.embedding)
+        ? doc.embedding
+        : undefined;
       return {
         id: String(doc._id),
         title: String(doc.title ?? ""),
         abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
         aiAnalysis: doc.aiAnalysis ?? null,
         publicationYear: doc.publicationYear,
-        score: embedding ? cosineSimilarity(queryVector, embedding) : Number.NEGATIVE_INFINITY,
+        score: embedding
+          ? cosineSimilarity(queryVector, embedding)
+          : Number.NEGATIVE_INFINITY,
       };
     })
     .sort((a, b) => {
-      const scoreA = Number.isFinite(a.score) ? a.score : Number.NEGATIVE_INFINITY;
-      const scoreB = Number.isFinite(b.score) ? b.score : Number.NEGATIVE_INFINITY;
+      const scoreA = Number.isFinite(a.score)
+        ? a.score
+        : Number.NEGATIVE_INFINITY;
+      const scoreB = Number.isFinite(b.score)
+        ? b.score
+        : Number.NEGATIVE_INFINITY;
       if (scoreB !== scoreA) return scoreB - scoreA;
-      return (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+      return (
+        (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (order.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+      );
     })
     .slice(0, env.GAPS_TOP_K)
     .map(({ score: _score, ...paper }) => paper);
