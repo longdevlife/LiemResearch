@@ -85,7 +85,7 @@ const paperSchema = new Schema(
       enum: ["article", "proceedings", "preprint", "review", "book-chapter", "other"],
       default: "article",
     },
-    language: { type: String, default: "en" },
+    language: { type: String, default: "und", lowercase: true, trim: true, index: true },
     // OpenAlex exposes ISO language codes such as `ko` and `id`. MongoDB's
     // text-index language override accepts a different, limited vocabulary, so
     // keep the provider fact separate from the deterministic index setting.

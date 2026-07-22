@@ -29,6 +29,7 @@ describe("normalizeOpenAlexWork", () => {
     publication_year: 2024,
     publication_date: "2024-03-01",
     type: "article",
+    language: "en",
     cited_by_count: 87,
     fwci: 2.35,
     citation_normalized_percentile: {
@@ -108,6 +109,12 @@ describe("normalizeOpenAlexWork", () => {
     expect(n.topics).toEqual([]);
     expect(n.openAccessStatus).toBe("unknown");
     expect(n.paperKind).toBe("other");
+    expect(n.language).toBe("und");
+  });
+
+  it("normalizes language codes and never assumes missing language is English", () => {
+    expect(normalizeOpenAlexWork({ ...base, language: " FR " }).language).toBe("fr");
+    expect(normalizeOpenAlexWork({ ...base, language: null }).language).toBe("und");
   });
 
   it("uses a safe title when OpenAlex provides a blank display value", () => {

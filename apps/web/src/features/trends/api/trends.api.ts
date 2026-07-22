@@ -20,6 +20,7 @@ export interface TrendsOverviewParams {
   openAccessStatuses?: string[];
   providers?: string[];
   sources?: string[];
+  languages?: string[];
   citationBands?: Array<"0-9" | "10-49" | "50-99" | "100-499" | "500-999" | "1000+">;
   domains?: string[];
   fields?: string[];

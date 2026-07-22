@@ -8,10 +8,12 @@ describe("report DTO schemas", () => {
     const parsed = CreateReportSchema.parse({
       query: "What are the research gaps in LLM agents?",
       language: "en",
+      scopeFilters: { languages: ["en", "vi"] },
       selectedPaperIds: [paperId],
     });
 
     expect(parsed.selectedPaperIds).toEqual([paperId]);
+    expect(parsed.scopeFilters?.languages).toEqual(["en", "vi"]);
   });
 
   it("accepts project-scoped report creation without selected paper ids", () => {

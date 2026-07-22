@@ -34,6 +34,7 @@
     "score:recompute": "tsx scripts/recompute-scores.ts",
     "references:backfill": "tsx scripts/backfill-references.ts",
     "openalex:backfill-metadata": "tsx scripts/backfill-openalex-metadata.ts",
+    "openalex:backfill-workflow-status": "tsx scripts/backfill-openalex-workflow-status.ts",
     "promote-admin": "tsx scripts/promote-admin.ts",
     "sync:once": "tsx scripts/run-sync-once.ts",
     "embed:once": "tsx scripts/run-embed-once.ts",

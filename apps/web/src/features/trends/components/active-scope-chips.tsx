@@ -48,7 +48,7 @@ export function ActiveScopeChips({ activeChips, handleBucketClick }: ActiveScope
   // Group active chips by category group
   const groupedChips = {
     taxonomy: activeChips.filter(c => ["Domains", "Fields", "Subfields", "Topics"].includes(c.facet)),
-    metadata: activeChips.filter(c => ["Paper Types", "Open Access", "Providers", "Top Sources"].includes(c.facet)),
+    metadata: activeChips.filter(c => ["Paper Types", "Open Access", "Providers", "Top Sources", "Languages"].includes(c.facet)),
     impact: activeChips.filter(c => c.facet === "Citation Bands")
   };
 

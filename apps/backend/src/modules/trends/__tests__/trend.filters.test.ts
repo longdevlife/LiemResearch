@@ -18,6 +18,7 @@ describe("trend filters", () => {
         openAccessStatuses: ["gold"],
         providers: ["openalex"],
         sources: ["Nature Medicine"],
+        languages: ["en", "vi"],
         domains: ["Health Sciences"],
         fields: ["Medicine"],
         subfields: ["Pediatrics"],
@@ -34,6 +35,7 @@ describe("trend filters", () => {
       openAccessStatus: { $in: ["gold"] },
       primaryProvider: { $in: ["openalex"] },
       journalName: { $in: ["Nature Medicine"] },
+      language: { $in: ["en", "vi"] },
       topics: {
         $elemMatch: {
           domainName: { $in: ["Health Sciences"] },
@@ -69,12 +71,14 @@ describe("trend filters", () => {
         yearFrom: 2021,
         yearTo: 2025,
         paperKinds: ["article"],
+        languages: ["en"],
         domains: ["Health Sciences"],
         domainIds: ["https://openalex.org/domains/4"],
         citationBands: ["50-99"],
       }),
     ).toEqual({
       paperKinds: ["article"],
+      languages: ["en"],
       domains: ["Health Sciences"],
       domainIds: ["https://openalex.org/domains/4"],
       citationBands: ["50-99"],

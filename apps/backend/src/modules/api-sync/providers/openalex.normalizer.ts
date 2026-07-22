@@ -78,7 +78,7 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
     publicationYear: w.publication_year ?? 0,
     publicationDate: w.publication_date ? new Date(w.publication_date) : undefined,
     paperKind: mapPaperKind(w.type),
-    language: w.language ?? "en",
+    language: normalizeLanguage(w.language),
     textSearchLanguage: "none",
     openAccessStatus: mapOpenAccessStatus(w.open_access?.oa_status),
     openAccessUrl:
@@ -103,6 +103,11 @@ export function normalizeOpenAlexWork(w: OpenAlexWork): NormalizedPaper {
     relatedWorksCount: w.related_works?.length ?? 0,
     primaryProvider: "openalex",
   };
+}
+
+function normalizeLanguage(language: string | null | undefined): string {
+  const normalized = language?.trim().toLowerCase();
+  return normalized && /^[a-z]{2,3}(?:-[a-z0-9]+)*$/.test(normalized) ? normalized : "und";
 }
 
 function normalizeCitationPercentile(

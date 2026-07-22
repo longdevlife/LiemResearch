@@ -7,6 +7,7 @@ import { DatasetScopeHealthCard } from "./dataset-scope-health-card";
 import { DatasetScopeNextActions } from "./dataset-scope-next-actions";
 import { ActiveScopeChips, type ActiveChipItem } from "./active-scope-chips";
 import { DatasetScopeBuilder } from "./dataset-scope-builder";
+import { formatLanguageName } from "@/utils/language";
 
 type DatasetTrendTab = "overview" | "topics" | "dataset" | "compare" | "ai";
 
@@ -26,6 +27,7 @@ interface DatasetTabProps {
   openAccessStatuses: string[];
   providers: string[];
   sources: string[];
+  languages: string[];
   citationBands: string[];
   handleBucketClick: (facet: string, val: string, openalexId?: string) => void;
   setActiveTab?: (tab: DatasetTrendTab) => void;
@@ -51,6 +53,7 @@ export function DatasetTab({
   openAccessStatuses,
   providers,
   sources,
+  languages,
   citationBands,
   handleBucketClick,
   setActiveTab,
@@ -162,6 +165,10 @@ export function DatasetTab({
       chips.push({ facet: "Top Sources", val: src, label: `Source: ${src}` });
     });
 
+    languages.forEach(language => {
+      chips.push({ facet: "Languages", val: language, label: `Language: ${formatLanguageName(language)}` });
+    });
+
     // Citation Bands
     citationBands.forEach(band => {
       chips.push({ facet: "Citation Bands", val: band, label: `Citations: ${band}` });
@@ -170,7 +177,7 @@ export function DatasetTab({
     return chips;
   }, [
     data, domainIds, domains, fieldIds, fields, subfieldIds, subfields, topicIds, topicsFilter,
-    paperKinds, openAccessStatuses, providers, sources, citationBands
+    paperKinds, openAccessStatuses, providers, sources, languages, citationBands
   ]);
 
   const hasParentSelected = domainIds.length > 0 || domains.length > 0;
@@ -211,6 +218,7 @@ export function DatasetTab({
               openAccessStatuses={openAccessStatuses}
               providers={providers}
               sources={sources}
+              languages={languages}
               citationBands={citationBands}
               handleBucketClick={handleBucketClick}
               hasParentSelected={hasParentSelected}
@@ -249,6 +257,7 @@ export function DatasetTab({
               openAccessStatuses={openAccessStatuses}
               providers={providers}
               sources={sources}
+              languages={languages}
               citationBands={citationBands}
               scopeTarget={scopeTarget}
               scopeString={scopeString}

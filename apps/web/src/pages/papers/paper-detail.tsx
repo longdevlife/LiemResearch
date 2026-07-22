@@ -20,10 +20,16 @@ import {
   Star,
   Scale,
   FolderPlus,
+  Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
-import { usePaper, usePaperReferences } from "@/features/papers";
+import {
+  usePaper,
+  usePaperReferences,
+  useTranslatePaper,
+  usePaperTranslationCapabilities,
+} from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-count";
@@ -50,6 +56,10 @@ export function PaperDetailPage() {
   const totalReferenced = refResponse?.totalReferenced;
   const inCorpus = refResponse?.inCorpus;
   const queryClient = useQueryClient();
+  const translatePaper = useTranslatePaper(id);
+  const { data: translationCapabilities } = usePaperTranslationCapabilities();
+  const [translationLanguage, setTranslationLanguage] = useState("en");
+  const [showTranslation, setShowTranslation] = useState(false);
 
   const { data: relatedData, isLoading: isRelatedLoading } = useSearch({
     q: paper?.title || "",
@@ -212,6 +222,23 @@ export function PaperDetailPage() {
   const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
   const taxonomyTopic = getBestTaxonomyTopic(paper.topics ?? []);
   const taxonomyRows = taxonomyTopic ? buildTaxonomyRows(taxonomyTopic) : [];
+  const translation = translatePaper.data?.paperId === paper.id
+    && translatePaper.data.targetLanguage === translationLanguage
+    ? translatePaper.data
+    : undefined;
+  const displayTitle = showTranslation && translation ? translation.translatedTitle : paper.title;
+  const displayAbstract = showTranslation && translation
+    ? translation.translatedAbstract
+    : paper.abstractText;
+
+  const handleTranslate = () => {
+    translatePaper.mutate(translationLanguage, {
+      onSuccess: () => setShowTranslation(true),
+      onError: (error: any) => {
+        toast.error(error.response?.data?.error?.message || "Paper translation failed. Please try again.");
+      },
+    });
+  };
 
   const handleBookmarkToggle = () => {
     if (isBookmarked && bookmarkId) {
@@ -256,8 +283,74 @@ export function PaperDetailPage() {
           {/* Hero Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-4">
-              {paper.title}
+              {displayTitle}
             </h1>
+
+            <div
+              className="mb-5 flex flex-wrap items-center gap-2"
+              aria-label="Paper translation controls"
+            >
+              <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
+                <Languages className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                <label htmlFor="paper-translation-language" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Translate paper
+                </label>
+                <select
+                  id="paper-translation-language"
+                  value={translationLanguage}
+                  onChange={(event) => {
+                    setTranslationLanguage(event.target.value);
+                    setShowTranslation(false);
+                  }}
+                  className="bg-transparent text-xs font-semibold text-slate-900 outline-none dark:text-white"
+                >
+                  <option value="en">English</option>
+                  <option value="vi">Vietnamese</option>
+                </select>
+              </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTranslate}
+                  disabled={!currentUser || !translationCapabilities?.enabled || translatePaper.isPending}
+                  title={
+                    !currentUser
+                      ? "Sign in to translate this paper"
+                      : !translationCapabilities?.enabled
+                        ? "Translation is not enabled on this deployment"
+                        : undefined
+                  }
+              >
+                {translatePaper.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {translatePaper.isPending ? "Translating..." : "Translate"}
+              </Button>
+              {translation && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowTranslation((current) => !current)}
+                  >
+                    {showTranslation ? "View original" : "View translation"}
+                  </Button>
+                  {showTranslation && translation.provider !== "original" && (
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+                      Machine translated
+                    </span>
+                  )}
+                </>
+              )}
+              {!currentUser && (
+                <span className="text-xs text-slate-500">Sign in to use on-demand translation.</span>
+              )}
+              {currentUser && translationCapabilities?.enabled !== true && (
+                <span className="text-xs text-amber-700 dark:text-amber-400">
+                  Translation is unavailable on this deployment.
+                </span>
+              )}
+            </div>
 
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">
@@ -595,7 +688,7 @@ export function PaperDetailPage() {
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Abstract</h3>
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed text-justify">
               <p>
-                {paper.abstractText || "No abstract available for this paper."}
+                {displayAbstract || "No abstract available for this paper."}
               </p>
             </div>
           </div>

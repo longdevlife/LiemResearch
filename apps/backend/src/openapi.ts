@@ -182,6 +182,7 @@ export const openapiSpec = {
               openAccessStatuses: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
               providers: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
               topSources: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
+              languages: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
               citationBands: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
               domains: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },
               fields: { type: "array", items: { $ref: "#/components/schemas/TopItem" } },

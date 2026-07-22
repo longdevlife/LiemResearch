@@ -18,6 +18,7 @@ export interface SearchParams {
   provider?: string;
   providers?: string[];
   sources?: string[];
+  languages?: string[];
   citationBands?: string[];
   domains?: string[];
   fields?: string[];
@@ -49,6 +50,7 @@ export const searchApi = {
       "openAccessStatuses",
       "providers",
       "sources",
+      "languages",
       "citationBands",
       "domains",
       "fields",

@@ -1,4 +1,9 @@
-import type { Paper, SearchSortKey } from "@trend/shared-types";
+import type {
+  Paper,
+  PaperTranslation,
+  PaperTranslationCapabilities,
+  SearchSortKey,
+} from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
@@ -11,6 +16,7 @@ export interface PapersListParams {
   paperKind?: string[];
   openAccess?: boolean;
   provider?: string;
+  languages?: string[];
   sort?: SearchSortKey;
 }
 
@@ -21,6 +27,9 @@ export const papersApi = {
     const query: Record<string, unknown> = { ...rest };
     if (paperKind && paperKind.length > 0) {
       query.paperKind = paperKind.join(",");
+    }
+    if (params.languages && params.languages.length > 0) {
+      query.languages = params.languages.join(",");
     }
     const res = await api.get(API_ROUTES.papers.list, { params: query });
     return {
@@ -35,6 +44,14 @@ export const papersApi = {
   },
   async detail(id: string): Promise<Paper> {
     const res = await api.get(API_ROUTES.papers.detail(id));
+    return res.data.data;
+  },
+  async translate(id: string, targetLanguage: string): Promise<PaperTranslation> {
+    const res = await api.post(API_ROUTES.papers.translation(id), { targetLanguage });
+    return res.data.data;
+  },
+  async translationCapabilities(): Promise<PaperTranslationCapabilities> {
+    const res = await api.get(API_ROUTES.papers.translationCapabilities);
     return res.data.data;
   },
   async references(id: string): Promise<{ references: any[]; totalReferenced: number; inCorpus: number }> {

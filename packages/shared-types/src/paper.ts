@@ -149,6 +149,24 @@ export interface PaperAiAnalysis {
   extractedAt: ISODateString;
 }
 
+/** Cached, on-demand translation of Paper Detail title and abstract. */
+export interface PaperTranslation {
+  paperId: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  translatedTitle: string;
+  translatedAbstract: string;
+  provider: "original" | "libretranslate";
+  cacheHit: boolean;
+  translatedAt: ISODateString;
+}
+
+export interface PaperTranslationCapabilities {
+  enabled: boolean;
+  provider: "disabled" | "libretranslate";
+  targetLanguages: string[];
+}
+
 /** Lightweight paper reference — used for references + report grounding lists. */
 export interface PaperRef {
   id: string;

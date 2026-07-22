@@ -32,6 +32,7 @@ interface AITabProps {
   openAccessStatuses: string[];
   providers: string[];
   sources: string[];
+  languages: string[];
   citationBands: CitationBandFilter;
 }
 
@@ -67,6 +68,7 @@ export function AITab({
   openAccessStatuses,
   providers,
   sources,
+  languages,
   citationBands,
 }: AITabProps) {
   const navigate = useNavigate();
@@ -93,6 +95,7 @@ export function AITab({
     openAccessStatuses,
     providers,
     sources,
+    languages,
     citationBands,
   }), [
     debouncedTopicSearch,
@@ -110,6 +113,7 @@ export function AITab({
     openAccessStatuses,
     providers,
     sources,
+    languages,
     citationBands,
   ]);
   const topicCandidatesQuery = useTrendTopicCandidates(topicCandidateParams, debouncedTopicSearch.length > 0);
@@ -162,6 +166,7 @@ export function AITab({
     addList("openAccessStatuses", openAccessStatuses);
     addList("providers", providers);
     addList("sources", sources);
+    addList("languages", languages);
     addList("citationBands", citationBands);
 
     return `${path}?${params.toString()}`;
@@ -371,6 +376,7 @@ export function AITab({
                 openAccessStatuses,
                 providers,
                 sources,
+                languages,
                 citationBands,
                 language: "en"
               })}

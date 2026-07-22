@@ -2,6 +2,7 @@ import React from "react";
 import type { TrendsOverview } from "@trend/shared-types";
 import { FacetGroup } from "./trends-shared.components";
 import { Info, Loader2 } from "lucide-react";
+import { formatLanguageName } from "@/utils/language";
 
 interface DatasetScopeBuilderProps {
   data: TrendsOverview;
@@ -18,6 +19,7 @@ interface DatasetScopeBuilderProps {
   openAccessStatuses: string[];
   providers: string[];
   sources: string[];
+  languages: string[];
   citationBands: string[];
   handleBucketClick: (facet: string, val: string, openalexId?: string) => void;
   hasParentSelected: boolean;
@@ -38,6 +40,7 @@ export function DatasetScopeBuilder({
   openAccessStatuses,
   providers,
   sources,
+  languages,
   citationBands,
   handleBucketClick,
   hasParentSelected
@@ -221,6 +224,16 @@ export function DatasetScopeBuilder({
               total={data.totalPapersInWindow}
               activeValues={sources}
               onBucketClick={(val) => handleBucketClick("Top Sources", val)}
+            />
+            <FacetGroup
+              title="Languages"
+              buckets={(data.facets.languages ?? []).map((bucket) => ({
+                ...bucket,
+                name: formatLanguageName(bucket.id),
+              }))}
+              total={data.totalPapersInWindow}
+              activeValues={languages}
+              onBucketClick={(val) => handleBucketClick("Languages", val)}
             />
           </div>
         </div>

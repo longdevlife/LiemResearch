@@ -323,6 +323,7 @@ function normalizeReportScopeFilters(scopeFilters: unknown) {
     "openAccessStatuses",
     "providers",
     "sources",
+    "languages",
     "citationBands",
     "domains",
     "fields",

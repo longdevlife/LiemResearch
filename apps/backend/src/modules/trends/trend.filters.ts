@@ -9,6 +9,7 @@ export interface TrendFilterInput {
   openAccessStatuses?: string[];
   providers?: string[];
   sources?: string[];
+  languages?: string[];
   citationBands?: TrendCitationBand[];
   domains?: string[];
   fields?: string[];
@@ -27,6 +28,7 @@ const scalarFilterMap = {
   openAccessStatuses: "openAccessStatus",
   providers: "primaryProvider",
   sources: "journalName",
+  languages: "language",
 } as const;
 
 const taxonomyFilterMap = {
@@ -50,7 +52,10 @@ export function buildTrendMatchStage(input: TrendFilterInput): MatchStage {
   };
 
   for (const [filterKey, fieldName] of Object.entries(scalarFilterMap)) {
-    const values = uniqueStrings(input[filterKey as keyof typeof scalarFilterMap]);
+    const rawValues = uniqueStrings(input[filterKey as keyof typeof scalarFilterMap]);
+    const values = filterKey === "languages"
+      ? rawValues.map((value) => value.toLowerCase())
+      : rawValues;
     if (values.length > 0) {
       matchStage[fieldName] = { $in: values };
     }
@@ -104,6 +109,7 @@ export function describeAppliedTrendFilters(input: TrendFilterInput): Partial<Tr
     "openAccessStatuses",
     "providers",
     "sources",
+    "languages",
     "citationBands",
     "domains",
     "fields",

@@ -267,14 +267,14 @@ function AdminHealthSummary({ admin }: { admin: NonNullable<HomeOverview["admin"
         <div>
           <span className="text-slate-400 font-semibold block">Pending Requests:</span>
           <Link to="/admin/papers" className="text-sm font-bold text-slate-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 mt-1 block">
-            {admin.pendingPaperRequests} papers
+            {formatNumber(admin.pendingPaperRequests)} papers
           </Link>
         </div>
 
         <div>
           <span className="text-slate-400 font-semibold block">Embedding Queue:</span>
           <Link to="/admin/sync" className="text-sm font-bold text-slate-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 mt-1 block">
-            {admin.embedding.pending} pending
+            {formatNumber(admin.embedding.pending)} pending
           </Link>
         </div>
 
@@ -294,7 +294,7 @@ function AdminHealthSummary({ admin }: { admin: NonNullable<HomeOverview["admin"
         <div>
           <span className="text-slate-400 font-semibold block">Active AI Jobs:</span>
           <Link to="/reports" className="text-sm font-bold text-slate-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 mt-1 block">
-            {reportsCount} reports
+            {formatNumber(reportsCount)} reports
           </Link>
         </div>
       </div>
@@ -524,7 +524,7 @@ function WorkspaceActivityTabs({ workspace }: { workspace: NonNullable<HomeOverv
                 : "text-slate-450 dark:text-slate-500 hover:text-slate-700"
             }`}
           >
-            AI Reports ({workspace.reportCount})
+            AI Reports ({formatNumber(workspace.reportCount)})
           </button>
           <button
             onClick={() => setActiveTab("projects")}
@@ -534,7 +534,7 @@ function WorkspaceActivityTabs({ workspace }: { workspace: NonNullable<HomeOverv
                 : "text-slate-450 dark:text-slate-500 hover:text-slate-700"
             }`}
           >
-            Projects ({workspace.projectCount})
+            Projects ({formatNumber(workspace.projectCount)})
           </button>
         </div>
       </div>
@@ -603,7 +603,7 @@ function WorkspaceActivityTabs({ workspace }: { workspace: NonNullable<HomeOverv
                     </span>
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded shrink-0">
-                    {p.paperCount} papers
+                    {formatNumber(p.paperCount)} papers
                   </span>
                 </div>
               ))}

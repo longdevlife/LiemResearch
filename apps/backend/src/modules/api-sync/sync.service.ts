@@ -16,6 +16,7 @@ import {
 } from "./providers/openalex.normalizer.js";
 import type { OpenAlexWork } from "./providers/openalex.types.js";
 import { shouldReplaceTopics } from "./topic-merge.js";
+import { OPENALEX_PAPER_STATUS } from "../papers/paper-workflow.js";
 
 export interface RunSyncJob {
   searchText: string;
@@ -287,8 +288,19 @@ async function upsertPaper(
   const existing = await findExisting(n);
 
   if (!existing) {
-    const created = await PaperModel.create({ ...n, dataStatus: "active" });
+    const created = await PaperModel.create({
+      ...n,
+      dataStatus: "active",
+      paperStatus: OPENALEX_PAPER_STATUS,
+    });
     return { action: "insert", paper: created };
+  }
+
+  // Older OpenAlex records were created before the explicit workflow status
+  // existed, so Mongoose assigned the user-request default ("pending").
+  // External corpus records must never enter the admin approval queue.
+  if (existing.primaryProvider === "openalex" && !existing.requestedBy && existing.paperStatus === "pending") {
+    existing.paperStatus = OPENALEX_PAPER_STATUS;
   }
 
   // Merge: only overwrite when the incoming value is clearly better.

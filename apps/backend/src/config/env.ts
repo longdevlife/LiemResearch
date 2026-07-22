@@ -60,6 +60,13 @@ const EnvSchema = z.object({
   LLM_PROVIDER: z.enum(["gemini", "ollama"]).default("gemini"),
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().default("llama3.1"),
+  // On-demand Paper Detail translation. Disabled by default so deployments
+  // without a self-hosted LibreTranslate instance continue to boot normally.
+  TRANSLATION_PROVIDER: z.enum(["disabled", "libretranslate"]).default("disabled"),
+  LIBRETRANSLATE_URL: z.string().url().default("http://localhost:5000"),
+  LIBRETRANSLATE_API_KEY: optionalEnvString,
+  TRANSLATION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
+  TRANSLATION_MAX_PER_HOUR: z.coerce.number().int().positive().default(30),
   CHAT_MAX_PER_HOUR: z.coerce.number().int().positive().default(40),
   TEAM_CHAT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(20),
   CHAT_CONTEXT_PAPERS: z.coerce.number().int().min(1).max(50).default(12),

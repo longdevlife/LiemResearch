@@ -40,6 +40,20 @@ function toPaperKinds(v: unknown): string[] | undefined {
   return cleaned.length ? cleaned : undefined;
 }
 
+/** Normalize ISO-style language query values; unknown language is represented by `und`. */
+export function toLanguageCodes(v: unknown): string[] | undefined {
+  if (v === undefined) return undefined;
+  const raw = Array.isArray(v) ? v.flatMap((item) => String(item).split(",")) : String(v).split(",");
+  const values = Array.from(
+    new Set(
+      raw
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => /^[a-z]{2,3}(?:-[a-z0-9]+)*$/.test(value)),
+    ),
+  );
+  return values.length > 0 ? values : undefined;
+}
+
 /**
  * Common filter fields. `minScore` is semantic-only, so it lives on the search
  * schema rather than here.
@@ -50,5 +64,6 @@ export const paperFilterShape = {
   paperKind: z.preprocess(toPaperKinds, z.array(z.enum(PAPER_KINDS)).optional()),
   openAccess: z.preprocess(toQueryBool, z.boolean()).default(false),
   provider: z.enum(PAPER_PROVIDERS).optional(),
+  languages: z.preprocess(toLanguageCodes, z.array(z.string()).max(50).optional()),
   sort: z.enum(SEARCH_SORT_KEYS).default("relevance"),
 } as const;

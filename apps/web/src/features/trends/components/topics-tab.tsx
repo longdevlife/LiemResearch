@@ -58,6 +58,7 @@ interface TopicsTabProps {
     openAccessStatuses: string[];
     providers: string[];
     sources: string[];
+    languages: string[];
     citationBands: string[];
   };
 }
@@ -101,6 +102,7 @@ export function TopicsTab({
       addList("openAccessStatuses", scopeParams.openAccessStatuses);
       addList("providers", scopeParams.providers);
       addList("sources", scopeParams.sources);
+      addList("languages", scopeParams.languages);
       addList("citationBands", scopeParams.citationBands);
     }
 

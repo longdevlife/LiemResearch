@@ -9,6 +9,8 @@ export interface ReportScopeFilters {
   openAccessStatuses?: string[];
   providers?: string[];
   sources?: string[];
+  /** Evidence-paper languages. This is separate from the report output language. */
+  languages?: string[];
   citationBands?: string[];
   domains?: string[];
   fields?: string[];

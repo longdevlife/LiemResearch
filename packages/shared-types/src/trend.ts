@@ -29,6 +29,7 @@ export interface TrendFacets {
   openAccessStatuses: TrendFacetBucket[];
   providers: TrendFacetBucket[];
   topSources: TrendFacetBucket[];
+  languages: TrendFacetBucket[];
   citationBands: TrendFacetBucket[];
   domains: TrendFacetBucket[];
   fields: TrendFacetBucket[];

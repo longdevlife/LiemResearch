@@ -20,6 +20,7 @@ import {
   type TrendSortKey,
 } from "./trends.insights";
 import { formatNumber } from "@/utils";
+import { formatLanguageName } from "@/utils/language";
 
 type CitationBand = "0-9" | "10-49" | "50-99" | "100-499" | "500-999" | "1000+";
 const CITATION_BANDS = ["0-9", "10-49", "50-99", "100-499", "500-999", "1000+"] as const;
@@ -98,6 +99,7 @@ export function TrendsPage() {
   const [openAccessStatuses, setOpenAccessStatuses] = useState<string[]>(() => parseArrayParam(searchParams, "openAccessStatuses"));
   const [providers, setProviders] = useState<string[]>(() => parseArrayParam(searchParams, "providers"));
   const [sources, setSources] = useState<string[]>(() => parseArrayParam(searchParams, "sources"));
+  const [languages, setLanguages] = useState<string[]>(() => parseArrayParam(searchParams, "languages"));
   const [citationBands, setCitationBands] = useState<CitationBand[]>(() => parseCitationBandsParam(searchParams, "citationBands"));
 
   const [activeTab, setActiveTab] = useState<TrendTab>(() => parseTabParam(searchParams));
@@ -126,6 +128,7 @@ export function TrendsPage() {
     if (openAccessStatuses.length > 0) nextParams.set("openAccessStatuses", openAccessStatuses.join(","));
     if (providers.length > 0) nextParams.set("providers", providers.join(","));
     if (sources.length > 0) nextParams.set("sources", sources.join(","));
+    if (languages.length > 0) nextParams.set("languages", languages.join(","));
     if (citationBands.length > 0) nextParams.set("citationBands", citationBands.join(","));
 
     if (selectedTopics.length > 0) nextParams.set("compare", selectedTopics.join(","));
@@ -135,7 +138,7 @@ export function TrendsPage() {
     yearFrom, yearTo, sortBy, minPapers, activeTab,
     domains, fields, subfields, topicsFilter,
     domainIds, fieldIds, subfieldIds, topicIds,
-    paperKinds, openAccessStatuses, providers, sources, citationBands,
+    paperKinds, openAccessStatuses, providers, sources, languages, citationBands,
     selectedTopics, setSearchParams
   ]);
 
@@ -157,6 +160,7 @@ export function TrendsPage() {
     openAccessStatuses,
     providers,
     sources,
+    languages,
     citationBands,
   });
 
@@ -286,12 +290,12 @@ export function TrendsPage() {
       domains.length + fields.length + subfields.length + topicsFilter.length +
       domainIds.length + fieldIds.length + subfieldIds.length + topicIds.length +
       paperKinds.length + openAccessStatuses.length + providers.length + sources.length +
-      citationBands.length
+      languages.length + citationBands.length
     );
   }, [
     domains, fields, subfields, topicsFilter,
     domainIds, fieldIds, subfieldIds, topicIds,
-    paperKinds, openAccessStatuses, providers, sources, citationBands
+    paperKinds, openAccessStatuses, providers, sources, languages, citationBands
   ]);
 
   // Hook queries for sub-features
@@ -311,6 +315,7 @@ export function TrendsPage() {
       openAccessStatuses,
       providers,
       sources,
+      languages,
       citationBands,
     },
     selectedTopics.length >= 2
@@ -334,6 +339,7 @@ export function TrendsPage() {
       openAccessStatuses,
       providers,
       sources,
+      languages,
       citationBands,
     },
     !!activeFocusTopic
@@ -408,6 +414,8 @@ export function TrendsPage() {
       toggleFilter(providers, setProviders, val);
     } else if (facet === "Top Sources") {
       toggleFilter(sources, setSources, val);
+    } else if (facet === "Languages") {
+      toggleFilter(languages, setLanguages, val);
     } else if (facet === "Citation Bands") {
       if (isCitationBand(val)) {
         toggleFilter<CitationBand>(citationBands, setCitationBands, val);
@@ -428,6 +436,7 @@ export function TrendsPage() {
     setOpenAccessStatuses([]);
     setProviders([]);
     setSources([]);
+    setLanguages([]);
     setCitationBands([]);
   };
 
@@ -436,12 +445,12 @@ export function TrendsPage() {
       domains.length > 0 || fields.length > 0 || subfields.length > 0 || topicsFilter.length > 0 ||
       domainIds.length > 0 || fieldIds.length > 0 || subfieldIds.length > 0 || topicIds.length > 0 ||
       paperKinds.length > 0 || openAccessStatuses.length > 0 || providers.length > 0 || sources.length > 0 ||
-      citationBands.length > 0
+      languages.length > 0 || citationBands.length > 0
     );
   }, [
     domains, fields, subfields, topicsFilter,
     domainIds, fieldIds, subfieldIds, topicIds,
-    paperKinds, openAccessStatuses, providers, sources, citationBands
+    paperKinds, openAccessStatuses, providers, sources, languages, citationBands
   ]);
 
   const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
@@ -467,6 +476,7 @@ export function TrendsPage() {
     addList("openAccessStatuses", openAccessStatuses);
     addList("providers", providers);
     addList("sources", sources);
+    addList("languages", languages);
     addList("citationBands", citationBands);
 
     return `${path}?${params.toString()}`;
@@ -768,6 +778,13 @@ export function TrendsPage() {
           {sources.map((x) => (
             <FilterChip key={x} label={`Source: ${x}`} onRemove={() => toggleFilter(sources, setSources, x)} />
           ))}
+          {languages.map((x) => (
+            <FilterChip
+              key={x}
+              label={`Language: ${formatLanguageName(x)}`}
+              onRemove={() => toggleFilter(languages, setLanguages, x)}
+            />
+          ))}
           {citationBands.map((x) => (
             <FilterChip key={x} label={`Citations: ${x}`} onRemove={() => toggleFilter<CitationBand>(citationBands, setCitationBands, x)} />
           ))}
@@ -972,6 +989,7 @@ export function TrendsPage() {
                   openAccessStatuses,
                   providers,
                   sources,
+                  languages,
                   citationBands,
                 }}
               />
@@ -1005,6 +1023,7 @@ export function TrendsPage() {
                   openAccessStatuses,
                   providers,
                   sources,
+                  languages,
                   citationBands,
                 }}
               />
@@ -1027,6 +1046,7 @@ export function TrendsPage() {
                 openAccessStatuses={openAccessStatuses}
                 providers={providers}
                 sources={sources}
+                languages={languages}
                 citationBands={citationBands}
                 handleBucketClick={handleBucketClick}
                 setActiveTab={setActiveTab}
@@ -1064,6 +1084,7 @@ export function TrendsPage() {
                   openAccessStatuses,
                   providers,
                   sources,
+                  languages,
                   citationBands,
                 }}
               />
@@ -1091,6 +1112,7 @@ export function TrendsPage() {
                 openAccessStatuses={openAccessStatuses}
                 providers={providers}
                 sources={sources}
+                languages={languages}
                 citationBands={citationBands}
               />
             )}

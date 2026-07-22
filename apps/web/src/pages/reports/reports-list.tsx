@@ -43,6 +43,7 @@ const REPORT_SCOPE_KEYS = [
   "openAccessStatuses",
   "providers",
   "sources",
+  "languages",
   "citationBands",
   "domains",
   "fields",

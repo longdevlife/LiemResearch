@@ -85,17 +85,27 @@ async function fetchRetrievedEvidencePapers(input: CollectReportEvidenceInput): 
   };
 
   if (input.queryVector && input.queryVector.length > 0) {
+    // Most report scope fields are applied after $vectorSearch because the
+    // deployed vector index only guarantees year/status filters. Retrieve a
+    // wider candidate pool so a valid language/taxonomy slice is not discarded
+    // merely because it was absent from the first REPORT_TOP_K global matches.
+    const hasPostVectorScope = hasNonEmptyScope(input.scopeFilters);
     return retrieve({
       queryVector: input.queryVector,
       topK: env.REPORT_TOP_K,
-      poolSize: env.REPORT_TOP_K,
-      numCandidates: 200,
+      poolSize: hasPostVectorScope ? Math.min(500, Math.max(200, env.REPORT_TOP_K * 20)) : env.REPORT_TOP_K,
+      numCandidates: hasPostVectorScope ? 1000 : 200,
       filters,
       projection: "report",
     }).then((papers) => papers.map((p) => ({ ...p, source: "retrieved" as const })));
   }
 
   return fetchTextEvidencePapers(input.queryText, filters);
+}
+
+function hasNonEmptyScope(scopeFilters: CollectReportEvidenceInput["scopeFilters"]): boolean {
+  if (!scopeFilters) return false;
+  return Object.values(scopeFilters).some((value) => Array.isArray(value) && value.length > 0);
 }
 
 async function fetchTextEvidencePapers(
@@ -172,6 +182,7 @@ function buildTextEvidenceMatch(
   }
   if (f.providers && f.providers.length > 0) match.primaryProvider = { $in: normalizeLowercase(f.providers) };
   if (f.sources && f.sources.length > 0) match.journalName = { $in: uniqueStrings(f.sources) };
+  if (f.languages && f.languages.length > 0) match.language = { $in: normalizeLowercase(f.languages) };
 
   const citationClauses = uniqueStrings(f.citationBands).map(citationBandToMatch).filter(Boolean);
   if (citationClauses.length === 1) {
