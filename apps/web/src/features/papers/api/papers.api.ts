@@ -1,4 +1,9 @@
-import type { Paper, PaperTranslation, SearchSortKey } from "@trend/shared-types";
+import type {
+  Paper,
+  PaperTranslation,
+  PaperTranslationCapabilities,
+  SearchSortKey,
+} from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
@@ -43,6 +48,10 @@ export const papersApi = {
   },
   async translate(id: string, targetLanguage: string): Promise<PaperTranslation> {
     const res = await api.post(API_ROUTES.papers.translation(id), { targetLanguage });
+    return res.data.data;
+  },
+  async translationCapabilities(): Promise<PaperTranslationCapabilities> {
+    const res = await api.get(API_ROUTES.papers.translationCapabilities);
     return res.data.data;
   },
   async references(id: string): Promise<{ references: any[]; totalReferenced: number; inCorpus: number }> {

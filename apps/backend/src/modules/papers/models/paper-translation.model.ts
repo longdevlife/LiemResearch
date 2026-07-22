@@ -15,8 +15,8 @@ const paperTranslationSchema = new Schema(
 );
 
 paperTranslationSchema.index(
-  { paper: 1, targetLanguage: 1, sourceTextHash: 1, provider: 1 },
-  { unique: true },
+  { paper: 1, targetLanguage: 1, sourceTextHash: 1, provider: 1, providerVersion: 1 },
+  { unique: true, name: "paper_translation_cache_v1" },
 );
 
 export type PaperTranslationDoc = InferSchemaType<typeof paperTranslationSchema> & {

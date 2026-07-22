@@ -54,6 +54,7 @@ export const paperTranslationService = {
       targetLanguage,
       sourceTextHash,
       provider: "libretranslate",
+      providerVersion: LIBRETRANSLATE_PROVIDER_VERSION,
     }).lean();
     if (cached) {
       return {
@@ -73,32 +74,46 @@ export const paperTranslationService = {
       translateText(abstractText, sourceLanguage, targetLanguage),
     ]);
 
-    const saved = await PaperTranslationModel.findOneAndUpdate(
-      { paper: paper._id, targetLanguage, sourceTextHash, provider: "libretranslate" },
+    const cacheFilter = {
+      paper: paper._id,
+      targetLanguage,
+      sourceTextHash,
+      provider: "libretranslate",
+      providerVersion: LIBRETRANSLATE_PROVIDER_VERSION,
+    } as const;
+
+    let saved;
+    try {
+      saved = await PaperTranslationModel.findOneAndUpdate(
+        cacheFilter,
       {
         $setOnInsert: {
-          paper: paper._id,
+          ...cacheFilter,
           sourceLanguage,
-          targetLanguage,
-          sourceTextHash,
           translatedTitle,
           translatedAbstract,
-          provider: "libretranslate",
-          providerVersion: LIBRETRANSLATE_PROVIDER_VERSION,
         },
       },
       { upsert: true, new: true },
-    ).lean();
+      ).lean();
+    } catch (error: unknown) {
+      // Two users can request the same uncached translation concurrently. The
+      // unique cache key elects one winner; the loser reads the committed row.
+      if (!(error instanceof mongoose.mongo.MongoServerError) || error.code !== 11000) throw error;
+      saved = await PaperTranslationModel.findOne(cacheFilter).lean();
+    }
+
+    if (!saved) throw AppError.internal("Translated paper could not be cached.");
 
     return {
       paperId,
       sourceLanguage,
       targetLanguage,
-      translatedTitle: saved!.translatedTitle,
-      translatedAbstract: saved!.translatedAbstract,
+      translatedTitle: saved.translatedTitle,
+      translatedAbstract: saved.translatedAbstract,
       provider: "libretranslate",
       cacheHit: false,
-      translatedAt: (saved!.updatedAt as Date).toISOString(),
+      translatedAt: (saved.updatedAt as Date).toISOString(),
     };
   },
 };

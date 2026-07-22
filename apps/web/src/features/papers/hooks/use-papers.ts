@@ -29,3 +29,11 @@ export function useTranslatePaper(id: string | undefined) {
     mutationFn: (targetLanguage: string) => papersApi.translate(id!, targetLanguage),
   });
 }
+
+export function usePaperTranslationCapabilities() {
+  return useQuery({
+    queryKey: ["paperTranslationCapabilities"],
+    queryFn: () => papersApi.translationCapabilities(),
+    staleTime: 5 * 60 * 1000,
+  });
+}

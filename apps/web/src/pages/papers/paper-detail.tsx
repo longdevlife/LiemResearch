@@ -24,7 +24,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
-import { usePaper, usePaperReferences, useTranslatePaper } from "@/features/papers";
+import {
+  usePaper,
+  usePaperReferences,
+  useTranslatePaper,
+  usePaperTranslationCapabilities,
+} from "@/features/papers";
 import { useSearch } from "@/features/search";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { usePaperReportCount } from "@/features/reports/hooks/use-paper-report-count";
@@ -52,6 +57,7 @@ export function PaperDetailPage() {
   const inCorpus = refResponse?.inCorpus;
   const queryClient = useQueryClient();
   const translatePaper = useTranslatePaper(id);
+  const { data: translationCapabilities } = usePaperTranslationCapabilities();
   const [translationLanguage, setTranslationLanguage] = useState("en");
   const [showTranslation, setShowTranslation] = useState(false);
 
@@ -280,6 +286,7 @@ export function PaperDetailPage() {
               {displayTitle}
             </h1>
 
+            {translationCapabilities?.enabled && (
             <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Paper translation controls">
               <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
                 <Languages className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -331,6 +338,7 @@ export function PaperDetailPage() {
                 <span className="text-xs text-slate-500">Sign in to use on-demand translation.</span>
               )}
             </div>
+            )}
 
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">

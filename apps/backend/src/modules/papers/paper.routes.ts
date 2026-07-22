@@ -128,6 +128,9 @@ paperRouter.post("/compare", async (req: Request, res: Response, next: NextFunct
   res.json({ success: true, data });
 });
 
+/** GET /papers/translation/capabilities — lets the UI hide disabled controls. */
+paperRouter.get("/translation/capabilities", paperTranslationController.capabilities);
+
 /** POST /papers/:id/translation — translate title + abstract on demand. */
 paperRouter.post(
   "/:id/translation",

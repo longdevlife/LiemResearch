@@ -161,6 +161,12 @@ export interface PaperTranslation {
   translatedAt: ISODateString;
 }
 
+export interface PaperTranslationCapabilities {
+  enabled: boolean;
+  provider: "disabled" | "libretranslate";
+  targetLanguages: string[];
+}
+
 /** Lightweight paper reference — used for references + report grounding lists. */
 export interface PaperRef {
   id: string;
