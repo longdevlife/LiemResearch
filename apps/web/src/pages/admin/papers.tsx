@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/features/auth";
 import { cn } from "@/utils/cn";
 import { formatNumber } from "@/utils";
+import { formatPaperRequester, type PaperRequesterValue } from "@/features/admin/utils/paper-request";
 
 interface AdminPaper {
   id: string;
@@ -41,7 +42,7 @@ interface AdminPaper {
   downloadCost?: number | null;
   uploadCreditReward?: number;
   pdfPath?: string;
-  requestedBy?: string;
+  requestedBy?: PaperRequesterValue;
   createdAt: string;
 }
 
@@ -350,10 +351,10 @@ export function AdminPapersPage() {
                       {/* Metadata Row */}
                       <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap font-medium">
                         <span>Year: <strong>{paper.publicationYear}</strong></span>
-                        {paper.requestedBy && (
+                        {formatPaperRequester(paper.requestedBy) && (
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3 text-slate-400" />
-                            {paper.requestedBy}
+                            {formatPaperRequester(paper.requestedBy)}
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-[11px] text-slate-400">
