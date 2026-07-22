@@ -51,8 +51,8 @@ const EnvSchema = z.object({
   // GEMINI_MODEL_DEEP in .env (e.g. a Pro model) without touching code.
   // NOTE: embeddings use a SEPARATE model below — Flash-Lite is a text model,
   // not an embedding model — so this change does NOT affect embedding coverage.
-  GEMINI_MODEL_FAST: z.string().default("gemini-3.1-flash-lite"),
-  GEMINI_MODEL_DEEP: z.string().default("gemini-3.1-flash-lite"),
+  GEMINI_MODEL_FAST: z.string().default("gemini-2.5-flash"),
+  GEMINI_MODEL_DEEP: z.string().default("gemini-2.5-flash"),
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
@@ -60,9 +60,8 @@ const EnvSchema = z.object({
   LLM_PROVIDER: z.enum(["gemini", "ollama"]).default("gemini"),
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().default("llama3.1"),
-  // On-demand Paper Detail translation. Disabled by default so deployments
-  // without a self-hosted LibreTranslate instance continue to boot normally.
-  TRANSLATION_PROVIDER: z.enum(["disabled", "libretranslate"]).default("disabled"),
+  // On-demand Paper Detail translation. Defaults to gemini (using GEMINI_API_KEY).
+  TRANSLATION_PROVIDER: z.enum(["disabled", "libretranslate", "gemini"]).default("gemini"),
   LIBRETRANSLATE_URL: z.string().url().default("http://localhost:5000"),
   LIBRETRANSLATE_API_KEY: optionalEnvString,
   TRANSLATION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),

@@ -8,7 +8,7 @@ export const paperTranslationController = {
     res.json({
       success: true,
       data: {
-        enabled: env.TRANSLATION_PROVIDER === "libretranslate",
+        enabled: env.TRANSLATION_PROVIDER === "libretranslate" || env.TRANSLATION_PROVIDER === "gemini",
         provider: env.TRANSLATION_PROVIDER,
         targetLanguages: ["en", "vi"],
       },
