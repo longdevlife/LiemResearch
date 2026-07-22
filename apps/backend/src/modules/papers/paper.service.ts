@@ -23,6 +23,7 @@ import {
 import { UserModel } from "../auth/models/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
+import { buildUserPaperRequestFilter } from "./paper-workflow.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -352,14 +353,7 @@ export const paperService = {
     page,
     pageSize,
   }: AdminListPapersParams): Promise<ListPapersResult> {
-    const filter: Record<string, unknown> = {};
-    if (status) {
-      filter.paperStatus = status;
-    } else {
-      filter.paperStatus = {
-        $in: ["pending", "not-downloaded", "downloaded", "rejected", "pending-requester-acceptance"],
-      };
-    }
+    const filter: Record<string, unknown> = buildUserPaperRequestFilter(status);
     if (search) {
       const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filter.$or = [{ title: rx }, { "externalIds.doi": rx }];

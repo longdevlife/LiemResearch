@@ -10,6 +10,7 @@ import type { AuthClaims } from "../../common/middleware/auth.js";
 import { analyticsService } from "../analytics/analytics.service.js";
 import { SearchLogModel } from "../analytics/models/search-log.model.js";
 import { ApiSyncRunModel } from "../api-sync/models/api-sync-run.model.js";
+import { buildUserPaperRequestFilter } from "../papers/paper-workflow.js";
 import { BookmarkModel } from "../bookmarks/models/bookmark.model.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { paperService } from "../papers/paper.service.js";
@@ -92,7 +93,7 @@ async function getWorkspaceSnapshot(userId: string): Promise<HomeOverview["works
 async function getAdminHealth(): Promise<HomeAdminHealth> {
   const failedSince = new Date(Date.now() - 7 * 24 * 3600 * 1000);
   const [pendingPaperRequests, analyzable, embedded, latestSync, queued, generating, failedRecent] = await Promise.all([
-    PaperModel.countDocuments({ paperStatus: "pending" }),
+    PaperModel.countDocuments(buildUserPaperRequestFilter("pending")),
     PaperModel.countDocuments({ isAiAnalyzable: true }),
     PaperModel.countDocuments({ isAiAnalyzable: true, embedding: { $exists: true } }),
     ApiSyncRunModel.findOne().sort({ startedAt: -1 }).lean(),
