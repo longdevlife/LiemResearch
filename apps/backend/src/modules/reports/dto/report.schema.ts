@@ -17,6 +17,7 @@ const ScopeFiltersSchema = z
     openAccessStatuses: z.preprocess(stringList, z.array(z.string()).optional()),
     providers: z.preprocess(stringList, z.array(z.string()).optional()),
     sources: z.preprocess(stringList, z.array(z.string()).optional()),
+    languages: z.preprocess(stringList, z.array(z.string()).optional()),
     citationBands: z.preprocess(stringList, z.array(z.enum(TREND_CITATION_BANDS)).optional()),
     domains: z.preprocess(stringList, z.array(z.string()).optional()),
     fields: z.preprocess(stringList, z.array(z.string()).optional()),

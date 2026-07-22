@@ -18,6 +18,7 @@ interface DatasetScopeNextActionsProps {
   openAccessStatuses: string[];
   providers: string[];
   sources: string[];
+  languages: string[];
   citationBands: string[];
   scopeTarget: string;
   scopeString: string;
@@ -44,6 +45,7 @@ export function DatasetScopeNextActions({
   openAccessStatuses,
   providers,
   sources,
+  languages,
   citationBands,
   scopeTarget,
   scopeString,
@@ -79,6 +81,7 @@ export function DatasetScopeNextActions({
     addList("openAccessStatuses", openAccessStatuses);
     addList("providers", providers);
     addList("sources", sources);
+    addList("languages", languages);
     addList("citationBands", citationBands);
 
     return `${path}?${params.toString()}`;

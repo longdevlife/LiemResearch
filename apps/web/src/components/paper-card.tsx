@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
 import { toast } from "sonner";
+import { formatLanguageName } from "@/utils/language";
 
 export interface PaperCardProps {
   id: string;
@@ -23,6 +24,7 @@ export interface PaperCardProps {
   publicationYear?: number;
   citationCount?: number;
   primaryProvider?: string;
+  language?: string;
   paperKind?: string;
   openAccessUrl?: string;
   dataQualityScore?: number;
@@ -48,6 +50,7 @@ export function PaperCard({
   publicationYear,
   citationCount,
   primaryProvider,
+  language,
   paperKind,
   openAccessUrl,
   dataQualityScore,
@@ -121,6 +124,14 @@ export function PaperCard({
                 <>
                   <span className="text-slate-300 dark:text-slate-700">·</span>
                   <span className="capitalize">{paperKind}</span>
+                </>
+              )}
+              {language && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                  <span title={`Source language: ${formatLanguageName(language)}`}>
+                    {formatLanguageName(language)}
+                  </span>
                 </>
               )}
               {openAccessUrl && (

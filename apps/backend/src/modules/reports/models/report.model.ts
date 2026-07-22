@@ -62,6 +62,7 @@ const reportSchema = new Schema(
       openAccessStatuses: { type: [String], default: undefined },
       providers: { type: [String], default: undefined },
       sources: { type: [String], default: undefined },
+      languages: { type: [String], default: undefined },
       citationBands: { type: [String], default: undefined },
       domains: { type: [String], default: undefined },
       fields: { type: [String], default: undefined },

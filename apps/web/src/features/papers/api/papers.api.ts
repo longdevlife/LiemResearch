@@ -11,6 +11,7 @@ export interface PapersListParams {
   paperKind?: string[];
   openAccess?: boolean;
   provider?: string;
+  languages?: string[];
   sort?: SearchSortKey;
 }
 
@@ -21,6 +22,9 @@ export const papersApi = {
     const query: Record<string, unknown> = { ...rest };
     if (paperKind && paperKind.length > 0) {
       query.paperKind = paperKind.join(",");
+    }
+    if (params.languages && params.languages.length > 0) {
+      query.languages = params.languages.join(",");
     }
     const res = await api.get(API_ROUTES.papers.list, { params: query });
     return {

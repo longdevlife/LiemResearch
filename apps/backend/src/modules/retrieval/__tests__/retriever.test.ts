@@ -40,6 +40,7 @@ describe("buildRetrievePipeline", () => {
       openAccess: true,
       openAccessStatuses: ["gold"],
       provider: "openalex",
+      languages: ["EN", "vi"],
       topics: ["LLM"],
       domainIds: ["https://openalex.org/domains/1"],
       minScore: 0.71,
@@ -69,6 +70,7 @@ describe("buildRetrievePipeline", () => {
         openAccessUrl: { $type: "string", $ne: "" },
         openAccessStatus: { $in: ["gold"] },
         primaryProvider: "openalex",
+        language: { $in: ["en", "vi"] },
         topics: {
           $elemMatch: {
             topicName: { $in: ["LLM"] },

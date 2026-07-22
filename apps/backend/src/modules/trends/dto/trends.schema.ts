@@ -30,6 +30,7 @@ const trendFacetFiltersSchema = {
   openAccessStatuses: csvListSchema,
   providers: csvListSchema,
   sources: csvListSchema,
+  languages: csvListSchema,
   citationBands: citationBandListSchema,
   domains: csvListSchema,
   fields: csvListSchema,

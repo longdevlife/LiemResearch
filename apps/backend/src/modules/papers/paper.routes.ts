@@ -61,7 +61,7 @@ paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: Nex
       return;
     }
 
-    const { q, page, pageSize, yearFrom, yearTo, paperKind, openAccess, provider, sort } = parsed.data;
+    const { q, page, pageSize, yearFrom, yearTo, paperKind, openAccess, provider, languages, sort } = parsed.data;
     const { papers, total } = await paperService.list({
       q,
       page,
@@ -71,6 +71,7 @@ paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: Nex
       paperKinds: paperKind,
       openAccess,
       provider,
+      languages,
       sort,
     });
     res.json({

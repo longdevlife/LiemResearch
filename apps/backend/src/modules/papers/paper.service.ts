@@ -35,6 +35,7 @@ export interface ListPapersParams {
   paperKinds?: string[];
   openAccess?: boolean;
   provider?: string;
+  languages?: string[];
   sort?: SearchSortKey;
 }
 
@@ -98,6 +99,7 @@ export const paperService = {
     paperKinds,
     openAccess,
     provider,
+    languages,
     sort = "relevance",
   }: ListPapersParams): Promise<ListPapersResult> {
     // Public listing shows only ACTIVE papers — unreviewed user submissions
@@ -107,6 +109,9 @@ export const paperService = {
     if (paperKinds && paperKinds.length) filter.paperKind = { $in: paperKinds };
     if (openAccess) filter.openAccessUrl = { $type: "string", $ne: "" };
     if (provider) filter.primaryProvider = provider;
+    if (languages && languages.length > 0) {
+      filter.language = { $in: languages.map((value) => value.toLowerCase()) };
+    }
     if (yearFrom !== undefined || yearTo !== undefined) {
       filter.publicationYear = {
         ...(yearFrom !== undefined ? { $gte: yearFrom } : {}),

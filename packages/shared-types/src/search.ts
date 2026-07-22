@@ -27,6 +27,8 @@ export interface SearchFilters {
   journalIds?: string[];
   authorIds?: string[];
   topics?: string[];
+  /** ISO 639 language codes from the source provider; `und` means unknown. */
+  languages?: string[];
   minCitationCount?: number;
   // Cách 2 — server-side filters honored by GET /search and GET /papers.
   paperKinds?: PaperKind[];

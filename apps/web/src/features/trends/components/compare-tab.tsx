@@ -49,6 +49,7 @@ interface CompareTabProps {
     openAccessStatuses: string[];
     providers: string[];
     sources: string[];
+    languages: string[];
     citationBands: string[];
   };
 }
@@ -107,6 +108,7 @@ export function CompareTab({
       addList("openAccessStatuses", scopeParams.openAccessStatuses);
       addList("providers", scopeParams.providers);
       addList("sources", scopeParams.sources);
+      addList("languages", scopeParams.languages);
       addList("citationBands", scopeParams.citationBands);
     }
 
@@ -143,6 +145,7 @@ export function CompareTab({
     addFilterNames("OA", scopeParams.openAccessStatuses);
     addFilterNames("Provider", scopeParams.providers);
     addFilterNames("Source", scopeParams.sources);
+    addFilterNames("Language", scopeParams.languages);
     addFilterNames("Citations", scopeParams.citationBands);
 
     if (parts.length === 0) return "Scope: Full active dataset";
@@ -187,6 +190,7 @@ export function CompareTab({
     openAccessStatuses: scopeParams?.openAccessStatuses ?? [],
     providers: scopeParams?.providers ?? [],
     sources: scopeParams?.sources ?? [],
+    languages: scopeParams?.languages ?? [],
     citationBands: scopeParams?.citationBands as TrendTopicCandidatesParams["citationBands"],
   }), [debouncedSearchTerm, scopeParams, yearFrom, yearTo]);
   const topicCandidatesQuery = useTrendTopicCandidates(topicCandidateParams, isRemoteCandidateSearch);

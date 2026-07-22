@@ -20,6 +20,7 @@ export interface RetrieveFilters {
   provider?: DataSource | string;
   providers?: string[];
   sources?: string[];
+  languages?: string[];
   citationBands?: TrendCitationBand[] | string[];
   domains?: string[];
   fields?: string[];
@@ -127,6 +128,7 @@ function buildPostMatch(filters: RetrieveFilters | undefined): Record<string, un
   if (f.provider) m.primaryProvider = f.provider;
   if (f.providers && f.providers.length > 0) m.primaryProvider = { $in: normalizeLowercase(f.providers) };
   if (f.sources && f.sources.length > 0) m.journalName = { $in: uniqueStrings(f.sources) };
+  if (f.languages && f.languages.length > 0) m.language = { $in: normalizeLowercase(f.languages) };
   const citationOr = uniqueStrings(f.citationBands).map(citationBandToMatch).filter(Boolean);
   if (citationOr.length === 1) {
     Object.assign(m, citationOr[0]);

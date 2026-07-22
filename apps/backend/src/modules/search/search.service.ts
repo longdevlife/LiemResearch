@@ -38,6 +38,7 @@ export interface SemanticSearchParams {
   provider?: string;
   providers?: string[];
   sources?: string[];
+  languages?: string[];
   citationBands?: TrendCitationBand[] | string[];
   domains?: string[];
   fields?: string[];
@@ -281,6 +282,7 @@ async function fetchScoredPool(
       provider: params.provider,
       providers: params.providers,
       sources: params.sources,
+      languages: params.languages,
       citationBands: params.citationBands,
       domains: params.domains,
       fields: params.fields,
@@ -311,6 +313,7 @@ function hasPostVectorScopeFilters(params: SemanticSearchParams): boolean {
     params.openAccessStatuses,
     params.providers,
     params.sources,
+    params.languages,
     params.citationBands,
     params.domains,
     params.fields,
@@ -335,6 +338,7 @@ function getSearchFilterKeyParts(params: SemanticSearchParams): Record<string, u
     provider: params.provider ?? null,
     providers: params.providers ?? [],
     sources: params.sources ?? [],
+    languages: params.languages ?? [],
     citationBands: params.citationBands ?? [],
     domains: params.domains ?? [],
     fields: params.fields ?? [],

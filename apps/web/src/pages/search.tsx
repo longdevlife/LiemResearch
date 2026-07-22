@@ -11,6 +11,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useBookmarks } from "@/features/bookmarks";
 import { PaperCard } from "@/components/paper-card";
 import { useAuthStore } from "@/stores/auth-store";
+import { formatLanguageName } from "@/utils/language";
 
 const PAGE_SIZE = 10;
 
@@ -19,6 +20,7 @@ const SCOPE_FILTER_KEYS = [
   "openAccessStatuses",
   "providers",
   "sources",
+  "languages",
   "citationBands",
   "domains",
   "fields",
@@ -35,6 +37,7 @@ const RELAXABLE_SCOPE_FILTER_KEYS = [
   "openAccessStatuses",
   "providers",
   "sources",
+  "languages",
   "citationBands",
 ] as const;
 
@@ -43,6 +46,7 @@ const SCOPE_FILTER_LABELS: Record<(typeof SCOPE_FILTER_KEYS)[number], string> = 
   openAccessStatuses: "OA",
   providers: "Provider",
   sources: "Source",
+  languages: "Language",
   citationBands: "Citations",
   domains: "Domain",
   fields: "Field",
@@ -96,19 +100,20 @@ export function SearchPage() {
   );
 
   const scopeFilters = useMemo(() => ({
-    paperKinds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[0]),
-    openAccessStatuses: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[1]),
-    providers: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[2]),
-    sources: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[3]),
-    citationBands: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[4]),
-    domains: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[5]),
-    fields: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[6]),
-    subfields: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[7]),
-    topics: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[8]),
-    domainIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[9]),
-    fieldIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[10]),
-    subfieldIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[11]),
-    topicIds: parseCsvParam(searchParams, SCOPE_FILTER_KEYS[12]),
+    paperKinds: parseCsvParam(searchParams, "paperKinds"),
+    openAccessStatuses: parseCsvParam(searchParams, "openAccessStatuses"),
+    providers: parseCsvParam(searchParams, "providers"),
+    sources: parseCsvParam(searchParams, "sources"),
+    languages: parseCsvParam(searchParams, "languages"),
+    citationBands: parseCsvParam(searchParams, "citationBands"),
+    domains: parseCsvParam(searchParams, "domains"),
+    fields: parseCsvParam(searchParams, "fields"),
+    subfields: parseCsvParam(searchParams, "subfields"),
+    topics: parseCsvParam(searchParams, "topics"),
+    domainIds: parseCsvParam(searchParams, "domainIds"),
+    fieldIds: parseCsvParam(searchParams, "fieldIds"),
+    subfieldIds: parseCsvParam(searchParams, "subfieldIds"),
+    topicIds: parseCsvParam(searchParams, "topicIds"),
   }), [searchParams]);
 
   const activeScopeFilterCount = useMemo(
@@ -134,6 +139,15 @@ export function SearchPage() {
       } else {
         prev.delete(key);
       }
+      prev.set("page", "1");
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  const setLanguageFilter = useCallback((language: string) => {
+    setSearchParams(prev => {
+      if (language === "all") prev.delete("languages");
+      else prev.set("languages", language);
       prev.set("page", "1");
       return prev;
     });
@@ -287,7 +301,9 @@ export function SearchPage() {
   const activeScopeChips = useMemo(() => {
     return Object.entries(scopeFilters).flatMap(([key, values]) =>
       values.map((value) => {
-        const resolvedName = resolvedNamesMap.get(value) || value;
+        const resolvedName = key === "languages"
+          ? formatLanguageName(value)
+          : resolvedNamesMap.get(value) || value;
         return {
           key: key as (typeof SCOPE_FILTER_KEYS)[number],
           value,
@@ -488,6 +504,30 @@ export function SearchPage() {
                       <div className={`w-9 h-5 rounded-full relative transition-colors ${openAccessOnly ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"}`}>
                         <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${openAccessOnly ? "translate-x-4" : "translate-x-0"}`}></div>
                       </div>
+                    </div>
+
+                    <div className="mb-4 border-t border-slate-100 pt-2.5 dark:border-slate-800/60">
+                      <label className="mb-1.5 block text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        Paper language
+                      </label>
+                      <select
+                        value={scopeFilters.languages[0] ?? "all"}
+                        onChange={(event) => setLanguageFilter(event.target.value)}
+                        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-[#1e1e1e] dark:text-slate-200"
+                      >
+                        <option value="all">All languages</option>
+                        <option value="en">English</option>
+                        <option value="vi">Vietnamese</option>
+                        <option value="zh">Chinese</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="de">German</option>
+                        <option value="ru">Russian</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="und">Unknown language</option>
+                      </select>
                     </div>
 
                     {/* 1.3 AI Score Threshold (Only show in Semantic mode) */}
@@ -918,6 +958,36 @@ export function SearchPage() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <label className="mb-3 block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            PAPER LANGUAGE
+          </label>
+          <div className="relative">
+            <select
+              value={scopeFilters.languages[0] ?? "all"}
+              onChange={(event) => setLanguageFilter(event.target.value)}
+              className="h-10 w-full cursor-pointer appearance-none rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-[#1e1e1e] dark:text-white"
+            >
+              <option value="all">All languages</option>
+              <option value="en">English</option>
+              <option value="vi">Vietnamese</option>
+              <option value="zh">Chinese</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="pt">Portuguese</option>
+              <option value="de">German</option>
+              <option value="ru">Russian</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="und">Unknown language</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+            Filters source metadata only. Paper titles and abstracts remain in their original language.
+          </p>
+        </div>
+
         {/* AI Score Threshold */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
@@ -1094,6 +1164,7 @@ export function SearchPage() {
                 publicationYear={paper.publicationYear}
                 citationCount={paper.citationCount}
                 primaryProvider={paper.primaryProvider}
+                language={paper.language}
                 paperKind={paper.paperKind}
                 openAccessUrl={paper.openAccessUrl}
                 dataQualityScore={paper.dataQualityScore}
