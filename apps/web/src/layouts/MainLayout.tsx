@@ -62,7 +62,7 @@ export function MainLayout() {
                 <Award className="h-5 w-5 text-white stroke-[2.5]" />
               </div>
               <span className="text-slate-900 dark:text-white">
-                PubTrend
+                LiemResearch
               </span>
             </Link>
             
