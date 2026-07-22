@@ -455,7 +455,7 @@ export function SearchPage() {
                           </div>
                           <input
                             type="range"
-                            min="2020"
+                            min="1900"
                             max="2026"
                             value={yearFrom}
                             onChange={(e) => {
@@ -476,7 +476,7 @@ export function SearchPage() {
                           </div>
                           <input
                             type="range"
-                            min="2020"
+                            min="1900"
                             max="2026"
                             value={yearTo}
                             onChange={(e) => {
@@ -858,7 +858,7 @@ export function SearchPage() {
               </div>
               <input
                 type="range"
-                min="2020"
+                min="1900"
                 max="2026"
                 value={yearFrom}
                 onChange={(e) => {
@@ -879,7 +879,7 @@ export function SearchPage() {
               </div>
               <input
                 type="range"
-                min="2020"
+                min="1900"
                 max="2026"
                 value={yearTo}
                 onChange={(e) => {

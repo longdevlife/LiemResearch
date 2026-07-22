@@ -286,8 +286,10 @@ export function PaperDetailPage() {
               {displayTitle}
             </h1>
 
-            {translationCapabilities?.enabled && (
-            <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Paper translation controls">
+            <div
+              className="mb-5 flex flex-wrap items-center gap-2"
+              aria-label="Paper translation controls"
+            >
               <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
                 <Languages className="h-4 w-4 text-slate-500" aria-hidden="true" />
                 <label htmlFor="paper-translation-language" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -306,13 +308,19 @@ export function PaperDetailPage() {
                   <option value="vi">Vietnamese</option>
                 </select>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTranslate}
-                disabled={!currentUser || translatePaper.isPending}
-                title={!currentUser ? "Sign in to translate this paper" : undefined}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTranslate}
+                  disabled={!currentUser || !translationCapabilities?.enabled || translatePaper.isPending}
+                  title={
+                    !currentUser
+                      ? "Sign in to translate this paper"
+                      : !translationCapabilities?.enabled
+                        ? "Translation is not enabled on this deployment"
+                        : undefined
+                  }
               >
                 {translatePaper.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {translatePaper.isPending ? "Translating..." : "Translate"}
@@ -337,8 +345,12 @@ export function PaperDetailPage() {
               {!currentUser && (
                 <span className="text-xs text-slate-500">Sign in to use on-demand translation.</span>
               )}
+              {currentUser && translationCapabilities?.enabled !== true && (
+                <span className="text-xs text-amber-700 dark:text-amber-400">
+                  Translation is unavailable on this deployment.
+                </span>
+              )}
             </div>
-            )}
 
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">
