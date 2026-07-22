@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Ban, DatabaseZap, Loader2, Pause, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,10 +13,12 @@ import {
   useOpenAlexCampaigns,
   useOpenAlexIngestPreflight,
 } from "../hooks/use-admin-sync";
+import { CorpusValidationPanel } from "./corpus-validation-panel";
 
 interface OpenAlexCampaignMonitorProps {
   enabled: boolean;
-  workerStatus: "alive" | "stale" | "missing";
+  ingestWorkerStatus: "alive" | "stale" | "missing";
+  corpusValidationWorkerStatus: "alive" | "stale" | "missing";
 }
 
 const TERMINAL_STATES = new Set<OpenAlexCampaignState>([
@@ -26,10 +28,15 @@ const TERMINAL_STATES = new Set<OpenAlexCampaignState>([
   "cancelled",
 ]);
 
-export function OpenAlexCampaignMonitor({ enabled, workerStatus }: OpenAlexCampaignMonitorProps) {
+export function OpenAlexCampaignMonitor({
+  enabled,
+  ingestWorkerStatus,
+  corpusValidationWorkerStatus,
+}: OpenAlexCampaignMonitorProps) {
   const campaignsQuery = useOpenAlexCampaigns(enabled);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const pauseButtonRef = useRef<HTMLButtonElement>(null);
   const campaigns = campaignsQuery.data ?? [];
 
   useEffect(() => {
@@ -96,11 +103,11 @@ export function OpenAlexCampaignMonitor({ enabled, workerStatus }: OpenAlexCampa
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn(
             "rounded-full",
-            workerStatus === "alive" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-            workerStatus === "stale" && "border-amber-200 bg-amber-50 text-amber-700",
-            workerStatus === "missing" && "border-red-200 bg-red-50 text-red-700",
+            ingestWorkerStatus === "alive" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+            ingestWorkerStatus === "stale" && "border-amber-200 bg-amber-50 text-amber-700",
+            ingestWorkerStatus === "missing" && "border-red-200 bg-red-50 text-red-700",
           )}>
-            Worker {workerStatus}
+            Ingest worker {ingestWorkerStatus}
           </Badge>
           <Button variant="outline" size="sm" onClick={() => void Promise.all([campaignsQuery.refetch(), detailQuery.refetch()])}>
             <RefreshCw className={cn("mr-2 h-3.5 w-3.5", (campaignsQuery.isFetching || detailQuery.isFetching) && "animate-spin")} />
@@ -140,13 +147,19 @@ export function OpenAlexCampaignMonitor({ enabled, workerStatus }: OpenAlexCampa
             <div className="flex flex-wrap items-center gap-2">
               <CampaignStateBadge state={campaign.state} />
               {(campaign.state === "planned" || campaign.state === "paused") && (
-                <Button size="sm" disabled={pendingAction || workerStatus !== "alive" || detailUnavailable} onClick={() => void runAction("start")}>
+                <Button size="sm" disabled={pendingAction || ingestWorkerStatus !== "alive" || detailUnavailable} onClick={() => void runAction("start")}>
                   {preflight.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-2 h-3.5 w-3.5" />}
                   {preflight.isPending ? "Checking" : "Start"}
                 </Button>
               )}
               {campaign.state === "running" && (
-                <Button variant="outline" size="sm" disabled={pendingAction || detailUnavailable} onClick={() => void runAction("pause")}>
+                <Button
+                  ref={pauseButtonRef}
+                  variant="outline"
+                  size="sm"
+                  disabled={pendingAction || detailUnavailable}
+                  onClick={() => void runAction("pause")}
+                >
                   <Pause className="mr-2 h-3.5 w-3.5" /> Pause
                 </Button>
               )}
@@ -180,7 +193,7 @@ export function OpenAlexCampaignMonitor({ enabled, workerStatus }: OpenAlexCampa
             </div>
           )}
 
-          {campaign.state === "running" && workerStatus !== "alive" && (
+          {campaign.state === "running" && ingestWorkerStatus !== "alive" && (
             <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               The campaign is running but no healthy ingest worker is visible. Start the worker before expecting progress.
@@ -216,6 +229,15 @@ export function OpenAlexCampaignMonitor({ enabled, workerStatus }: OpenAlexCampa
               <StateSummary title="Attempt states" rows={detailQuery.data.attempts} />
             </div>
           )}
+          <CorpusValidationPanel
+            campaignId={campaign._id}
+            campaignKey={campaign.campaignKey}
+            workerStatus={corpusValidationWorkerStatus}
+            onReviewPause={() => {
+              pauseButtonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              pauseButtonRef.current?.focus({ preventScroll: true });
+            }}
+          />
           {(campaign.failureReason || campaign.completionNote) && (
             <p className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
               {campaign.failureReason ?? campaign.completionNote}

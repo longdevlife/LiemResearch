@@ -1,3 +1,4 @@
+import type { CorpusValidationRun, CorpusValidationRunState } from "@trend/shared-types";
 import { api } from "@/services/api-client";
 import { API_ROUTES } from "@/constants";
 
@@ -131,5 +132,22 @@ export const adminApi = {
   async cancelOpenAlexCampaign(id: string) {
     const res = await api.post(API_ROUTES.admin.cancelOpenAlexIngestCampaign(id));
     return res.data.data as { campaignId: string; state: OpenAlexCampaignState };
+  },
+  async triggerCorpusValidation(campaignId: string, force?: boolean) {
+    const res = await api.post(API_ROUTES.admin.triggerCorpusValidation(campaignId), { force: Boolean(force) });
+    return res.data.data as {
+      validationRunId: string;
+      state: CorpusValidationRunState;
+      reused: boolean;
+      validatorVersion: string;
+    };
+  },
+  async getLatestCorpusValidation(campaignId: string) {
+    const res = await api.get(API_ROUTES.admin.latestCorpusValidation(campaignId));
+    return (res.data.data ?? null) as CorpusValidationRun | null;
+  },
+  async getCorpusValidation(validationRunId: string) {
+    const res = await api.get(API_ROUTES.admin.corpusValidationRun(validationRunId));
+    return res.data.data as CorpusValidationRun;
   },
 };

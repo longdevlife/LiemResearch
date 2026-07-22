@@ -65,6 +65,9 @@ export const API_ROUTES = {
     startOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/start`,
     pauseOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/pause`,
     cancelOpenAlexIngestCampaign: (id: string) => `/admin/openalex-ingest/campaigns/${id}/cancel`,
+    triggerCorpusValidation: (campaignId: string) => `/admin/openalex-ingest/campaigns/${campaignId}/validations`,
+    latestCorpusValidation: (campaignId: string) => `/admin/openalex-ingest/campaigns/${campaignId}/validations/latest`,
+    corpusValidationRun: (validationRunId: string) => `/admin/openalex-ingest/validations/${validationRunId}`,
     evaluationSummary: "/admin/evaluation/summary",
   },
   gaps: {
