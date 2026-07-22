@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { papersApi, type PapersListParams } from "../api/papers.api";
 
 export function usePapers(params: PapersListParams) {
@@ -21,5 +21,11 @@ export function usePaperReferences(id: string | undefined) {
     queryKey: ["paperReferences", id],
     queryFn: () => papersApi.references(id!),
     enabled: !!id,
+  });
+}
+
+export function useTranslatePaper(id: string | undefined) {
+  return useMutation({
+    mutationFn: (targetLanguage: string) => papersApi.translate(id!, targetLanguage),
   });
 }

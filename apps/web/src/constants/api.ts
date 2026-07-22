@@ -17,6 +17,7 @@ export const API_ROUTES = {
   papers: {
     list: "/papers",
     detail: (id: string) => `/papers/${id}`,
+    translation: (id: string) => `/papers/${id}/translation`,
     compare: "/papers/compare",
   },
   search: {

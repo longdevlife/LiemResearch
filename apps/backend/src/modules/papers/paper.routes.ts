@@ -10,12 +10,29 @@ import { PaperListQuerySchema } from "./dto/paper.schema.js";
 import { CompareBodySchema } from "./dto/compare.schema.js";
 import { embeddingQueue } from "../../infrastructure/queue.js";
 import { env } from "../../config/env.js";
+import rateLimit from "express-rate-limit";
+import { validate } from "../../common/middleware/validate.js";
+import { TranslatePaperBodySchema } from "./dto/translate-paper.schema.js";
+import { paperTranslationController } from "./paper-translation.controller.js";
 
 import { runEmbedding } from "../embeddings/embedding.service.js";
 import { logger } from "../../infrastructure/logger.js";
 import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
 
 export const paperRouter: Router = Router();
+
+const translationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: env.TRANSLATION_MAX_PER_HOUR,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? req.ip ?? "anonymous",
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: { code: "TOO_MANY_REQUESTS", message: "Translation limit exceeded. Try again later." },
+    }),
+});
 
 const triggerEmbedding = () => {
   // 1. Add to BullMQ queue for robustness / production worker
@@ -110,6 +127,15 @@ paperRouter.post("/compare", async (req: Request, res: Response, next: NextFunct
   const data = await comparePapers(parsed.data.paperIds);
   res.json({ success: true, data });
 });
+
+/** POST /papers/:id/translation — translate title + abstract on demand. */
+paperRouter.post(
+  "/:id/translation",
+  requireAuth,
+  translationLimiter,
+  validate(TranslatePaperBodySchema),
+  paperTranslationController.translate,
+);
 
 /** GET /papers/:id/references — references resolved to in-corpus papers. */
 paperRouter.get("/:id/references", async (req, res) => {

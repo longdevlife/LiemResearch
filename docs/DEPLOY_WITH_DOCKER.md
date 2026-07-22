@@ -66,6 +66,10 @@ docker compose --env-file .env.compose --profile ingest up --build
 
 # Optional Mongo Express, bound only to localhost:8081.
 docker compose --env-file .env.compose --profile tools up
+
+# Optional free Paper Detail translation (title + abstract only).
+# Set TRANSLATION_PROVIDER=libretranslate in .env.compose first.
+docker compose --env-file .env.compose --profile translation up --build
 ```
 
 The OpenAlex campaign worker does not begin a campaign on startup. An admin
@@ -90,3 +94,14 @@ mechanism). OpenAlex now requires an API key for new API access. Add the free
 key as `OPENALEX_API_KEY` before starting the million-scale ingest worker.
 The legacy corpus remains valid; the key is required for future provider calls,
 not to read existing papers from MongoDB.
+
+## 6. Paper Detail translation
+
+Translation is opt-in and does not translate the website, PDFs, taxonomy, DOI,
+or author names. The backend sends only a paper's title and abstract to the
+self-hosted LibreTranslate container when an authenticated user clicks
+Translate. Results are cached in `paper_translations` using the paper id,
+target language, provider, and a hash of the original text. Repeated requests
+for unchanged content therefore do not invoke the translation engine again.
+The first LibreTranslate startup can take longer because its language models
+must be initialized. Keep the service private; only the backend needs access.
