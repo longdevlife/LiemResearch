@@ -18,7 +18,9 @@ import {
   ExternalLink,
   Globe,
   ArrowUpRight,
-  Cpu
+  Cpu,
+  Filter,
+  ChevronDown
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -84,16 +86,29 @@ export function ReportsListPage() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
-  const [topic, setTopic] = useState("");
-  const [query, setQuery] = useState("");
-  const [language, setLanguage] = useState<ReportLanguage>("auto");
-  const [yearFrom, setYearFrom] = useState<string>("");
-  const [yearTo, setYearTo] = useState<string>("");
+  const [topic, setTopic] = useState(() => sessionStorage.getItem('report_draft_topic') || "");
+  const [query, setQuery] = useState(() => sessionStorage.getItem('report_draft_query') || "");
+  const [language, setLanguage] = useState<ReportLanguage>(() => (sessionStorage.getItem('report_draft_language') as ReportLanguage) || "auto");
+  const [yearFrom, setYearFrom] = useState<string>(() => sessionStorage.getItem('report_draft_yearFrom') || "");
+  const [yearTo, setYearTo] = useState<string>(() => sessionStorage.getItem('report_draft_yearTo') || "");
   const [reportScopeFilters, setReportScopeFilters] = useState<ReportScopeFilters>(() =>
     parseReportScopeFilters(searchParams),
   );
-  const [deepAnalysis, setDeepAnalysis] = useState(false);
-  const [fast, setFast] = useState(true);
+  const [deepAnalysis, setDeepAnalysis] = useState(() => sessionStorage.getItem('report_draft_deepAnalysis') === 'true');
+  const [fast, setFast] = useState(() => {
+    const val = sessionStorage.getItem('report_draft_fast');
+    return val !== null ? val === 'true' : true;
+  });
+
+  React.useEffect(() => {
+    sessionStorage.setItem('report_draft_topic', topic);
+    sessionStorage.setItem('report_draft_query', query);
+    sessionStorage.setItem('report_draft_language', language);
+    sessionStorage.setItem('report_draft_yearFrom', yearFrom);
+    sessionStorage.setItem('report_draft_yearTo', yearTo);
+    sessionStorage.setItem('report_draft_deepAnalysis', String(deepAnalysis));
+    sessionStorage.setItem('report_draft_fast', String(fast));
+  }, [topic, query, language, yearFrom, yearTo, deepAnalysis, fast]);
 
   // New States for Evidence Review Step
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
@@ -107,6 +122,9 @@ export function ReportsListPage() {
   const [paperSearchResults, setPaperSearchResults] = useState<ScoredPaper[]>([]);
   const [paperSearchLoading, setPaperSearchLoading] = useState(false);
   const [paperSearchError, setPaperSearchError] = useState<string | null>(null);
+
+  // New State for Inline Evidence Filter
+  const [evidenceFilterOpen, setEvidenceFilterOpen] = useState(false);
 
   // Search & Sort states for reports list
   const [reportSearch, setReportSearch] = useState("");
@@ -601,7 +619,7 @@ export function ReportsListPage() {
                     type="number"
                     value={yearFrom}
                     onChange={(e) => setYearFrom(e.target.value)}
-                    placeholder="From: 2020"
+                    placeholder="From: 1900"
                     className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                   <input
@@ -1299,7 +1317,7 @@ export function ReportsListPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2 relative">
             <input
               value={paperSearchQuery}
               onChange={(e) => setPaperSearchQuery(e.target.value)}
@@ -1309,6 +1327,145 @@ export function ReportsListPage() {
               placeholder="Search title, keyword, topic, DOI..."
               className="flex-1 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            
+            <div className="relative">
+              <Button
+                onClick={() => setEvidenceFilterOpen(!evidenceFilterOpen)}
+                variant="outline"
+                className={cn(
+                  "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 text-xs font-bold px-4 h-11 rounded-xl shadow-sm transition-colors",
+                  evidenceFilterOpen && "bg-slate-100 dark:bg-slate-800"
+                )}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                <ChevronDown className="h-3 w-3 ml-2 text-slate-400" />
+              </Button>
+              
+              {evidenceFilterOpen && (
+                <div className="absolute right-0 top-13 w-[300px] bg-white dark:bg-[#1e1e1e] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Refine Evidence</h4>
+                    <button
+                      onClick={() => {
+                        setYearFrom("");
+                        setYearTo("");
+                        setLanguage("auto");
+                      }}
+                      className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline uppercase"
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Publication Year Range */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                        Publication Year
+                      </label>
+                      <div className="space-y-3 pt-1 select-none">
+                        <div>
+                          <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                            <span>From Year</span>
+                            <span className="font-extrabold text-blue-700 dark:text-blue-400">{yearFrom || 1900}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1900"
+                            max="2026"
+                            value={yearFrom || "1900"}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setYearFrom(val);
+                              if (yearTo && parseInt(val) > parseInt(yearTo)) setYearTo(val);
+                            }}
+                            className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                            <span>To Year</span>
+                            <span className="font-extrabold text-blue-700 dark:text-blue-400">{yearTo || 2026}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1900"
+                            max="2026"
+                            value={yearTo || "2026"}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setYearTo(val);
+                              if (yearFrom && parseInt(val) < parseInt(yearFrom)) setYearFrom(val);
+                            }}
+                            className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-700 active:scale-98 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Paper Language */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                        Paper Language
+                      </label>
+                      <div className="flex rounded-lg bg-slate-100 dark:bg-slate-900 p-1 border border-slate-200/50 dark:border-slate-800 w-full">
+                        <button
+                          onClick={() => setLanguage("auto")}
+                          className={cn(
+                            "flex-1 h-7 rounded text-[10px] font-bold transition-all",
+                            language === "auto" ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          )}
+                        >
+                          Auto
+                        </button>
+                        <button
+                          onClick={() => setLanguage("en")}
+                          className={cn(
+                            "flex-1 h-7 rounded text-[10px] font-bold transition-all",
+                            language === "en" ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          )}
+                        >
+                          EN
+                        </button>
+                        <button
+                          onClick={() => setLanguage("vi")}
+                          className={cn(
+                            "flex-1 h-7 rounded text-[10px] font-bold transition-all",
+                            language === "vi" ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          )}
+                        >
+                          VI
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEvidenceFilterOpen(false)}
+                      className="text-xs font-bold h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setEvidenceFilterOpen(false);
+                        handleSearchPapers();
+                      }}
+                      disabled={paperSearchLoading}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-8 px-4"
+                    >
+                      Apply Filters
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Button
               onClick={handleSearchPapers}
               disabled={paperSearchLoading || paperSearchQuery.trim().length < 2}
@@ -1356,7 +1513,9 @@ export function ReportsListPage() {
                           <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
                             Score {paper.score.toFixed(3)}
                           </Badge>
-                          <span className="text-xs text-slate-500">{paper.publicationYear}</span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800/50 text-[11px] font-extrabold text-amber-700 dark:text-amber-400 shadow-sm">
+                            {paper.publicationYear}
+                          </span>
                           <span className="text-xs text-slate-500">{paper.citationCount ?? 0} citations</span>
                         </div>
                         <div className="flex items-start gap-2">

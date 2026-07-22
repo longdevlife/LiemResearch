@@ -24,6 +24,8 @@ interface OverviewTabProps {
   setActiveTab: (tab: "overview" | "topics" | "dataset" | "compare" | "ai") => void;
   getTopicTrendTarget: (topic: string) => string;
   getRisingKeywordTarget: (keyword: string) => string;
+  setYearFrom?: (year: number) => void;
+  setYearTo?: (year: number) => void;
   scopeParams?: {
     yearFrom: number;
     yearTo: number;
@@ -60,6 +62,8 @@ export function OverviewTab({
   setActiveTab,
   getTopicTrendTarget,
   getRisingKeywordTarget,
+  setYearFrom,
+  setYearTo,
   scopeParams,
 }: OverviewTabProps) {
   const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
@@ -352,6 +356,27 @@ export function OverviewTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0 select-none">
+            {/* Year Range Inputs */}
+            {scopeParams && setYearFrom && setYearTo && (
+              <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-full border border-slate-200/50 dark:border-slate-800/50">
+                <input
+                  type="number"
+                  value={scopeParams.yearFrom}
+                  onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 1900)}
+                  placeholder="From"
+                  className="w-14 h-7 bg-white dark:bg-slate-800 rounded-full text-center text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 border-none shadow-sm"
+                />
+                <span className="text-slate-400 text-xs font-bold">-</span>
+                <input
+                  type="number"
+                  value={scopeParams.yearTo}
+                  onChange={(e) => setYearTo(parseInt(e.target.value, 10) || 2026)}
+                  placeholder="To"
+                  className="w-14 h-7 bg-white dark:bg-slate-800 rounded-full text-center text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 border-none shadow-sm"
+                />
+              </div>
+            )}
+
             {/* Metric Mode Toggle */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-full border border-slate-200/50 dark:border-slate-800/50">
               <Button
