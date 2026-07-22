@@ -74,7 +74,7 @@ export function TrendsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Controlled states synchronized with URL search params (with safety bounds)
-  const [yearFrom, setYearFrom] = useState<number>(() => parseNumberParam(searchParams, "yearFrom", 2020, { min: 1900 }));
+  const [yearFrom, setYearFrom] = useState<number>(() => parseNumberParam(searchParams, "yearFrom", 1900, { min: 1900 }));
   const [yearTo, setYearTo] = useState<number>(() => parseNumberParam(searchParams, "yearTo", 2026, { min: 1900 }));
   const [sortBy, setSortBy] = useState<TrendSortKey>(() => {
     const s = searchParams.get("sortBy");
@@ -108,7 +108,7 @@ export function TrendsPage() {
   // Synchronize state changes back to searchParams
   useEffect(() => {
     const nextParams = new URLSearchParams();
-    if (yearFrom !== 2020) nextParams.set("yearFrom", String(yearFrom));
+    if (yearFrom !== 1900) nextParams.set("yearFrom", String(yearFrom));
     if (yearTo !== 2026) nextParams.set("yearTo", String(yearTo));
     if (sortBy !== "momentum") nextParams.set("sortBy", sortBy);
     if (minPapers !== 2) nextParams.set("minPapers", String(minPapers));
@@ -569,7 +569,7 @@ export function TrendsPage() {
             <input
               type="number"
               value={yearFrom}
-              onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 2020)}
+              onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 1900)}
               placeholder="From"
               className="w-full md:w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
             />
@@ -974,6 +974,8 @@ export function TrendsPage() {
                 setActiveTab={setActiveTab}
                 getTopicTrendTarget={getTopicTrendTarget}
                 getRisingKeywordTarget={getRisingKeywordTarget}
+                setYearFrom={setYearFrom}
+                setYearTo={setYearTo}
                 scopeParams={{
                   yearFrom,
                   yearTo,
