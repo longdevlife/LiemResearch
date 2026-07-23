@@ -138,9 +138,6 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
       newErrors.keywords = "Please enter at least one keyword.";
     }
 
-    if (!pdfFile && !existingPdfPath) {
-      newErrors.pdf = "Please upload the PDF file.";
-    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -450,10 +447,10 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
             </div>
           </div>
 
-          {/* PDF Upload — Required */}
+          {/* PDF Upload — Optional */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-              PDF Document <span className="text-red-500">*</span> <span className="text-slate-400 font-normal text-xs">(Required)</span>
+              PDF Document <span className="text-slate-400 font-normal text-xs">(optional)</span>
             </label>
             {pdfFile ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400">
