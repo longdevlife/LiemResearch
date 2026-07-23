@@ -20,6 +20,7 @@ export function useTriggerSync() {
       // Đợi worker chạy nền 2 giây rồi mới làm mới query để lấy kết quả mới nhất
       setTimeout(() => {
         qc.invalidateQueries({ queryKey: ["admin", "sync-runs"] });
+        qc.invalidateQueries({ queryKey: ["admin", "stats"] });
       }, 2000);
     },
   });
@@ -40,6 +41,7 @@ export function useTriggerEmbedding() {
     mutationFn: adminApi.triggerEmbedding,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "embed-status"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
   });
 }

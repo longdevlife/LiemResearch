@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
+import { useAdminStats } from "@/features/admin";
 import { useSyncRuns, useTriggerSync, useEmbedStatus, useTriggerEmbedding } from "@/features/admin/hooks/use-admin-sync";
 import type { ApiSyncRun } from "@/features/admin/api/admin.api";
 import { useState } from "react";
@@ -51,6 +52,7 @@ export function AdminSyncPage() {
   const { data: currentUserData } = useCurrentUser();
   const isAdmin = currentUserData?.user?.role === "admin";
 
+  const { data: adminStats, isLoading: isAdminStatsLoading, refetch: refetchAdminStats } = useAdminStats(isAdmin, 10000);
   const { data: runs, isLoading, isError, refetch } = useSyncRuns(isAdmin);
   const triggerSyncMutation = useTriggerSync();
   const { data: embedStatus, isLoading: isEmbedStatusLoading, refetch: refetchEmbedStatus } = useEmbedStatus(isAdmin);
@@ -119,9 +121,11 @@ export function AdminSyncPage() {
   };
 
   // Calculate live statistics from the actual sync runs.
-  const totalRuns = runs?.length ?? 0;
-  const totalInserted = runs?.reduce((acc, r) => acc + (r.totalInserted || 0), 0) ?? 0;
-  const isPipelineRunning = runs?.some(isFreshRunningSyncRun) ?? false;
+  const syncStats = adminStats?.sync;
+  const totalRuns = syncStats?.totalRuns ?? runs?.length ?? 0;
+  const totalFetched = syncStats?.totalFetched ?? runs?.reduce((acc, r) => acc + (r.totalFetched || 0), 0) ?? 0;
+  const isPipelineRunning =
+    syncStats?.latestRun?.status === "running" || (runs?.some(isFreshRunningSyncRun) ?? false);
 
   const renderStatusBadge = (run: ApiSyncRun) => {
     const status = run.runStatus;
@@ -211,7 +215,10 @@ export function AdminSyncPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => {
+              void refetch();
+              void refetchAdminStats();
+            }}
             className="text-muted-foreground hover:text-foreground gap-2 active:scale-[0.98] transition-transform duration-100 rounded-lg border border-[#EAEAEA] dark:border-[#26334A] h-9"
           >
             <RefreshCw className="h-3.5 w-3.5 stroke-[1.5]" />
@@ -232,10 +239,13 @@ export function AdminSyncPage() {
           </div>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-3xl font-bold font-mono tracking-tight text-[#111111] dark:text-white">
-              {isLoading ? "—" : formatNumber(totalInserted)}
+              {isLoading || isAdminStatsLoading ? "—" : formatNumber(totalFetched)}
             </span>
             <span className="text-xs text-[#787774] dark:text-slate-400">papers</span>
           </div>
+          <p className="text-[10px] text-[#787774] dark:text-slate-500 mt-2">
+            All-time fetched across recorded sync runs.
+          </p>
         </div>
 
         {/* Card 2: Total Runs */}
@@ -316,14 +326,14 @@ export function AdminSyncPage() {
           </Button>
         </div>
 
-        {isEmbedStatusLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <Skeleton className="h-16 w-full rounded-lg" />
-            <Skeleton className="h-16 w-full rounded-lg" />
+              {isEmbedStatusLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
             <Skeleton className="h-16 w-full rounded-lg" />
           </div>
-        ) : embedStatus ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              ) : embedStatus ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">AI-Analyzable Papers</span>
               <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white block mt-1">
