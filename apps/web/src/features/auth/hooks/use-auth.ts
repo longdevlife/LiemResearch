@@ -42,9 +42,16 @@ export function useCurrentUser() {
   const user = useAuthStore((s) => s.user);
   return useQuery({
     queryKey: ["current-user"],
-    queryFn: () => authApi.me(),
+    queryFn: async () => {
+      const data = await authApi.me();
+      useAuthStore.setState({ user: data.user });
+      return data;
+    },
     enabled: !!tokens?.accessToken,
     initialData: user ? { user } : undefined,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

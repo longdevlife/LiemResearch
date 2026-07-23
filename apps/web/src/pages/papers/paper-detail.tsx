@@ -942,18 +942,6 @@ export function PaperDetailPage() {
             )}
           </div>
 
-          {/* Rating Section */}
-          {!isAdmin && !isOwner && (
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-8 mb-8">
-              <PaperRatingWidget
-                paperId={id || ""}
-                loading={ratingLoading}
-                myRating={ratingView?.myRating}
-                onSuccess={fetchRatingView}
-              />
-            </div>
-          )}
-
         </div>
 
         {/* Right Sidebar */}
@@ -997,6 +985,15 @@ export function PaperDetailPage() {
               currentUser={currentUser}
               onSuccess={fetchRatingView}
             />
+
+            {!isAdmin && !isOwner && (
+              <PaperRatingWidget
+                paperId={id || ""}
+                loading={ratingLoading}
+                myRating={ratingView?.myRating}
+                onSuccess={fetchRatingView}
+              />
+            )}
           </div>
         </div>
       </div>
