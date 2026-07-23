@@ -152,7 +152,7 @@ const paperSchema = new Schema(
     utilityScore: { type: Number, default: 0 },
     qualityScore: { type: Number, default: 0 },
     qualityTier: { type: Number, default: 0 },
-    qualityTierName: { type: String, default: "Không hợp lệ" },
+    qualityTierName: { type: String, default: "Invalid" },
     downloadCost: { type: Number, default: null },
     uploadCreditReward: { type: Number, default: 0 },
     // --- Stats ---
