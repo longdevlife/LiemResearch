@@ -253,6 +253,7 @@ export function PaperDetailPage() {
   const canUploadPdf = pdfPanel.canUploadPdf;
   const shouldShowPdfPanel = pdfPanel.shouldShowPanel;
   const showReadPdfAction = shouldShowReadPdfAction(paper, canDownloadPdf);
+  const displayPaperStatus = paper.paperStatus ?? (paper.pdfPath ? "downloaded" : "not-downloaded");
   const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
   const taxonomyTopic = getBestTaxonomyTopic(paper.topics ?? []);
   const taxonomyRows = taxonomyTopic ? buildTaxonomyRows(taxonomyTopic) : [];
@@ -318,28 +319,26 @@ export function PaperDetailPage() {
 
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">
-              {paper.paperStatus && (
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${paper.paperStatus === "pending"
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${displayPaperStatus === "pending"
                     ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
-                    : paper.paperStatus === "not-downloaded"
+                    : displayPaperStatus === "not-downloaded"
                       ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
-                      : paper.paperStatus === "downloaded"
+                    : displayPaperStatus === "downloaded"
                         ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                        : paper.paperStatus === "rejected"
+                    : displayPaperStatus === "rejected"
                           ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20"
                           : "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20"
                   }`}>
-                  {paper.paperStatus === "pending"
+                  {displayPaperStatus === "pending"
                     ? "Pending Review"
-                    : paper.paperStatus === "not-downloaded"
+                    : displayPaperStatus === "not-downloaded"
                       ? "Awaiting PDF"
-                      : paper.paperStatus === "downloaded"
+                    : displayPaperStatus === "downloaded"
                         ? "Completed"
-                        : paper.paperStatus === "rejected"
+                    : displayPaperStatus === "rejected"
                           ? "Rejected"
                           : "Awaiting Acceptance"}
                 </span>
-              )}
               {paper.openAccessUrl && (
                 <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Open Access
@@ -578,7 +577,9 @@ export function PaperDetailPage() {
                       <p className="font-semibold text-slate-900 dark:text-white text-sm">
                         {paper.paperStatus === "downloaded"
                           ? "PDF is available for download"
-                          : "PDF is awaiting requester acceptance"}
+                          : paper.paperStatus === "pending"
+                            ? "PDF is awaiting admin approval"
+                            : "PDF is awaiting requester acceptance"}
                       </p>
                       {paper.uploadedBy && (
                         <p className="text-xs text-slate-500 mt-0.5">

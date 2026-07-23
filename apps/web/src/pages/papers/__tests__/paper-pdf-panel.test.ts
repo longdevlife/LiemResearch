@@ -15,10 +15,10 @@ const basePaper: PaperPdfPanelInput["paper"] = {
 };
 
 describe("getPaperPdfPanelState", () => {
-  it("hides the internal PDF panel from normal users when no PDF exists", () => {
+  it("hides the internal PDF panel from anonymous visitors when no PDF exists", () => {
     const state = getPaperPdfPanelState({
       paper: basePaper,
-      currentUser: { id: "reader", role: "student" },
+      currentUser: null,
     });
 
     expect(state.shouldShowPanel).toBe(false);
@@ -66,6 +66,71 @@ describe("getPaperPdfPanelState", () => {
     expect(state.shouldShowPanel).toBe(true);
     expect(state.mode).toBe("upload");
     expect(state.canUploadPdf).toBe(true);
+  });
+
+  it("allows admins to upload a missing PDF for imported papers without a workflow status", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        paperStatus: undefined,
+        requestedBy: undefined,
+      },
+      currentUser: { id: "admin", role: "admin" },
+    });
+
+    expect(state.shouldShowPanel).toBe(true);
+    expect(state.mode).toBe("upload");
+    expect(state.canUploadPdf).toBe(true);
+  });
+
+  it("allows signed-in users to contribute a PDF for imported papers", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        paperStatus: undefined,
+        requestedBy: undefined,
+      },
+      currentUser: { id: "contributor", role: "student" },
+    });
+
+    expect(state.shouldShowPanel).toBe(true);
+    expect(state.mode).toBe("upload");
+    expect(state.canUploadPdf).toBe(true);
+  });
+
+  it("does not require requester acceptance for an imported PDF awaiting admin approval", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        pdfPath: "papers/contributed.pdf",
+        paperStatus: "pending",
+        requestedBy: undefined,
+        uploadedBy: { _id: "contributor" },
+      },
+      currentUser: { id: "contributor", role: "student" },
+    });
+
+    expect(state.isWaitingRequesterAccept).toBe(false);
+    expect(state.canAcceptPdf).toBe(false);
+  });
+
+  it("allows signed-in users to contribute a PDF when a paper is awaiting PDF", () => {
+    const state = getPaperPdfPanelState({
+      paper: basePaper,
+      currentUser: { id: "contributor", role: "student" },
+    });
+
+    expect(state.mode).toBe("upload");
+    expect(state.canUploadPdf).toBe(true);
+  });
+
+  it("does not allow admins to upload a PDF for rejected papers", () => {
+    const state = getPaperPdfPanelState({
+      paper: { ...basePaper, paperStatus: "rejected" },
+      currentUser: { id: "admin", role: "admin" },
+    });
+
+    expect(state.canUploadPdf).toBe(false);
   });
 
   it("shows available PDF download state for accessible uploaded files", () => {

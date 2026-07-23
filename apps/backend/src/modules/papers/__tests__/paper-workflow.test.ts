@@ -13,7 +13,10 @@ describe("paper workflow status", () => {
     expect(isUserPaperRequest({ paperStatus: "downloaded", requestedBy: "user-1" } as any)).toBe(false);
     expect(buildUserPaperRequestFilter("pending")).toEqual({
       paperStatus: "pending",
-      requestedBy: { $exists: true, $ne: null },
+      $or: [
+        { requestedBy: { $exists: true, $ne: null } },
+        { uploadedBy: { $exists: true, $ne: null } },
+      ],
     });
   });
 
@@ -22,7 +25,10 @@ describe("paper workflow status", () => {
       paperStatus: {
         $in: ["pending", "not-downloaded", "downloaded", "rejected", "pending-requester-acceptance"],
       },
-      requestedBy: { $exists: true, $ne: null },
+      $or: [
+        { requestedBy: { $exists: true, $ne: null } },
+        { uploadedBy: { $exists: true, $ne: null } },
+      ],
     });
   });
 });

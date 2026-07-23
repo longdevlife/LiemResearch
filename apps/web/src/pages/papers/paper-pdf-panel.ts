@@ -67,7 +67,12 @@ export function getPaperPdfPanelState({
   const isPdfAvailable = hasPdf && paper.paperStatus === "downloaded";
   const isWaitingRequesterAccept =
     paper.paperStatus === "pending-requester-acceptance" ||
-    (paper.paperStatus === "pending" && hasPdf && paper.uploadedBy?._id !== paper.requestedBy?._id);
+    (
+      paper.paperStatus === "pending" &&
+      hasPdf &&
+      Boolean(paper.requestedBy) &&
+      paper.uploadedBy?._id !== paper.requestedBy?._id
+    );
 
   const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && hasPdf);
   const isPrivateDownload = Boolean(isAdmin || isRequester || isUploader);
@@ -81,8 +86,12 @@ export function getPaperPdfPanelState({
   const canUploadPdf = Boolean(
     currentUser &&
       !hasPdf &&
-      paper.paperStatus === "not-downloaded" &&
-      (isAdmin || isRequester),
+      paper.paperStatus !== "rejected" &&
+      (
+        isAdmin ||
+        paper.paperStatus === undefined ||
+        paper.paperStatus === "not-downloaded"
+      ),
   );
   const shouldShowPendingApproval = Boolean(
     currentUser &&

@@ -391,10 +391,11 @@ export const paperService = {
   },
 
   /**
-   * Upload a PDF to an existing paper request.
-   * - Admin or requester: directly marks paper as "downloaded" (if already approved) or keeps "pending".
-   * - Other contributors: sets status to "pending-requester-acceptance" to wait for requester confirmation.
-   */
+    * Upload a PDF to an existing paper request.
+    * - Admin: publishes the PDF immediately.
+    * - User uploading to an imported paper: sends the PDF to admin review.
+    * - Other contributors on requested papers: waits for requester confirmation, then admin review.
+    */
   async uploadPdf(
     paperId: string,
     uploaderId: string,
@@ -412,7 +413,9 @@ export const paperService = {
 
     const isAdminUpload = uploaderRole === "admin";
     const isRequesterUpload = isSameId(paper.requestedBy, uploaderId);
-    const isApproved = isApprovedStatus(paper.paperStatus ?? "pending");
+    const isImportedPaper = !paper.requestedBy;
+    const effectiveStatus = paper.paperStatus ?? (isImportedPaper ? "not-downloaded" : "pending");
+    const isApproved = isApprovedStatus(effectiveStatus);
 
     if (!isAdminUpload && !isRequesterUpload && !isApproved) {
       throw AppError.forbidden("You can only upload a PDF after the request is approved");
@@ -424,9 +427,16 @@ export const paperService = {
       nextStatus = "downloaded";
     } else if (isRequesterUpload) {
       nextStatus = "pending";
+    } else if (isImportedPaper) {
+      nextStatus = "pending";
     } else {
       nextStatus = "pending-requester-acceptance";
     }
+
+    const nextDataStatus =
+      nextStatus === "downloaded" || (isImportedPaper && paper.dataStatus === "active")
+        ? "active"
+        : "draft";
 
     const qualityInput = { ...paper.toObject(), pdfPath };
     const quality = calculatePaperQuality(qualityInput);
@@ -440,7 +450,7 @@ export const paperService = {
         uploadedBy: new mongoose.Types.ObjectId(uploaderId),
         uploadedAt: new Date(),
         paperStatus: nextStatus,
-        dataStatus: nextStatus === "downloaded" ? "active" : "draft",
+        dataStatus: nextDataStatus,
         ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
