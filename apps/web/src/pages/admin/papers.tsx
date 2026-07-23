@@ -20,6 +20,7 @@ import {
   Filter,
   Sparkles,
   RotateCcw,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -200,6 +201,12 @@ export function AdminPapersPage() {
 
         {/* Action / Refresh */}
         <div className="flex items-center gap-2">
+          <Button asChild size="sm" className="h-9 bg-blue-700 text-xs font-bold text-white hover:bg-blue-800">
+            <Link to="/admin/papers/new">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Paper
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={fetchPapers} disabled={loading} className="h-9 text-xs">
             <RotateCcw className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />
             Refresh

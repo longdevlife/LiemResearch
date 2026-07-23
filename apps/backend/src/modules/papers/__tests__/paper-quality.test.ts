@@ -61,4 +61,43 @@ describe("getQualityTier", () => {
     expect(basic.relevanceScore).toBe(11);
     expect(taxonomyRich.relevanceScore).toBe(15);
   });
+
+  it("scores a metadata-only OpenAlex paper without requiring a PDF", () => {
+    const quality = calculatePaperQuality({
+      title: "Retrieval-augmented generation in education",
+      authors: [{ displayName: "Researcher A" }],
+      publicationYear: 2025,
+      abstractText: "We present a method, dataset, experiment, and result for classroom retrieval systems. ".repeat(3),
+      keywords: [{ keywordName: "retrieval augmented generation" }],
+      topics: [{
+        openalexTopicId: "T123",
+        topicName: "Artificial intelligence in education",
+        isPrimary: true,
+        subfieldName: "Education",
+        fieldName: "Social Sciences",
+        domainName: "Social Sciences",
+      }],
+      externalIds: { doi: "10.1234/rag.education" },
+      paperKind: "article",
+      pdfPath: undefined,
+    });
+
+    expect(quality.qualityScore).toBeGreaterThanOrEqual(80);
+    expect(quality.qualityTier).toBeGreaterThanOrEqual(3);
+  });
+
+  it("uses an uploaded PDF as a source signal when no DOI or source URL exists", () => {
+    const basePaper = {
+      title: "Local working paper",
+      authors: [{ displayName: "Researcher A" }],
+      publicationYear: 2025,
+      abstractText: "A short abstract describing the study method and result.",
+      keywords: [],
+      topics: [],
+      paperKind: "other",
+    };
+
+    expect(calculatePaperQuality(basePaper).sourceScore).toBe(0);
+    expect(calculatePaperQuality({ ...basePaper, pdfPath: "r2://papers/paper.pdf" }).sourceScore).toBe(2);
+  });
 });

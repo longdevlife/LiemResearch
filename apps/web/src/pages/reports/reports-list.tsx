@@ -31,7 +31,12 @@ import {
   useReportEvidencePreview
 } from "@/features/reports/hooks/use-reports";
 import { toast } from "sonner";
-import type { PreviewReportEvidenceResponse, ReportLanguage, ReportScopeFilters } from "@trend/shared-types";
+import {
+  AI_CREDIT_COSTS_CLIENT,
+  type PreviewReportEvidenceResponse,
+  type ReportLanguage,
+  type ReportScopeFilters,
+} from "@trend/shared-types";
 import { searchApi, type ScoredPaper } from "@/features/search";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -142,6 +147,11 @@ export function ReportsListPage() {
   const currentEvidencePaperIds = previewData?.papers.map((paper) => paper.id) ?? [];
   const currentYear = new Date().getFullYear();
   const reasoningMode = deepAnalysis ? "deep" : fast ? "fast" : "balanced";
+  const reportCreditCost = deepAnalysis
+    ? AI_CREDIT_COSTS_CLIENT.deep_mcp_report
+    : fast
+      ? AI_CREDIT_COSTS_CLIENT.fast_report
+      : AI_CREDIT_COSTS_CLIENT.standard_report;
   const canPreviewEvidence = query.trim().length >= 3 && !previewEvidence.isPending;
   const activeReportScopeFilters = hasReportScopeFilters(reportScopeFilters)
     ? reportScopeFilters
@@ -695,7 +705,12 @@ export function ReportsListPage() {
                   >
                     <Zap className="mb-2 h-4 w-4" />
                     <span className="block text-[11px] font-extrabold">Fast</span>
-                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Quick draft</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">
+                      <span className="block">Quick draft</span>
+                      <span className="block whitespace-nowrap font-semibold">
+                        {AI_CREDIT_COSTS_CLIENT.fast_report} credits
+                      </span>
+                    </span>
                   </button>
 
                   <button
@@ -710,7 +725,12 @@ export function ReportsListPage() {
                   >
                     <Database className="mb-2 h-4 w-4" />
                     <span className="block text-[11px] font-extrabold">Balanced</span>
-                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Best default</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">
+                      <span className="block">Best default</span>
+                      <span className="block whitespace-nowrap font-semibold">
+                        {AI_CREDIT_COSTS_CLIENT.standard_report} credits
+                      </span>
+                    </span>
                   </button>
 
                   <button
@@ -725,11 +745,17 @@ export function ReportsListPage() {
                   >
                     <Search className="mb-2 h-4 w-4" />
                     <span className="block text-[11px] font-extrabold">Deep</span>
-                    <span className="mt-1 block text-[10px] leading-snug opacity-70">Slowest</span>
+                    <span className="mt-1 block text-[10px] leading-snug opacity-70">
+                      <span className="block">Slowest</span>
+                      <span className="block whitespace-nowrap font-semibold">
+                        {AI_CREDIT_COSTS_CLIENT.deep_mcp_report} credits
+                      </span>
+                    </span>
                   </button>
                 </div>
                 <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                  Balanced uses the standard report path. Deep enables multi-step analysis.
+                  This report costs <strong>{reportCreditCost} credits</strong>. Failed generations and
+                  cache hits are refunded automatically.
                 </p>
               </div>
             </div>
@@ -1044,7 +1070,7 @@ export function ReportsListPage() {
               ) : (
                 <>
                   <Zap className="h-4 w-4 mr-2 fill-current" />
-                  Generate Report from Evidence Pack
+                  Generate Report · {reportCreditCost} credits
                 </>
               )}
             </Button>
@@ -1262,6 +1288,17 @@ export function ReportsListPage() {
                         ) : (
                           <span className="bg-gradient-to-r from-slate-100 to-slate-200/50 dark:from-slate-800 dark:to-slate-800/40 text-slate-600 dark:text-slate-400 border border-slate-250/30 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
                             Standard
+                          </span>
+                        )}
+
+                        {report.creditCost !== undefined && (
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border",
+                            report.creditRefundedAt
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
+                              : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/25",
+                          )}>
+                            {report.creditRefundedAt ? `Refunded ${report.creditCost}` : `${report.creditCost} credits`}
                           </span>
                         )}
 
