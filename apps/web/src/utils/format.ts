@@ -30,3 +30,26 @@ export function formatCompactNumber(n: number | null | undefined): string {
 export function getYear(date: string | Date): number {
   return new Date(date).getFullYear();
 }
+
+const TIER_NAME_MAP: Record<number, string> = {
+  0: "Invalid",
+  1: "Basic",
+  2: "Academic Standard",
+  3: "High Value",
+  4: "Elite",
+};
+
+/** Format quality tier name to English standard. */
+export function formatQualityTierName(tier?: number, tierName?: string): string {
+  if (tier !== undefined && TIER_NAME_MAP[tier]) {
+    return TIER_NAME_MAP[tier];
+  }
+  if (!tierName) return "Invalid";
+  const lower = tierName.toLowerCase();
+  if (lower.includes("không hợp lệ") || lower.includes("invalid")) return "Invalid";
+  if (lower.includes("cơ bản") || lower.includes("basic")) return "Basic";
+  if (lower.includes("chuẩn học thuật") || lower.includes("academic standard")) return "Academic Standard";
+  if (lower.includes("giá trị cao") || lower.includes("high value")) return "High Value";
+  if (lower.includes("tinh hoa") || lower.includes("elite")) return "Elite";
+  return tierName;
+}
