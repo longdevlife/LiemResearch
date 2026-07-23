@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/features/auth";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils";
+import { formatNumber, formatQualityTierName } from "@/utils";
 import { formatPaperRequester, type PaperRequesterValue } from "@/features/admin/utils/paper-request";
 
 interface AdminPaper {
@@ -423,7 +423,7 @@ export function AdminPapersPage() {
                     <span>
                       Quality Score: <strong className="text-blue-600 dark:text-blue-400">{paper.qualityScore}/100</strong>
                     </span>
-                    {paper.qualityTierName && <span>· Tier: <strong>{paper.qualityTierName}</strong></span>}
+                    {paper.qualityTierName && <span>· Tier: <strong>{formatQualityTierName(paper.qualityTier, paper.qualityTierName)}</strong></span>}
                     {paper.downloadCost != null && <span>· Cost: <strong>{paper.downloadCost} credits</strong></span>}
                     {paper.uploadCreditReward && paper.uploadCreditReward > 0 && (
                       <span>
