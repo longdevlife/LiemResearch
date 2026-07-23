@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getPaperPdfPanelState, type PaperPdfPanelInput } from "../paper-pdf-panel";
+import {
+  getPaperPdfPanelState,
+  shouldShowReadPdfAction,
+  type PaperPdfPanelInput,
+} from "../paper-pdf-panel";
 
 const basePaper: PaperPdfPanelInput["paper"] = {
   pdfPath: undefined,
@@ -19,6 +23,27 @@ describe("getPaperPdfPanelState", () => {
 
     expect(state.shouldShowPanel).toBe(false);
     expect(state.canUploadPdf).toBe(false);
+  });
+
+  it("does not show Read PDF for Awaiting PDF even when an open-access URL exists", () => {
+    expect(shouldShowReadPdfAction(
+      {
+        ...basePaper,
+        openAccessUrl: "https://example.org/open-access-paper",
+      },
+      false,
+    )).toBe(false);
+  });
+
+  it("shows Read PDF only for an approved downloadable internal PDF", () => {
+    expect(shouldShowReadPdfAction(
+      {
+        ...basePaper,
+        pdfPath: "papers/demo.pdf",
+        paperStatus: "downloaded",
+      },
+      true,
+    )).toBe(true);
   });
 
   it("shows a pending approval notice without upload for requesters", () => {

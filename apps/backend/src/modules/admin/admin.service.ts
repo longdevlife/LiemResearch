@@ -12,6 +12,7 @@ import {
   type UserDoc,
   type UserHydrated,
 } from "../auth/models/user.model.js";
+import { ApiSyncRunModel } from "../api-sync/models/api-sync-run.model.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { ReportModel } from "../reports/models/report.model.js";
 import { ResearchGapModel } from "../gaps/models/research-gap.model.js";
@@ -126,12 +127,65 @@ export const adminService = {
     for (const r of roleAgg) {
       if (r._id in byRole) byRole[r._id] = r.count;
     }
-    const [total, papers, reports, gaps] = await Promise.all([
+    const [total, papers, reports, gaps, syncAgg, latestSync] = await Promise.all([
       UserModel.countDocuments({}),
       PaperModel.countDocuments({}),
       ReportModel.countDocuments({}),
       ResearchGapModel.countDocuments({}),
+      ApiSyncRunModel.aggregate<{
+        _id: null;
+        totalRuns: number;
+        totalFetched: number;
+        totalInserted: number;
+        totalUpdated: number;
+        totalDuplicates: number;
+      }>([
+        {
+          $group: {
+            _id: null,
+            totalRuns: { $sum: 1 },
+            totalFetched: { $sum: "$totalFetched" },
+            totalInserted: { $sum: "$totalInserted" },
+            totalUpdated: { $sum: "$totalUpdated" },
+            totalDuplicates: { $sum: "$totalDuplicates" },
+          },
+        },
+      ]),
+      ApiSyncRunModel.findOne().sort({ startedAt: -1 }).lean(),
     ]);
-    return { users: { total, byRole }, papers, reports, gaps };
+    const syncTotals = syncAgg[0] ?? {
+      totalRuns: 0,
+      totalFetched: 0,
+      totalInserted: 0,
+      totalUpdated: 0,
+      totalDuplicates: 0,
+    };
+    return {
+      users: { total, byRole },
+      papers,
+      reports,
+      gaps,
+      sync: {
+        totalRuns: syncTotals.totalRuns ?? 0,
+        totalFetched: syncTotals.totalFetched ?? 0,
+        totalInserted: syncTotals.totalInserted ?? 0,
+        totalUpdated: syncTotals.totalUpdated ?? 0,
+        totalDuplicates: syncTotals.totalDuplicates ?? 0,
+        latestRun: latestSync
+          ? {
+              id: String(latestSync._id),
+              status: latestSync.runStatus,
+              searchText: latestSync.searchText ?? undefined,
+              startedAt: latestSync.startedAt.toISOString(),
+              finishedAt: latestSync.finishedAt ? latestSync.finishedAt.toISOString() : undefined,
+              totalFetched: latestSync.totalFetched ?? 0,
+              totalInserted: latestSync.totalInserted ?? 0,
+              totalUpdated: latestSync.totalUpdated ?? 0,
+              totalDuplicates: latestSync.totalDuplicates ?? 0,
+              errorMessage: latestSync.errorMessage ?? undefined,
+            }
+          : null,
+      },
+    };
   },
 };

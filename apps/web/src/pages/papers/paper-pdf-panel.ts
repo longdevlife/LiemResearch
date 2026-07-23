@@ -39,6 +39,22 @@ export interface PaperPdfPanelState {
   canUploadPdf: boolean;
 }
 
+/**
+ * The primary "Read PDF" action is reserved for an approved internal PDF.
+ * An OpenAlex/open-access URL must not make a metadata-only "Awaiting PDF"
+ * record look as if the platform already stores its PDF.
+ */
+export function shouldShowReadPdfAction(
+  paper: { pdfPath?: string; paperStatus?: PaperStatus; openAccessUrl?: string },
+  canDownloadPdf: boolean,
+): boolean {
+  return Boolean(
+    paper.pdfPath &&
+    paper.paperStatus === "downloaded" &&
+    canDownloadPdf,
+  );
+}
+
 export function getPaperPdfPanelState({
   paper,
   currentUser,

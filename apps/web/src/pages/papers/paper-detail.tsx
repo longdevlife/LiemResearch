@@ -6,6 +6,7 @@ import {
   Quote,
   Link2,
   ChevronRight,
+  ChevronDown,
   UserPlus,
   FileText,
   Download,
@@ -21,6 +22,7 @@ import {
   Scale,
   FolderPlus,
   Languages,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
@@ -41,12 +43,15 @@ import { useEffect, useMemo } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
 import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
-import { getPaperPdfPanelState } from "./paper-pdf-panel";
+import { getPaperPdfPanelState, shouldShowReadPdfAction } from "./paper-pdf-panel";
 import { formatNumber } from "@/utils";
+import { formatLanguageName } from "@/utils/language";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: paper, isLoading, refetch } = usePaper(id);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === "admin";
   const { data: bookmarkStatus } = useBookmarkStatus("paper", id);
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
@@ -58,8 +63,26 @@ export function PaperDetailPage() {
   const queryClient = useQueryClient();
   const translatePaper = useTranslatePaper(id);
   const { data: translationCapabilities } = usePaperTranslationCapabilities();
-  const [translationLanguage, setTranslationLanguage] = useState("en");
+  const [translationLanguage, setTranslationLanguage] = useState("vi");
   const [showTranslation, setShowTranslation] = useState(false);
+  const [translatePopoverOpen, setTranslatePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    const supported = translationCapabilities?.targetLanguages ?? [];
+    const firstSupported = supported[0];
+    if (firstSupported && !supported.includes(translationLanguage)) {
+      setTranslationLanguage(firstSupported);
+      setShowTranslation(false);
+    }
+  }, [translationCapabilities?.targetLanguages, translationLanguage]);
+
+  useEffect(() => {
+    const handleClickOutside = () => setTranslatePopoverOpen(false);
+    if (translatePopoverOpen) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [translatePopoverOpen]);
 
   const { data: relatedData, isLoading: isRelatedLoading } = useSearch({
     q: paper?.title || "",
@@ -70,6 +93,11 @@ export function PaperDetailPage() {
     if (!relatedData?.papers) return [];
     return relatedData.papers.filter((p: any) => p.id !== id).slice(0, 4);
   }, [relatedData, id]);
+
+  const translation = translatePaper.data?.paperId === paper?.id
+    && translatePaper.data?.targetLanguage === translationLanguage
+    ? translatePaper.data
+    : undefined;
 
   const [ratingView, setRatingView] = useState<any>(null);
   const [ratingLoading, setRatingLoading] = useState(true);
@@ -98,8 +126,6 @@ export function PaperDetailPage() {
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === "admin";
   const [compareOpen, setCompareOpen] = useState(false);
   const [showAllAuthors, setShowAllAuthors] = useState(false);
 
@@ -219,13 +245,10 @@ export function PaperDetailPage() {
   const canDownloadPdf = pdfPanel.canDownloadPdf;
   const canUploadPdf = pdfPanel.canUploadPdf;
   const shouldShowPdfPanel = pdfPanel.shouldShowPanel;
+  const showReadPdfAction = shouldShowReadPdfAction(paper, canDownloadPdf);
   const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
   const taxonomyTopic = getBestTaxonomyTopic(paper.topics ?? []);
   const taxonomyRows = taxonomyTopic ? buildTaxonomyRows(taxonomyTopic) : [];
-  const translation = translatePaper.data?.paperId === paper.id
-    && translatePaper.data.targetLanguage === translationLanguage
-    ? translatePaper.data
-    : undefined;
   const displayTitle = showTranslation && translation ? translation.translatedTitle : paper.title;
   const displayAbstract = showTranslation && translation
     ? translation.translatedAbstract
@@ -278,79 +301,13 @@ export function PaperDetailPage() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Main Column */}
-        <div className="flex-1 min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col">
 
           {/* Hero Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-4">
               {displayTitle}
             </h1>
-
-            <div
-              className="mb-5 flex flex-wrap items-center gap-2"
-              aria-label="Paper translation controls"
-            >
-              <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
-                <Languages className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                <label htmlFor="paper-translation-language" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Translate paper
-                </label>
-                <select
-                  id="paper-translation-language"
-                  value={translationLanguage}
-                  onChange={(event) => {
-                    setTranslationLanguage(event.target.value);
-                    setShowTranslation(false);
-                  }}
-                  className="bg-transparent text-xs font-semibold text-slate-900 outline-none dark:text-white"
-                >
-                  <option value="en">English</option>
-                  <option value="vi">Vietnamese</option>
-                </select>
-              </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTranslate}
-                  disabled={!currentUser || !translationCapabilities?.enabled || translatePaper.isPending}
-                  title={
-                    !currentUser
-                      ? "Sign in to translate this paper"
-                      : !translationCapabilities?.enabled
-                        ? "Translation is not enabled on this deployment"
-                        : undefined
-                  }
-              >
-                {translatePaper.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {translatePaper.isPending ? "Translating..." : "Translate"}
-              </Button>
-              {translation && (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowTranslation((current) => !current)}
-                  >
-                    {showTranslation ? "View original" : "View translation"}
-                  </Button>
-                  {showTranslation && translation.provider !== "original" && (
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-                      Machine translated
-                    </span>
-                  )}
-                </>
-              )}
-              {!currentUser && (
-                <span className="text-xs text-slate-500">Sign in to use on-demand translation.</span>
-              )}
-              {currentUser && translationCapabilities?.enabled !== true && (
-                <span className="text-xs text-amber-700 dark:text-amber-400">
-                  Translation is unavailable on this deployment.
-                </span>
-              )}
-            </div>
 
             {/* Metadata Strip */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium mb-6">
@@ -428,17 +385,11 @@ export function PaperDetailPage() {
 
             {/* Action Bar */}
             <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6 gap-4">
-              <div className="flex items-center gap-3">
-                {(paper.pdfPath && canDownloadPdf) || paper.openAccessUrl ? (
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                {showReadPdfAction ? (
                   <Button
                     className="bg-blue-800 hover:bg-blue-900 text-white font-bold h-10 px-5 gap-2 rounded-lg"
-                    onClick={() => {
-                      if (paper.pdfPath && canDownloadPdf) {
-                        handleDownloadPdf();
-                      } else if (paper.openAccessUrl) {
-                        window.open(paper.openAccessUrl, '_blank');
-                      }
-                    }}
+                    onClick={handleDownloadPdf}
                     disabled={downloading}
                   >
                     {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
@@ -475,13 +426,127 @@ export function PaperDetailPage() {
                 >
                   <Quote className="w-4 h-4" /> Cite
                 </Button>
+
                 <Button
                   variant="outline"
                   className="h-10 px-4 gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold rounded-lg"
                   onClick={() => setCompareOpen(true)}
                 >
-                  <Scale className="w-4 h-4" /> Comparing scientific articles...
+                  <Scale className="w-4 h-4" /> Compare
                 </Button>
+
+                <div className="relative inline-block">
+                  <Button
+                    variant={showTranslation ? "default" : "outline"}
+                    className={`h-10 px-4 gap-2 font-bold rounded-lg ${
+                      showTranslation
+                        ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                        : "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTranslatePopoverOpen(!translatePopoverOpen);
+                    }}
+                    title="Translate this paper"
+                    aria-label="Translate this paper"
+                  >
+                    <Globe className="w-4 h-4 text-blue-500" />
+                    <span>{showTranslation ? "View original" : "Translate"}</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                  </Button>
+
+                  {translatePopoverOpen && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute left-0 mt-2 w-64 p-3.5 bg-white dark:bg-[#181818] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
+                    >
+                      <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Languages className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          Translate paper
+                        </span>
+                        {showTranslation && (
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label
+                            htmlFor="action-target-language"
+                            className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1"
+                          >
+                            Target Language
+                          </label>
+                          <select
+                            id="action-target-language"
+                            value={translationLanguage}
+                            onChange={(e) => {
+                              setTranslationLanguage(e.target.value);
+                              setShowTranslation(false);
+                            }}
+                            className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-900 px-2.5 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                          >
+                            {(translationCapabilities?.targetLanguages ?? []).map((code) => (
+                              <option key={code} value={code}>
+                                {formatLanguageName(code)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {!currentUser || translationCapabilities?.enabled !== true ? (
+                          <Button
+                            type="button"
+                            disabled
+                            className="w-full h-8 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-0 cursor-not-allowed"
+                            title={
+                              !currentUser
+                                ? "Sign in to translate this paper"
+                                : translationCapabilities?.message || "Translation unavailable in this deployment"
+                            }
+                          >
+                            Translate
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              handleTranslate();
+                              setTranslatePopoverOpen(false);
+                            }}
+                            disabled={translatePaper.isPending}
+                            className="w-full h-8 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            {translatePaper.isPending ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Languages className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            {translatePaper.isPending ? "Translating..." : "Translate"}
+                          </Button>
+                        )}
+
+                        {!!translation && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowTranslation((curr: boolean) => !curr);
+                              setTranslatePopoverOpen(false);
+                            }}
+                            className="w-full h-7 text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                          >
+                            {showTranslation ? "View original" : "Show translation"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
                 <Link2 className="w-4 h-4" /> {formatNumber(paper.citationCount)} Citations
@@ -489,9 +554,9 @@ export function PaperDetailPage() {
             </div>
           </div>
 
-          {/* Internal PDF workflow. OpenAlex/OA full text stays in the action bar. */}
+          {/* Visually ordered last in the main column so paper content comes first. */}
           {shouldShowPdfPanel && (
-          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10 space-y-4">
+          <div className="order-last bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10 space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-indigo-500" />
               {pdfPanel.mode === "upload" ? "Submit internal PDF" : "Internal full-text PDF"}
@@ -682,6 +747,8 @@ export function PaperDetailPage() {
               </div>
             </div>
           )}
+
+          <PublicQualityScoreCard paper={paper} />
 
           {/* Abstract */}
           <div className="mb-8">
@@ -890,6 +957,85 @@ export function PaperDetailPage() {
       </div>
       <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} currentPaper={paper} />
     </main>
+  );
+}
+
+function PublicQualityScoreCard({ paper }: { paper: Paper }) {
+  const dimensions = [
+    { label: "Metadata", score: paper.metadataScore, max: 15 },
+    { label: "Source", score: paper.sourceScore, max: 15 },
+    { label: "Uniqueness", score: paper.duplicateScore, max: 20 },
+    { label: "Relevance", score: paper.relevanceScore, max: 15 },
+    { label: "Prestige", score: paper.prestigeScore, max: 15 },
+    { label: "Utility", score: paper.utilityScore, max: 15 },
+  ];
+  const hasRubricScore = typeof paper.qualityScore === "number" && paper.qualityScore > 0;
+  const pdfAvailable = Boolean(paper.pdfPath);
+
+  return (
+    <section className="mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-[#121212]">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              <Scale className="h-3.5 w-3.5" />
+            </span>
+            Public quality score
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Deterministic score from paper metadata and source signals. AI does not set this tier or its credit values.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
+            pdfAvailable
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          }`}>
+            {pdfAvailable ? "PDF available" : "Metadata only"}
+          </span>
+          {hasRubricScore && (
+            <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-sm font-extrabold text-blue-700 dark:text-blue-400">
+              {paper.qualityScore}/100 · {paper.qualityTierName ?? `Tier ${paper.qualityTier ?? 0}`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {hasRubricScore ? (
+        <>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            {dimensions.map(({ label, score = 0, max }) => (
+              <div key={label} className="rounded-lg border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-zinc-900/30">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">{score}/{max}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-blue-600 dark:bg-blue-500"
+                    style={{ width: `${Math.min(100, Math.max(0, (score / max) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <span>Download cost: <strong className="text-slate-700 dark:text-slate-200">{paper.downloadCost ?? "Unavailable"} credits</strong></span>
+            {pdfAvailable && (
+              <span>Approved upload reward: <strong className="text-slate-700 dark:text-slate-200">{paper.uploadCreditReward ?? 0} credits</strong></span>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-zinc-900/30 dark:text-slate-400">
+          The detailed rubric has not been computed yet. Data completeness is currently{" "}
+          <strong>{Math.round((paper.dataQualityScore ?? 0) * 100)}%</strong>; the next sync or PDF update will publish the full breakdown.
+        </div>
+      )}
+    </section>
   );
 }
 

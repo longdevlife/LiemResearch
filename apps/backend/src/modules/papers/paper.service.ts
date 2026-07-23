@@ -409,7 +409,7 @@ export const paperService = {
       nextStatus = "pending-requester-acceptance";
     }
 
-    const quality = calculatePaperQuality({ ...(paper as any), pdfPath });
+    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath });
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -457,7 +457,7 @@ export const paperService = {
       throw AppError.badRequest("This paper does not have a PDF waiting for your acceptance");
     }
 
-    const quality = calculatePaperQuality(paper as any);
+    const quality = calculatePaperQuality(paper.toObject());
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -497,7 +497,7 @@ export const paperService = {
     const rejectedUploaderId = paper.uploadedBy;
     const pdfToDelete = paper.pdfPath;
 
-    const quality = calculatePaperQuality({ ...(paper as any), pdfPath: "", uploadedBy: undefined });
+    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath: "", uploadedBy: undefined });
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -584,7 +584,7 @@ export const paperService = {
       updates.dataStatus = willBeApproved ? "active" : "draft";
     }
 
-    const quality = calculatePaperQuality(paper as any);
+    const quality = calculatePaperQuality(paper.toObject());
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
     Object.assign(updates, quality, { qualityTierName: tierDef.name });
     // Once the reward has been granted, FREEZE the stored uploadCreditReward: clawback must
@@ -919,7 +919,7 @@ export const paperService = {
 
     const nextStatus = paper.paperStatus === "pending" ? "pending" : "not-downloaded";
 
-    const quality = calculatePaperQuality({ ...(paper as any), pdfPath: "", uploadedBy: undefined });
+    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath: "", uploadedBy: undefined });
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(

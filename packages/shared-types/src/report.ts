@@ -128,6 +128,12 @@ export interface AnalyticalReport {
   deepAnalysis: boolean; // NEW — Phase D
   fast?: boolean; // Fast mode — generated with the Flash model
   selectedPaperIds?: string[];
+  /** Credits charged when this report was queued. Fixed by reasoning profile. */
+  creditCost?: number;
+  /** Ledger action used for the charge (fast_report, standard_report, deep_mcp_report). */
+  creditAction?: string;
+  /** Set when the original report charge was returned after failure or a cache hit. */
+  creditRefundedAt?: ISODateString;
   errorMessage?: string;
   createdAt: ISODateString;
   completedAt?: ISODateString;

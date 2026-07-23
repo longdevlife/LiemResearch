@@ -6,8 +6,6 @@ import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 import { Loader2, Upload, FileText, X, AlertTriangle, Info } from "lucide-react";
 
-const REQUEST_COST = 100;
-
 function countWords(str: string) {
   return str
     .trim()
@@ -20,19 +18,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const user = useAuthStore((s) => s.user);
-
-  if (user?.role === "admin") {
-    return (
-      <main className="container py-8 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl p-8 max-w-md mx-auto">
-          <h2 className="text-xl font-extrabold text-red-700 dark:text-red-400">Access Denied</h2>
-          <p className="text-sm text-red-600 dark:text-red-400/80 mt-2">
-            Admins are not allowed to submit papers.
-          </p>
-        </div>
-      </main>
-    );
-  }
+  const isAdmin = user?.role === "admin";
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,6 +125,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
     }
 
 
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       toast.error("Please correct the highlighted validation errors.");
@@ -206,12 +193,16 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
           });
 
       if (res.data.success) {
-        if (editId) {
+        if (isAdmin) {
+          toast.success(pdfFile
+            ? "Paper and PDF added to the public corpus."
+            : "Metadata-only paper added. A PDF can be uploaded later.");
+        } else if (editId) {
           toast.success("Paper resubmitted successfully! It will be reviewed by the admin.");
         } else {
           toast.success("Paper submitted successfully! It will be reviewed by the admin before being published.");
         }
-        navigate(`/settings/my-papers`);
+        navigate(isAdmin ? "/admin/papers" : "/settings/my-papers");
       }
     } catch (error: any) {
       console.error(error);
@@ -520,10 +511,10 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {editId ? "Resubmitting..." : "Submitting..."}
+                  {editId ? "Resubmitting..." : isAdmin ? "Creating..." : "Submitting..."}
                 </>
               ) : (
-                <>{editId ? "Resubmit Paper" : "Submit Paper"}</>
+                <>{editId ? "Resubmit Paper" : isAdmin ? "Create Paper" : "Submit Paper"}</>
               )}
             </Button>
           </div>
@@ -536,12 +527,14 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
             <div className="mb-6 pb-2 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Upload className="w-5 h-5 text-blue-600" />
-                {editId ? "Edit & Resubmit Paper" : "Direct Submission"}
+                {editId ? "Edit & Resubmit Paper" : isAdmin ? "Add Paper to Corpus" : "Direct Submission"}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {editId
                   ? "Edit your paper details and re-upload the PDF to address admin feedback."
-                  : "Directly submit scientific papers with PDF files. Papers will be automatically scored upon submission and points rewarded once approved by the Admin."}
+                  : isAdmin
+                    ? "Create a public paper from metadata now. The PDF is optional and can be attached from Paper Detail later."
+                    : "Directly submit scientific papers with PDF files. Papers will be automatically scored upon submission and points rewarded once approved by the Admin."}
               </p>
             </div>
             {formContent}
@@ -554,12 +547,14 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
           {/* Header */}
           <div className="text-center space-y-3 mb-10">
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-              {editId ? "Edit & Resubmit Paper" : "Direct Submission"}
+              {editId ? "Edit & Resubmit Paper" : isAdmin ? "Add Paper to Corpus" : "Direct Submission"}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
               {editId
                 ? "Edit your paper details and re-upload the PDF to address admin feedback."
-                : "Directly submit scientific papers with PDF files. Papers will be automatically scored upon submission and points rewarded once approved by the Admin."}
+                : isAdmin
+                  ? "Create a public metadata-only paper, or attach a PDF now. No admin credit is charged."
+                  : "Directly submit scientific papers with PDF files. Papers will be automatically scored upon submission and points rewarded once approved by the Admin."}
             </p>
           </div>
 

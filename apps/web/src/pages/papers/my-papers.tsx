@@ -17,6 +17,7 @@ import {
   Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatQualityTierName } from "@/utils";
 
 interface MyPaper {
   id: string;
@@ -171,7 +172,7 @@ export function MyPapersPage({ isEmbedded = false }: { isEmbedded?: boolean } = 
                   <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-500 dark:text-slate-400">
                     <span>Quality Score: <strong className={tierColor}>{paper.qualityScore}/100</strong></span>
                     {paper.qualityTierName && (
-                      <span>Tier: <strong className={tierColor}>{paper.qualityTierName}</strong></span>
+                      <span>Tier: <strong className={tierColor}>{formatQualityTierName(paper.qualityTier, paper.qualityTierName)}</strong></span>
                     )}
                     {paper.downloadCost !== null && paper.downloadCost !== undefined && (
                       <span>Download Cost: <strong>{paper.downloadCost} credits</strong></span>

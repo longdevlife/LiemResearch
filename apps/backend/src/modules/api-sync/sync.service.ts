@@ -17,6 +17,7 @@ import {
 import type { OpenAlexWork } from "./providers/openalex.types.js";
 import { shouldReplaceTopics } from "./topic-merge.js";
 import { OPENALEX_PAPER_STATUS } from "../papers/paper-workflow.js";
+import { calculatePaperQuality } from "../papers/paper-quality.js";
 
 export interface RunSyncJob {
   searchText: string;
@@ -226,6 +227,10 @@ export async function ingestOpenAlexWorks(
   const computedAt = new Date().toISOString();
   for (const { paper } of ingested) {
     const { checks, qualityScore, checkStatus } = computeQuality(paper);
+    // OpenAlex papers use the same deterministic, public six-dimension rubric
+    // as manually uploaded papers. PDF availability is deliberately optional:
+    // metadata-only records remain visible and can be enriched with a PDF later.
+    const publicQuality = calculatePaperQuality(paper.toObject());
     const aiScore = computePaperScore(
       {
         publicationYear: paper.publicationYear,
@@ -259,6 +264,7 @@ export async function ingestOpenAlexWorks(
             isAiAnalyzable: qualityScore >= 0.7 && checks.hasAbstract,
             dataStatus: checkStatus === "fail" ? "low-quality" : "active",
             aiScore,
+            ...publicQuality,
           },
         },
       },

@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import mongoose from "mongoose";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
+import { logger } from "../../infrastructure/logger.js";
 import { PaperModel } from "./models/paper.model.js";
 import { PaperTranslationModel } from "./models/paper-translation.model.js";
-import { LIBRETRANSLATE_PROVIDER_VERSION, translateText } from "./libretranslate.client.js";
+import { getSupportedLanguages, LIBRETRANSLATE_PROVIDER_VERSION, translateText } from "./libretranslate.client.js";
+import { generateJSON } from "../llm/gemini.client.js";
 
 export interface PaperTranslationResult {
   paperId: string;
@@ -12,7 +14,7 @@ export interface PaperTranslationResult {
   targetLanguage: string;
   translatedTitle: string;
   translatedAbstract: string;
-  provider: "original" | "libretranslate";
+  provider: "original" | "libretranslate" | "gemini";
   cacheHit: boolean;
   translatedAt: string;
 }
@@ -44,17 +46,26 @@ export const paperTranslationService = {
       };
     }
 
-    if (env.TRANSLATION_PROVIDER !== "libretranslate") {
+    if (env.TRANSLATION_PROVIDER === "disabled") {
       throw AppError.serviceUnavailable("Paper translation is not enabled on this deployment.");
     }
 
+    const provider = env.TRANSLATION_PROVIDER;
+    if (provider === "libretranslate") {
+      const supportedLanguages = await getSupportedLanguages();
+      if (!supportedLanguages.includes(targetLanguage.toLowerCase())) {
+        throw AppError.badRequest(`Translation target '${targetLanguage}' is not supported by this provider.`);
+      }
+    }
+    const providerVersion = provider === "gemini" ? "gemini_v1" : LIBRETRANSLATE_PROVIDER_VERSION;
     const sourceTextHash = hashSource(paper.title, abstractText);
+
     const cached = await PaperTranslationModel.findOne({
       paper: paper._id,
       targetLanguage,
       sourceTextHash,
-      provider: "libretranslate",
-      providerVersion: LIBRETRANSLATE_PROVIDER_VERSION,
+      provider,
+      providerVersion,
     }).lean();
     if (cached) {
       return {
@@ -63,42 +74,69 @@ export const paperTranslationService = {
         targetLanguage,
         translatedTitle: cached.translatedTitle,
         translatedAbstract: cached.translatedAbstract,
-        provider: "libretranslate",
+        provider: cached.provider as "original" | "libretranslate" | "gemini",
         cacheHit: true,
         translatedAt: (cached.updatedAt as Date).toISOString(),
       };
     }
 
-    const [translatedTitle, translatedAbstract] = await Promise.all([
-      translateText(paper.title, sourceLanguage, targetLanguage),
-      translateText(abstractText, sourceLanguage, targetLanguage),
-    ]);
+    let translatedTitle = "";
+    let translatedAbstract = "";
+
+    if (provider === "gemini") {
+      try {
+        const prompt = `Translate the following academic paper title and abstract into ${targetLanguage === "vi" ? "Vietnamese" : "English"}.
+Maintain an academic, accurate, professional tone.
+
+Title: ${paper.title}
+Abstract: ${abstractText || "No abstract available"}
+
+Respond strictly in JSON format matching this schema:
+{
+  "translatedTitle": "...",
+  "translatedAbstract": "..."
+}`;
+
+        const res = await generateJSON<{
+          translatedTitle: string;
+          translatedAbstract: string;
+        }>(prompt);
+        translatedTitle = res.translatedTitle || paper.title;
+        translatedAbstract = res.translatedAbstract || abstractText;
+      } catch (err: any) {
+        logger.error({ err }, "Gemini paper translation failed");
+        throw AppError.internal(err?.message || "Paper translation failed. Please try again.");
+      }
+    } else {
+      [translatedTitle, translatedAbstract] = await Promise.all([
+        translateText(paper.title, sourceLanguage, targetLanguage),
+        translateText(abstractText, sourceLanguage, targetLanguage),
+      ]);
+    }
 
     const cacheFilter = {
       paper: paper._id,
       targetLanguage,
       sourceTextHash,
-      provider: "libretranslate",
-      providerVersion: LIBRETRANSLATE_PROVIDER_VERSION,
+      provider,
+      providerVersion,
     } as const;
 
     let saved;
     try {
       saved = await PaperTranslationModel.findOneAndUpdate(
         cacheFilter,
-      {
-        $setOnInsert: {
-          ...cacheFilter,
-          sourceLanguage,
-          translatedTitle,
-          translatedAbstract,
+        {
+          $setOnInsert: {
+            ...cacheFilter,
+            sourceLanguage,
+            translatedTitle,
+            translatedAbstract,
+          },
         },
-      },
-      { upsert: true, new: true },
+        { upsert: true, new: true },
       ).lean();
     } catch (error: unknown) {
-      // Two users can request the same uncached translation concurrently. The
-      // unique cache key elects one winner; the loser reads the committed row.
       if (!(error instanceof mongoose.mongo.MongoServerError) || error.code !== 11000) throw error;
       saved = await PaperTranslationModel.findOne(cacheFilter).lean();
     }
@@ -111,7 +149,7 @@ export const paperTranslationService = {
       targetLanguage,
       translatedTitle: saved.translatedTitle,
       translatedAbstract: saved.translatedAbstract,
-      provider: "libretranslate",
+      provider: saved.provider as "original" | "libretranslate" | "gemini",
       cacheHit: false,
       translatedAt: (saved.updatedAt as Date).toISOString(),
     };
