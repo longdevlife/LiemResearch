@@ -537,7 +537,7 @@ export function TrendsPage() {
       {/* 2. Trend Control Center */}
       <div className="bg-white dark:bg-[#121212] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6 w-full space-y-4">
         {/* Row 1: Search, Year range, Sort, Min papers, AI report */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 flex-wrap w-full">
+        <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 flex-wrap w-full">
           <div className="flex-1 w-full md:w-auto min-w-[200px] relative">
             <div className="relative">
               <button
