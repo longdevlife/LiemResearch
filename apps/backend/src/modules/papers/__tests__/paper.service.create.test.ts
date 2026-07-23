@@ -120,6 +120,11 @@ describe("paperService.create", () => {
       }),
     );
     expect(points.chargePaperRequestCreditChecked).toHaveBeenCalledWith(userId);
+
+    const createInput = paperModel.create.mock.calls[0]?.[0];
+    expect(createInput.dataQualityScore).toBeGreaterThan(0);
+    expect(createInput.aiScore.metadataQualityScore).toBe(createInput.dataQualityScore);
+    expect(createInput.aiScore.finalScore).toBeGreaterThan(0);
   });
 
   it("returns an R2 signed URL for PDF downloads instead of a backend token URL", async () => {
