@@ -68,8 +68,16 @@ services:
     image: libretranslate/libretranslate:latest
     profiles: ["translation"]
     restart: unless-stopped
+    environment:
+      LT_LOAD_ONLY: ${LIBRETRANSLATE_LOAD_ONLY:-en,vi,es,fr,de,pt,zh,ja,ko,ru,id}
     ports:
       - "127.0.0.1:5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages', timeout=5)"]
+      interval: 15s
+      timeout: 8s
+      retries: 20
+      start_period: 120s
 
   backend:
     <<: *backend-common

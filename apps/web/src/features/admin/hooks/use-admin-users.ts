@@ -10,11 +10,12 @@ export function useAdminUsers(query: ListUsersQuery, enabled = true) {
   });
 }
 
-export function useAdminStats(enabled = true) {
+export function useAdminStats(enabled = true, refetchInterval?: number | false) {
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: adminUsersApi.stats,
     enabled,
+    refetchInterval,
   });
 }
 

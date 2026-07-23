@@ -38,4 +38,23 @@ export interface AdminStats {
   papers: number;
   reports: number;
   gaps: number;
+  sync: {
+    totalRuns: number;
+    totalFetched: number;
+    totalInserted: number;
+    totalUpdated: number;
+    totalDuplicates: number;
+    latestRun: {
+      id: string;
+      status: "running" | "succeeded" | "failed" | "cancelled";
+      searchText?: string;
+      startedAt: ISODateString;
+      finishedAt?: ISODateString;
+      totalFetched: number;
+      totalInserted: number;
+      totalUpdated: number;
+      totalDuplicates: number;
+      errorMessage?: string;
+    } | null;
+  };
 }

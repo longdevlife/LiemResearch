@@ -5,7 +5,7 @@ import { AppError } from "../../common/exceptions/app-error.js";
 import { logger } from "../../infrastructure/logger.js";
 import { PaperModel } from "./models/paper.model.js";
 import { PaperTranslationModel } from "./models/paper-translation.model.js";
-import { LIBRETRANSLATE_PROVIDER_VERSION, translateText } from "./libretranslate.client.js";
+import { getSupportedLanguages, LIBRETRANSLATE_PROVIDER_VERSION, translateText } from "./libretranslate.client.js";
 import { generateJSON } from "../llm/gemini.client.js";
 
 export interface PaperTranslationResult {
@@ -51,6 +51,12 @@ export const paperTranslationService = {
     }
 
     const provider = env.TRANSLATION_PROVIDER;
+    if (provider === "libretranslate") {
+      const supportedLanguages = await getSupportedLanguages();
+      if (!supportedLanguages.includes(targetLanguage.toLowerCase())) {
+        throw AppError.badRequest(`Translation target '${targetLanguage}' is not supported by this provider.`);
+      }
+    }
     const providerVersion = provider === "gemini" ? "gemini_v1" : LIBRETRANSLATE_PROVIDER_VERSION;
     const sourceTextHash = hashSource(paper.title, abstractText);
 
