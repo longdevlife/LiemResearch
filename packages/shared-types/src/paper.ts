@@ -165,6 +165,7 @@ export interface PaperTranslationCapabilities {
   enabled: boolean;
   provider: "disabled" | "libretranslate" | "gemini";
   targetLanguages: string[];
+  message?: string;
 }
 
 /** Lightweight paper reference — used for references + report grounding lists. */

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TranslatePaperBodySchema } from "../dto/translate-paper.schema.js";
-import { translateText } from "../libretranslate.client.js";
+import { getSupportedLanguages, translateText } from "../libretranslate.client.js";
 
 describe("paper translation", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -37,5 +37,20 @@ describe("paper translation", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     await expect(translateText("", "en", "vi")).resolves.toBe("");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the provider language catalogue for the capabilities endpoint", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          { code: "en", name: "English", targets: ["vi", "fr", "zh-Hans"] },
+          { code: "vi", name: "Vietnamese", targets: ["en"] },
+          { code: "bad", name: "Bad", targets: [] },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(getSupportedLanguages()).resolves.toEqual(["en", "fr", "vi", "zh-hans"]);
   });
 });

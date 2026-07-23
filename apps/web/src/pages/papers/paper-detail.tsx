@@ -45,6 +45,7 @@ import { CompareDialog } from "@/features/compare";
 import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
 import { getPaperPdfPanelState } from "./paper-pdf-panel";
 import { formatNumber } from "@/utils";
+import { formatLanguageName } from "@/utils/language";
 
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,6 +66,15 @@ export function PaperDetailPage() {
   const [translationLanguage, setTranslationLanguage] = useState("vi");
   const [showTranslation, setShowTranslation] = useState(false);
   const [translatePopoverOpen, setTranslatePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    const supported = translationCapabilities?.targetLanguages ?? [];
+    const firstSupported = supported[0];
+    if (firstSupported && !supported.includes(translationLanguage)) {
+      setTranslationLanguage(firstSupported);
+      setShowTranslation(false);
+    }
+  }, [translationCapabilities?.targetLanguages, translationLanguage]);
 
   useEffect(() => {
     const handleClickOutside = () => setTranslatePopoverOpen(false);
@@ -484,8 +494,11 @@ export function PaperDetailPage() {
                             }}
                             className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-900 px-2.5 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                           >
-                            <option value="vi">Vietnamese (Tiếng Việt)</option>
-                            <option value="en">English (Tiếng Anh)</option>
+                            {(translationCapabilities?.targetLanguages ?? []).map((code) => (
+                              <option key={code} value={code}>
+                                {formatLanguageName(code)}
+                              </option>
+                            ))}
                           </select>
                         </div>
 
@@ -497,7 +510,7 @@ export function PaperDetailPage() {
                             title={
                               !currentUser
                                 ? "Sign in to translate this paper"
-                                : "Translation unavailable in this deployment"
+                                : translationCapabilities?.message || "Translation unavailable in this deployment"
                             }
                           >
                             Translate
