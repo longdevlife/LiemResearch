@@ -429,6 +429,116 @@ export function PaperDetailPage() {
                 >
                   <Scale className="w-4 h-4" /> Compare
                 </Button>
+
+                <div className="relative inline-block">
+                  <Button
+                    variant={showTranslation ? "default" : "outline"}
+                    className={`h-10 px-4 gap-2 font-bold rounded-lg ${
+                      showTranslation
+                        ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                        : "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTranslatePopoverOpen(!translatePopoverOpen);
+                    }}
+                    title="Translate this paper"
+                    aria-label="Translate this paper"
+                  >
+                    <Globe className="w-4 h-4 text-blue-500" />
+                    <span>{showTranslation ? "View original" : "Translate"}</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                  </Button>
+
+                  {translatePopoverOpen && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute left-0 mt-2 w-64 p-3.5 bg-white dark:bg-[#181818] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
+                    >
+                      <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Languages className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          Translate paper
+                        </span>
+                        {showTranslation && (
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label
+                            htmlFor="action-target-language"
+                            className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1"
+                          >
+                            Target Language
+                          </label>
+                          <select
+                            id="action-target-language"
+                            value={translationLanguage}
+                            onChange={(e) => {
+                              setTranslationLanguage(e.target.value);
+                              setShowTranslation(false);
+                            }}
+                            className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-900 px-2.5 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                          >
+                            <option value="vi">Vietnamese (Tiếng Việt)</option>
+                            <option value="en">English (Tiếng Anh)</option>
+                          </select>
+                        </div>
+
+                        {!currentUser || translationCapabilities?.enabled !== true ? (
+                          <Button
+                            type="button"
+                            disabled
+                            className="w-full h-8 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-0 cursor-not-allowed"
+                            title={
+                              !currentUser
+                                ? "Sign in to translate this paper"
+                                : "Translation unavailable in this deployment"
+                            }
+                          >
+                            Translate
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              handleTranslate();
+                              setTranslatePopoverOpen(false);
+                            }}
+                            disabled={translatePaper.isPending}
+                            className="w-full h-8 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            {translatePaper.isPending ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Languages className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            {translatePaper.isPending ? "Translating..." : "Translate"}
+                          </Button>
+                        )}
+
+                        {!!translation && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowTranslation((curr: boolean) => !curr);
+                              setTranslatePopoverOpen(false);
+                            }}
+                            className="w-full h-7 text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                          >
+                            {showTranslation ? "View original" : "Show translation"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
                 <Link2 className="w-4 h-4" /> {formatNumber(paper.citationCount)} Citations
@@ -797,17 +907,6 @@ export function PaperDetailPage() {
             paper={paper}
             taxonomyRows={taxonomyRows}
             taxonomyTopic={taxonomyTopic}
-            translationLanguage={translationLanguage}
-            setTranslationLanguage={setTranslationLanguage}
-            showTranslation={showTranslation}
-            setShowTranslation={setShowTranslation}
-            translatePopoverOpen={translatePopoverOpen}
-            setTranslatePopoverOpen={setTranslatePopoverOpen}
-            translatePaper={translatePaper}
-            translationCapabilities={translationCapabilities}
-            handleTranslate={handleTranslate}
-            currentUser={currentUser}
-            hasTranslation={!!translation}
           />
 
           {/* AI Reports Citation Card */}
@@ -855,32 +954,10 @@ function PaperMetadataSidebarCard({
   paper,
   taxonomyRows,
   taxonomyTopic,
-  translationLanguage,
-  setTranslationLanguage,
-  showTranslation,
-  setShowTranslation,
-  translatePopoverOpen,
-  setTranslatePopoverOpen,
-  translatePaper,
-  translationCapabilities,
-  handleTranslate,
-  currentUser,
-  hasTranslation,
 }: {
   paper: Paper;
   taxonomyRows: Array<{ label: string; value: string; href?: string }>;
   taxonomyTopic?: PaperTopic;
-  translationLanguage: string;
-  setTranslationLanguage: (lang: string) => void;
-  showTranslation: boolean;
-  setShowTranslation: (val: boolean | ((prev: boolean) => boolean)) => void;
-  translatePopoverOpen: boolean;
-  setTranslatePopoverOpen: (val: boolean) => void;
-  translatePaper: any;
-  translationCapabilities?: any;
-  handleTranslate: () => void;
-  currentUser: any;
-  hasTranslation: boolean;
 }) {
   const fallbackTopic = paper.topics?.[0];
   const hasTaxonomy = taxonomyRows.length > 0;
@@ -907,125 +984,7 @@ function PaperMetadataSidebarCard({
         <MetadataRow label="Year" value={paper.publicationYear ? String(paper.publicationYear) : undefined} />
         <MetadataRow label="Type" value={paper.paperKind} capitalize />
         <MetadataRow label="Source" value={paper.journalName} />
-        
-        <div className="grid grid-cols-[108px_1fr] gap-2 items-center text-sm">
-          <dt className="font-bold text-slate-900 dark:text-slate-100">Language:</dt>
-          <dd className="flex flex-wrap items-center gap-2 font-normal text-slate-900 dark:text-white">
-            <span>{formatLanguage(paper.language)}</span>
-
-            <div className="relative inline-block">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTranslatePopoverOpen(!translatePopoverOpen);
-                }}
-                title="Translate this paper"
-                aria-label="Translate this paper"
-                className={`h-6 px-2 text-[11px] font-bold rounded-md flex items-center gap-1 transition-colors ${
-                  showTranslation
-                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-slate-800"
-                }`}
-              >
-                <Globe className="w-3 h-3 text-blue-500" />
-                <span>{showTranslation ? "View original" : "Translate"}</span>
-                <ChevronDown className="w-3 h-3 opacity-60" />
-              </Button>
-
-              {translatePopoverOpen && (
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 mt-1.5 w-64 p-3.5 bg-white dark:bg-[#181818] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
-                >
-                  <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Languages className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      Translate paper
-                    </span>
-                    {showTranslation && (
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                        Active
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label
-                        htmlFor="sidebar-target-language"
-                        className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1"
-                      >
-                        Target Language
-                      </label>
-                      <select
-                        id="sidebar-target-language"
-                        value={translationLanguage}
-                        onChange={(e) => {
-                          setTranslationLanguage(e.target.value);
-                          setShowTranslation(false);
-                        }}
-                        className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-900 px-2.5 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                      >
-                        <option value="vi">Vietnamese (Tiếng Việt)</option>
-                        <option value="en">English (Tiếng Anh)</option>
-                      </select>
-                    </div>
-
-                    {!currentUser || translationCapabilities?.enabled !== true ? (
-                      <Button
-                        type="button"
-                        disabled
-                        className="w-full h-8 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-0 cursor-not-allowed"
-                        title={
-                          !currentUser
-                            ? "Sign in to translate this paper"
-                            : "Translation unavailable in this deployment"
-                        }
-                      >
-                        Translate
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          handleTranslate();
-                          setTranslatePopoverOpen(false);
-                        }}
-                        disabled={translatePaper.isPending}
-                        className="w-full h-8 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-sm transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {translatePaper.isPending ? (
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Languages className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        {translatePaper.isPending ? "Translating..." : "Translate"}
-                      </Button>
-                    )}
-
-                    {hasTranslation && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowTranslation((curr: boolean) => !curr);
-                          setTranslatePopoverOpen(false);
-                        }}
-                        className="w-full h-7 text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                      >
-                        {showTranslation ? "View original" : "Show translation"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </dd>
-        </div>
+        <MetadataRow label="Language" value={formatLanguage(paper.language)} />
       </dl>
 
       <div className="my-4 h-px bg-slate-100 dark:bg-slate-800" />
