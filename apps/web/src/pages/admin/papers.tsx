@@ -44,6 +44,8 @@ interface AdminPaper {
   uploadCreditReward?: number;
   pdfPath?: string;
   requestedBy?: PaperRequesterValue;
+  uploadedAt?: string;
+  updatedAt?: string;
   createdAt: string;
 }
 
@@ -101,6 +103,8 @@ export function AdminPapersPage() {
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<"normal" | "pdf">("normal");
   const [total, setTotal] = useState(0);
+  const [normalTotal, setNormalTotal] = useState(0);
+  const [pdfTotal, setPdfTotal] = useState(0);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Rejection & selection state
@@ -115,12 +119,19 @@ export function AdminPapersPage() {
     if (isUserLoading || !isAdmin) return;
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { adminView: "1", page, pageSize: PAGE_SIZE };
+      const params: Record<string, string | number> = {
+        adminView: "1",
+        kind: activeTab,
+        page,
+        pageSize: PAGE_SIZE,
+      };
       if (statusFilter !== "all") params.status = statusFilter;
       if (search) params.search = search;
       const res = await api.get("/papers", { params });
       setPapers(res.data.data ?? []);
       setTotal(res.data.meta?.total ?? 0);
+      setNormalTotal(res.data.meta?.normalTotal ?? 0);
+      setPdfTotal(res.data.meta?.pdfTotal ?? 0);
       setSelectedIds([]);
     } catch {
       toast.error("Failed to load paper submission requests");
@@ -135,13 +146,18 @@ export function AdminPapersPage() {
     } else if (!isUserLoading && !isAdmin) {
       setLoading(false);
     }
-  }, [statusFilter, search, page, isUserLoading, isAdmin]);
+  }, [statusFilter, search, activeTab, page, isUserLoading, isAdmin]);
 
   const updateStatus = async (paperId: string, status: string, rejectionReason?: string) => {
     setUpdatingId(paperId);
     try {
-      await api.patch(`/papers/${paperId}/status`, { status, rejectionReason });
-      toast.success(`Paper request ${status === "rejected" ? "rejected" : "approved"}.`);
+      const response = await api.patch(`/papers/${paperId}/status`, { status, rejectionReason });
+      const resultingStatus = response.data.data?.paperStatus;
+      toast.success(
+        status === "rejected" && resultingStatus === "not-downloaded"
+          ? "PDF contribution rejected. The paper remains public and awaits another PDF."
+          : `Paper request ${status === "rejected" ? "rejected" : "approved"}.`,
+      );
       fetchPapers();
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message ?? "Failed to update paper status");
@@ -308,7 +324,13 @@ export function AdminPapersPage() {
         </div>
       ) : (() => {
         const normalPapers = papers.filter((p) => !p.pdfPath);
-        const pdfPapers = papers.filter((p) => !!p.pdfPath);
+        const pdfPapers = papers
+          .filter((p) => !!p.pdfPath)
+          .sort((a, b) => {
+            const uploadedA = new Date(a.uploadedAt ?? a.updatedAt ?? a.createdAt).getTime();
+            const uploadedB = new Date(b.uploadedAt ?? b.updatedAt ?? b.createdAt).getTime();
+            return uploadedB - uploadedA;
+          });
         const currentList = activeTab === "normal" ? normalPapers : pdfPapers;
 
         const renderPaper = (paper: AdminPaper) => {
@@ -533,7 +555,10 @@ export function AdminPapersPage() {
             {/* Pill Tabs */}
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setActiveTab("normal")}
+                onClick={() => {
+                  setActiveTab("normal");
+                  setPage(1);
+                }}
                 className={cn(
                   "px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2",
                   activeTab === "normal"
@@ -542,10 +567,13 @@ export function AdminPapersPage() {
                 )}
               >
                 <span>Normal Paper Requests</span>
-                <span className={cn("px-2 py-0.5 rounded-full text-xs", activeTab === "normal" ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400")}>{normalPapers.length}</span>
+                <span className={cn("px-2 py-0.5 rounded-full text-xs", activeTab === "normal" ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400")}>{normalTotal}</span>
               </button>
               <button
-                onClick={() => setActiveTab("pdf")}
+                onClick={() => {
+                  setActiveTab("pdf");
+                  setPage(1);
+                }}
                 className={cn(
                   "px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2",
                   activeTab === "pdf"
@@ -554,7 +582,7 @@ export function AdminPapersPage() {
                 )}
               >
                 <span>PDF Upload Requests</span>
-                <span className={cn("px-2 py-0.5 rounded-full text-xs", activeTab === "pdf" ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400")}>{pdfPapers.length}</span>
+                <span className={cn("px-2 py-0.5 rounded-full text-xs", activeTab === "pdf" ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400")}>{pdfTotal}</span>
               </button>
             </div>
 

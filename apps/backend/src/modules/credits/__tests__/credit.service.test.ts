@@ -36,6 +36,61 @@ describe("CreditService", () => {
     vi.clearAllMocks();
   });
 
+  describe("rewardCreditsOnce", () => {
+    it("adds a paper upload reward and records it in Credit History", async () => {
+      const paperId = new mongoose.Types.ObjectId().toString();
+      vi.mocked(CreditTransactionModel.findOne).mockReturnValue({
+        lean: vi.fn().mockResolvedValue(null),
+      } as any);
+      vi.mocked(UserModel.findByIdAndUpdate).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ _id: userId, fullName: "PDF Contributor", credits: 250 }),
+      } as any);
+      vi.mocked(CreditTransactionModel.create).mockResolvedValue({
+        toObject: vi.fn().mockReturnValue({ type: "reward", amount: 150, balanceAfter: 250 }),
+      } as any);
+
+      const result = await creditService.rewardCreditsOnce({
+        userId,
+        amount: 150,
+        targetId: paperId,
+        idempotencyKey: `paper-upload-reward:${paperId}`,
+      });
+
+      expect(result).toEqual({ type: "reward", amount: 150, balanceAfter: 250 });
+      expect(UserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        userId,
+        { $inc: { credits: 150 } },
+        { new: true },
+      );
+      expect(CreditTransactionModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "reward",
+          action: "paper_upload_reward",
+          amount: 150,
+          balanceAfter: 250,
+          targetKind: "paper",
+          metadata: expect.objectContaining({ uploaderName: "PDF Contributor" }),
+        }),
+      );
+    });
+
+    it("does not add the same paper upload reward twice", async () => {
+      vi.mocked(CreditTransactionModel.findOne).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: "reward", amount: 150 }),
+      } as any);
+
+      await creditService.rewardCreditsOnce({
+        userId,
+        amount: 150,
+        targetId: new mongoose.Types.ObjectId().toString(),
+        idempotencyKey: "paper-upload-reward:existing",
+      });
+
+      expect(UserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(CreditTransactionModel.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe("chargeCreditsChecked", () => {
     it("should return null if amount is <= 0", async () => {
       const result = await creditService.chargeCreditsChecked({

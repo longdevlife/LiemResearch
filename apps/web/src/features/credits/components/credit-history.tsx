@@ -158,6 +158,11 @@ export function CreditHistory() {
                           {new Date(transaction.createdAt).toLocaleString()}
                           {transaction.targetKind ? ` · ${transaction.targetKind.replaceAll("_", " ")}` : ""}
                         </p>
+                        {transaction.action === "paper_upload_reward" && transaction.metadata?.uploaderName && (
+                          <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                            Uploaded by: {transaction.metadata.uploaderName}
+                          </p>
+                        )}
                       </div>
                     </div>
 

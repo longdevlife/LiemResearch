@@ -46,7 +46,7 @@ import { useEffect, useMemo } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
 import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
-import { getPaperPdfPanelState, shouldShowReadPdfAction } from "./paper-pdf-panel";
+import { getExternalPdfUrl, getPaperPdfPanelState, shouldShowReadPdfAction } from "./paper-pdf-panel";
 import { formatNumber } from "@/utils";
 import { formatLanguageName } from "@/utils/language";
 
@@ -163,6 +163,13 @@ export function PaperDetailPage() {
   };
 
   const handleDownloadPdf = async () => {
+    const externalPdfUrl = paper ? getExternalPdfUrl(paper) : undefined;
+    if (externalPdfUrl) {
+      window.open(externalPdfUrl, "_blank", "noopener,noreferrer");
+      toast.success("Opening Open Access PDF...");
+      return;
+    }
+
     setDownloading(true);
     try {
       const res = await api.get(`/papers/${id}/pdf-url`);
@@ -253,7 +260,9 @@ export function PaperDetailPage() {
   const canUploadPdf = pdfPanel.canUploadPdf;
   const shouldShowPdfPanel = pdfPanel.shouldShowPanel;
   const showReadPdfAction = shouldShowReadPdfAction(paper, canDownloadPdf);
-  const displayPaperStatus = paper.paperStatus ?? (paper.pdfPath ? "downloaded" : "not-downloaded");
+  const displayPaperStatus = pdfPanel.isExternalPdf
+    ? "downloaded"
+    : paper.paperStatus ?? (paper.pdfPath ? "downloaded" : "not-downloaded");
   const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
   const taxonomyTopic = getBestTaxonomyTopic(paper.topics ?? []);
   const taxonomyRows = taxonomyTopic ? buildTaxonomyRows(taxonomyTopic) : [];
@@ -565,10 +574,40 @@ export function PaperDetailPage() {
           <div className="order-last bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-10 space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-indigo-500" />
-              {pdfPanel.mode === "upload" ? "Submit internal PDF" : "Internal full-text PDF"}
+              {pdfPanel.mode === "upload"
+                ? "Submit internal PDF"
+                : pdfPanel.isExternalPdf
+                  ? "Open Access full-text PDF"
+                  : "Internal full-text PDF"}
             </h3>
 
-            {paper.pdfPath ? (
+            {pdfPanel.isExternalPdf ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/40 dark:bg-emerald-950/15">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        PDF is available for reading
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Hosted by an external Open Access repository
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    Free external access
+                  </span>
+                </div>
+                <Button
+                  onClick={handleDownloadPdf}
+                  className="h-10 gap-2 rounded-lg bg-indigo-600 px-5 font-bold text-white hover:bg-indigo-700"
+                >
+                  <FileText className="h-4 w-4" />
+                  Read PDF
+                </Button>
+              </div>
+            ) : paper.pdfPath ? (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20">
                   <div className="flex items-center gap-3">
@@ -976,7 +1015,8 @@ function PublicQualityScoreCard({ paper }: { paper: Paper }) {
     { label: "Utility", score: paper.utilityScore, max: 15, bar: "bg-emerald-500", tint: "bg-emerald-50 dark:bg-emerald-950/20" },
   ];
   const hasRubricScore = typeof paper.qualityScore === "number" && paper.qualityScore > 0;
-  const pdfAvailable = Boolean(paper.pdfPath);
+  const externalPdfAvailable = Boolean(getExternalPdfUrl(paper));
+  const pdfAvailable = Boolean(paper.pdfPath || externalPdfAvailable);
   const score = paper.qualityScore ?? 0;
 
   return (
@@ -1050,7 +1090,9 @@ function PublicQualityScoreCard({ paper }: { paper: Paper }) {
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Download cost</div>
                 <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  {paper.downloadCost ?? "Unavailable"}{typeof paper.downloadCost === "number" ? " credits" : ""}
+                  {externalPdfAvailable
+                    ? "Free external access"
+                    : `${paper.downloadCost ?? "Unavailable"}${typeof paper.downloadCost === "number" ? " credits" : ""}`}
                 </div>
               </div>
             </div>
@@ -1062,7 +1104,11 @@ function PublicQualityScoreCard({ paper }: { paper: Paper }) {
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Approved upload reward</div>
                 <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  {pdfAvailable ? `${paper.uploadCreditReward ?? 0} credits` : "Available after PDF approval"}
+                  {externalPdfAvailable
+                    ? "Not applicable to external PDF"
+                    : pdfAvailable
+                      ? `${paper.uploadCreditReward ?? 0} credits`
+                      : "Available after PDF approval"}
                 </div>
               </div>
             </div>

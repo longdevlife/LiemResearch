@@ -9,7 +9,9 @@ type PaperStatus =
 
 export interface PaperPdfPanelInput {
   paper: {
+    primaryProvider?: "openalex" | "semanticscholar" | "crossref" | "arxiv" | "user";
     pdfPath?: string;
+    openAccessUrl?: string;
     paperStatus?: PaperStatus;
     qualityTier?: number;
     downloadCost?: number | null;
@@ -37,6 +39,27 @@ export interface PaperPdfPanelState {
   canAcceptPdf: boolean;
   canDownloadPdf: boolean;
   canUploadPdf: boolean;
+  externalPdfUrl?: string;
+  isExternalPdf: boolean;
+}
+
+/** Only treat URLs that clearly identify a PDF as directly readable. */
+export function getExternalPdfUrl(
+  paper: { pdfPath?: string; openAccessUrl?: string },
+): string | undefined {
+  if (paper.pdfPath || !paper.openAccessUrl) return undefined;
+  try {
+    const url = new URL(paper.openAccessUrl);
+    if (!/^https?:$/.test(url.protocol)) return undefined;
+    const path = decodeURIComponent(url.pathname);
+    const isPdfPath = /(?:\.pdf|\/pdf)$/i.test(path);
+    const isPdfQuery = /^(?:pdf|1|true)$/i.test(
+      url.searchParams.get("format") ?? url.searchParams.get("download") ?? "",
+    );
+    return isPdfPath || isPdfQuery ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -48,10 +71,14 @@ export function shouldShowReadPdfAction(
   paper: { pdfPath?: string; paperStatus?: PaperStatus; openAccessUrl?: string },
   canDownloadPdf: boolean,
 ): boolean {
+  const externalPdfUrl = getExternalPdfUrl(paper);
   return Boolean(
-    paper.pdfPath &&
-    paper.paperStatus === "downloaded" &&
-    canDownloadPdf,
+    externalPdfUrl ||
+      (
+        paper.pdfPath &&
+        paper.paperStatus === "downloaded" &&
+        canDownloadPdf
+      ),
   );
 }
 
@@ -60,11 +87,17 @@ export function getPaperPdfPanelState({
   currentUser,
 }: PaperPdfPanelInput): PaperPdfPanelState {
   const isAdmin = currentUser?.role === "admin";
-  const isRequester = paper.requestedBy?._id === currentUser?.id;
-  const isUploader = paper.uploadedBy?._id === currentUser?.id;
+  const isRequester = Boolean(currentUser && paper.requestedBy?._id === currentUser.id);
+  const isUploader = Boolean(currentUser && paper.uploadedBy?._id === currentUser.id);
   const isOwner = isRequester || isUploader;
+  const isImportedPaper = paper.primaryProvider
+    ? paper.primaryProvider !== "user"
+    : !paper.requestedBy;
+  const externalPdfUrl = getExternalPdfUrl(paper);
+  const isExternalPdf = Boolean(externalPdfUrl);
   const hasPdf = Boolean(paper.pdfPath);
-  const isPdfAvailable = hasPdf && paper.paperStatus === "downloaded";
+  const hasReadablePdf = hasPdf || isExternalPdf;
+  const isPdfAvailable = (hasPdf && paper.paperStatus === "downloaded") || isExternalPdf;
   const isWaitingRequesterAccept =
     paper.paperStatus === "pending-requester-acceptance" ||
     (
@@ -73,6 +106,7 @@ export function getPaperPdfPanelState({
       Boolean(paper.requestedBy) &&
       paper.uploadedBy?._id !== paper.requestedBy?._id
     );
+  const isWaitingAdminApproval = paper.paperStatus === "pending" && !isWaitingRequesterAccept;
 
   const canAcceptPdf = Boolean(currentUser && isRequester && isWaitingRequesterAccept && hasPdf);
   const isPrivateDownload = Boolean(isAdmin || isRequester || isUploader);
@@ -82,28 +116,35 @@ export function getPaperPdfPanelState({
       paper.downloadCost !== null &&
       paper.downloadCost !== undefined,
   );
-  const canDownloadPdf = Boolean(hasPdf && (isPrivateDownload || canPublicDownload));
+  const canDownloadPdf = Boolean(isExternalPdf || (hasPdf && (isPrivateDownload || canPublicDownload)));
   const canUploadPdf = Boolean(
     currentUser &&
-      !hasPdf &&
+      !hasReadablePdf &&
       paper.paperStatus !== "rejected" &&
       (
         isAdmin ||
-        paper.paperStatus === undefined ||
-        paper.paperStatus === "not-downloaded"
+        paper.paperStatus === "not-downloaded" ||
+        (
+          isImportedPaper &&
+          (
+            paper.paperStatus === undefined ||
+            paper.paperStatus === "pending"
+          )
+        )
       ),
   );
   const shouldShowPendingApproval = Boolean(
     currentUser &&
-      !hasPdf &&
-      paper.paperStatus === "pending" &&
+      isWaitingAdminApproval &&
       (isAdmin || isRequester),
   );
 
   let mode: PaperPdfPanelMode = "hidden";
   if (canUploadPdf) mode = "upload";
-  else if (canAcceptPdf || isWaitingRequesterAccept) mode = "awaiting-acceptance";
-  else if (canDownloadPdf || hasPdf) mode = "available";
+  else if (isExternalPdf) mode = "available";
+  else if (canAcceptPdf || (isWaitingRequesterAccept && isPrivateDownload)) mode = "awaiting-acceptance";
+  else if (isWaitingAdminApproval && (isPrivateDownload || !hasPdf)) mode = "pending-approval";
+  else if (isPdfAvailable) mode = "available";
   else if (shouldShowPendingApproval) mode = "pending-approval";
 
   return {
@@ -117,5 +158,7 @@ export function getPaperPdfPanelState({
     canAcceptPdf,
     canDownloadPdf,
     canUploadPdf,
+    externalPdfUrl,
+    isExternalPdf,
   };
 }

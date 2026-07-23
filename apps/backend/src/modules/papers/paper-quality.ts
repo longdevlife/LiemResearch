@@ -25,7 +25,7 @@ export const QUALITY_TIERS = [
   { tier: 0, name: "Invalid", minScore: 0, maxScore: 49, downloadCost: null, uploadCreditReward: 0 },
   { tier: 1, name: "Basic", minScore: 50, maxScore: 64, downloadCost: 20, uploadCreditReward: 60 },
   { tier: 2, name: "Academic Standard", minScore: 65, maxScore: 79, downloadCost: 30, uploadCreditReward: 90 },
-  { tier: 3, name: "High Value", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 130 },
+  { tier: 3, name: "High Value", minScore: 80, maxScore: 91, downloadCost: 50, uploadCreditReward: 150 },
   { tier: 4, name: "Elite", minScore: 92, maxScore: 100, downloadCost: 80, uploadCreditReward: 180 },
 ];
 

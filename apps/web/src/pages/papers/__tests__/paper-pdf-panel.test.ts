@@ -68,6 +68,22 @@ describe("getPaperPdfPanelState", () => {
     expect(state.canUploadPdf).toBe(true);
   });
 
+  it("shows the same Read PDF state for a direct external Open Access PDF", () => {
+    const paper = {
+      ...basePaper,
+      primaryProvider: "openalex" as const,
+      paperStatus: "pending" as const,
+      openAccessUrl: "https://repository.example.org/papers/study.pdf",
+    };
+    const state = getPaperPdfPanelState({ paper, currentUser: null });
+
+    expect(state.isExternalPdf).toBe(true);
+    expect(state.mode).toBe("available");
+    expect(state.canDownloadPdf).toBe(true);
+    expect(state.canUploadPdf).toBe(false);
+    expect(shouldShowReadPdfAction(paper, state.canDownloadPdf)).toBe(true);
+  });
+
   it("allows admins to upload a missing PDF for imported papers without a workflow status", () => {
     const state = getPaperPdfPanelState({
       paper: {
@@ -98,6 +114,35 @@ describe("getPaperPdfPanelState", () => {
     expect(state.canUploadPdf).toBe(true);
   });
 
+  it("allows a user to contribute to a pending OpenAlex record", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        primaryProvider: "openalex",
+        paperStatus: "pending",
+        requestedBy: { _id: "original-requester" },
+      },
+      currentUser: { id: "contributor", role: "student" },
+    });
+
+    expect(state.canUploadPdf).toBe(true);
+    expect(state.mode).toBe("upload");
+  });
+
+  it("does not let another user upload to an unapproved user submission", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        primaryProvider: "user",
+        paperStatus: "pending",
+        requestedBy: { _id: "requester" },
+      },
+      currentUser: { id: "other-user", role: "student" },
+    });
+
+    expect(state.canUploadPdf).toBe(false);
+  });
+
   it("does not require requester acceptance for an imported PDF awaiting admin approval", () => {
     const state = getPaperPdfPanelState({
       paper: {
@@ -110,8 +155,25 @@ describe("getPaperPdfPanelState", () => {
       currentUser: { id: "contributor", role: "student" },
     });
 
+    expect(state.mode).toBe("pending-approval");
     expect(state.isWaitingRequesterAccept).toBe(false);
     expect(state.canAcceptPdf).toBe(false);
+  });
+
+  it("hides a contributed PDF from public readers until admin approval", () => {
+    const state = getPaperPdfPanelState({
+      paper: {
+        ...basePaper,
+        pdfPath: "papers/contributed.pdf",
+        paperStatus: "pending",
+        requestedBy: undefined,
+        uploadedBy: { _id: "contributor" },
+      },
+      currentUser: null,
+    });
+
+    expect(state.shouldShowPanel).toBe(false);
+    expect(state.canDownloadPdf).toBe(false);
   });
 
   it("allows signed-in users to contribute a PDF when a paper is awaiting PDF", () => {

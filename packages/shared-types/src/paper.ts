@@ -73,7 +73,7 @@ export interface Paper {
   relatedWorksCount?: number;
   keywords: PaperKeyword[];
   topics: PaperTopic[];
-  primaryProvider: DataSource;
+  primaryProvider: DataSource | "user";
   dataStatus: DataStatus;
   dataQualityScore: number; // 0..1 — field-presence quality
   isAiAnalyzable: boolean; // true when quality is high enough for AI analysis

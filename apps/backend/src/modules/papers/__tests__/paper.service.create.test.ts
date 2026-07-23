@@ -6,6 +6,7 @@ const paperModel = vi.hoisted(() => ({
   create: vi.fn(),
   findById: vi.fn(),
   findByIdAndUpdate: vi.fn(),
+  findOneAndUpdate: vi.fn(),
 }));
 
 const userModel = vi.hoisted(() => ({
@@ -162,5 +163,66 @@ describe("paperService.create", () => {
     expect(result.downloadUrl).toBe(signedUrl);
     expect(storage.getSignedDownloadUrl).toHaveBeenCalledWith(pdfUri);
     expect(points.chargePaperDownloadCredit).toHaveBeenCalled();
+  });
+
+  it("rejects only the contributed PDF while keeping an imported paper public", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    const uploaderId = new mongoose.Types.ObjectId();
+    const pdfPath = "r2://papers-bucket/papers/rejected-contribution.pdf";
+    const paperData = {
+      _id: paperId,
+      title: "Imported OpenAlex paper",
+      primaryProvider: "openalex",
+      requestedBy: undefined,
+      uploadedBy: uploaderId,
+      uploadedAt: new Date(),
+      paperStatus: "pending",
+      dataStatus: "active",
+      pdfPath,
+      publicationYear: 2025,
+      citationCount: 10,
+      authors: [{ displayName: "Researcher", position: 1 }],
+      keywords: [],
+      topics: [],
+      externalIds: { openalexId: "W123" },
+      dataQualityScore: 0.5,
+    };
+    paperModel.findById.mockResolvedValue({
+      ...paperData,
+      toObject: () => ({ ...paperData }),
+    });
+    paperModel.findOneAndUpdate.mockResolvedValue({
+      ...paperData,
+      pdfPath: undefined,
+      uploadedBy: undefined,
+      uploadedAt: undefined,
+      paperStatus: "not-downloaded",
+      dataStatus: "active",
+    });
+    storage.deletePdf.mockResolvedValue(undefined);
+    points.recordInvalidPdfUpload.mockResolvedValue(undefined);
+
+    const result = await paperService.updateStatus(
+      String(paperId),
+      "rejected",
+      "The uploaded file is not the correct paper",
+    );
+
+    expect(result.paperStatus).toBe("not-downloaded");
+    expect(result.dataStatus).toBe("active");
+    expect(paperModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: String(paperId), paperStatus: "pending", pdfPath }),
+      expect.objectContaining({
+        $unset: expect.objectContaining({ pdfPath: "", uploadedBy: "", uploadedAt: "" }),
+        paperStatus: "not-downloaded",
+        dataStatus: "active",
+      }),
+      { new: true },
+    );
+    expect(storage.deletePdf).toHaveBeenCalledWith(pdfPath);
+    expect(points.recordInvalidPdfUpload).toHaveBeenCalledWith(String(uploaderId));
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: uploaderId, type: "submission_rejected" }),
+    );
   });
 });

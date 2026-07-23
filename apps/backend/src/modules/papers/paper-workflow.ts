@@ -3,6 +3,19 @@ import type { PaperDoc } from "./models/paper.model.js";
 
 export const OPENALEX_PAPER_STATUS = "not-downloaded" as const;
 
+type PaperOrigin = Pick<PaperDoc, "primaryProvider" | "requestedBy">;
+
+/**
+ * Provider data remains an imported corpus record even when a user originally
+ * requested that it be synced. Older records may not have primaryProvider, so
+ * keep the requestedBy fallback for backward compatibility.
+ */
+export function isImportedPaperRecord(paper: PaperOrigin): boolean {
+  return paper.primaryProvider
+    ? paper.primaryProvider !== "user"
+    : !paper.requestedBy;
+}
+
 const PAPER_REQUEST_STATUSES = [
   "pending",
   "not-downloaded",

@@ -61,13 +61,20 @@ paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: Nex
     if (isAdmin && req.query.adminView) {
       const status = (req.query.status as string | undefined)?.trim();
       const search = (req.query.search as string | undefined)?.trim();
+      const kind = req.query.kind === "pdf" ? "pdf" : "normal";
       const page = Math.max(1, Number(req.query.page) || 1);
       const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 20));
-      const { papers, total } = await paperService.getAllPapersAdmin({ status, search, page, pageSize });
+      const { papers, total, normalTotal, pdfTotal } = await paperService.getAllPapersAdmin({
+        status,
+        search,
+        kind,
+        page,
+        pageSize,
+      });
       res.json({
         success: true,
         data: papers,
-        meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+        meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize), normalTotal, pdfTotal },
       });
       return;
     }

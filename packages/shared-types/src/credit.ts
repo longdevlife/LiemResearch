@@ -31,6 +31,11 @@ export interface CreditTransaction {
   targetId?: string;
   status: "applied" | "refunded";
   refundedTransactionId?: string;
+  metadata?: {
+    description?: string;
+    uploaderName?: string;
+    [key: string]: unknown;
+  };
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

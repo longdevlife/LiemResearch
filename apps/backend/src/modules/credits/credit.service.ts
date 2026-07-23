@@ -27,11 +27,61 @@ export interface RefundParams {
   reason?: string;
 }
 
+export interface RewardParams {
+  userId: string;
+  amount: number;
+  targetId: string;
+  idempotencyKey: string;
+  metadata?: Record<string, unknown>;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Credit Service                                                     */
 /* ------------------------------------------------------------------ */
 
 export const creditService = {
+  /** Add an uploader reward once and persist it in Credit History. */
+  async rewardCreditsOnce(params: RewardParams): Promise<CreditTransactionDoc | null> {
+    const { userId, amount, targetId, idempotencyKey, metadata } = params;
+    if (amount <= 0) return null;
+
+    const existing = await CreditTransactionModel.findOne({
+      idempotencyKey,
+      status: "applied",
+    }).lean();
+    if (existing) return existing as CreditTransactionDoc;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { $inc: { credits: amount } },
+      { new: true },
+    ).lean();
+    if (!updatedUser) throw AppError.notFound("User not found");
+
+    try {
+      const transaction = await CreditTransactionModel.create({
+        userId: new mongoose.Types.ObjectId(userId),
+        type: "reward",
+        action: "paper_upload_reward",
+        amount,
+        balanceAfter: updatedUser.credits ?? 0,
+        targetKind: "paper",
+        targetId: new mongoose.Types.ObjectId(targetId),
+        idempotencyKey,
+        status: "applied",
+        metadata: {
+          ...metadata,
+          uploaderName: updatedUser.fullName ?? "Unknown user",
+        },
+      });
+      return transaction.toObject() as CreditTransactionDoc;
+    } catch (err) {
+      logger.error({ err, userId, amount, targetId }, "Credit reward ledger failed; rolling back");
+      await UserModel.findByIdAndUpdate(userId, { $inc: { credits: -amount } });
+      throw AppError.internal("Failed to record credit reward");
+    }
+  },
+
   /**
    * Atomically deduct credits from a user's balance.
    *

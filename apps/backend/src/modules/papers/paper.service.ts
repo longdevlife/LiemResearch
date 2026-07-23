@@ -23,7 +23,7 @@ import {
 import { UserModel } from "../auth/models/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
-import { buildUserPaperRequestFilter } from "./paper-workflow.js";
+import { buildUserPaperRequestFilter, isImportedPaperRecord } from "./paper-workflow.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,8 +55,14 @@ export interface CountPapersParams {
 export interface AdminListPapersParams {
   status?: string;
   search?: string;
+  kind?: "normal" | "pdf";
   page: number;
   pageSize: number;
+}
+
+interface AdminListPapersResult extends ListPapersResult {
+  normalTotal: number;
+  pdfTotal: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,25 +375,36 @@ export const paperService = {
   async getAllPapersAdmin({
     status,
     search,
+    kind,
     page,
     pageSize,
-  }: AdminListPapersParams): Promise<ListPapersResult> {
-    const filter: Record<string, unknown> = buildUserPaperRequestFilter(status);
+  }: AdminListPapersParams): Promise<AdminListPapersResult> {
+    const baseFilter: Record<string, unknown> = buildUserPaperRequestFilter(status);
     if (search) {
       const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-      filter.$or = [{ title: rx }, { "externalIds.doi": rx }];
+      baseFilter.$and = [{ $or: [{ title: rx }, { "externalIds.doi": rx }] }];
     }
-    const [docs, total] = await Promise.all([
+
+    const normalFilter = { ...baseFilter, pdfPath: { $in: [null, ""] } };
+    const pdfFilter = { ...baseFilter, pdfPath: { $exists: true, $nin: [null, ""] } };
+    const filter = kind === "pdf" ? pdfFilter : normalFilter;
+    const sort: Record<string, 1 | -1> = kind === "pdf"
+      ? { uploadedAt: -1, createdAt: -1 }
+      : { createdAt: -1 };
+
+    const [docs, total, normalTotal, pdfTotal] = await Promise.all([
       PaperModel.find(filter)
         .populate("requestedBy", "fullName email institution role avatarUrl")
         .populate("uploadedBy", "fullName email institution role avatarUrl")
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean(),
       PaperModel.countDocuments(filter),
+      PaperModel.countDocuments(normalFilter),
+      PaperModel.countDocuments(pdfFilter),
     ]);
-    return { papers: docs.map(toPaperDto as any), total };
+    return { papers: docs.map(toPaperDto as any), total, normalTotal, pdfTotal };
   },
 
   /**
@@ -413,11 +430,12 @@ export const paperService = {
 
     const isAdminUpload = uploaderRole === "admin";
     const isRequesterUpload = isSameId(paper.requestedBy, uploaderId);
-    const isImportedPaper = !paper.requestedBy;
+    const isImportedPaper = isImportedPaperRecord(paper);
     const effectiveStatus = paper.paperStatus ?? (isImportedPaper ? "not-downloaded" : "pending");
     const isApproved = isApprovedStatus(effectiveStatus);
+    const canUploadPdf = isAdminUpload || isRequesterUpload || isImportedPaper || isApproved;
 
-    if (!isAdminUpload && !isRequesterUpload && !isApproved) {
+    if (!canUploadPdf) {
       throw AppError.forbidden("You can only upload a PDF after the request is approved");
     }
 
@@ -604,6 +622,60 @@ export const paperService = {
 
     const previousStatus = paper.paperStatus ?? "pending";
     const wasApproved = isApprovedStatus(previousStatus);
+
+    // Rejecting a user-contributed PDF on an imported corpus paper must not
+    // reject or hide the paper metadata itself. Remove only the contribution,
+    // restore Awaiting PDF, and keep the imported record searchable.
+    const isImportedPdfRejection =
+      status === "rejected" &&
+      previousStatus === "pending" &&
+      Boolean(paper.pdfPath) &&
+      Boolean(paper.uploadedBy) &&
+      isImportedPaperRecord(paper);
+
+    if (isImportedPdfRejection) {
+      if (!rejectionReason || rejectionReason.trim().length < 5) {
+        throw AppError.badRequest("Rejection reason must be at least 5 characters");
+      }
+
+      const rejectedPdfPath = String(paper.pdfPath);
+      const rejectedUploaderId = paper.uploadedBy as mongoose.Types.ObjectId;
+      const qualityInput = { ...paper.toObject(), pdfPath: "", uploadedBy: undefined };
+      const quality = calculatePaperQuality(qualityInput);
+      const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
+      const tierDef = QUALITY_TIERS.find((tier) => tier.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
+
+      const updated = await PaperModel.findOneAndUpdate(
+        { _id: paperId, paperStatus: previousStatus, pdfPath: paper.pdfPath },
+        {
+          $unset: {
+            pdfPath: "",
+            uploadedBy: "",
+            uploadedAt: "",
+            rejectionReason: "",
+          },
+          paperStatus: "not-downloaded",
+          dataStatus: "active",
+          ...qualityScoreUpdate,
+          qualityTierName: tierDef.name,
+        },
+        { new: true },
+      );
+      if (!updated) throw AppError.conflict("Paper status changed concurrently — please retry");
+
+      await deleteStoredPdf(rejectedPdfPath);
+      await recordInvalidPdfUpload(rejectedUploaderId.toString());
+      await notificationService.create({
+        userId: rejectedUploaderId,
+        title: "PDF Contribution Rejected",
+        message: `Your PDF contribution for '${updated.title}' was rejected. Reason: ${rejectionReason.trim()}`,
+        type: "submission_rejected",
+        paperId: updated._id,
+      });
+      await syncUserPoints(rejectedUploaderId.toString());
+
+      return toPaperDto(updated as unknown as PaperDoc);
+    }
 
     let targetStatus = status;
     if ((status === "downloaded" || status === "not-downloaded") && paper.pdfPath) {

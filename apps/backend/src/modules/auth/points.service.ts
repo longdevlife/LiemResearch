@@ -5,6 +5,7 @@ import { PaperDownloadModel } from "../papers/models/paper-download.model.js";
 import { UserRatingModel } from "../quality/models/user-rating.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { logger } from "../../infrastructure/logger.js";
+import { creditService } from "../credits/credit.service.js";
 
 // ── Constants (mirrored from Legacy) ────────────────────────────────────────
 export const REQUEST_PAPER_COST = 100;   // Credits deducted when creating a request
@@ -83,9 +84,16 @@ export async function refundPaperRequestCredit(userId: string | mongoose.Types.O
 export async function rewardPaperUploadCredit(
   userId: string | mongoose.Types.ObjectId,
   reward: number,
+  paperId: string | mongoose.Types.ObjectId,
 ): Promise<void> {
   if (!userId || !reward) return;
-  await UserModel.findByIdAndUpdate(userId, { $inc: { credits: reward } });
+  await creditService.rewardCreditsOnce({
+    userId: String(userId),
+    amount: reward,
+    targetId: String(paperId),
+    idempotencyKey: `paper-upload-reward:${paperId}`,
+    metadata: { description: "Approved PDF upload reward" },
+  });
   await syncUserPoints(String(userId));
 }
 
@@ -300,7 +308,7 @@ export async function applyUploadCreditReward(paper: {
 
   const reward = paper.uploadCreditReward ?? 0;
   if (reward > 0) {
-    await rewardPaperUploadCredit(paper.uploadedBy, reward);
+    await rewardPaperUploadCredit(paper.uploadedBy, reward, paper._id);
   }
 
   // Mark as rewarded so it doesn't fire twice

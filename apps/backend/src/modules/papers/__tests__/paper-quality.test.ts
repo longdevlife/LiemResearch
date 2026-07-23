@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest";
 import { QUALITY_TIERS, getQualityTier, calculatePaperQuality } from "../paper-quality.js";
 
 describe("QUALITY_TIERS reward ladder", () => {
-  // Guards the tuned economics (I5): an upload reward must stay proportionate to the
-  // 100-credit request cost. An accidental edit back to 100/150/200/300 should fail here.
-  it("rewards are 0/60/90/130/180 by tier", () => {
-    expect(QUALITY_TIERS.map((t) => t.uploadCreditReward)).toEqual([0, 60, 90, 130, 180]);
+  // Guards the configured reward ladder, including 150 credits for High Value PDFs.
+  it("rewards are 0/60/90/150/180 by tier", () => {
+    expect(QUALITY_TIERS.map((t) => t.uploadCreditReward)).toEqual([0, 60, 90, 150, 180]);
   });
 
   it("download costs are unchanged", () => {
