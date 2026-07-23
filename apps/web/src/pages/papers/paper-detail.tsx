@@ -23,6 +23,9 @@ import {
   FolderPlus,
   Languages,
   Globe,
+  Coins,
+  Gift,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
@@ -138,11 +141,15 @@ export function PaperDetailPage() {
         try {
           const formData = new FormData();
           formData.append("pdf", file);
-          await api.post(`/papers/${id}/upload-pdf`, formData, {
+          const response = await api.post(`/papers/${id}/upload-pdf`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
           });
-          toast.success("PDF uploaded successfully!", { id: "pdf-upload" });
-          refetch();
+          // The upload endpoint returns this paper after recalculating its
+          // quality, tier, data completeness and intrinsic AI score. Write it
+          // directly into the detail cache so the score card updates instantly.
+          queryClient.setQueryData(["paper", id], response.data.data);
+          void queryClient.invalidateQueries({ queryKey: ["papers"] });
+          toast.success("PDF uploaded and this paper was rescored.", { id: "pdf-upload" });
         } catch (error: any) {
           console.error(error);
           toast.error(error.response?.data?.error?.message || "Failed to upload PDF", { id: "pdf-upload" });
@@ -676,6 +683,14 @@ export function PaperDetailPage() {
           </div>
           )}
 
+          {/* Abstract */}
+          <div className="mb-8">
+            <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Abstract</h3>
+            <div className="prose prose-sm max-w-none text-justify leading-relaxed text-slate-600 dark:prose-invert dark:text-slate-400">
+              <p>{displayAbstract || "No abstract available for this paper."}</p>
+            </div>
+          </div>
+
           {/* AI Analysis Summary — intrinsic, real scores only (no fabricated
               fallbacks). Renders only when paper.aiScore exists. Visual polish
               is AG's (handoff §1). */}
@@ -749,16 +764,6 @@ export function PaperDetailPage() {
           )}
 
           <PublicQualityScoreCard paper={paper} />
-
-          {/* Abstract */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Abstract</h3>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed text-justify">
-              <p>
-                {displayAbstract || "No abstract available for this paper."}
-              </p>
-            </div>
-          </div>
 
           {/* P2: Topics & Keywords */}
           {((paper.topics && paper.topics.length > 0) || (paper.keywords && paper.keywords.length > 0)) && (
@@ -962,32 +967,48 @@ export function PaperDetailPage() {
 
 function PublicQualityScoreCard({ paper }: { paper: Paper }) {
   const dimensions = [
-    { label: "Metadata", score: paper.metadataScore, max: 15 },
-    { label: "Source", score: paper.sourceScore, max: 15 },
-    { label: "Uniqueness", score: paper.duplicateScore, max: 20 },
-    { label: "Relevance", score: paper.relevanceScore, max: 15 },
-    { label: "Prestige", score: paper.prestigeScore, max: 15 },
-    { label: "Utility", score: paper.utilityScore, max: 15 },
+    { label: "Metadata", score: paper.metadataScore, max: 15, bar: "bg-sky-500", tint: "bg-sky-50 dark:bg-sky-950/20" },
+    { label: "Source", score: paper.sourceScore, max: 15, bar: "bg-indigo-500", tint: "bg-indigo-50 dark:bg-indigo-950/20" },
+    { label: "Uniqueness", score: paper.duplicateScore, max: 20, bar: "bg-violet-500", tint: "bg-violet-50 dark:bg-violet-950/20" },
+    { label: "Relevance", score: paper.relevanceScore, max: 15, bar: "bg-cyan-500", tint: "bg-cyan-50 dark:bg-cyan-950/20" },
+    { label: "Prestige", score: paper.prestigeScore, max: 15, bar: "bg-amber-500", tint: "bg-amber-50 dark:bg-amber-950/20" },
+    { label: "Utility", score: paper.utilityScore, max: 15, bar: "bg-emerald-500", tint: "bg-emerald-50 dark:bg-emerald-950/20" },
   ];
   const hasRubricScore = typeof paper.qualityScore === "number" && paper.qualityScore > 0;
   const pdfAvailable = Boolean(paper.pdfPath);
+  const score = paper.qualityScore ?? 0;
 
   return (
-    <section className="mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-[#121212]">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-              <Scale className="h-3.5 w-3.5" />
+    <section className="relative mb-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#121212]">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-violet-500 to-emerald-500" />
+      <div className="flex flex-col gap-5 border-b border-slate-100 bg-gradient-to-br from-blue-50/80 via-white to-violet-50/50 p-6 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:from-blue-950/20 dark:via-[#121212] dark:to-violet-950/10">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-3 text-lg font-extrabold text-slate-900 dark:text-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20">
+              <Scale className="h-5 w-5" />
             </span>
             Public quality score
           </h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             Deterministic score from paper metadata and source signals. AI does not set this tier or its credit values.
           </p>
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+            <RefreshCw className="h-3 w-3" />
+            Rescored whenever the PDF or metadata changes
+          </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          {hasRubricScore && (
+            <div className="text-right">
+              <div className="text-3xl font-black tracking-tight text-blue-700 dark:text-blue-400">
+                {score}<span className="text-base font-bold text-slate-400">/100</span>
+              </div>
+              <div className="mt-0.5 text-xs font-bold text-slate-600 dark:text-slate-300">
+                {paper.qualityTierName ?? `Tier ${paper.qualityTier ?? 0}`}
+              </div>
+            </div>
+          )}
           <span className={`rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
             pdfAvailable
               ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
@@ -995,38 +1016,55 @@ function PublicQualityScoreCard({ paper }: { paper: Paper }) {
           }`}>
             {pdfAvailable ? "PDF available" : "Metadata only"}
           </span>
-          {hasRubricScore && (
-            <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-sm font-extrabold text-blue-700 dark:text-blue-400">
-              {paper.qualityScore}/100 · {paper.qualityTierName ?? `Tier ${paper.qualityTier ?? 0}`}
-            </span>
-          )}
         </div>
       </div>
 
+      <div className="p-6">
       {hasRubricScore ? (
         <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {dimensions.map(({ label, score = 0, max }) => (
-              <div key={label} className="rounded-lg border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-zinc-900/30">
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span>
-                  <span className="font-extrabold text-slate-900 dark:text-white">{score}/{max}</span>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {dimensions.map(({ label, score: dimensionScore = 0, max, bar, tint }) => (
+              <div key={label} className={`rounded-xl border border-slate-100 p-4 dark:border-slate-800 ${tint}`}>
+                <div className="mb-3 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{label}</span>
+                  <span className="font-black text-slate-900 dark:text-white">
+                    {dimensionScore}<span className="font-semibold text-slate-400">/{max}</span>
+                  </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div className="h-2 overflow-hidden rounded-full bg-white shadow-inner dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-blue-600 dark:bg-blue-500"
-                    style={{ width: `${Math.min(100, Math.max(0, (score / max) * 100))}%` }}
+                    className={`h-full rounded-full ${bar}`}
+                    style={{ width: `${Math.min(100, Math.max(0, (dimensionScore / max) * 100))}%` }}
                   />
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            <span>Download cost: <strong className="text-slate-700 dark:text-slate-200">{paper.downloadCost ?? "Unavailable"} credits</strong></span>
-            {pdfAvailable && (
-              <span>Approved upload reward: <strong className="text-slate-700 dark:text-slate-200">{paper.uploadCreditReward ?? 0} credits</strong></span>
-            )}
+          <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2 dark:border-slate-800">
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-zinc-900/50">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <Coins className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Download cost</div>
+                <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {paper.downloadCost ?? "Unavailable"}{typeof paper.downloadCost === "number" ? " credits" : ""}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50/70 px-4 py-3 dark:bg-emerald-950/20">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <Gift className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Approved upload reward</div>
+                <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {pdfAvailable ? `${paper.uploadCreditReward ?? 0} credits` : "Available after PDF approval"}
+                </div>
+              </div>
+            </div>
           </div>
         </>
       ) : (
@@ -1035,6 +1073,7 @@ function PublicQualityScoreCard({ paper }: { paper: Paper }) {
           <strong>{Math.round((paper.dataQualityScore ?? 0) * 100)}%</strong>; the next sync or PDF update will publish the full breakdown.
         </div>
       )}
+      </div>
     </section>
   );
 }

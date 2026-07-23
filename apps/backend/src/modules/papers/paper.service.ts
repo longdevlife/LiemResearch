@@ -82,6 +82,31 @@ async function deleteStoredPdf(pdfPath: string): Promise<void> {
   await pdfStorageService.deletePdf(pdfPath);
 }
 
+function buildQualityScoreUpdate(
+  paper: Record<string, any>,
+  quality = calculatePaperQuality(paper),
+) {
+  const dataQualityScore = quality.qualityScore / 100;
+  const aiScore = computePaperScore(
+    {
+      publicationYear: Number(paper.publicationYear ?? 0),
+      citationCount: Number(paper.citationCount ?? 0),
+      dataQualityScore,
+      fwci: paper.fwci,
+      citationNormalizedPercentile: paper.citationNormalizedPercentile,
+    },
+    new Date().getFullYear(),
+    new Date().toISOString(),
+  );
+
+  return {
+    ...quality,
+    dataQualityScore,
+    isAiAnalyzable: dataQualityScore >= 0.7 && Boolean(String(paper.abstractText ?? "").trim()),
+    aiScore,
+  };
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 export const paperService = {
@@ -261,11 +286,7 @@ export const paperService = {
     //    shows its AI score immediately (citations 0 until/if enriched; recency-driven),
     //    instead of waiting for the next batch score:recompute. isAiAnalyzable is already
     //    true, so the embedding worker picks it up for semantic search/RAG/compare.
-    const aiScore = computePaperScore(
-      { publicationYear: input.publicationYear, citationCount: 0, dataQualityScore: quality.qualityScore / 100 },
-      new Date().getFullYear(),
-      new Date().toISOString(),
-    );
+    const qualityScoreUpdate = buildQualityScoreUpdate(rawData, quality);
     let paperDoc;
     try {
       paperDoc = await PaperModel.create({
@@ -281,14 +302,12 @@ export const paperService = {
       topics: input.topics,
       primaryProvider: "user",
       dataStatus: isAdmin ? "active" : "draft",
-      isAiAnalyzable: true,
-      aiScore,
       pdfPath,
       requestedBy: new mongoose.Types.ObjectId(userId),
       uploadedBy: pdfPath ? new mongoose.Types.ObjectId(userId) : undefined,
       uploadedAt: pdfPath ? new Date() : undefined,
       paperStatus,
-      ...quality,
+      ...qualityScoreUpdate,
       qualityTierName: tierDef.name,
       });
     } catch (err) {
@@ -409,7 +428,9 @@ export const paperService = {
       nextStatus = "pending-requester-acceptance";
     }
 
-    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath });
+    const qualityInput = { ...paper.toObject(), pdfPath };
+    const quality = calculatePaperQuality(qualityInput);
+    const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -420,7 +441,7 @@ export const paperService = {
         uploadedAt: new Date(),
         paperStatus: nextStatus,
         dataStatus: nextStatus === "downloaded" ? "active" : "draft",
-        ...quality,
+        ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
       { new: true },
@@ -457,12 +478,19 @@ export const paperService = {
       throw AppError.badRequest("This paper does not have a PDF waiting for your acceptance");
     }
 
-    const quality = calculatePaperQuality(paper.toObject());
+    const qualityInput = paper.toObject();
+    const quality = calculatePaperQuality(qualityInput);
+    const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
       paperId,
-      { paperStatus: "pending", dataStatus: "draft", ...quality, qualityTierName: tierDef.name },
+      {
+        paperStatus: "pending",
+        dataStatus: "draft",
+        ...qualityScoreUpdate,
+        qualityTierName: tierDef.name,
+      },
       { new: true },
     );
     if (!updated) throw AppError.notFound("Paper not found");
@@ -497,7 +525,9 @@ export const paperService = {
     const rejectedUploaderId = paper.uploadedBy;
     const pdfToDelete = paper.pdfPath;
 
-    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath: "", uploadedBy: undefined });
+    const qualityInput = { ...paper.toObject(), pdfPath: "", uploadedBy: undefined };
+    const quality = calculatePaperQuality(qualityInput);
+    const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -506,7 +536,7 @@ export const paperService = {
         $unset: { pdfPath: "", uploadedBy: "", uploadedAt: "" },
         paperStatus: "not-downloaded",
         dataStatus: "draft",
-        ...quality,
+        ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
       { new: true },
@@ -584,9 +614,11 @@ export const paperService = {
       updates.dataStatus = willBeApproved ? "active" : "draft";
     }
 
-    const quality = calculatePaperQuality(paper.toObject());
+    const qualityInput = paper.toObject();
+    const quality = calculatePaperQuality(qualityInput);
+    const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
-    Object.assign(updates, quality, { qualityTierName: tierDef.name });
+    Object.assign(updates, qualityScoreUpdate, { qualityTierName: tierDef.name });
     // Once the reward has been granted, FREEZE the stored uploadCreditReward: clawback must
     // reverse EXACTLY what was granted, so a later tier-table change (or re-score) must not
     // move it. Tier/downloadCost still re-score normally.
@@ -812,8 +844,9 @@ export const paperService = {
       pdfPath: updates.pdfPath !== undefined ? updates.pdfPath : paper.pdfPath,
     };
     const quality = calculatePaperQuality(merged);
+    const qualityScoreUpdate = buildQualityScoreUpdate(merged, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
-    Object.assign(updates, quality, { qualityTierName: tierDef.name });
+    Object.assign(updates, qualityScoreUpdate, { qualityTierName: tierDef.name });
     // Freeze the granted reward (see updateStatus): clawback must reverse exactly what was granted.
     if (paper.uploadRewardedAt) {
       updates.uploadCreditReward = paper.uploadCreditReward;
@@ -919,7 +952,9 @@ export const paperService = {
 
     const nextStatus = paper.paperStatus === "pending" ? "pending" : "not-downloaded";
 
-    const quality = calculatePaperQuality({ ...paper.toObject(), pdfPath: "", uploadedBy: undefined });
+    const qualityInput = { ...paper.toObject(), pdfPath: "", uploadedBy: undefined };
+    const quality = calculatePaperQuality(qualityInput);
+    const qualityScoreUpdate = buildQualityScoreUpdate(qualityInput, quality);
     const tierDef = QUALITY_TIERS.find((t) => t.tier === quality.qualityTier) ?? QUALITY_TIERS[0]!;
 
     const updated = await PaperModel.findByIdAndUpdate(
@@ -928,7 +963,7 @@ export const paperService = {
         $unset: { pdfPath: "", uploadedBy: "", uploadedAt: "" },
         paperStatus: nextStatus,
         dataStatus: "draft",
-        ...quality,
+        ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
       { new: true },
