@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail, FileText, Upload, Award } from "lucide-react";
+import { User, Lock, Settings2, Save, Key, ShieldAlert, Plus, X, GraduationCap, Mail, FileText, Upload, Award, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,9 @@ import { SubmitPaperPage } from "./papers/submit-paper";
 import { MyPapersPage } from "./papers/my-papers";
 import { avatars, getLevel, getLevelProgress, getNextLevelPoints, LEVEL_THRESHOLDS } from "@/utils/level";
 import { formatNumber } from "@/utils";
+import { CreditHistory } from "@/features/credits";
 
-type SettingsSection = "profile" | "security" | "preferences" | "submit-paper" | "my-papers";
+type SettingsSection = "profile" | "credits" | "security" | "preferences" | "submit-paper" | "my-papers";
 
 export function ProfilePage() {
   const { section } = useParams<{ section?: string }>();
@@ -28,6 +29,8 @@ export function ProfilePage() {
   useEffect(() => {
     if (section === "security" || section === "account") {
       setActiveSection("security");
+    } else if (section === "credits" || section === "credit-history") {
+      setActiveSection("credits");
     } else if (section === "preferences" || section === "customization" || section === "notifications") {
       setActiveSection("preferences");
     } else if ((section === "submit-paper" || section === "submit") && !isAdmin) {
@@ -198,6 +201,18 @@ export function ProfilePage() {
           )}
 
           <button
+            onClick={() => { setActiveSection("credits"); setSuccessMessage(""); setErrorMessage(""); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all ${
+              activeSection === "credits"
+                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            }`}
+          >
+            <ReceiptText className="w-4 h-4" />
+            Credit History
+          </button>
+
+          <button
             onClick={() => { setActiveSection("security"); setSuccessMessage(""); setErrorMessage(""); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all ${
               activeSection === "security"
@@ -319,15 +334,20 @@ export function ProfilePage() {
 
               {!isAdmin && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-[#1b1c24] dark:to-[#121319] border border-blue-100 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection("credits")}
+                    className="bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-[#1b1c24] dark:to-[#121319] border border-blue-100 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md dark:hover:border-blue-800"
+                  >
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Available Credits</p>
                       <p className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">{formatNumber((userData?.user as any)?.credits)} credits</p>
+                      <p className="mt-1 text-[10px] font-semibold text-blue-600/70 dark:text-blue-400/70">View transaction history</p>
                     </div>
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
                       <FileText className="w-5 h-5" />
                     </div>
-                  </div>
+                  </button>
                   <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-[#241e17] dark:to-[#19130e] border border-amber-100 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-sm">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Contribution Points</p>
@@ -433,7 +453,10 @@ export function ProfilePage() {
             </div>
           )}
 
-          {/* Section 2: Security & Password */}
+          {/* Section 2: Credit ledger */}
+          {activeSection === "credits" && <CreditHistory />}
+
+          {/* Section 3: Security & Password */}
           {activeSection === "security" && (
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
@@ -494,7 +517,7 @@ export function ProfilePage() {
             </div>
           )}
 
-          {/* Section 3: Preferences (Mock/Future Work) */}
+          {/* Section 4: Preferences (Mock/Future Work) */}
           {activeSection === "preferences" && (
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
@@ -533,12 +556,12 @@ export function ProfilePage() {
             </div>
           )}
 
-          {/* Section 4: Submit Paper */}
+          {/* Section 5: Submit Paper */}
           {activeSection === "submit-paper" && !isAdmin && (
             <SubmitPaperPage isEmbedded={true} />
           )}
 
-          {/* Section 5: My Papers */}
+          {/* Section 6: My Papers */}
           {activeSection === "my-papers" && !isAdmin && (
             <MyPapersPage isEmbedded={true} />
           )}

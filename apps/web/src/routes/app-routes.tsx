@@ -26,6 +26,7 @@ const AdminSyncPage = lazy(() => import("@/pages/admin/sync").then((m) => ({ def
 const AdminPipelinePage = lazy(() => import("@/pages/admin/pipeline").then((m) => ({ default: m.AdminPipelinePage })));
 const AdminEvaluationPage = lazy(() => import("@/pages/admin/evaluation").then((m) => ({ default: m.AdminEvaluationPage })));
 const AdminPapersPage = lazy(() => import("@/pages/admin/papers").then((m) => ({ default: m.AdminPapersPage })));
+const SubmitPaperPage = lazy(() => import("@/pages/papers/submit-paper").then((m) => ({ default: m.SubmitPaperPage })));
 const AdminUsersPage = lazy(() => import("@/pages/admin/users").then((m) => ({ default: m.AdminUsersPage })));
 const AdminHomePage = lazy(() => import("@/pages/admin").then((m) => ({ default: m.AdminHomePage })));
 const NotFoundPage = lazy(() => import("@/pages/not-found").then((m) => ({ default: m.NotFoundPage })));
@@ -75,6 +76,7 @@ export function AppRoutes() {
               <Route index element={<AdminHomePage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="papers" element={<AdminPapersPage />} />
+              <Route path="papers/new" element={<SubmitPaperPage />} />
               <Route path="sync" element={<AdminSyncPage />} />
               <Route path="pipeline" element={<AdminPipelinePage />} />
               <Route path="evaluation" element={<AdminEvaluationPage />} />
