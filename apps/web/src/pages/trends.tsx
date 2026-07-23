@@ -185,29 +185,33 @@ export function TrendsPage() {
   // Unified timelineChartData based on datasetMode and metricMode
   const timelineChartData = useMemo(() => {
     if (!data) return [];
+    let chartData: Array<{ year: string; value: number }> = [];
     if (metricMode === "citations_total") {
-      return (data.citationTrend ?? []).map((c) => ({
+      chartData = (data.citationTrend ?? []).map((c) => ({
         year: String(c.year),
         value: c.totalCitations,
-      })).sort((a, b) => Number(a.year) - Number(b.year));
-    }
-    if (metricMode === "citations_avg") {
-      return (data.citationTrend ?? []).map((c) => ({
+      }));
+    } else if (metricMode === "citations_avg") {
+      chartData = (data.citationTrend ?? []).map((c) => ({
         year: String(c.year),
         value: c.avgCitations,
-      })).sort((a, b) => Number(a.year) - Number(b.year));
-    }
-
-    // metricMode === "papers"
-    if (datasetMode === "corpus") {
-      return (data.yearlyTotalPapers ?? []).map((y) => ({
+      }));
+    } else if (datasetMode === "corpus") {
+      chartData = (data.yearlyTotalPapers ?? []).map((y) => ({
         year: String(y.year),
         value: y.count,
-      })).sort((a, b) => Number(a.year) - Number(b.year));
+      }));
     } else {
-      return displayedTopicsYearlyData;
+      chartData = displayedTopicsYearlyData;
     }
-  }, [data, datasetMode, metricMode, displayedTopicsYearlyData]);
+
+    return chartData
+      .filter((item) => {
+        const y = Number(item.year);
+        return y >= yearFrom && y <= yearTo;
+      })
+      .sort((a, b) => Number(a.year) - Number(b.year));
+  }, [data, datasetMode, metricMode, displayedTopicsYearlyData, yearFrom, yearTo]);
 
   const peakYear = useMemo(() => {
     return [...timelineChartData].sort((a, b) => b.value - a.value)[0] ?? null;
