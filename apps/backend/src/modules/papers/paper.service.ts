@@ -401,8 +401,10 @@ export const paperService = {
 
     // Determine next status
     let nextStatus: string;
-    if (isAdminUpload || isRequesterUpload) {
-      nextStatus = isApproved ? "downloaded" : paper.paperStatus ?? "pending";
+    if (isAdminUpload) {
+      nextStatus = "downloaded";
+    } else if (isRequesterUpload) {
+      nextStatus = "pending";
     } else {
       nextStatus = "pending-requester-acceptance";
     }
@@ -460,7 +462,7 @@ export const paperService = {
 
     const updated = await PaperModel.findByIdAndUpdate(
       paperId,
-      { paperStatus: "downloaded", dataStatus: "active", ...quality, qualityTierName: tierDef.name },
+      { paperStatus: "pending", dataStatus: "draft", ...quality, qualityTierName: tierDef.name },
       { new: true },
     );
     if (!updated) throw AppError.notFound("Paper not found");
