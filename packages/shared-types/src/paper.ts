@@ -156,14 +156,14 @@ export interface PaperTranslation {
   targetLanguage: string;
   translatedTitle: string;
   translatedAbstract: string;
-  provider: "original" | "libretranslate";
+  provider: "original" | "libretranslate" | "gemini";
   cacheHit: boolean;
   translatedAt: ISODateString;
 }
 
 export interface PaperTranslationCapabilities {
   enabled: boolean;
-  provider: "disabled" | "libretranslate";
+  provider: "disabled" | "libretranslate" | "gemini";
   targetLanguages: string[];
 }
 
