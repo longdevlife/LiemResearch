@@ -1,25 +1,28 @@
-# PaperLens Production Environment and Deployment
+# PaperLens Production Deployment Runbook
 
-This runbook describes the production environment for the PaperLens web and
-backend services. It intentionally contains no real credential.
+This is the source of truth for deploying and operating the PaperLens web
+platform at `paperlens.uk`. It contains no real credentials.
 
-## 1. Production Architecture
+## 1. Production Topology
 
 ```text
 Browser
   |
   +-- https://paperlens.uk
-  |      OpenResty -> frontend container -> host port 9001
+  |      DNS + TLS + OpenResty -> 127.0.0.1:9001 -> web container
   |
   +-- https://api.paperlens.uk
-         OpenResty -> backend container -> host port 9000
-
-Jenkins User1/LiemResearch
-  -> checks out main
-  -> builds backend and web Docker images
-  -> creates .env.runtime from a protected Jenkins credential
-  -> starts backend, web and LibreTranslate containers
+         DNS + TLS + OpenResty -> 127.0.0.1:9000 -> backend container
+                                                       |
+                  +------------------------------------+------------------+
+                  |                    |               |                  |
+               MongoDB              Redis       LibreTranslate       BullMQ workers
+             metadata/data     cache + queues   paper translation   async processing
 ```
+
+Jenkins checks out `main`, builds immutable Docker images tagged with the Git
+commit, validates the protected production environment, tests a backend
+candidate, and deploys web, API, LibreTranslate, and the six steady workers.
 
 Public endpoints:
 
@@ -27,49 +30,122 @@ Public endpoints:
 |---|---|
 | Web application | `https://paperlens.uk` |
 | API base | `https://api.paperlens.uk/api/v1` |
-| Backend health | `https://api.paperlens.uk/health` |
+| Process liveness | `https://api.paperlens.uk/health` |
+| MongoDB/Redis readiness | `https://api.paperlens.uk/ready` |
+| API documentation | `https://api.paperlens.uk/api-docs` |
 | Google OAuth callback | `https://api.paperlens.uk/api/v1/auth/google/callback` |
 
-DNS and TLS are handled outside the repository. Both DNS records must resolve
-to the deployment server, and OpenResty must proxy the two hostnames to ports
-`9001` and `9000` respectively.
+## 2. Version-Controlled Deployment Files
 
-## 2. Files and Secret Boundaries
+| File | Purpose |
+|---|---|
+| `Jenkinsfile` | Canonical production pipeline |
+| `Dockerfile.backend` | API and worker image |
+| `Dockerfile.web` | Vite build and Nginx runtime image |
+| `deploy/openresty/paperlens.conf.example` | Reverse proxy and TLS template |
+| `apps/backend/.env.production.example` | Complete public environment template |
+| `apps/backend/scripts/validate-production-env.ts` | Pre-deploy environment guard |
+| `README_PRODUCTION.md` | This runbook |
 
-| File or secret | Purpose | Commit to Git? |
-|---|---|---|
-| `apps/backend/.env.production.example` | Complete safe production template | Yes |
-| `apps/backend/.env.production` | Real backend production values | No |
-| `apps/backend/.env` | Local developer values | No |
-| `.env.compose` | Private Docker Compose values | No |
-| Jenkins credential `liemresearch-backend-env-b64` | Base64 form of the real production environment | No |
-| Jenkins temporary `.env.runtime` | Decoded environment used by `docker run` | No; deleted after every build |
+Do not maintain a second Jenkins script manually after switching the job to
+**Pipeline script from SCM**. Otherwise the Jenkins UI and Git can silently
+diverge.
 
-Never send the private file through GitHub, an issue, a pull request, build
-logs, or a public chat. Transfer it directly to the authorized operator through
-an approved private channel.
+## 3. Secret Boundary
 
-## 3. Prepare the Private Production Environment
+| File or secret | Commit to Git? |
+|---|---|
+| `apps/backend/.env.production.example` | Yes |
+| `apps/backend/.env.production` | **No** |
+| `apps/backend/.env` | **No** |
+| `.env.compose` | **No**; local Docker Compose only |
+| Jenkins Secret Text `liemresearch-backend-env-b64` | **No** |
+| Jenkins temporary `.env.runtime` | **No**; deleted after every build |
 
-Start from the safe template:
+Base64 is transport encoding, not encryption. Never paste the private
+environment into GitHub, a pull request, an issue, a screenshot, or build logs.
+
+## 4. One-Time Infrastructure Setup
+
+### DNS and firewall
+
+- `paperlens.uk` A record points to the deployment server.
+- `api.paperlens.uk` A record points to the same deployment server.
+- Public firewall permits only required services such as `80` and `443`.
+- MongoDB, Redis, ports `9000`, and `9001` are not exposed to the public
+  Internet. OpenResty is the public entry point.
+
+### TLS and OpenResty
+
+For the first certificate, briefly stop OpenResty and use Certbot standalone so
+the command does not depend on an already-valid HTTPS configuration:
+
+```bash
+sudo systemctl stop openresty
+sudo certbot certonly --standalone \
+  -d paperlens.uk \
+  -d api.paperlens.uk
+sudo systemctl start openresty
+```
+
+Install `deploy/openresty/paperlens.conf.example` in the server's OpenResty
+`conf.d` directory, verify certificate paths, then run:
+
+```bash
+sudo openresty -t
+sudo systemctl reload openresty
+```
+
+### Google OAuth
+
+Configure the production OAuth client in Google Cloud:
+
+**Authorized JavaScript origin**
+
+```text
+https://paperlens.uk
+```
+
+**Authorized redirect URI**
+
+```text
+https://api.paperlens.uk/api/v1/auth/google/callback
+```
+
+The redirect URI must match `GOOGLE_CALLBACK_URL` exactly.
+
+### Jenkins job
+
+Configure the job as:
+
+```text
+Definition: Pipeline script from SCM
+SCM: Git
+Repository: https://github.com/longdevlife/LiemResearch.git
+Branch: */main
+Script Path: Jenkinsfile
+```
+
+The Jenkins agent requires Docker access and enough disk for at least the
+current and previous backend/web image tags.
+
+## 5. Prepare and Validate Production Environment
+
+Create the private file:
 
 ```powershell
 Copy-Item apps/backend/.env.production.example apps/backend/.env.production
 ```
 
-Fill every `<required-...>` value with the real credential. At minimum, the
-backend requires:
+Replace **every value enclosed in angle brackets**, including:
 
-- `MONGODB_URI`
-- `REDIS_URL`
-- `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
-- `GEMINI_API_KEY`
+- `<required-...>`
+- `<operator-email-address>`
 
-R2 values are also mandatory when `STORAGE_PROVIDER=r2`. Google values are
-needed when Google sign-in is enabled.
+Required runtime secrets include MongoDB, Redis, two different JWT secrets,
+Gemini, Google OAuth, and R2 when `STORAGE_PROVIDER=r2`.
 
-Keep these public values unchanged:
+Keep these public values:
 
 ```env
 NODE_ENV=production
@@ -81,23 +157,27 @@ LIBRETRANSLATE_URL=http://libretranslate:5000
 SYNC_ADMIN_BYPASS=false
 ```
 
-Validate that Git ignores the private file:
+Validate before sending it anywhere:
 
 ```powershell
+pnpm --filter backend env:validate:production
 git check-ignore apps/backend/.env.production
 ```
 
-The command must print `apps/backend/.env.production`.
+The validator rejects placeholders, duplicate keys, invalid production URLs,
+weak/equal JWT secrets, incomplete R2/Google configuration, and invalid operator
+emails. It never prints secret values. `git check-ignore` must print the private
+file path.
 
-## 4. Store the Environment in Jenkins
+## 6. Store Environment in Jenkins
 
-The pipeline expects a Jenkins **Secret text** credential with this ID:
+Create or update a Jenkins **Secret Text** credential:
 
 ```text
-liemresearch-backend-env-b64
+ID: liemresearch-backend-env-b64
 ```
 
-Encode the private file as one Base64 line without printing its contents:
+Encode the private file on Windows without printing it:
 
 ```powershell
 $path = Resolve-Path "apps/backend/.env.production"
@@ -106,103 +186,73 @@ Set-Clipboard -Value $encoded
 Remove-Variable encoded
 ```
 
-Then update the Secret field of `liemresearch-backend-env-b64` in Jenkins from
-the clipboard. Do not add the encoded value to the pipeline script; Base64 is
-transport encoding, not encryption.
+Paste the clipboard into the Jenkins Secret field. The pipeline decodes it to a
+permission-restricted `.env.runtime`, validates it inside the newly built
+backend image, and deletes it in `post { always { ... } }`.
 
-On Linux with GNU coreutils:
+## 7. What the Pipeline Deploys
 
-```bash
-base64 -w 0 apps/backend/.env.production | xclip -selection clipboard
-```
+The committed `Jenkinsfile` deploys:
 
-During deployment, Jenkins creates the private runtime file:
+| Container | Responsibility |
+|---|---|
+| `user1-liemresearch-backend` | Express API on host port `9000` |
+| `user1-liemresearch-web` | React/Nginx web on host port `9001` |
+| `user1-liemresearch-libretranslate` | On-demand paper translation |
+| `worker-report` | RAG report jobs |
+| `worker-gaps` | Research-gap jobs |
+| `worker-notifications` | Notification delivery |
+| `worker-embedding` | Gemini embedding jobs |
+| `worker-paper-analysis` | Structured paper knowledge extraction |
+| `worker-corpus-validation` | Corpus validation jobs |
 
-```bash
-printf '%s' "$BACKEND_ENV_B64" | base64 -d > .env.runtime
-```
+The regular deployment intentionally does **not** start:
 
-The pipeline removes `.env.runtime` in its `post { always { ... } }` block.
+- `worker:sync`
+- `worker:openalex-ingest`
 
-## 5. Jenkins Production Overrides
+Those workers change the corpus and must be started only for an approved sync or
+ingestion campaign. This prevents every web deployment from silently importing
+more papers.
 
-The web image must be built with the API subdomain:
-
-```bash
-docker build \
-  --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
-  -t "$WEB_IMAGE" \
-  -f Dockerfile.web .
-```
-
-The backend container must include these runtime overrides after
-`--env-file .env.runtime`:
-
-```bash
--e NODE_ENV=production \
--e PORT=4000 \
--e CORS_ORIGIN=https://paperlens.uk \
--e GOOGLE_CALLBACK_URL=https://api.paperlens.uk/api/v1/auth/google/callback \
--e TRANSLATION_PROVIDER=libretranslate \
--e LIBRETRANSLATE_URL=http://libretranslate:5000
-```
-
-Explicit `docker run -e` values override matching values from `.env.runtime`.
-This keeps deployment URLs correct even if an older private file still contains
-a local callback.
-
-## 6. Google OAuth
-
-In Google Cloud Console, configure the production OAuth client with:
-
-**Authorized JavaScript origins**
+The web image is built with:
 
 ```text
-https://paperlens.uk
+VITE_API_BASE=https://api.paperlens.uk/api/v1
 ```
 
-**Authorized redirect URIs**
+The backend candidate must pass `/ready` before the live API container is
+replaced. Worker containers must remain running and all six required Redis
+heartbeats must be fresh before the image is tagged `latest`.
 
-```text
-https://api.paperlens.uk/api/v1/auth/google/callback
-```
+## 8. Deploy
 
-The value must match `GOOGLE_CALLBACK_URL` exactly, including `https`, path and
-the absence of a trailing slash. Keep localhost entries only when local OAuth
-testing is still required.
+1. Merge the reviewed PR into `main`.
+2. Open the Jenkins PaperLens job.
+3. Select **Build Now**.
+4. Confirm **Validate production environment** passes.
+5. Confirm the candidate backend passes `/ready`.
+6. Confirm all six worker containers are running and Jenkins reports
+   `Verified 6 fresh worker heartbeats.`
+7. Confirm the build ends with `Finished: SUCCESS`.
 
-After changing either Jenkins or Google Cloud, deploy again and test in a
-private browser window to avoid a stale OAuth session.
+Do not treat a green web page alone as a successful deployment. Reports and
+gaps require their workers, while most AI features require Redis queues.
 
-## 7. Deploy
+## 9. Production Verification
 
-1. Open `User1/LiemResearch` in Jenkins.
-2. Select **Configure** and verify the production build argument and runtime
-   overrides above.
-3. Select **Save**.
-4. Select **Build Now**.
-5. Wait for `Finished: SUCCESS`.
-6. Allow a short container startup period before treating an initial OpenResty
-   `502 Bad Gateway` as a persistent failure.
-
-The current pipeline deploys the web application, backend and LibreTranslate.
-It also removes worker containers at the end. Reports, research gaps,
-embeddings, paper analysis, notifications, corpus validation, sync and
-million-scale ingestion will not process queued jobs unless their worker
-containers are deployed separately.
-
-## 8. Verify Production
-
-Basic health:
+### Public liveness and readiness
 
 ```powershell
-Invoke-WebRequest https://paperlens.uk -UseBasicParsing
-Invoke-WebRequest https://api.paperlens.uk/health -UseBasicParsing
+(Invoke-WebRequest https://paperlens.uk -UseBasicParsing).StatusCode
+(Invoke-WebRequest https://api.paperlens.uk/health -UseBasicParsing).StatusCode
+(Invoke-WebRequest https://api.paperlens.uk/ready -UseBasicParsing).StatusCode
 ```
 
-Both requests must return HTTP `200`.
+All must return `200`. `/health` means the Express process is alive. `/ready`
+also pings MongoDB and Redis and returns `503` when either dependency is down.
 
-CORS preflight:
+### CORS
 
 ```powershell
 $headers = @{
@@ -211,48 +261,100 @@ $headers = @{
   "Access-Control-Request-Headers" = "authorization,content-type"
 }
 
-Invoke-WebRequest `
+$response = Invoke-WebRequest `
   -Uri "https://api.paperlens.uk/api/v1/papers/translation/capabilities" `
   -Method Options `
   -Headers $headers `
   -UseBasicParsing
+
+$response.StatusCode
+$response.Headers["Access-Control-Allow-Origin"]
 ```
 
-Expected:
+Expected: status `204` and origin `https://paperlens.uk`.
 
-```text
-Status: 204
-Access-Control-Allow-Origin: https://paperlens.uk
-```
-
-Translation capability:
+### Translation
 
 ```powershell
-Invoke-WebRequest `
-  "https://api.paperlens.uk/api/v1/papers/translation/capabilities" `
-  -UseBasicParsing
+Invoke-RestMethod "https://api.paperlens.uk/api/v1/papers/translation/capabilities"
 ```
 
-Google sign-in must leave Google at:
+Then sign in, open one paper containing an abstract, translate it, reload the
+page, and confirm the cached translation still appears.
 
-```text
-https://api.paperlens.uk/api/v1/auth/google/callback
+### OAuth
+
+Test both:
+
+1. Successful Google sign-in returns to
+   `https://paperlens.uk/auth/oauth-callback?code=...`, exchanges the short-lived
+   code once, and then removes it from the browser URL.
+2. Cancelled/failed Google sign-in returns to
+   `https://paperlens.uk/login?error=GoogleLoginFailed`.
+
+Neither path may redirect to `localhost` or `api.paperlens.uk/login`. Access and
+refresh tokens must never appear in the callback URL.
+
+### Workers
+
+On the deployment server:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Status}}' | grep user1-liemresearch
 ```
 
-If it redirects to `localhost`, verify both the Jenkins runtime override and
-Google Authorized redirect URI.
+Then use Admin Pipeline Health to verify fresh heartbeats for report, gaps,
+notifications, embedding, paper analysis, and corpus validation. Finally create
+one small report and confirm it moves from `queued` to a terminal status.
 
-## 9. Rotate or Transfer Production Secrets
+## 10. Rollback
 
-When sending the environment to the project supervisor:
+Images are tagged with the 12-character Git commit. Do not delete the previous
+known-good tag during routine deployment.
 
-1. Send only `apps/backend/.env.production` through a private channel.
-2. Do not send `.env.production.b64` unless Jenkins specifically requires the
-   encoded form.
-3. Ask the receiver to store it outside Git and restrict file permissions.
-4. Rotate any credential that was pasted into a public repository, public chat,
-   screenshot, issue, or build log.
-5. Update the Jenkins credential and redeploy after rotating a value.
+Preferred rollback:
 
-The committed example and this README are documentation only. They are not a
-substitute for the private production environment.
+1. Revert the faulty PR on `main`.
+2. Run Jenkins again.
+3. Verify `/ready`, workers, OAuth, and one queued report.
+
+Emergency rollback:
+
+1. Identify the previous known-good image tag with `docker images`.
+2. Re-run the backend, web, and worker containers with that same tag and the
+   protected `.env.runtime`.
+3. Verify `/ready` before reopening traffic.
+4. Follow with a Git revert so the server and repository return to the same
+   version.
+
+Never roll back MongoDB data blindly. Application rollback and data restore are
+separate decisions.
+
+## 11. Backup, Recovery, and Secret Rotation
+
+- MongoDB backup/replication is owned by the database operator. Record retention
+  and test a restore before a large migration or million-paper campaign.
+- R2 object versioning/retention is owned by the storage operator.
+- Redis is not the source of truth for papers, users, reports, or credits. Queue
+  loss still affects pending jobs, so monitor failed/dead-letter jobs.
+- Rotate credentials immediately after any public disclosure.
+- After rotation, update Jenkins credential
+  `liemresearch-backend-env-b64` and deploy again.
+- Remove the private environment from chat/file-transfer history after the
+  authorized operator stores it securely.
+
+## 12. Acceptance Checklist
+
+A production deployment is accepted only when:
+
+- [ ] Jenkins checked out the intended `main` commit.
+- [ ] Production environment validation passed with no placeholder.
+- [ ] Web, API, and `/ready` return `200`.
+- [ ] CORS allows `https://paperlens.uk` and rejects unapproved origins.
+- [ ] Google success and failure paths return to the web domain.
+- [ ] LibreTranslate reports supported languages and translates one paper.
+- [ ] Six steady worker containers are running with fresh heartbeats.
+- [ ] A report job leaves `queued`.
+- [ ] No secret appears in Git diff or Jenkins logs.
+- [ ] Previous known-good image tags remain available for rollback.
+- [ ] MongoDB backup/restore ownership is documented before data migration.

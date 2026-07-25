@@ -19,6 +19,11 @@ export const RefreshSchema = z.object({
 });
 export type RefreshInput = z.infer<typeof RefreshSchema>;
 
+export const OAuthExchangeSchema = z.object({
+  code: z.string().min(32).max(128),
+});
+export type OAuthExchangeInput = z.infer<typeof OAuthExchangeSchema>;
+
 export const UpdateProfileSchema = z.object({
   fullName: z.string().min(1).max(120).optional(),
   institution: z.string().max(120).optional().nullable(),

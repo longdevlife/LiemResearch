@@ -6,6 +6,11 @@
 
 This repository is a **pnpm + Turborepo mono-repo** containing three runnable apps and one shared package.
 
+Production operators should follow the version-controlled
+**[PaperLens Production Deployment Runbook](README_PRODUCTION.md)** for Jenkins,
+Docker, OpenResty, environment validation, worker deployment, verification, and
+rollback.
+
 ---
 
 ## Project lineage

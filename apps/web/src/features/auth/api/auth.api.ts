@@ -24,6 +24,10 @@ export const authApi = {
   async logout(refreshToken: string): Promise<void> {
     await api.post(API_ROUTES.auth.logout, { refreshToken });
   },
+  async exchangeOAuthCode(code: string): Promise<AuthResponse> {
+    const res = await api.post(API_ROUTES.auth.oauthExchange, { code });
+    return res.data.data;
+  },
   async me(): Promise<{ user: User }> {
     const res = await api.get(API_ROUTES.auth.me);
     return res.data.data;

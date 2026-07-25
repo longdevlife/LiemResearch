@@ -323,6 +323,16 @@ export const openapiSpec = {
         responses: { "200": { description: "OK" } },
       },
     },
+    "/ready": {
+      get: {
+        tags: ["Health"],
+        summary: "MongoDB and Redis readiness check",
+        responses: {
+          "200": { description: "Required dependencies are ready" },
+          "503": { description: "At least one required dependency is unavailable" },
+        },
+      },
+    },
     "/api/v1/home/overview": {
       get: {
         tags: ["Home"],
@@ -381,6 +391,39 @@ export const openapiSpec = {
           "401": {
             description: "Invalid credentials",
             content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } },
+          },
+        },
+      },
+    },
+    "/api/v1/auth/oauth/exchange": {
+      post: {
+        tags: ["Auth"],
+        summary: "Exchange a one-time OAuth callback code for an authenticated session",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["code"],
+                properties: {
+                  code: {
+                    type: "string",
+                    minLength: 32,
+                    description: "Short-lived, single-use code returned by the Google OAuth callback",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "OK - returns { user, tokens }" },
+          "401": {
+            description: "Code is invalid, expired, or already consumed",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/ApiError" } },
+            },
           },
         },
       },

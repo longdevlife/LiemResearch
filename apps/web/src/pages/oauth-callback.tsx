@@ -13,8 +13,7 @@ export function OAuthCallbackPage() {
 
   useEffect(() => {
     if (hasProcessed.current) return;
-    const accessToken = searchParams.get("accessToken");
-    const refreshToken = searchParams.get("refreshToken");
+    const code = searchParams.get("code");
     const error = searchParams.get("error");
 
     if (error) {
@@ -23,31 +22,16 @@ export function OAuthCallbackPage() {
       return;
     }
 
-    if (accessToken && refreshToken) {
+    if (code) {
       hasProcessed.current = true;
-      // Temporarily store tokens to allow authApi.me() to use them
-      useAuthStore.getState().setTokens({ 
-        accessToken, 
-        refreshToken, 
-        accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() // dummy exp
-      });
-      
-      // Fetch user profile
-      authApi.me()
-        .then(({ user }) => {
-          setAuth({ 
-            user, 
-            tokens: { 
-              accessToken, 
-              refreshToken, 
-              accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() 
-            } 
-          });
+      authApi.exchangeOAuthCode(code)
+        .then(({ user, tokens }) => {
+          setAuth({ user, tokens });
           toast.success(`Welcome back, ${user.fullName}`);
           navigate("/home", { replace: true });
         })
         .catch(() => {
-          toast.error("Failed to retrieve user information");
+          toast.error("Google login link expired or was already used");
           navigate("/login", { replace: true });
         });
     } else {

@@ -20,6 +20,8 @@
     "mongo:ensure-paper-text-index": "tsx scripts/ensure-paper-text-index.ts",
     "mongo:ensure-paper-vector-index": "tsx scripts/ensure-paper-vector-index.ts",
     "mongo:ensure-paper-cohort-index": "tsx scripts/ensure-paper-cohort-index.ts",
+    "env:validate:production": "tsx scripts/validate-production-env.ts",
+    "workers:verify:heartbeats": "tsx scripts/verify-worker-heartbeats.ts",
     "mongo:migration-inventory": "tsx scripts/mongo-migration-inventory.ts",
     "mongo:migration-source-databases": "tsx scripts/mongo-migration-source-databases.ts",
     "mongo:migration-verify": "tsx scripts/mongo-migration-verify.ts",
