@@ -163,13 +163,40 @@ const EnvSchema = z.object({
 
   INITIAL_USER_CREDITS: z.coerce.number().int().nonnegative().default(1000),
 }).superRefine((value, ctx) => {
-  if (value.STORAGE_PROVIDER !== "r2") return;
-  for (const key of ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"] as const) {
-    if (!value[key]) {
+  if (value.STORAGE_PROVIDER === "r2") {
+    for (const key of ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"] as const) {
+      if (!value[key]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when STORAGE_PROVIDER=r2`,
+        });
+      }
+    }
+  }
+
+  if (value.NODE_ENV === "production") {
+    for (const [key, rawValue] of Object.entries(value)) {
+      if (typeof rawValue === "string" && /^<[^>]+>$/.test(rawValue.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} still contains a template placeholder`,
+        });
+      }
+    }
+    if (value.JWT_ACCESS_SECRET === value.JWT_REFRESH_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: [key],
-        message: `${key} is required when STORAGE_PROVIDER=r2`,
+        path: ["JWT_REFRESH_SECRET"],
+        message: "JWT access and refresh secrets must be different in production",
+      });
+    }
+    if (value.SYNC_ADMIN_BYPASS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SYNC_ADMIN_BYPASS"],
+        message: "SYNC_ADMIN_BYPASS must be false in production",
       });
     }
   }

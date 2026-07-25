@@ -12,6 +12,7 @@ import { logger } from "./infrastructure/logger.js";
 import { errorHandler, notFoundHandler } from "./common/middleware/error-handler.js";
 import { apiRouter } from "./routes/index.js";
 import { openapiSpec } from "./openapi.js";
+import { getReadiness } from "./infrastructure/readiness.js";
 
 export function isAllowedCorsOrigin(origin: string | undefined, allowedOrigins: string[], nodeEnv: string): boolean {
   if (!origin) return true;
@@ -57,6 +58,23 @@ export function createApp(): Express {
 
   app.get("/health", (_req, res) => {
     res.json({ success: true, data: { status: "ok", ts: new Date().toISOString() } });
+  });
+
+  app.get("/ready", async (_req, res) => {
+    const readiness = await getReadiness();
+    const data = { ...readiness, ts: new Date().toISOString() };
+    if (readiness.status === "ready") {
+      res.json({ success: true, data });
+      return;
+    }
+    res.status(503).json({
+      success: false,
+      error: {
+        code: "SERVICE_NOT_READY",
+        message: "One or more required dependencies are unavailable",
+        details: data,
+      },
+    });
   });
 
   // Interactive API docs (browsable + testable). Helmet's default CSP blocks
