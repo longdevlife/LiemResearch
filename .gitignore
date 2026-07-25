@@ -11,10 +11,13 @@ out/
 
 # Env
 .env
+.env.production
+.env.production.b64
 .env.compose
 .env.local
 .env.*.local
 !.env.example
+!.env.production.example
 
 # Logs
 logs/
