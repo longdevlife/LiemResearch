@@ -55,16 +55,16 @@ export function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-24 items-center justify-between gap-4">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-32 items-center justify-between gap-4">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-3 font-black text-3xl tracking-tight shrink-0 select-none">
               <img
                 src={logoImage}
                 alt="PAPERLENS logo"
-                className="h-16 w-auto object-contain"
+                className="h-24 w-auto object-contain"
               />
               <span className="text-slate-900 dark:text-white">
-                PAPERLENS
+
               </span>
             </Link>
 
