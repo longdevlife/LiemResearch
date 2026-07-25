@@ -1,8 +1,16 @@
 import type { Request, Response } from "express";
-import type { LoginInput, RefreshInput, RegisterInput, UpdateProfileInput, ChangePasswordInput } from "./dto/auth.schema.js";
+import type {
+  LoginInput,
+  RefreshInput,
+  RegisterInput,
+  UpdateProfileInput,
+  ChangePasswordInput,
+  OAuthExchangeInput,
+} from "./dto/auth.schema.js";
 import { authService } from "./auth.service.js";
 import { env } from "../../config/env.js";
 import type { Profile } from "passport-google-oauth20";
+import { oauthExchangeService } from "./oauth-exchange.service.js";
 
 export const authController = {
   async register(req: Request<unknown, unknown, RegisterInput>, res: Response) {
@@ -23,6 +31,11 @@ export const authController = {
   async logout(req: Request<unknown, unknown, RefreshInput>, res: Response) {
     await authService.logout(req.body.refreshToken);
     res.json({ success: true, data: { ok: true } });
+  },
+
+  async exchangeOAuthCode(req: Request<unknown, unknown, OAuthExchangeInput>, res: Response) {
+    const result = await oauthExchangeService.consume(req.body.code);
+    res.json({ success: true, data: result });
   },
 
   async me(req: Request, res: Response) {
@@ -54,9 +67,9 @@ export const authController = {
       const profile = req.user as unknown as Profile;
       const result = await authService.googleLogin(profile);
 
+      const code = await oauthExchangeService.create(result);
       const redirectUrl = new URL(`${primaryOrigin}/auth/oauth-callback`);
-      redirectUrl.searchParams.set("accessToken", result.tokens.accessToken);
-      redirectUrl.searchParams.set("refreshToken", result.tokens.refreshToken);
+      redirectUrl.searchParams.set("code", code);
       res.redirect(redirectUrl.toString());
     } catch (error) {
       console.error("Google login error:", error);

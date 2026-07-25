@@ -8,6 +8,7 @@ export const API_ROUTES = {
     login: "/auth/login",
     refresh: "/auth/refresh",
     logout: "/auth/logout",
+    oauthExchange: "/auth/oauth/exchange",
     me: "/auth/me",
     changePassword: "/auth/change-password",
   },
