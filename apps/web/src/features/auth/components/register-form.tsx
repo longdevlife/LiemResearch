@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { AxiosError } from "axios";
-import { Command } from "lucide-react";
+import logoImage from "@/assets/logo.png";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,17 +42,19 @@ export function RegisterForm() {
 
   return (
     <div className="flex flex-col items-center w-full text-slate-900 dark:text-white">
-      <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg">
-        <Command className="h-6 w-6" />
-      </div>
+      <img
+        src={logoImage}
+        alt="LiemResearch logo"
+        className="mb-6 h-24 w-auto max-w-[220px] object-contain sm:h-28"
+      />
 
       <div className="mb-6 space-y-2 text-center w-full">
         <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Create an account</h1>
       </div>
 
-      <Button 
-        variant="outline" 
-        className="w-full rounded-xl bg-white dark:bg-[#2a2a2a] border-slate-200 dark:border-[#3a3a3a] hover:bg-slate-50 dark:hover:bg-[#333] text-slate-900 dark:text-white h-12 font-bold shadow-sm" 
+      <Button
+        variant="outline"
+        className="w-full rounded-xl bg-white dark:bg-[#2a2a2a] border-slate-200 dark:border-[#3a3a3a] hover:bg-slate-50 dark:hover:bg-[#333] text-slate-900 dark:text-white h-12 font-bold shadow-sm"
         type="button"
         onClick={() => {
           window.location.href = `${API_BASE_URL}/auth/google`;
@@ -139,12 +141,12 @@ export function RegisterForm() {
                   <FormLabel className="text-sm font-bold text-slate-900 dark:text-white">Password <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input 
+                      <Input
                         className="rounded-xl h-12 bg-white dark:bg-[#2a2a2a] border-slate-300 dark:border-[#3a3a3a] text-slate-900 dark:text-gray-100 focus-visible:ring-[#42bdf5] pr-10 placeholder:text-slate-400 dark:placeholder:text-gray-500 shadow-sm"
-                        type="password" 
-                        autoComplete="new-password" 
+                        type="password"
+                        autoComplete="new-password"
                         placeholder="Your password"
-                        {...field} 
+                        {...field}
                       />
                     </div>
                   </FormControl>
@@ -155,7 +157,7 @@ export function RegisterForm() {
 
             <div className="pt-2">
               <Button type="submit" className="w-full rounded-xl h-12 bg-[#1da1f2] hover:bg-[#1a91da] text-white text-base font-bold shadow-md" disabled={register.isPending}>
-                {register.isPending ? "Creating…" : "Register"}
+                {register.isPending ? "Creating..." : "Register"}
               </Button>
             </div>
           </form>
