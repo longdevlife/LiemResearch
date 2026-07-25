@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Award, Menu, X } from "lucide-react";
+import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Menu, X } from "lucide-react";
 
+import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -31,11 +32,10 @@ const navItems = [
   { to: "/rankings", label: "Rankings" },
 ] as const;
 
-
 export function MainLayout() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const user = useAuthStore((s) => s.user);
   const { data: bookmarks } = useBookmarks({ enabled: isAuthed });
@@ -55,18 +55,19 @@ export function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-24 items-center justify-between gap-4">
           <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2 font-black text-lg tracking-tight shrink-0 select-none">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-sm">
-                <Award className="h-5 w-5 text-white stroke-[2.5]" />
-              </div>
+            <Link to="/" className="flex items-center gap-3 font-black text-3xl tracking-tight shrink-0 select-none">
+              <img
+                src={logoImage}
+                alt="PAPERLENS logo"
+                className="h-16 w-auto object-contain"
+              />
               <span className="text-slate-900 dark:text-white">
-                LiemResearch
+                PAPERLENS
               </span>
             </Link>
-            
-            {/* Desktop Navigation */}
+
             <nav className="hidden md:flex items-center gap-1">
               {filteredNavItems.map((item) => (
                 <NavLink
@@ -86,7 +87,6 @@ export function MainLayout() {
               ))}
             </nav>
           </div>
-
 
           <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             <ThemeToggle />
@@ -113,12 +113,11 @@ export function MainLayout() {
               </Link>
             </Button>
             <UserMenu />
-            
-            {/* Mobile Menu Toggle */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="md:hidden shrink-0" 
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden shrink-0"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle Menu"
             >
@@ -126,8 +125,7 @@ export function MainLayout() {
             </Button>
           </div>
         </div>
-        
-        {/* Mobile Navigation Dropdown */}
+
         {isMobileMenuOpen && (
           <div className="md:hidden border-t bg-white dark:bg-[#0f0f11] absolute top-16 left-0 right-0 z-40 shadow-lg animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col px-4 py-2">
@@ -157,7 +155,7 @@ export function MainLayout() {
       </main>
       <footer className="border-t bg-white dark:bg-[#0f0f11] py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-          <p>© 2026 Publication Trend. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Liem Research Team. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Privacy Policy</Link>
             <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Terms of Service</Link>
@@ -272,4 +270,3 @@ function UserMenu() {
   );
 }
 
-// Code quality reviewed and formatted
