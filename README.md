@@ -6,10 +6,39 @@
 
 This repository is a **pnpm + Turborepo mono-repo** containing three runnable apps and one shared package.
 
-Production operators should follow the version-controlled
-**[PaperLens Production Deployment Runbook](README_PRODUCTION.md)** for Jenkins,
-Docker, OpenResty, environment validation, worker deployment, verification, and
-rollback.
+## Production deployment
+
+| Service | Address |
+|---|---|
+| PaperLens web application | [https://paperlens.uk](https://paperlens.uk) |
+| PaperLens API | [https://api.paperlens.uk](https://api.paperlens.uk) |
+
+Production is deployed from `main` by Jenkins using the repository's
+[`Jenkinsfile`](Jenkinsfile). OpenResty terminates TLS and routes the public
+domains to Docker containers on the application server.
+
+The production stack contains:
+
+- the React web application and Express backend;
+- six BullMQ worker processes for reports, research gaps, notifications,
+  embeddings, paper analysis, and corpus validation;
+- a private self-hosted Redis container for queues, cache, locks, and worker
+  heartbeats;
+- LibreTranslate for on-demand paper translation;
+- the teacher-managed MongoDB server, with MongoDB Search/mongot for vector
+  retrieval.
+
+Redis uses authenticated connections, AOF persistence, a Docker volume, and an
+internal Docker network. Port `6379` is not published publicly. Production does
+not depend on Upstash quotas or an external Redis API key.
+
+> Local development and production are intentionally different. Local
+> `docker compose` can start MongoDB and Redis for development; production uses
+> the managed server configuration described above.
+
+For environment preparation, Jenkins configuration, deployment, worker
+verification, rollback, and secret-handling rules, follow the version-controlled
+**[PaperLens Production Deployment Runbook](README_PRODUCTION.md)**.
 
 ---
 
@@ -59,7 +88,10 @@ This repo is a fork of [thiennhat-ctrl/LiemResearch](https://github.com/thiennha
 | Android Studio | only for mobile Android emulator | https://developer.android.com/studio |
 | Xcode | only for mobile iOS simulator (Mac only) | App Store |
 
-> You do not need MongoDB Atlas during local development — `docker compose` spins up a local Mongo. Atlas (with Vector Search enabled) is for deployment.
+> You do not need access to the production MongoDB server during local
+> development. `docker compose` starts local MongoDB and Redis. Vector search is
+> available only when the selected MongoDB environment has MongoDB Search/mongot
+> and the required vector index configured.
 
 ---
 
@@ -128,7 +160,7 @@ pnpm docker:logs              # tail their logs
 |---|---|
 | Mono-repo with pnpm + Turborepo | Share `@trend/shared-types` between 3 apps without copy-paste. Vercel-friendly. |
 | Express 5 over Fastify | Team familiarity; Express 5 has built-in async error handling. |
-| MongoDB + Atlas Vector Search | Single store for metadata + embeddings; no separate vector DB needed. Local dev uses plain Mongo (no vector index); Atlas M0+ for prod. |
+| MongoDB + MongoDB Vector Search | Single store for metadata + embeddings; production uses the teacher-managed MongoDB server with MongoDB Search/mongot. |
 | Gemini (LLM + embeddings) | One SDK, one API key, generous free tier, cheap production tier. |
 | BullMQ + Redis | Industry standard for Node job queues; survives restarts. |
 | Expo over bare React Native | OTA updates, EAS Build, no native toolchain pain for the common case. |
