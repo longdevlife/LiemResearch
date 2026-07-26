@@ -300,7 +300,7 @@ export function ResearchGapsPage() {
               type="number"
               value={yearFrom}
               onChange={(e) => setYearFrom(e.target.value)}
-              placeholder="2020"
+              placeholder="1900"
               className="h-10 rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full text-center"
             />
           </div>

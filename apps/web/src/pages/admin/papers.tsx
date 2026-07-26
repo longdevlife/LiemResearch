@@ -28,6 +28,7 @@ import { useCurrentUser } from "@/features/auth";
 import { cn } from "@/utils/cn";
 import { formatNumber, formatQualityTierName } from "@/utils";
 import { formatPaperRequester, type PaperRequesterValue } from "@/features/admin/utils/paper-request";
+import { useI18n } from "@/i18n";
 
 interface AdminPaper {
   id: string;
@@ -92,6 +93,7 @@ const REJECTION_PRESETS = [
 const PAGE_SIZE = 15;
 
 export function AdminPapersPage() {
+  const { t } = useI18n();
   const { data: user, isLoading: isUserLoading } = useCurrentUser();
   const isAdmin = user?.user?.role === "admin";
 
@@ -214,15 +216,15 @@ export function AdminPapersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Paper Requests</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{t("Paper Requests")}</h1>
             {total > 0 && (
               <Badge variant="secondary" className="font-mono text-xs px-2.5 py-0.5 rounded-full">
-                {formatNumber(total)} total
+                {formatNumber(total)} {t("total")}
               </Badge>
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Review, approve, or reject user-submitted literature indexing requests.
+            {t("Review, approve, or reject user-submitted literature indexing requests.")}
           </p>
         </div>
 
@@ -231,7 +233,7 @@ export function AdminPapersPage() {
           <Button asChild size="sm" className="h-9 bg-blue-700 text-xs font-bold text-white hover:bg-blue-800">
             <Link to="/admin/papers/new">
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add Paper
+              {t("Add Paper")}
             </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={fetchPapers} disabled={loading} className="h-9 text-xs">
@@ -264,7 +266,7 @@ export function AdminPapersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by title or DOI..."
+              placeholder={t("Search by title or DOI...")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
@@ -291,7 +293,7 @@ export function AdminPapersPage() {
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {t(STATUS_LABELS[s] ?? s)}
                 </option>
               ))}
             </select>
