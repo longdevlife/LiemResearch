@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, User, Search, Bell, Sparkles, Plus, Bookmark, Menu, X } from "lucide-react";
+import { LogOut, User, Bell, Bookmark, Menu, X } from "lucide-react";
 
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
@@ -22,6 +21,7 @@ import { useNotifications } from "@/features/notifications";
 import { cn } from "@/utils/cn";
 import { avatars, getLevel } from "@/utils/level";
 import { formatNumber } from "@/utils";
+import { LanguageSwitcher, useI18n } from "@/i18n";
 
 const navItems = [
   { to: "/search", label: "Search" },
@@ -35,6 +35,7 @@ const navItems = [
 export function MainLayout() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t } = useI18n();
 
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -55,13 +56,13 @@ export function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-32 items-center justify-between gap-4">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-3 font-black text-3xl tracking-tight shrink-0 select-none">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-20 items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="relative flex h-20 w-[150px] items-center gap-2 font-black text-2xl tracking-tight shrink-0 select-none overflow-visible">
               <img
                 src={logoImage}
                 alt="PAPERLENS logo"
-                className="h-24 w-auto object-contain"
+                className="absolute left-0 h-20 w-auto max-w-none object-contain"
               />
               <span className="text-slate-900 dark:text-white">
 
@@ -75,14 +76,14 @@ export function MainLayout() {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "px-3 py-2 rounded-t-md rounded-b-none text-sm font-medium transition-all border-b-2",
+                      "px-3 py-1.5 rounded-t-md rounded-b-none text-sm font-medium transition-all border-b-2",
                       isActive
                         ? "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-600"
                         : "text-slate-600 dark:text-slate-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/10 hover:text-blue-600 dark:hover:text-blue-400 border-transparent"
                     )
                   }
                 >
-                  {item.label}
+                  {t(item.label)}
                 </NavLink>
               ))}
             </nav>
@@ -90,9 +91,10 @@ export function MainLayout() {
 
           <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             <ThemeToggle />
+            <LanguageSwitcher />
             {isAuthed && (
               <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400" asChild>
-                <Link to="/bookmarks" aria-label="Bookmarks">
+                <Link to="/bookmarks" aria-label={t("Bookmarks")}>
                   <Bookmark className="h-5 w-5" />
                   {validBookmarksCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
@@ -103,7 +105,7 @@ export function MainLayout() {
               </Button>
             )}
             <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400" asChild>
-              <Link to="/notifications" aria-label="Notifications">
+              <Link to="/notifications" aria-label={t("Notifications")}>
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5 min-w-[18px] items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0f0f11] px-1">
@@ -119,7 +121,7 @@ export function MainLayout() {
               size="icon"
               className="md:hidden shrink-0"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Menu"
+              aria-label={t("Toggle Menu")}
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -127,7 +129,7 @@ export function MainLayout() {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white dark:bg-[#0f0f11] absolute top-16 left-0 right-0 z-40 shadow-lg animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden border-t bg-white dark:bg-[#0f0f11] absolute top-20 left-0 right-0 z-40 shadow-lg animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col px-4 py-2">
               {filteredNavItems.map((item) => (
                 <NavLink
@@ -143,7 +145,7 @@ export function MainLayout() {
                     )
                   }
                 >
-                  {item.label}
+                  {t(item.label)}
                 </NavLink>
               ))}
             </nav>
@@ -155,11 +157,11 @@ export function MainLayout() {
       </main>
       <footer className="border-t bg-white dark:bg-[#0f0f11] py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-          <p>&copy; {new Date().getFullYear()} Liem Research Team. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {t("Liem Research Team. All rights reserved.")}</p>
           <div className="flex gap-4 mt-4 md:mt-0">
-            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Privacy Policy</Link>
-            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Terms of Service</Link>
-            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">Contact Support</Link>
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">{t("Privacy Policy")}</Link>
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">{t("Terms of Service")}</Link>
+            <Link to="#" className="hover:text-slate-900 dark:hover:text-white">{t("Contact Support")}</Link>
           </div>
         </div>
       </footer>
@@ -169,6 +171,7 @@ export function MainLayout() {
 
 function UserMenu() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isAuthed = useAuthStore((s) => !!s.tokens?.accessToken);
   const { data } = useCurrentUser();
   const logout = useLogout();
@@ -178,16 +181,16 @@ function UserMenu() {
     return (
       <>
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/login">Sign in</Link>
+          <Link to="/login">{t("Sign in")}</Link>
         </Button>
         <Button size="sm" asChild>
-          <Link to="/register">Sign up</Link>
+          <Link to="/register">{t("Sign up")}</Link>
         </Button>
       </>
     );
   }
 
-  const email = data?.user?.email ?? "Account";
+  const email = data?.user?.email ?? t("Account");
   const fullName = data?.user?.fullName || email;
   const role = data?.user?.role;
   const credits = balanceData?.credits ?? data?.user?.credits ?? 0;
@@ -196,19 +199,19 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5 sm:gap-2 h-10 sm:h-12 pl-1 pr-1.5 sm:pl-1.5 sm:pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+        <Button variant="ghost" size="sm" className="gap-1.5 sm:gap-2 h-10 pl-1 pr-1.5 sm:pl-1.5 sm:pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
           {role !== "admin" ? (
             (() => {
               const currentLevel = getLevel(points);
               const levelAvatar = avatars[currentLevel];
               return (
-                <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm">
                   <img src={levelAvatar} alt={`Level ${currentLevel}`} className="w-full h-full object-contain rounded-full" />
                 </div>
               );
             })()
           ) : (
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 shadow-sm">
               <User className="h-4 w-4 text-slate-500" />
             </div>
           )}
@@ -232,25 +235,25 @@ function UserMenu() {
             <DropdownMenuSeparator />
             <div className="px-3 py-2 text-xs font-semibold text-slate-500 space-y-1.5 bg-slate-50/50 dark:bg-zinc-900/30 rounded-md animate-fadeIn">
               <div className="flex justify-between items-center">
-                <span>Balance:</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{formatNumber(credits)} credits</span>
+                <span>{t("Balance:")}</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{formatNumber(credits)} {t("credits")}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Points:</span>
-                <span className="text-amber-600 dark:text-amber-500 font-bold">{formatNumber(points)} pts</span>
+                <span>{t("Points:")}</span>
+                <span className="text-amber-600 dark:text-amber-500 font-bold">{formatNumber(points)} {t("pts")}</span>
               </div>
             </div>
           </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/profile")}>
-          Profile
+          {t("Profile")}
         </DropdownMenuItem>
         {role === "admin" && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => navigate("/admin")}>
-              Admin
+              {t("Admin")}
             </DropdownMenuItem>
           </>
         )}
@@ -263,7 +266,7 @@ function UserMenu() {
           }}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Sign out
+          {t("Sign out")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

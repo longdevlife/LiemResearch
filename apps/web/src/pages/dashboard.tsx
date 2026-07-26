@@ -24,6 +24,7 @@ import {
 } from "./dashboard.helpers";
 import type { TopQuery, VolumeByDay } from "@trend/shared-types";
 import { formatNumber } from "@/utils";
+import { useI18n } from "@/i18n";
 
 // Hook 1: Admin Dashboard Analytics
 function useDashboard(days: number, enabled: boolean) {
@@ -437,6 +438,8 @@ function ActionCard({
   icon: React.ReactNode;
   onAction: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <button
       type="button"
@@ -448,8 +451,8 @@ function ActionCard({
         {icon}
       </div>
       <div className="mt-3">
-        <p className="text-sm font-extrabold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{title}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{description}</p>
+        <p className="text-sm font-extrabold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{t(title)}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{t(description)}</p>
       </div>
     </button>
   );

@@ -12,6 +12,7 @@ import { useBookmarks } from "@/features/bookmarks";
 import { PaperCard } from "@/components/paper-card";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatLanguageName } from "@/utils/language";
+import { useI18n } from "@/i18n";
 
 const PAGE_SIZE = 10;
 
@@ -65,6 +66,7 @@ function parseCsvParam(params: URLSearchParams, key: string): string[] {
 }
 
 export function SearchPage() {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
@@ -375,8 +377,8 @@ export function SearchPage() {
               type="text"
               placeholder={
                 searchMode === "semantic"
-                  ? "Search research papers by concept, question or topic..."
-                  : "Search papers by keywords in title or abstract..."
+                  ? t("Search research papers by concept, question or topic...")
+                  : t("Search papers by keywords in title or abstract...")
               }
               value={localSearchQuery}
               onChange={(e) => setLocalSearchQuery(e.target.value)}

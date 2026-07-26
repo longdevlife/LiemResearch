@@ -43,6 +43,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { Input } from "@/components/ui/input";
 import { formatNumber } from "@/utils";
+import { useI18n } from "@/i18n";
 
 type ReportSortKey = "newest" | "ready_first" | "failed_last" | "topic_az";
 const REPORT_SCOPE_KEYS = [
@@ -81,6 +82,7 @@ function hasReportScopeFilters(filters: ReportScopeFilters): boolean {
 }
 
 export function ReportsListPage() {
+  const { t } = useI18n();
   const { data: reports, isLoading } = useReports();
   const createReport = useCreateReport();
   const deleteReport = useDeleteReport();
@@ -512,7 +514,7 @@ export function ReportsListPage() {
                 id="topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Federated Learning in Medical Imaging"
+                placeholder={t("e.g. Federated Learning in Medical Imaging")}
                 className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               />
             </div>
@@ -522,7 +524,7 @@ export function ReportsListPage() {
                 id="query"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. What evidence shows clinical impact, limitations, and future directions?"
+                placeholder={t("e.g. What evidence shows clinical impact, limitations, and future directions?")}
                 rows={1}
                 className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none overflow-hidden"
               />
@@ -629,7 +631,7 @@ export function ReportsListPage() {
                     type="number"
                     value={yearFrom}
                     onChange={(e) => setYearFrom(e.target.value)}
-                    placeholder="From: 1900"
+                    placeholder={t("From: 1900")}
                     className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                   <input
@@ -637,7 +639,7 @@ export function ReportsListPage() {
                     type="number"
                     value={yearTo}
                     onChange={(e) => setYearTo(e.target.value)}
-                    placeholder={`To: ${currentYear}`}
+                    placeholder={t("To: {{year}}", { year: currentYear })}
                     className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -1251,7 +1253,7 @@ export function ReportsListPage() {
                         </h3>
 
                         {/* Compact source description */}
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-500">
+                        <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-500" data-no-i18n>
                           <Database className="w-3.5 h-3.5 text-slate-400" />
                           <span>Grounded on {report.selectedPaperIds?.length ?? 5} core source{(report.selectedPaperIds?.length ?? 5) !== 1 ? "s" : ""}</span>
                         </div>

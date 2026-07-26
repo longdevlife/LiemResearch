@@ -9,6 +9,7 @@ import { queryClient } from "./services/query-client";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { I18nProvider } from "@/i18n";
 import "./theme/globals.css";
 
 const root = document.getElementById("root");
@@ -20,8 +21,10 @@ ReactDOM.createRoot(root).render(
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={150}>
           <BrowserRouter>
-            <App />
-            <Toaster richColors closeButton position="top-right" />
+            <I18nProvider>
+              <App />
+              <Toaster richColors closeButton position="top-right" />
+            </I18nProvider>
           </BrowserRouter>
         </TooltipProvider>
         <ReactQueryDevtools initialIsOpen={false} />

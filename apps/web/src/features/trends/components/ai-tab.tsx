@@ -8,6 +8,7 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useTrendTopicCandidates } from "@/features/trends/hooks/use-trends";
 import type { TrendExplainInput, TrendsOverviewParams, TrendTopicCandidatesParams } from "@/features/trends/api/trends.api";
 import { formatNumber } from "@/utils";
+import { useI18n } from "@/i18n";
 
 type CitationBandFilter = NonNullable<TrendsOverviewParams["citationBands"]>;
 
@@ -72,6 +73,7 @@ export function AITab({
   citationBands,
 }: AITabProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [topicSearch, setTopicSearch] = React.useState("");
   const debouncedTopicSearch = useDebouncedValue(topicSearch.trim(), 300);
   const relationshipEdges = relationshipsQuery.data?.edges ?? [];
@@ -176,22 +178,25 @@ export function AITab({
     <div className="space-y-6">
       {/* Tab Purpose Header (P10 Request) */}
       <div className="text-xs text-slate-550 dark:text-slate-400 font-medium select-none">
-        Pick a topic and ask AI to explain why the trend may matter. The answer is grounded in aggregate trend metrics from the current dataset, not arbitrary web knowledge.
+        {t("Pick a topic and ask AI to explain why the trend may matter. The answer is grounded in aggregate trend metrics from the current dataset, not arbitrary web knowledge.")}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Cột Trái: Topic co-occurrence graph preview (5 columns) */}
         <div className="lg:col-span-5 bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between min-h-[460px]">
           <div>
-            <div className="flex items-center justify-between gap-4 mb-4 select-none">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Topics Related to {activeFocusTopic}</h3>
+            <div className="flex flex-col gap-3 mb-4 select-none">
+              <h3 className="min-w-0 text-lg font-bold leading-snug text-slate-900 dark:text-white">
+                {t("Topics Related to")}{" "}
+                <span className="break-words">{activeFocusTopic}</span>
+              </h3>
 
               {/* select focusTopic */}
-              <div className="relative">
+              <div className="relative w-full">
                 <select
                   value={activeFocusTopic}
                   onChange={(e) => setFocusTopic(e.target.value)}
-                  className="h-8 pl-3 pr-8 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 appearance-none cursor-pointer"
+                  className="h-8 w-full truncate pl-3 pr-8 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 appearance-none cursor-pointer"
                 >
                   {!selectedTopicExistsInTopList && activeFocusTopic ? (
                     <option value={activeFocusTopic}>{activeFocusTopic}</option>
@@ -204,7 +209,9 @@ export function AITab({
               </div>
             </div>
             <p className="text-xs text-slate-500 mb-6">
-              These are not search results. Each row counts papers that are tagged with both <strong>{activeFocusTopic}</strong> and the related topic inside the current scope.
+              {t("These are not search results. Each row counts papers that are tagged with both")}{" "}
+              <strong>{activeFocusTopic}</strong>{" "}
+              {t("and the related topic inside the current scope.")}
             </p>
 
             <div className="mb-5 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/25 dark:bg-blue-950/10 p-3">

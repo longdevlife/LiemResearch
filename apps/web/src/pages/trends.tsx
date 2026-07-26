@@ -21,6 +21,7 @@ import {
 } from "./trends.insights";
 import { formatNumber } from "@/utils";
 import { formatLanguageName } from "@/utils/language";
+import { useI18n } from "@/i18n";
 
 type CitationBand = "0-9" | "10-49" | "50-99" | "100-499" | "500-999" | "1000+";
 const CITATION_BANDS = ["0-9", "10-49", "50-99", "100-499", "500-999", "1000+"] as const;
@@ -71,6 +72,7 @@ function parseTabParam(params: URLSearchParams): TrendTab {
 
 export function TrendsPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Controlled states synchronized with URL search params (with safety bounds)
@@ -81,6 +83,9 @@ export function TrendsPage() {
     return s && isTrendSortKey(s) ? s : "momentum";
   });
   const [minPapers, setMinPapers] = useState<number>(() => parseNumberParam(searchParams, "minPapers", 2, { min: 1 }));
+  const [yearFromInput, setYearFromInput] = useState(() => String(yearFrom));
+  const [yearToInput, setYearToInput] = useState(() => String(yearTo));
+  const [minPapersInput, setMinPapersInput] = useState(() => String(minPapers));
 
   // Taxonomy name-based filters
   const [domains, setDomains] = useState<string[]>(() => parseArrayParam(searchParams, "domains"));
@@ -104,6 +109,38 @@ export function TrendsPage() {
 
   const [activeTab, setActiveTab] = useState<TrendTab>(() => parseTabParam(searchParams));
   const [selectedTopics, setSelectedTopics] = useState<string[]>(() => parseArrayParam(searchParams, "compare").slice(0, 5));
+
+  useEffect(() => {
+    setYearFromInput(String(yearFrom));
+  }, [yearFrom]);
+
+  useEffect(() => {
+    setYearToInput(String(yearTo));
+  }, [yearTo]);
+
+  useEffect(() => {
+    setMinPapersInput(String(minPapers));
+  }, [minPapers]);
+
+  const commitNumericInput = (
+    rawValue: string,
+    fallback: number,
+    min: number,
+    setNumericValue: (value: number) => void,
+    setInputValue: (value: string) => void,
+  ) => {
+    const parsed = parseInt(rawValue, 10);
+    const nextValue = Number.isFinite(parsed) ? Math.max(min, parsed) : fallback;
+    setNumericValue(nextValue);
+    setInputValue(String(nextValue));
+  };
+
+  const handleNumericInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, commit: () => void) => {
+    if (event.key === "Enter") {
+      commit();
+      event.currentTarget.blur();
+    }
+  };
 
   // Synchronize state changes back to searchParams
   useEffect(() => {
@@ -572,17 +609,21 @@ export function TrendsPage() {
           <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
             <input
               type="number"
-              value={yearFrom}
-              onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 1900)}
-              placeholder="From"
+              value={yearFromInput}
+              onChange={(e) => setYearFromInput(e.target.value)}
+              onBlur={() => commitNumericInput(yearFromInput, 1900, 1900, setYearFrom, setYearFromInput)}
+              onKeyDown={(e) => handleNumericInputKeyDown(e, () => commitNumericInput(yearFromInput, 1900, 1900, setYearFrom, setYearFromInput))}
+              placeholder={t("From")}
               className="w-full md:w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
             />
             <span className="text-slate-400">-</span>
             <input
               type="number"
-              value={yearTo}
-              onChange={(e) => setYearTo(parseInt(e.target.value, 10) || 2026)}
-              placeholder="To"
+              value={yearToInput}
+              onChange={(e) => setYearToInput(e.target.value)}
+              onBlur={() => commitNumericInput(yearToInput, 2026, 1900, setYearTo, setYearToInput)}
+              onKeyDown={(e) => handleNumericInputKeyDown(e, () => commitNumericInput(yearToInput, 2026, 1900, setYearTo, setYearToInput))}
+              placeholder={t("To")}
               className="w-full md:w-20 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
             />
           </div>
@@ -610,9 +651,11 @@ export function TrendsPage() {
             <span className="text-xs text-slate-500 font-medium whitespace-nowrap" title="Hide noisy topics with fewer than this many papers in the selected window.">Min Papers:</span>
             <input
               type="number"
-              value={minPapers}
+              value={minPapersInput}
               min="1"
-              onChange={(e) => setMinPapers(parseInt(e.target.value, 10) || 1)}
+              onChange={(e) => setMinPapersInput(e.target.value)}
+              onBlur={() => commitNumericInput(minPapersInput, 2, 1, setMinPapers, setMinPapersInput)}
+              onKeyDown={(e) => handleNumericInputKeyDown(e, () => commitNumericInput(minPapersInput, 2, 1, setMinPapers, setMinPapersInput))}
               className="w-full md:w-16 h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-center text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600"
               title="Hide noisy topics with fewer than this many papers in the selected window."
             />

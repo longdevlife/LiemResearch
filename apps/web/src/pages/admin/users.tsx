@@ -18,6 +18,7 @@ import {
 import { useCurrentUser } from "@/features/auth";
 import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus } from "@/features/admin";
 import { Lock, Unlock, ShieldAlert } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 const ROLES: UserRole[] = ["student", "lecturer", "researcher", "admin"];
 
@@ -30,6 +31,7 @@ function apiErr(err: unknown): string {
 }
 
 export function AdminUsersPage() {
+  const { t } = useI18n();
   const { data: me } = useCurrentUser();
   const isAdmin = me?.user?.role === "admin";
   const myId = me?.user?.id;
@@ -84,7 +86,7 @@ export function AdminUsersPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Search email or name…"
+          placeholder={t("Search email or name…")}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -94,13 +96,14 @@ export function AdminUsersPage() {
         />
         <select
           className={SELECT_CLASS}
+          data-no-i18n
           value={roleFilter}
           onChange={(e) => {
             setRoleFilter(e.target.value as UserRole | "all");
             setPage(1);
           }}
         >
-          <option value="all">All roles</option>
+          <option value="all">{t("All roles")}</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -142,6 +145,7 @@ export function AdminUsersPage() {
                     <TableCell>
                       <select
                         className={SELECT_CLASS}
+                        data-no-i18n
                         value={u.role}
                         disabled={isSelf || updateRole.isPending}
                         onChange={(e) => handleRole(u.id, e.target.value as UserRole)}
