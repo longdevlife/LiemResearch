@@ -9,10 +9,10 @@ platform at `paperlens.uk`. It contains no real credentials.
 Browser
   |
   +-- https://paperlens.uk
-  |      DNS + TLS + OpenResty -> 127.0.0.1:9001 -> web container
+  |      DNS + TLS + Nginx Proxy Manager -> paperlens-web:80
   |
   +-- https://api.paperlens.uk
-         DNS + TLS + OpenResty -> 127.0.0.1:9000 -> backend container
+         DNS + TLS + Nginx Proxy Manager -> paperlens-backend:4000
                                                        |
                   +------------------------------------+------------------+
                   |                    |               |                  |
@@ -73,9 +73,25 @@ environment into GitHub, a pull request, an issue, a screenshot, or build logs.
 - `api.paperlens.uk` A record points to the same deployment server.
 - Public firewall permits only required services such as `80` and `443`.
 - MongoDB, Redis, ports `9000`, and `9001` are not exposed to the public
-  Internet. OpenResty is the public entry point.
+  Internet. Nginx Proxy Manager is the public entry point.
 
-### TLS and OpenResty
+### TLS and reverse proxy
+
+The production server runs Nginx Proxy Manager in Docker on the external
+`nginx-network`. Jenkins attaches the PaperLens containers to that network with
+stable aliases:
+
+| Public host | Forward hostname | Forward port |
+|---|---|---:|
+| `paperlens.uk` | `paperlens-web` | `80` |
+| `api.paperlens.uk` | `paperlens-backend` | `4000` |
+
+Do not forward either host to `127.0.0.1` or the server's public IP. From inside
+the reverse-proxy container, `127.0.0.1` refers to that container itself, while
+the host ports are intentionally bound only to the host loopback interface.
+
+For a non-containerized OpenResty installation, the version-controlled example
+below remains available.
 
 For the first certificate, briefly stop OpenResty and use Certbot standalone so
 the command does not depend on an already-valid HTTPS configuration:

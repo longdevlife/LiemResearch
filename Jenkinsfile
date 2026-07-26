@@ -10,6 +10,7 @@ pipeline {
 
   environment {
     APP_NETWORK = 'user1-liemresearch'
+    PROXY_NETWORK = 'nginx-network'
     BACKEND_IMAGE = 'user1-liemresearch-backend'
     WEB_IMAGE = 'user1-liemresearch-web'
     BACKEND_CONTAINER = 'user1-liemresearch-backend'
@@ -67,6 +68,10 @@ pipeline {
         sh '''
           set -eu
           docker network inspect "$APP_NETWORK" >/dev/null 2>&1 || docker network create "$APP_NETWORK"
+          if ! docker network inspect "$PROXY_NETWORK" >/dev/null 2>&1; then
+            echo "Required reverse-proxy network '$PROXY_NETWORK' does not exist."
+            exit 1
+          fi
 
           docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 || docker volume create "$REDIS_VOLUME"
           docker rm -f "$REDIS_CONTAINER" >/dev/null 2>&1 || true
@@ -175,6 +180,10 @@ pipeline {
               -e LIBRETRANSLATE_URL=http://libretranslate:5000 \
               -v user1-liemresearch-uploads:/app/apps/backend/uploads \
               "$BACKEND_IMAGE:$IMAGE_TAG"
+            docker network connect \
+              --alias paperlens-backend \
+              "$PROXY_NETWORK" \
+              "$BACKEND_CONTAINER"
 
             backend_ready=0
             for attempt in $(seq 1 45); do
@@ -197,6 +206,10 @@ pipeline {
               --network "$APP_NETWORK" \
               -p 127.0.0.1:9001:80 \
               "$WEB_IMAGE:$IMAGE_TAG"
+            docker network connect \
+              --alias paperlens-web \
+              "$PROXY_NETWORK" \
+              "$WEB_CONTAINER"
             docker exec "$WEB_CONTAINER" wget -qO- http://127.0.0.1/ >/dev/null
 
             worker_specs='
@@ -245,6 +258,44 @@ pipeline {
             docker tag "$WEB_IMAGE:$IMAGE_TAG" "$WEB_IMAGE:latest"
           '''
         }
+      }
+    }
+
+    stage('Verify public deployment') {
+      steps {
+        sh '''
+          set -eu
+
+          public_ready=0
+          for attempt in $(seq 1 30); do
+            web_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              --connect-timeout 5 --max-time 15 https://paperlens.uk/ || true)
+            health_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              --connect-timeout 5 --max-time 15 https://api.paperlens.uk/health || true)
+            ready_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              --connect-timeout 5 --max-time 15 https://api.paperlens.uk/ready || true)
+
+            if [ "$web_status" = "200" ] &&
+               [ "$health_status" = "200" ] &&
+               [ "$ready_status" = "200" ]; then
+              public_ready=1
+              break
+            fi
+
+            echo "Public smoke attempt $attempt/30: web=$web_status health=$health_status ready=$ready_status"
+            sleep 2
+          done
+
+          if [ "$public_ready" -ne 1 ]; then
+            echo "PaperLens public smoke test failed."
+            echo "Ensure Nginx Proxy Manager forwards:"
+            echo "  paperlens.uk -> paperlens-web:80"
+            echo "  api.paperlens.uk -> paperlens-backend:4000"
+            exit 1
+          fi
+
+          echo "PaperLens public endpoints returned HTTP 200."
+        '''
       }
     }
   }
