@@ -16,8 +16,8 @@ Browser
                                                        |
                   +------------------------------------+------------------+
                   |                    |               |                  |
-               MongoDB              Redis       LibreTranslate       BullMQ workers
-             metadata/data     cache + queues   paper translation   async processing
+               MongoDB          Self-hosted Redis   LibreTranslate       BullMQ workers
+             metadata/data       cache + queues     paper translation   async processing
 ```
 
 Jenkins checks out `main`, builds immutable Docker images tagged with the Git
@@ -142,8 +142,20 @@ Replace **every value enclosed in angle brackets**, including:
 - `<required-...>`
 - `<operator-email-address>`
 
-Required runtime secrets include MongoDB, Redis, two different JWT secrets,
+Required runtime secrets include MongoDB, the self-hosted Redis password, two different JWT secrets,
 Gemini, Google OAuth, and R2 when `STORAGE_PROVIDER=r2`.
+
+Redis runs inside the private Docker network with AOF persistence. Production
+must use:
+
+```dotenv
+REDIS_DEPLOYMENT=self_hosted
+REDIS_PASSWORD=<raw-password-at-least-32-characters>
+REDIS_URL=redis://default:<URL-encoded-password>@redis:6379
+```
+
+The decoded password in `REDIS_URL` must equal `REDIS_PASSWORD`. Jenkins rejects
+external Redis hosts and does not publish port `6379`.
 
 Keep these public values:
 
@@ -199,6 +211,7 @@ The committed `Jenkinsfile` deploys:
 | `user1-liemresearch-backend` | Express API on host port `9000` |
 | `user1-liemresearch-web` | React/Nginx web on host port `9001` |
 | `user1-liemresearch-libretranslate` | On-demand paper translation |
+| `user1-liemresearch-redis` | BullMQ queues, cache, rate limits, and worker heartbeats |
 | `worker-report` | RAG report jobs |
 | `worker-gaps` | Research-gap jobs |
 | `worker-notifications` | Notification delivery |
