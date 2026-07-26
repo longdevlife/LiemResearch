@@ -14,8 +14,8 @@ This repository is a **pnpm + Turborepo mono-repo** containing three runnable ap
 | PaperLens API | [https://api.paperlens.uk](https://api.paperlens.uk) |
 
 Production is deployed from `main` by Jenkins using the repository's
-[`Jenkinsfile`](Jenkinsfile). OpenResty terminates TLS and routes the public
-domains to Docker containers on the application server.
+[`Jenkinsfile`](Jenkinsfile). Nginx Proxy Manager terminates TLS and routes the
+public domains to Docker containers over the private `nginx-network`.
 
 The production stack contains:
 
