@@ -14,6 +14,9 @@ pipeline {
     WEB_IMAGE = 'user1-liemresearch-web'
     BACKEND_CONTAINER = 'user1-liemresearch-backend'
     WEB_CONTAINER = 'user1-liemresearch-web'
+    REDIS_IMAGE = 'redis:7-alpine'
+    REDIS_CONTAINER = 'user1-liemresearch-redis'
+    REDIS_VOLUME = 'user1-liemresearch-redis-data'
     LIBRETRANSLATE_IMAGE = 'libretranslate/libretranslate:v1.9.6'
     LIBRETRANSLATE_CONTAINER = 'user1-liemresearch-libretranslate'
   }
@@ -37,6 +40,7 @@ pipeline {
             --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
             -t "$WEB_IMAGE:$IMAGE_TAG" \
             -f Dockerfile.web .
+          docker pull "$REDIS_IMAGE"
           docker pull "$LIBRETRANSLATE_IMAGE"
         '''
       }
@@ -63,6 +67,33 @@ pipeline {
         sh '''
           set -eu
           docker network inspect "$APP_NETWORK" >/dev/null 2>&1 || docker network create "$APP_NETWORK"
+
+          docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 || docker volume create "$REDIS_VOLUME"
+          docker rm -f "$REDIS_CONTAINER" >/dev/null 2>&1 || true
+          docker run -d \
+            --name "$REDIS_CONTAINER" \
+            --restart unless-stopped \
+            --network "$APP_NETWORK" \
+            --network-alias redis \
+            --env-file .env.runtime \
+            -v "$REDIS_VOLUME:/data" \
+            "$REDIS_IMAGE" \
+            sh -c 'exec redis-server --appendonly yes --appendfsync everysec --requirepass "$REDIS_PASSWORD"'
+
+          redis_ready=0
+          for attempt in $(seq 1 30); do
+            if docker exec "$REDIS_CONTAINER" \
+              sh -c 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" ping' | grep -qx PONG; then
+              redis_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$redis_ready" -ne 1 ]; then
+            docker logs --tail 200 "$REDIS_CONTAINER"
+            exit 1
+          fi
+
           docker rm -f "$LIBRETRANSLATE_CONTAINER" >/dev/null 2>&1 || true
           docker run -d \
             --name "$LIBRETRANSLATE_CONTAINER" \

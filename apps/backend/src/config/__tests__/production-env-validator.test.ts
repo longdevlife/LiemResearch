@@ -5,7 +5,9 @@ function validEnvironment(): ProductionEnvironment {
   return {
     NODE_ENV: "production",
     MONGODB_URI: "mongodb://user:password@example.test:27017/paperlens",
-    REDIS_URL: "rediss://default:password@example.test:6379",
+    REDIS_DEPLOYMENT: "self_hosted",
+    REDIS_PASSWORD: "redis-password-that-is-at-least-32-characters",
+    REDIS_URL: "redis://default:redis-password-that-is-at-least-32-characters@redis:6379",
     JWT_ACCESS_SECRET: "access-secret-that-is-at-least-32-characters",
     JWT_REFRESH_SECRET: "refresh-secret-that-is-at-least-32-characters",
     GEMINI_API_KEY: "gemini-key",
@@ -60,5 +62,15 @@ describe("validateProductionEnvironment", () => {
     expect(validateProductionEnvironment(values)).toContain(
       "SYNC_ADMIN_BYPASS must be false in production",
     );
+  });
+
+  it("rejects external or mismatched Redis configuration", () => {
+    const values = validEnvironment();
+    values.REDIS_URL = "rediss://default:upstash-password@example.upstash.test:6379";
+
+    const errors = validateProductionEnvironment(values);
+
+    expect(errors).toContain("Self-hosted REDIS_URL hostname must be redis");
+    expect(errors).toContain("REDIS_URL password must match REDIS_PASSWORD");
   });
 });

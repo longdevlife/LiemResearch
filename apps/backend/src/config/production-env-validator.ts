@@ -2,6 +2,8 @@ export type ProductionEnvironment = Record<string, string | undefined>;
 
 const REQUIRED_KEYS = [
   "MONGODB_URI",
+  "REDIS_DEPLOYMENT",
+  "REDIS_PASSWORD",
   "REDIS_URL",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
@@ -54,6 +56,25 @@ export function validateProductionEnvironment(values: ProductionEnvironment): st
 
   if (!values.REDIS_URL?.startsWith("redis://") && !values.REDIS_URL?.startsWith("rediss://")) {
     errors.push("REDIS_URL must use redis:// or rediss://");
+  }
+  if (values.REDIS_DEPLOYMENT !== "self_hosted") {
+    errors.push("REDIS_DEPLOYMENT must be self_hosted");
+  }
+  if ((values.REDIS_PASSWORD?.length ?? 0) < 32) {
+    errors.push("REDIS_PASSWORD must contain at least 32 characters");
+  }
+  try {
+    const redisUrl = new URL(values.REDIS_URL ?? "");
+    if (redisUrl.hostname !== "redis") {
+      errors.push("Self-hosted REDIS_URL hostname must be redis");
+    }
+    if (!redisUrl.password) {
+      errors.push("Self-hosted REDIS_URL must include a password");
+    } else if (decodeURIComponent(redisUrl.password) !== values.REDIS_PASSWORD) {
+      errors.push("REDIS_URL password must match REDIS_PASSWORD");
+    }
+  } catch {
+    // The protocol validation above reports malformed or unsupported values.
   }
 
   if ((values.JWT_ACCESS_SECRET?.length ?? 0) < 32) {
