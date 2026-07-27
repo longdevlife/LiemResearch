@@ -307,24 +307,22 @@ export function ResearchGapsPage() {
       <GapAnalysisWorkflow isAnalyzing={isPending} onAnalyze={handleAnalyze} />
 
       {/* Unified Filters & Research Workflow Toolbar */}
-      <div className="bg-white dark:bg-[#1c1f26] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col gap-4 p-5">
-        <div className="absolute left-0 top-0 w-1.5 h-full bg-cyan-500" />
-
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#12161f] space-y-4">
         {/* Row 1: Search & Topic filters (Primary Inputs) */}
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center relative z-10">
+        <div className="flex flex-col md:flex-row gap-3.5 items-stretch md:items-center">
           {/* Client-side Search Box */}
           <div className="relative w-full min-w-0 flex-grow md:min-w-[280px] md:flex-[2]">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-450" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
               placeholder={t("Search gaps by title, description, paper, or topic…")}
-              className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
+              className="pl-9 h-10 border-slate-200/80 dark:border-slate-800 focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 rounded-xl text-xs font-medium bg-slate-50/50 dark:bg-slate-950/80"
             />
             {clientSearch && (
               <button
                 onClick={() => setClientSearch("")}
-                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 {t("Clear")}
               </button>
@@ -332,76 +330,88 @@ export function ResearchGapsPage() {
           </div>
 
           {/* Server-side Topic Box */}
-          <div className="relative w-full min-w-0 flex-grow md:min-w-[280px] md:flex-[1.5]">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-455" />
+          <div className="relative w-full min-w-0 flex-grow md:min-w-[240px] md:flex-[1.5]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               value={searchTopic}
               onChange={(e) => setSearchTopic(e.target.value)}
               placeholder={t("Filter by research topic…")}
-              className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-cyan-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
+              className="pl-9 h-10 border-slate-200/80 dark:border-slate-800 focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 rounded-xl text-xs font-medium bg-slate-50/50 dark:bg-slate-950/80"
             />
             {searchTopic && (
               <button
                 onClick={() => setSearchTopic("")}
-                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 {t("Clear")}
               </button>
             )}
           </div>
 
-          <span className="self-start text-[11px] font-medium text-slate-500 dark:text-slate-400 md:ml-auto md:self-center md:whitespace-nowrap">
+          <span className="self-start text-[11px] font-medium text-slate-400 dark:text-slate-500 md:ml-auto md:self-center md:whitespace-nowrap">
             {t("Search applies to all matching opportunities")}
           </span>
         </div>
 
         {/* Divider */}
-        <div className="border-t border-dashed border-slate-100 dark:border-slate-800/60" />
+        <div className="border-t border-slate-100/80 dark:border-slate-800/80" />
 
         {/* Row 2: Secondary Controls (Filters & Sort & Shortlist) */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Left Group: Filters */}
-          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
+          <div className="flex min-w-0 flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             {/* Status filter */}
-            <div className="flex h-auto min-w-0 flex-wrap items-center gap-2 sm:h-9">
+            <div className="flex items-center gap-2 shrink-0">
               <ListFilter className="w-4 h-4 text-slate-400" />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Status:")}</span>
-              <div className="flex min-w-0 flex-1 items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800/50 sm:h-9 sm:flex-none">
-                <Button
-                  size="sm"
-                  variant={filterStatus === "active" ? "default" : "ghost"}
-                  className={`h-7 px-3 text-xs ${filterStatus === "active" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+              <div className="flex items-center gap-1 rounded-xl bg-slate-100/90 p-1 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-800/60">
+                <button
+                  type="button"
                   onClick={() => setFilterStatus("active")}
+                  className={cn(
+                    "h-7 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    filterStatus === "active"
+                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                  )}
                 >
                   {t("Active")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={filterStatus === "resolved" ? "default" : "ghost"}
-                  className={`h-7 px-3 text-xs ${filterStatus === "resolved" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+                </button>
+                <button
+                  type="button"
                   onClick={() => setFilterStatus("resolved")}
+                  className={cn(
+                    "h-7 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    filterStatus === "resolved"
+                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                  )}
                 >
                   {t("Resolved")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={filterStatus === "dismissed" ? "default" : "ghost"}
-                  className={`h-7 px-3 text-xs ${filterStatus === "dismissed" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
+                </button>
+                <button
+                  type="button"
                   onClick={() => setFilterStatus("dismissed")}
+                  className={cn(
+                    "h-7 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    filterStatus === "dismissed"
+                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                  )}
                 >
                   {t("Dismissed")}
-                </Button>
+                </button>
               </div>
             </div>
 
             {/* Source filter */}
-            <div className="flex h-9 min-w-0 items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Filter className="w-4 h-4 text-slate-400" />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Source:")}</span>
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value as GapSource | "all")}
-                className="h-9 min-w-0 flex-1 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex-none"
+                className="h-9 cursor-pointer rounded-xl border border-slate-200/80 bg-slate-50/80 dark:bg-slate-950/80 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 dark:border-slate-800"
               >
                 <option value="all">{t("All Sources")}</option>
                 <option value="report">{t("Report-generated")}</option>
@@ -410,9 +420,9 @@ export function ResearchGapsPage() {
             </div>
 
             {/* Min Confidence */}
-            <div className="flex h-9 min-w-0 items-center gap-2">
-               <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
-               <span className="min-w-[112px] text-xs font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex items-center gap-2 shrink-0">
+               <Zap className="w-4 h-4 text-amber-500" />
+               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
                  {t("Confidence")} &ge; {Math.round(minConfidence * 100)}%
                </span>
                <input
@@ -422,21 +432,21 @@ export function ResearchGapsPage() {
                  step="0.1"
                  value={minConfidence}
                  onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-                 className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-cyan-500 dark:bg-slate-700 sm:w-24 sm:flex-none"
+                 className="h-1.5 w-20 cursor-pointer appearance-none rounded-lg bg-slate-200 dark:bg-slate-800 accent-cyan-500"
                />
             </div>
           </div>
 
           {/* Right Group: Actions */}
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
             {/* Sort Select */}
-            <div className="flex h-9 min-w-0 items-center gap-2">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Sort:")}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">{t("Sort:")}</span>
               <select
-            value={sortBy}
-            disabled={showShortlistedOnly}
-            onChange={(e) => setSortBy(e.target.value as GapSortKey)}
-                className="h-9 min-w-0 flex-1 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex-none"
+                value={sortBy}
+                disabled={showShortlistedOnly}
+                onChange={(e) => setSortBy(e.target.value as GapSortKey)}
+                className="h-9 max-w-[210px] sm:max-w-none cursor-pointer rounded-xl border border-slate-200/80 bg-slate-50/80 dark:bg-slate-950/80 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50 dark:border-slate-800 truncate"
               >
                 <option value="recommended">{t("Recommended (evidence + confidence)")}</option>
                 <option value="evidence">{t("Most Evidence-backed")}</option>
@@ -447,29 +457,24 @@ export function ResearchGapsPage() {
               </select>
             </div>
 
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden lg:block" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block shrink-0" />
 
             {/* Show Shortlisted Only Toggle */}
-            <div className="flex items-center gap-2 h-9">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
                 variant={showShortlistedOnly ? "default" : "outline"}
                 className={cn(
-                  "h-9 px-3.5 text-xs font-bold gap-1.5 rounded-lg transition-all",
+                  "h-9 px-3.5 text-xs font-bold gap-1.5 rounded-xl transition-all shrink-0",
                   showShortlistedOnly
-                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
-                    : "border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                    : "border-slate-200/80 hover:bg-slate-100 text-slate-700 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
                 )}
                 onClick={() => setShowShortlistedOnly(prev => !prev)}
               >
-                <Star className={cn("w-3.5 h-3.5", showShortlistedOnly ? "fill-amber-400 text-amber-300" : "text-slate-500")} />
-            <span>{t("Shortlist")} ({shortlistedGaps.length})</span>
+                <Star className={cn("w-3.5 h-3.5", showShortlistedOnly ? "fill-amber-300 text-amber-300" : "text-slate-400")} />
+                <span>{t("Shortlist")} ({shortlistedGaps.length})</span>
               </Button>
-              {showShortlistedOnly && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider animate-pulse">
-                  {t("Saved on this device")}
-                </span>
-              )}
             </div>
           </div>
         </div>

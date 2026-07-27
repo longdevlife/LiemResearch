@@ -180,29 +180,43 @@ export function GapAnalysisWorkflow({
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1c1f26]">
-      <div className="border-b border-slate-100 px-6 py-5 dark:border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-cyan-50 p-2 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
-            <Database className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-950 dark:text-white">{t("Create a grounded gap analysis")}</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              {t("Define the topic, review the exact evidence papers, then spend credits on AI analysis.")}
-            </p>
+    <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#12161f]">
+      <div className="border-b border-slate-100/80 px-6 py-5 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/20">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 p-2.5 text-cyan-600 dark:from-cyan-500/20 dark:to-blue-500/20 dark:text-cyan-400 border border-cyan-500/20 shadow-xs">
+              <Database className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold tracking-tight text-slate-950 dark:text-white">
+                  {t("Create a grounded gap analysis")}
+                </h2>
+                <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                  AI Grounded Engine
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                {t("Define the topic, review the exact evidence papers, then spend credits on AI analysis.")}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-5 p-6">
-        <div className="rounded-lg border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-xs leading-relaxed text-cyan-950 dark:border-cyan-900/50 dark:bg-cyan-950/20 dark:text-cyan-100">
-          {t("This is not a paper comparison. The system reads the reviewed evidence set to identify under-explored, contradictory, or methodologically missing research opportunities.")}
+      <div className="space-y-6 p-6">
+        {/* Info Callout */}
+        <div className="flex items-start gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs font-medium leading-relaxed text-cyan-950 dark:border-cyan-500/20 dark:bg-cyan-950/30 dark:text-cyan-200">
+          <Zap className="mt-0.5 h-4 w-4 shrink-0 text-cyan-500" />
+          <span>
+            {t("This is not a paper comparison. The system reads the reviewed evidence set to identify under-explored, contradictory, or methodologically missing research opportunities.")}
+          </span>
         </div>
 
+        {/* Inputs */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_130px_130px]">
-          <label className="space-y-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {t("Research topic")}
+          <label className="space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <span>{t("Research topic")}</span>
             <input
               value={topic}
               onChange={(event) => {
@@ -210,11 +224,11 @@ export function GapAnalysisWorkflow({
                 if (preview) reset();
               }}
               placeholder={t("e.g. federated learning in medical imaging")}
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-sm font-medium text-slate-900 outline-none transition-all focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950/80 dark:text-white dark:focus:border-cyan-500 dark:focus:bg-slate-950"
             />
           </label>
-          <label className="space-y-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {t("Year from")}
+          <label className="space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <span>{t("Year from")}</span>
             <input
               type="number"
               value={yearFrom}
@@ -223,11 +237,11 @@ export function GapAnalysisWorkflow({
                 if (preview) reset();
               }}
               placeholder="2020"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-sm font-medium text-slate-900 outline-none transition-all focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950/80 dark:text-white dark:focus:border-cyan-500 dark:focus:bg-slate-950"
             />
           </label>
-          <label className="space-y-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {t("Year to")}
+          <label className="space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <span>{t("Year to")}</span>
             <input
               type="number"
               value={yearTo}
@@ -236,22 +250,23 @@ export function GapAnalysisWorkflow({
                 if (preview) reset();
               }}
               placeholder="2026"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-sm font-medium text-slate-900 outline-none transition-all focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950/80 dark:text-white dark:focus:border-cyan-500 dark:focus:bg-slate-950"
             />
           </label>
         </div>
 
         {!preview ? (
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-            <p className="text-xs text-slate-500">
+          <div className="flex flex-col gap-4 border-t border-slate-100/80 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800/80">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
               {t("Evidence preview is free. The 30-credit charge happens only after you approve at least 3 papers.")}
-            </p>
+            </div>
             <Button
               onClick={() => void loadPreview()}
               disabled={!canPreview}
-              className="h-11 rounded-lg bg-cyan-600 px-5 font-bold text-white hover:bg-cyan-700"
+              className="h-11 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-6 text-sm font-bold text-white shadow-md transition-all hover:from-cyan-500 hover:to-blue-500 hover:shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-50"
             >
-              {previewEvidence.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+              {previewEvidence.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}
               {t("Review Evidence")}
             </Button>
           </div>
