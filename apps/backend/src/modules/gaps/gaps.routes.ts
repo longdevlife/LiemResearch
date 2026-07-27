@@ -9,6 +9,7 @@ import {
   PatchGapSchema,
   GapIdParamsSchema,
   DirectionsBodySchema,
+  PreviewGapEvidenceSchema,
 } from "./dto/gaps.schema.js";
 import { gapsController } from "./gaps.controller.js";
 
@@ -38,6 +39,22 @@ const analyzeGapLimiter = rateLimit({
     }),
 });
 
+const evidencePreviewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: Math.max(env.GAPS_MAX_PER_HOUR * 5, 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? (req.ip || "anonymous"),
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: {
+        code: "TOO_MANY_REQUESTS",
+        message: "Evidence preview rate limit exceeded — try again later.",
+      },
+    }),
+});
+
 /** Per-user throttle for the directions LLM call — protects the Gemini free-tier quota. */
 const directionsLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -55,6 +72,12 @@ const directionsLimiter = rateLimit({
     }),
 });
 
+gapsRouter.post(
+  "/evidence-preview",
+  evidencePreviewLimiter,
+  validate(PreviewGapEvidenceSchema),
+  gapsController.previewEvidence,
+);
 gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
 gapsRouter.get("/analyze/active", gapsController.getActiveAnalysis);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);

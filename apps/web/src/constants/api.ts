@@ -74,6 +74,7 @@ export const API_ROUTES = {
     evaluationSummary: "/admin/evaluation/summary",
   },
   gaps: {
+    evidencePreview: "/gaps/evidence-preview",
     analyze: "/gaps/analyze",
     analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
     activeAnalysis: "/gaps/analyze/active",

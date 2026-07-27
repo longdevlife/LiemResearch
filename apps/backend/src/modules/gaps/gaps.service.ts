@@ -2,7 +2,12 @@ import { env } from "../../config/env.js";
 import mongoose from "mongoose";
 import { logger } from "../../infrastructure/logger.js";
 import { AppError } from "../../common/exceptions/app-error.js";
-import type { GapProbe, GapDirections } from "@trend/shared-types";
+import type {
+  GapProbe,
+  GapDirections,
+  PreviewGapEvidenceResponse,
+  GapEvidenceMode,
+} from "@trend/shared-types";
 import { creditService } from "../credits/credit.service.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { LlmContentError } from "../llm/gemini.client.js";
@@ -42,6 +47,7 @@ import type {
   AnalyzeGapDto,
   ListGapsQuery,
   PatchGapDto,
+  PreviewGapEvidenceDto,
 } from "./dto/gaps.schema.js";
 import {
   canAccessGap,
@@ -196,15 +202,84 @@ async function assertCanReadGap(
 }
 
 export const gapsService = {
+  /** Preview evidence without charging credits or calling the LLM. */
+  async previewEvidence(
+    userId: string,
+    dto: PreviewGapEvidenceDto,
+  ): Promise<PreviewGapEvidenceResponse> {
+    const projectPaperIds = dto.projectId
+      ? await projectService.getProjectPaperIdsForUser(dto.projectId, userId, "gap analysis")
+      : undefined;
+    const mode = dto.evidenceMode ?? "hybrid";
+    let queryVector: number[] | undefined;
+    let usedTextFallback = false;
+
+    if (mode !== "selected") {
+      try {
+        queryVector = await getEmbeddingProvider().embed(dto.topic);
+      } catch (err) {
+        usedTextFallback = true;
+        logger.warn({ err }, "gap evidence preview embedding failed; using text fallback");
+      }
+    }
+
+    const evidence = await collectGapEvidence({
+      topic: dto.topic,
+      queryVector,
+      selectedPaperIds: dto.selectedPaperIds,
+      evidenceMode: mode,
+      yearFrom: dto.yearFrom,
+      yearTo: dto.yearTo,
+      projectPaperIds,
+    });
+    const warnings = evidence.missingSelectedPaperIds.map(
+      (id) => `Selected paper ${id} is unavailable in this evidence scope and was skipped.`,
+    );
+    if (usedTextFallback) {
+      warnings.push("Semantic retrieval was unavailable, so keyword fallback was used.");
+    }
+    if (evidence.papers.length < 3) {
+      warnings.push("Fewer than 3 evidence papers were found. Broaden the topic or year range.");
+    }
+
+    return {
+      papers: evidence.papers.map(toPreviewGapPaper),
+      selectedPaperIds: evidence.selectedPaperIds,
+      retrievedPaperIds: evidence.retrievedPaperIds,
+      maxEvidencePapers: env.GAPS_TOP_K,
+      warnings,
+    };
+  },
+
   /** Create a queued analysis row, enqueue the BullMQ job, and return the id. */
   async enqueue(userId: string, dto: AnalyzeGapDto): Promise<string> {
     const analysisId = new mongoose.Types.ObjectId();
+    if ((dto.selectedPaperIds?.length ?? 0) > env.GAPS_TOP_K) {
+      throw AppError.badRequest(`Gap evidence cannot exceed ${env.GAPS_TOP_K} papers.`);
+    }
+    let projectPaperIds: string[] | undefined;
     if (dto.projectId) {
-      await projectService.getProjectPaperIdsForUser(
+      projectPaperIds = await projectService.getProjectPaperIdsForUser(
         dto.projectId,
         userId,
         "gap analysis",
       );
+    }
+    if (dto.evidenceMode === "selected") {
+      const evidence = await collectGapEvidence({
+        topic: dto.topic,
+        selectedPaperIds: dto.selectedPaperIds,
+        evidenceMode: "selected",
+        yearFrom: dto.yearFrom,
+        yearTo: dto.yearTo,
+        projectPaperIds,
+      });
+      if (evidence.papers.length < 3 || evidence.missingSelectedPaperIds.length > 0) {
+        throw AppError.badRequest(
+          "The reviewed evidence pack must contain at least 3 active papers in this scope.",
+          { missingPaperIds: evidence.missingSelectedPaperIds },
+        );
+      }
     }
 
     const tx = await creditService.chargeCreditsChecked({
@@ -226,6 +301,8 @@ export const gapsService = {
         topic: dto.topic,
         yearFrom: dto.yearFrom,
         yearTo: dto.yearTo,
+        selectedPaperIds: dto.selectedPaperIds ?? [],
+        evidenceMode: dto.evidenceMode ?? "auto",
         status: "queued",
         creditTransactionId: txId,
         creditCost: 30,
@@ -298,8 +375,11 @@ export const gapsService = {
     analysis.status = "analyzing";
     await analysis.save();
 
-    // ① Embed topic
-    const queryVector = await getEmbeddingProvider().embed(analysis.topic);
+    const evidenceMode = (analysis.evidenceMode ?? "auto") as GapEvidenceMode;
+    // ① Embed only when retrieval is required. A reviewed selected pack is fixed.
+    const queryVector = evidenceMode === "selected"
+      ? undefined
+      : await getEmbeddingProvider().embed(analysis.topic);
     const projectPaperIds = analysis.projectId
       ? await projectService.getProjectPaperIdsForUser(
           String(analysis.projectId),
@@ -308,17 +388,24 @@ export const gapsService = {
         )
       : undefined;
 
-    // ② Vector search — BEFORE cache lookup (paper IDs needed for cache key)
-    const papers = await retrieveGapEvidence(queryVector, {
+    // ② Collect the final ordered evidence pack before cache lookup.
+    const evidence = await collectGapEvidence({
+      topic: analysis.topic,
+      queryVector,
+      selectedPaperIds: (analysis.selectedPaperIds ?? []).map(String),
+      evidenceMode,
       yearFrom: analysis.yearFrom ?? undefined,
       yearTo: analysis.yearTo ?? undefined,
-      paperIds: projectPaperIds,
+      projectPaperIds,
     });
+    const papers = evidence.papers;
 
-    if (papers.length === 0) {
+    if (papers.length === 0 || (evidenceMode === "selected" && papers.length < 3)) {
       await this.markAnalysisFailed(
         job.analysisId,
-        "Not enough corpus data for this topic — try a broader question.",
+        evidenceMode === "selected"
+          ? "The reviewed evidence pack no longer contains at least 3 active papers."
+          : "Not enough corpus data for this topic — try a broader question.",
       );
       return;
     }
@@ -373,9 +460,12 @@ export const gapsService = {
     //    or orphans — the list() query is by userId+status, not gapIds, so orphans would
     //    otherwise show on the FE forever.
     await ResearchGapModel.deleteMany({ analysisId: analysis._id });
+    const evidenceScopePaperIds = evidenceMode === "auto"
+      ? projectPaperIds
+      : papers.map((paper) => paper.id);
     const gapDocs = await Promise.all(
       output.gaps.slice(0, 5).map(async (g) => {
-        const evidence = await scoreGapEvidence(g.probe, projectPaperIds);
+        const evidence = await scoreGapEvidence(g.probe, evidenceScopePaperIds);
         return ResearchGapModel.create({
           topic: analysis.topic,
           normalizedTopic,
@@ -478,7 +568,10 @@ export const gapsService = {
 
   /** Paginated, filterable list of gaps (the FE gaps page). */
   async list(userId: string, query: ListGapsQuery) {
-    let filter: Record<string, unknown> = { userId, status: query.status };
+    let filter: Record<string, unknown> = {
+      userId: new mongoose.Types.ObjectId(userId),
+      status: query.status,
+    };
 
     if (query.projectId) {
       const { ProjectModel } =
@@ -489,7 +582,10 @@ export const gapsService = {
         project.ownerId.toString() === userId ||
         project.members.some((m) => m.targetId.toString() === userId);
       if (!hasAccess) throw AppError.notFound("Project not found");
-      filter = { projectId: query.projectId, status: query.status }; // Show all gaps for this project
+      filter = {
+        projectId: new mongoose.Types.ObjectId(query.projectId),
+        status: query.status,
+      }; // Show all gaps for this project
     }
 
     if (query.topic) {
@@ -501,16 +597,65 @@ export const gapsService = {
     if (query.source) filter.source = query.source;
     if (query.minConfidence !== undefined)
       filter.confidence = { $gte: query.minConfidence };
+    if (query.search) {
+      const search = new RegExp(escapeRegex(query.search), "i");
+      filter.$or = [
+        { title: search },
+        { description: search },
+        { topic: search },
+        { "probe.topicA": search },
+        { "probe.topicB": search },
+      ];
+    }
 
     const { page, pageSize } = query;
+    const sortBy = query.sortBy;
+    const sortStage: Record<string, 1 | -1> =
+      sortBy === "papers"
+        ? { _sortPaperCount: -1, _sortConfidence: -1, createdAt: -1 }
+        : sortBy === "newest"
+          ? { createdAt: -1 }
+          : sortBy === "confidence"
+            ? { _sortConfidence: -1, createdAt: -1 }
+            : sortBy === "ai_only_last"
+              ? { _sortEvidenceRank: 1, _sortConfidence: -1, createdAt: -1 }
+              : { _sortEvidenceRank: 1, _sortConfidence: -1, createdAt: -1 };
+
     const [docs, total] = await Promise.all([
-      ResearchGapModel.find(filter)
-        // Prefer the deterministic evidence score; fall back to LLM confidence for
-        // legacy gaps (created before v2, no evidenceConfidence).
-        .sort({ evidenceConfidence: -1, confidence: -1, createdAt: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
+      ResearchGapModel.aggregate([
+        { $match: filter },
+        {
+          $addFields: {
+            _sortConfidence: { $ifNull: ["$evidenceConfidence", "$confidence"] },
+            _sortPaperCount: { $size: { $ifNull: ["$supportingPaperIds", []] } },
+            _sortEvidenceRank: {
+              $switch: {
+                branches: [
+                  {
+                    case: {
+                      $and: [
+                        { $ne: [{ $ifNull: ["$probe.topicA", null] }, null] },
+                        { $gte: [{ $ifNull: ["$evidenceConfidence", 0] }, 0.5] },
+                      ],
+                    },
+                    then: 0,
+                  },
+                  {
+                    case: { $ne: [{ $ifNull: ["$probe.topicA", null] }, null] },
+                    then: 1,
+                  },
+                  { case: { $ne: ["$source", "report"] }, then: 1 },
+                ],
+                default: 2,
+              },
+            },
+          },
+        },
+        { $sort: sortStage },
+        { $skip: (page - 1) * pageSize },
+        { $limit: pageSize },
+        { $unset: ["_sortConfidence", "_sortPaperCount", "_sortEvidenceRank"] },
+      ]),
       ResearchGapModel.countDocuments(filter),
     ]);
 
@@ -735,17 +880,187 @@ export const gapsService = {
   },
 };
 
+type GapEvidenceCandidate = GapEvidencePaper & {
+  journalName?: string;
+  citationCount?: number;
+  authorNames: string[];
+  score: number;
+  source: "selected" | "retrieved";
+};
+
+interface CollectGapEvidenceInput {
+  topic: string;
+  queryVector?: number[];
+  selectedPaperIds?: string[];
+  evidenceMode: GapEvidenceMode;
+  yearFrom?: number;
+  yearTo?: number;
+  projectPaperIds?: string[];
+}
+
+interface CollectGapEvidenceResult {
+  papers: GapEvidenceCandidate[];
+  selectedPaperIds: string[];
+  retrievedPaperIds: string[];
+  missingSelectedPaperIds: string[];
+}
+
+async function collectGapEvidence(
+  input: CollectGapEvidenceInput,
+): Promise<CollectGapEvidenceResult> {
+  const selectedPaperIds = Array.from(new Set(input.selectedPaperIds ?? []));
+  const selected = input.evidenceMode === "auto"
+    ? { papers: [] as GapEvidenceCandidate[], missingIds: [] as string[] }
+    : await fetchSelectedGapEvidence(selectedPaperIds, input);
+  let retrieved: GapEvidenceCandidate[] = [];
+
+  if (input.evidenceMode !== "selected") {
+    const filters = {
+      yearFrom: input.yearFrom,
+      yearTo: input.yearTo,
+      paperIds: input.projectPaperIds,
+    };
+    const candidates = input.queryVector?.length
+      ? await retrieveGapEvidence(input.queryVector, filters)
+      : await retrieveGapTextEvidence(input.topic, filters);
+    retrieved = candidates.map((paper) => ({
+      ...paper,
+      authorNames: paper.authorNames,
+      score: Number(paper.score ?? 0.5),
+      source: "retrieved" as const,
+    }));
+  }
+
+  const seen = new Set<string>();
+  const papers: GapEvidenceCandidate[] = [];
+  for (const paper of [...selected.papers, ...retrieved]) {
+    if (papers.length >= env.GAPS_TOP_K) break;
+    if (seen.has(paper.id)) continue;
+    seen.add(paper.id);
+    papers.push(paper);
+  }
+
+  return {
+    papers,
+    selectedPaperIds,
+    retrievedPaperIds: retrieved.map((paper) => paper.id),
+    missingSelectedPaperIds: selected.missingIds,
+  };
+}
+
+async function fetchSelectedGapEvidence(
+  ids: string[],
+  input: Pick<CollectGapEvidenceInput, "yearFrom" | "yearTo" | "projectPaperIds">,
+): Promise<{ papers: GapEvidenceCandidate[]; missingIds: string[] }> {
+  if (ids.length === 0) return { papers: [], missingIds: [] };
+  const allowedProjectIds = input.projectPaperIds ? new Set(input.projectPaperIds) : null;
+  const eligibleIds = allowedProjectIds ? ids.filter((id) => allowedProjectIds.has(id)) : ids;
+  const match: Record<string, unknown> = {
+    _id: { $in: eligibleIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    dataStatus: "active",
+  };
+  if (input.yearFrom !== undefined || input.yearTo !== undefined) {
+    match.publicationYear = {
+      ...(input.yearFrom !== undefined ? { $gte: input.yearFrom } : {}),
+      ...(input.yearTo !== undefined ? { $lte: input.yearTo } : {}),
+    };
+  }
+  const docs = await PaperModel.find(match)
+    .select("title abstractText aiAnalysis publicationYear journalName citationCount authors")
+    .lean();
+  const byId = new Map(docs.map((doc) => [String(doc._id), doc]));
+  const papers: GapEvidenceCandidate[] = [];
+  const missingIds: string[] = [];
+
+  for (const id of ids) {
+    const doc = byId.get(id);
+    if (!doc) {
+      missingIds.push(id);
+      continue;
+    }
+    papers.push({
+      id,
+      title: String(doc.title ?? ""),
+      abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
+      aiAnalysis: doc.aiAnalysis ?? null,
+      publicationYear: doc.publicationYear,
+      journalName: doc.journalName ? String(doc.journalName) : undefined,
+      citationCount: doc.citationCount,
+      authorNames: (doc.authors ?? []).map((author) => author.displayName).filter(Boolean),
+      score: 1,
+      source: "selected",
+    });
+  }
+  return { papers, missingIds };
+}
+
+async function retrieveGapTextEvidence(
+  topic: string,
+  filters: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
+): Promise<GapEvidenceCandidate[]> {
+  const match: Record<string, unknown> = { dataStatus: "active", $text: { $search: topic } };
+  if (filters.paperIds) {
+    match._id = { $in: filters.paperIds.map((id) => new mongoose.Types.ObjectId(id)) };
+  }
+  if (filters.yearFrom !== undefined || filters.yearTo !== undefined) {
+    match.publicationYear = {
+      ...(filters.yearFrom !== undefined ? { $gte: filters.yearFrom } : {}),
+      ...(filters.yearTo !== undefined ? { $lte: filters.yearTo } : {}),
+    };
+  }
+  const docs = await PaperModel.find(match, {
+    title: 1,
+    abstractText: 1,
+    aiAnalysis: 1,
+    publicationYear: 1,
+    journalName: 1,
+    citationCount: 1,
+    authors: 1,
+    score: { $meta: "textScore" },
+  })
+    .sort({ score: { $meta: "textScore" } })
+    .limit(env.GAPS_TOP_K)
+    .lean();
+
+  return docs.map((doc) => ({
+    id: String(doc._id),
+    title: String(doc.title ?? ""),
+    abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
+    aiAnalysis: doc.aiAnalysis ?? null,
+    publicationYear: doc.publicationYear,
+    journalName: doc.journalName ? String(doc.journalName) : undefined,
+    citationCount: doc.citationCount,
+    authorNames: (doc.authors ?? []).map((author) => author.displayName).filter(Boolean),
+    score: Number((doc as { score?: number }).score ?? 0.5),
+    source: "retrieved",
+  }));
+}
+
+function toPreviewGapPaper(paper: GapEvidenceCandidate) {
+  return {
+    id: paper.id,
+    title: paper.title,
+    abstractText: paper.abstractText,
+    publicationYear: paper.publicationYear,
+    journalName: paper.journalName,
+    citationCount: paper.citationCount,
+    authorNames: paper.authorNames,
+    score: paper.score,
+    source: paper.source,
+  };
+}
+
 async function retrieveGapEvidence(
   queryVector: number[],
   filters: { yearFrom?: number; yearTo?: number; paperIds?: string[] },
-): Promise<GapEvidencePaper[]> {
+): Promise<GapEvidenceCandidate[]> {
   if (filters.paperIds && filters.paperIds.length > 0) {
     return retrieveProjectGapEvidence(queryVector, {
       ...filters,
       paperIds: filters.paperIds,
     });
   }
-  return retrieve({
+  const papers = await retrieve({
     queryVector,
     topK: env.GAPS_TOP_K,
     poolSize: env.GAPS_TOP_K,
@@ -753,12 +1068,18 @@ async function retrieveGapEvidence(
     filters,
     projection: "gap",
   });
+  return papers.map((paper) => ({
+    ...paper,
+    authorNames: paper.authorNames,
+    score: Number(paper.score ?? 0.5),
+    source: "retrieved" as const,
+  }));
 }
 
 async function retrieveProjectGapEvidence(
   queryVector: number[],
   filters: { yearFrom?: number; yearTo?: number; paperIds: string[] },
-): Promise<GapEvidencePaper[]> {
+): Promise<GapEvidenceCandidate[]> {
   const match: Record<string, unknown> = {
     _id: { $in: filters.paperIds.map((id) => new mongoose.Types.ObjectId(id)) },
     dataStatus: "active",
@@ -771,7 +1092,7 @@ async function retrieveProjectGapEvidence(
   }
 
   const docs = await PaperModel.find(match)
-    .select("title abstractText aiAnalysis publicationYear +embedding")
+    .select("title abstractText aiAnalysis publicationYear journalName citationCount authors +embedding")
     .lean();
   const order = new Map(filters.paperIds.map((id, index) => [id, index]));
 
@@ -786,6 +1107,10 @@ async function retrieveProjectGapEvidence(
         abstractText: doc.abstractText ? String(doc.abstractText) : undefined,
         aiAnalysis: doc.aiAnalysis ?? null,
         publicationYear: doc.publicationYear,
+        journalName: doc.journalName ? String(doc.journalName) : undefined,
+        citationCount: doc.citationCount,
+        authorNames: (doc.authors ?? []).map((author) => author.displayName).filter(Boolean),
+        source: "retrieved" as const,
         score: embedding
           ? cosineSimilarity(queryVector, embedding)
           : Number.NEGATIVE_INFINITY,
@@ -804,8 +1129,7 @@ async function retrieveProjectGapEvidence(
         (order.get(b.id) ?? Number.MAX_SAFE_INTEGER)
       );
     })
-    .slice(0, env.GAPS_TOP_K)
-    .map(({ score: _score, ...paper }) => paper);
+    .slice(0, env.GAPS_TOP_K);
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

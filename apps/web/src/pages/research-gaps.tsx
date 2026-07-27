@@ -24,12 +24,13 @@ import {
   useGapAnalysisStatus,
   useActiveGapAnalysis,
 } from "@/features/gaps";
-import type { GapSource, ResearchGapItem } from "@trend/shared-types";
+import type { AnalyzeGapRequest, GapSource, ResearchGapItem } from "@trend/shared-types";
 import { GapCard } from "@/features/gaps/components/gap-card";
 import { GapDetailDrawer } from "@/features/gaps/components/gap-detail-drawer";
+import { GapAnalysisWorkflow } from "@/features/gaps/components/gap-analysis-workflow";
 import { cn } from "@/utils/cn";
 
-type GapSortKey = "default" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
+type GapSortKey = "recommended" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
 
 function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: () => void }) {
   const { data } = useGapAnalysisStatus(analysisId);
@@ -61,9 +62,6 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 
 export function ResearchGapsPage() {
   const [searchParams] = useSearchParams();
-  const [topic, setTopic] = useState("");
-  const [yearFrom, setYearFrom] = useState<string>("");
-  const [yearTo, setYearTo] = useState<string>("");
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<"active" | "resolved" | "dismissed">("active");
   const [searchTopic, setSearchTopic] = useState(searchParams.get("topic") || "");
@@ -77,7 +75,7 @@ export function ResearchGapsPage() {
   // Search & Sort & Shortlist states
   const [clientSearch, setClientSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<GapSortKey>("default");
+  const [sortBy, setSortBy] = useState<GapSortKey>("recommended");
   const [shortlistedGaps, setShortlistedGaps] = useState<ResearchGapItem[]>([]);
   const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
   const shortlistedIds = shortlistedGaps.map((gap) => gap.id);
@@ -110,7 +108,7 @@ export function ResearchGapsPage() {
   // Reset page when API filters change
   useEffect(() => {
     setPage(1);
-  }, [filterStatus, debouncedConfidence, searchTopic, sourceFilter]);
+  }, [filterStatus, debouncedConfidence, debouncedSearch, searchTopic, sourceFilter, sortBy]);
 
   const {
     data: gapsData,
@@ -123,7 +121,9 @@ export function ResearchGapsPage() {
     page,
     minConfidence: debouncedConfidence,
     topic: searchTopic || undefined,
+    search: debouncedSearch || undefined,
     source: sourceFilter !== "all" ? sourceFilter : undefined,
+    sortBy,
   });
 
   const { mutate: analyze, isPending } = useAnalyzeGap();
@@ -141,28 +141,13 @@ export function ResearchGapsPage() {
     toast.success("Gap analysis completed successfully! Gaps list refreshed.");
   }, [refetch]);
 
-  const handleAnalyze = () => {
-    if (!topic.trim()) return;
-    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
-    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
-
-    if (fromYear && toYear && fromYear > toYear) {
-      toast.error("Year From must be less than or equal to Year To");
-      return;
-    }
-
+  const handleAnalyze = (payload: AnalyzeGapRequest) => {
     analyze(
-      {
-        topic: topic.trim(),
-        yearFrom: fromYear,
-        yearTo: toYear,
-      },
+      payload,
       {
         onSuccess: ({ analysisId }) => {
           setActiveAnalysisId(analysisId);
-          setYearFrom("");
-          setYearTo("");
-          setTopic("");
+          toast.success("Gap analysis queued with the reviewed evidence pack.");
         },
         onError: (err: any) => {
           toast.error(err.response?.data?.error?.message || "Failed to trigger gap analysis.");
@@ -206,13 +191,13 @@ export function ResearchGapsPage() {
     });
   }, []);
 
-  // Process client-side filtering and sorting
+  // The API searches and sorts the entire result set before pagination.
   const rawGaps = showShortlistedOnly ? shortlistedGaps : gapsData?.data ?? [];
-  let processedGaps = [...rawGaps];
+  const processedGaps = [...rawGaps];
 
-  if (debouncedSearch.trim()) {
+  if (showShortlistedOnly && debouncedSearch.trim()) {
     const q = debouncedSearch.toLowerCase().trim();
-    processedGaps = processedGaps.filter(gap => {
+    const shortlistedMatches = processedGaps.filter(gap => {
       const titleMatch = gap.title?.toLowerCase().includes(q) ?? false;
       const descMatch = gap.description?.toLowerCase().includes(q) ?? false;
       const topicMatch = gap.topic?.toLowerCase().includes(q) ?? false;
@@ -221,41 +206,7 @@ export function ResearchGapsPage() {
       const paperMatch = gap.supportingPapers?.some(p => p.title?.toLowerCase().includes(q)) ?? false;
       return titleMatch || descMatch || topicMatch || probeAMatch || probeBMatch || paperMatch;
     });
-  }
-
-  if (!showShortlistedOnly) {
-    if (sortBy === "evidence") {
-      processedGaps.sort((a, b) => {
-        const order = { confirmed: 1, weak: 2, ai_only: 3 };
-        const orderA = order[a.evidenceStatus] ?? 3;
-        const orderB = order[b.evidenceStatus] ?? 3;
-        if (orderA !== orderB) return orderA - orderB;
-        return (b.evidenceConfidence ?? b.confidence ?? 0) - (a.evidenceConfidence ?? a.confidence ?? 0);
-      });
-    } else if (sortBy === "confidence") {
-      processedGaps.sort((a, b) => (b.evidenceConfidence ?? b.confidence ?? 0) - (a.evidenceConfidence ?? a.confidence ?? 0));
-    } else if (sortBy === "papers") {
-      processedGaps.sort((a, b) => (b.supportingPaperIds?.length ?? b.supportingPapers?.length ?? 0) - (a.supportingPaperIds?.length ?? a.supportingPapers?.length ?? 0));
-    } else if (sortBy === "newest") {
-      processedGaps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else if (sortBy === "ai_only_last") {
-      processedGaps.sort((a, b) => {
-        const isAiA = a.evidenceStatus === "ai_only" ? 1 : 0;
-        const isAiB = b.evidenceStatus === "ai_only" ? 1 : 0;
-        return isAiA - isAiB;
-      });
-    } else if (sortBy === "default") {
-      processedGaps.sort((a, b) => {
-        const order = { confirmed: 1, weak: 2, ai_only: 3 };
-        const orderA = order[a.evidenceStatus] ?? 3;
-        const orderB = order[b.evidenceStatus] ?? 3;
-        if (orderA !== orderB) return orderA - orderB;
-        const confA = a.evidenceConfidence ?? a.confidence ?? 0;
-        const confB = b.evidenceConfidence ?? b.confidence ?? 0;
-        if (confB !== confA) return confB - confA;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-    }
+    processedGaps.splice(0, processedGaps.length, ...shortlistedMatches);
   }
 
   return (
@@ -272,59 +223,7 @@ export function ResearchGapsPage() {
         />
       )}
 
-      {/* Standalone Gap Analysis Form */}
-      <div className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20 border border-cyan-200 dark:border-cyan-900/40 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Trigger Standalone Gap Analysis</h3>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Analyze a specific topic concept to identify under-explored research opportunities and get empirical evidence scores.
-        </p>
-        <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-grow flex flex-col gap-1.5 w-full">
-            <label htmlFor="gap-topic" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Topic Concept</label>
-            <input
-              id="gap-topic"
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. federated learning in medical imaging"
-              className="h-10 rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full"
-            />
-          </div>
-          <div className="w-28 flex flex-col gap-1.5 shrink-0">
-            <label htmlFor="gap-year-from" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Year From</label>
-            <input
-              id="gap-year-from"
-              type="number"
-              value={yearFrom}
-              onChange={(e) => setYearFrom(e.target.value)}
-              placeholder="2020"
-              className="h-10 rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full text-center"
-            />
-          </div>
-          <div className="w-28 flex flex-col gap-1.5 shrink-0">
-            <label htmlFor="gap-year-to" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Year To</label>
-            <input
-              id="gap-year-to"
-              type="number"
-              value={yearTo}
-              onChange={(e) => setYearTo(e.target.value)}
-              placeholder="2026"
-              className="h-10 rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full text-center"
-            />
-          </div>
-          <Button
-            onClick={handleAnalyze}
-            disabled={isPending || !topic.trim()}
-            className="h-10 bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-6 rounded-md shadow-sm shrink-0 w-full md:w-auto"
-          >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2 animate-pulse" />}
-            Analyze Gaps
-          </Button>
-        </div>
-      </div>
+      <GapAnalysisWorkflow isAnalyzing={isPending} onAnalyze={handleAnalyze} />
 
       {/* Unified Filters & Research Workflow Toolbar */}
       <div className="bg-white dark:bg-[#1c1f26] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col gap-4 p-5">
@@ -458,7 +357,7 @@ export function ResearchGapsPage() {
             onChange={(e) => setSortBy(e.target.value as GapSortKey)}
                 className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
               >
-                <option value="default">Default Sort (AI priority)</option>
+                <option value="recommended">Recommended (evidence + confidence)</option>
                 <option value="evidence">Most Evidence-backed</option>
                 <option value="confidence">Highest Confidence</option>
                 <option value="papers">Most Supporting Papers</option>
@@ -550,11 +449,24 @@ export function ResearchGapsPage() {
 
       {/* Grid container for Card List */}
       {!isError && processedGaps.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+        <section className="space-y-3 mt-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-950 dark:text-white">Research opportunity queue</h2>
+              <p className="text-xs text-slate-500">
+                Ranked for review. Open a row for full evidence, then shortlist, resolve, or dismiss it.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {processedGaps.length} shown · {sortBy === "recommended" ? "recommended order" : `sorted by ${sortBy.replaceAll("_", " ")}`}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
           {processedGaps.map((gap, index) => (
             <GapCard
               key={gap.id}
               gap={gap}
+              rank={index + 1}
               filterStatus={filterStatus}
               onViewDetails={(g) => {
                 setSelectedGap(g);
@@ -569,7 +481,8 @@ export function ResearchGapsPage() {
               isLast={index === processedGaps.length - 1}
             />
           ))}
-        </div>
+          </div>
+        </section>
       )}
 
       {/* Pagination (Only visible when not displaying shortlist) */}

@@ -4,6 +4,7 @@ export type GapStatus = "active" | "resolved" | "dismissed";
 export type GapSource = "report" | "standalone";
 export type GapAnalysisStatus = "queued" | "analyzing" | "ready" | "failed";
 export type GapEvidenceStatus = "confirmed" | "weak" | "ai_only";
+export type GapEvidenceMode = "auto" | "selected" | "hybrid";
 
 export interface GapSupportingPaper {
   id: string;
@@ -46,11 +47,44 @@ export interface GapAnalysisResult {
   errorMessage?: string;
 }
 
+export interface GapEvidencePaper {
+  id: string;
+  title: string;
+  abstractText?: string;
+  publicationYear?: number;
+  journalName?: string;
+  citationCount?: number;
+  authorNames: string[];
+  score: number;
+  source: "selected" | "retrieved";
+}
+
+export interface PreviewGapEvidenceRequest {
+  topic: string;
+  projectId?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  selectedPaperIds?: string[];
+  evidenceMode?: GapEvidenceMode;
+}
+
+export interface PreviewGapEvidenceResponse {
+  papers: GapEvidencePaper[];
+  selectedPaperIds: string[];
+  retrievedPaperIds: string[];
+  maxEvidencePapers: number;
+  warnings: string[];
+}
+
 export interface AnalyzeGapRequest {
   topic: string;
   projectId?: string;
   yearFrom?: number;
   yearTo?: number;
+  /** The reviewed evidence set. Required when evidenceMode is selected. */
+  selectedPaperIds?: string[];
+  /** auto retrieves, selected freezes user choice, hybrid pins user choice and fills remaining slots. */
+  evidenceMode?: GapEvidenceMode;
 }
 
 export interface ListGapsResponse {

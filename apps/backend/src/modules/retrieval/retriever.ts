@@ -208,7 +208,18 @@ function toMongoId(id: string): mongoose.Types.ObjectId | string {
 
 function buildProjection(projection: RetrievalProjection): PipelineStage.Project {
   if (projection === "gap") {
-    return { $project: { title: 1, abstractText: 1, aiAnalysis: 1, publicationYear: 1, score: 1 } };
+    return {
+      $project: {
+        title: 1,
+        abstractText: 1,
+        aiAnalysis: 1,
+        publicationYear: 1,
+        journalName: 1,
+        citationCount: 1,
+        "authors.displayName": 1,
+        score: 1,
+      },
+    };
   }
   if (projection === "report") {
     return {

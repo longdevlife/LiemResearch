@@ -13,6 +13,12 @@ const gapAnalysisSchema = new Schema(
     topic: { type: String, required: true },
     yearFrom: { type: Number },
     yearTo: { type: Number },
+    selectedPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
+    evidenceMode: {
+      type: String,
+      enum: ["auto", "selected", "hybrid"],
+      default: "auto",
+    },
     status: {
       type: String,
       enum: ["queued", "analyzing", "ready", "failed"],

@@ -1,6 +1,10 @@
 import type { Request, Response } from "express";
 import { gapsService } from "./gaps.service.js";
-import type { AnalyzeGapDto, PatchGapDto } from "./dto/gaps.schema.js";
+import type {
+  AnalyzeGapDto,
+  PatchGapDto,
+  PreviewGapEvidenceDto,
+} from "./dto/gaps.schema.js";
 import { ListGapsQuerySchema } from "./dto/gaps.schema.js";
 
 /**
@@ -9,6 +13,12 @@ import { ListGapsQuerySchema } from "./dto/gaps.schema.js";
  * and req.query are already parsed and typed when these handlers run.
  */
 export const gapsController = {
+  /** POST /api/v1/gaps/evidence-preview — retrieve evidence without charging credits. */
+  async previewEvidence(req: Request<unknown, unknown, PreviewGapEvidenceDto>, res: Response) {
+    const data = await gapsService.previewEvidence(req.user!.sub, req.body);
+    res.json({ success: true, data });
+  },
+
   /** POST /api/v1/gaps/analyze — 202 Accepted, work happens in the gaps worker. */
   async analyze(req: Request<unknown, unknown, AnalyzeGapDto>, res: Response) {
     const analysisId = await gapsService.enqueue(req.user!.sub, req.body);

@@ -117,7 +117,7 @@ const EnvSchema = z.object({
   REPORT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
 
   // Phase D — Research Gaps
-  GAPS_TOP_K: z.coerce.number().int().min(1).max(10).default(6),
+  GAPS_TOP_K: z.coerce.number().int().min(3).max(10).default(10),
   GAPS_MAX_PER_HOUR: z.coerce.number().int().positive().default(10),
   GAPS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2048),
   // v2 — a gap is "confirmed" when its intersection is scarce AND a parent topic

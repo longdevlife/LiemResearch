@@ -5,9 +5,16 @@ import type {
   GapAnalysisResult,
   ListGapsResponse,
   GapDirections,
+  PreviewGapEvidenceRequest,
+  PreviewGapEvidenceResponse,
 } from "@trend/shared-types";
 
 export const gapsApi = {
+  async previewEvidence(payload: PreviewGapEvidenceRequest): Promise<PreviewGapEvidenceResponse> {
+    const res = await api.post(API_ROUTES.gaps.evidencePreview, payload);
+    return res.data.data;
+  },
+
   async analyze(payload: AnalyzeGapRequest): Promise<{ analysisId: string }> {
     const res = await api.post(API_ROUTES.gaps.analyze, payload);
     return res.data.data;
@@ -25,9 +32,11 @@ export const gapsApi = {
 
   async list(params?: {
     topic?: string;
+    search?: string;
     minConfidence?: number;
     source?: "report" | "standalone";
     status?: "active" | "resolved" | "dismissed";
+    sortBy?: "recommended" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
     page?: number;
     pageSize?: number;
     projectId?: string;

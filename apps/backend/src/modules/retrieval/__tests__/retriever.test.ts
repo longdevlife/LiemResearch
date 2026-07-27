@@ -99,7 +99,16 @@ describe("buildRetrievePipeline", () => {
       },
     });
     expect(pipeline).toContainEqual({
-      $project: { title: 1, abstractText: 1, aiAnalysis: 1, publicationYear: 1, score: 1 },
+      $project: {
+        title: 1,
+        abstractText: 1,
+        aiAnalysis: 1,
+        publicationYear: 1,
+        journalName: 1,
+        citationCount: 1,
+        "authors.displayName": 1,
+        score: 1,
+      },
     });
   });
 });

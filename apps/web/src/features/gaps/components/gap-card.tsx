@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 interface GapCardProps {
   gap: ResearchGapItem;
+  rank?: number;
   filterStatus: GapStatus;
   onViewDetails?: (gap: ResearchGapItem) => void;
   isShortlisted?: boolean;
@@ -55,6 +56,7 @@ function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: bool
 
 export function GapCard({
   gap,
+  rank,
   filterStatus,
   onViewDetails,
   isShortlisted = false,
@@ -112,9 +114,16 @@ export function GapCard({
 
       {/* 1. Header: Topic tag on the left, badges & status actions on the right */}
       <div className="mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-4 relative z-10">
-        <Badge variant="secondary" className="bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold px-2 py-0.5 text-[9px] uppercase tracking-wider rounded">
-          # {gap.topic}
-        </Badge>
+        <div className="flex min-w-0 items-center gap-2">
+          {rank !== undefined && (
+            <span className="flex h-7 min-w-7 items-center justify-center rounded-md bg-cyan-50 px-1.5 text-[10px] font-extrabold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
+              {String(rank).padStart(2, "0")}
+            </span>
+          )}
+          <Badge variant="secondary" className="max-w-[360px] truncate bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold px-2 py-0.5 text-[9px] uppercase tracking-wider rounded">
+            {gap.topic}
+          </Badge>
+        </div>
 
         <div className="flex items-center gap-2">
           {gap.sourceReportId && (
