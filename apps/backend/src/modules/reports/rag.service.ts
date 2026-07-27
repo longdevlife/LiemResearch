@@ -284,6 +284,7 @@ export async function runRagPipeline(job: ReportJob): Promise<void> {
       userId: report.userId,
       projectId: report.projectId,
       projectPaperIds: (report.selectedPaperIds ?? []).map((id) => String(id)),
+      evidencePaperIds: papers.map((paper) => paper.id),
       query: report.query,
       researchGaps: ((report.researchGaps ?? []) as unknown[]).map((raw) => {
         const g = raw as {

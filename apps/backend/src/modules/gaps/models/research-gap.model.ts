@@ -14,6 +14,9 @@ const researchGapSchema = new Schema(
     title: { type: String, required: true, maxlength: 200 },
     description: { type: String, required: true },
     rationale: { type: String, required: true },
+    // Complete, ordered evidence pack reviewed before generation. A gap's
+    // supportingPaperIds is the smaller subset cited for that specific claim.
+    evidencePaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     supportingPaperIds: { type: [Schema.Types.ObjectId], ref: "Paper", default: [] },
     confidence: { type: Number, min: 0, max: 1, default: 0.5 },
     // v2 — quantitative evidence verified against the corpus (see gap-evidence.ts).

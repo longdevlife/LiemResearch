@@ -334,6 +334,12 @@ export const gapsService = {
       status: doc.status,
       gapIds: doc.gapIds.map(String),
       errorMessage: doc.errorMessage,
+      yearFrom: doc.yearFrom,
+      yearTo: doc.yearTo,
+      selectedPaperIds: doc.selectedPaperIds.map(String),
+      evidenceMode: doc.evidenceMode,
+      createdAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
     };
   },
 
@@ -353,7 +359,34 @@ export const gapsService = {
       status: doc.status,
       gapIds: doc.gapIds.map(String),
       errorMessage: doc.errorMessage,
+      yearFrom: doc.yearFrom,
+      yearTo: doc.yearTo,
+      selectedPaperIds: doc.selectedPaperIds.map(String),
+      evidenceMode: doc.evidenceMode,
+      createdAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
     };
+  },
+
+  /** Retry a failed analysis with the exact same reviewed evidence and scope. */
+  async retryAnalysis(userId: string, analysisId: string): Promise<string> {
+    const failed = await GapAnalysisModel.findOne({
+      _id: analysisId,
+      userId,
+      status: "failed",
+    }).lean();
+    if (!failed) {
+      throw AppError.conflict("Only a failed gap analysis can be retried");
+    }
+
+    return this.enqueue(userId, {
+      topic: failed.topic,
+      projectId: failed.projectId?.toString(),
+      yearFrom: failed.yearFrom ?? undefined,
+      yearTo: failed.yearTo ?? undefined,
+      selectedPaperIds: failed.selectedPaperIds.map(String),
+      evidenceMode: failed.evidenceMode,
+    });
   },
 
   /**
@@ -473,6 +506,7 @@ export const gapsService = {
           title: String(g.title ?? "").slice(0, 200),
           description: String(g.description ?? ""),
           rationale: String(g.rationale ?? ""),
+          evidencePaperIds: papers.map((paper) => paper.id),
           supportingPaperIds: (g.supportingEvidence ?? [])
             .filter((n) => Number.isInteger(n) && n >= 1 && n <= papers.length)
             .map((n) => papers[n - 1]!.id),
@@ -525,6 +559,7 @@ export const gapsService = {
     userId: unknown;
     projectId?: unknown;
     projectPaperIds?: unknown[];
+    evidencePaperIds?: unknown[];
     query: string;
     researchGaps: Array<{
       title: string;
@@ -549,6 +584,7 @@ export const gapsService = {
           title: g.title,
           description: g.description,
           rationale: g.rationale,
+          evidencePaperIds: report.evidencePaperIds ?? g.supportingPaperIds,
           supportingPaperIds: g.supportingPaperIds,
           confidence: g.confidence,
           probe: evidence?.probe,
@@ -659,11 +695,41 @@ export const gapsService = {
       ResearchGapModel.countDocuments(filter),
     ]);
 
-    const supportingPaperIds = [
-      ...new Set(docs.flatMap((d) => (d.supportingPaperIds ?? []).map(String))),
+    const legacyAnalysisIds = [
+      ...new Set(
+        docs
+          .filter((doc) => !(doc.evidencePaperIds?.length) && doc.analysisId)
+          .map((doc) => String(doc.analysisId)),
+      ),
     ];
-    const supportingPapers = supportingPaperIds.length
-      ? await PaperModel.find({ _id: { $in: supportingPaperIds } })
+    const legacyAnalyses = legacyAnalysisIds.length
+      ? await GapAnalysisModel.find({ _id: { $in: legacyAnalysisIds } })
+          .select("selectedPaperIds")
+          .lean()
+      : [];
+    const legacyEvidenceByAnalysisId = new Map(
+      legacyAnalyses.map((analysis) => [
+        String(analysis._id),
+        (analysis.selectedPaperIds ?? []).map(String),
+      ]),
+    );
+    for (const doc of docs) {
+      if (!(doc.evidencePaperIds?.length) && doc.analysisId) {
+        doc.evidencePaperIds =
+          legacyEvidenceByAnalysisId.get(String(doc.analysisId)) ?? doc.supportingPaperIds ?? [];
+      }
+    }
+
+    const paperIds = [
+      ...new Set(
+        docs.flatMap((doc) => [
+          ...(doc.supportingPaperIds ?? []).map(String),
+          ...(doc.evidencePaperIds ?? []).map(String),
+        ]),
+      ),
+    ];
+    const supportingPapers = paperIds.length
+      ? await PaperModel.find({ _id: { $in: paperIds } })
           .select("title publicationYear journalName citationCount")
           .lean()
       : [];

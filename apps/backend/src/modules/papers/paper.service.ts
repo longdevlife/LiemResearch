@@ -72,6 +72,16 @@ function buildTitleDuplicateRegex(title: string): RegExp {
   return new RegExp(`^${escaped}$`, "i");
 }
 
+export function normalizeDoiSearchQuery(query: string): string | undefined {
+  const normalized = query
+    .trim()
+    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "")
+    .replace(/^doi:\s*/i, "")
+    .toLowerCase();
+
+  return /^10\.\d{4,9}\/\S+$/i.test(normalized) ? normalized : undefined;
+}
+
 function isApprovedStatus(status: string): boolean {
   return ["downloaded", "not-downloaded", "pending-requester-acceptance"].includes(status);
 }
@@ -137,7 +147,16 @@ export const paperService = {
     // Public listing shows only ACTIVE papers — unreviewed user submissions
     // (draft/pending) and rejected papers must NOT leak into the public corpus.
     const filter: Record<string, unknown> = { dataStatus: "active" };
-    if (q) filter.$text = { $search: q };
+    if (q) {
+      const normalizedQuery = q.trim();
+      const normalizedDoi = normalizeDoiSearchQuery(normalizedQuery);
+
+      if (normalizedDoi) {
+        filter["externalIds.doi"] = normalizedDoi;
+      } else {
+        filter.$text = { $search: normalizedQuery };
+      }
+    }
     if (paperKinds && paperKinds.length) filter.paperKind = { $in: paperKinds };
     if (openAccess) filter.openAccessUrl = { $type: "string", $ne: "" };
     if (provider) filter.primaryProvider = provider;
@@ -151,7 +170,7 @@ export const paperService = {
       };
     }
 
-    const useTextScore = sort === "relevance" && !!q;
+    const useTextScore = sort === "relevance" && "$text" in filter;
     const sortSpec: Record<string, 1 | -1 | { $meta: "textScore" }> =
       sort === "year"
         ? { publicationYear: -1, citationCount: -1 }

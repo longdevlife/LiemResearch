@@ -80,6 +80,12 @@ gapsRouter.post(
 );
 gapsRouter.post("/analyze", analyzeGapLimiter, validate(AnalyzeGapSchema), gapsController.analyze);
 gapsRouter.get("/analyze/active", gapsController.getActiveAnalysis);
+gapsRouter.post(
+  "/analyze/:id/retry",
+  analyzeGapLimiter,
+  validate(GapIdParamsSchema, "params"),
+  gapsController.retryAnalysis,
+);
 gapsRouter.get("/analyze/:id", gapsController.getAnalysis);
 gapsRouter.get("/", gapsController.list);
 gapsRouter.patch("/:id", validate(PatchGapSchema), gapsController.patch);

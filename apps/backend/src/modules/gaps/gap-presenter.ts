@@ -25,6 +25,7 @@ export interface GapListDoc {
   title: string;
   description: string;
   rationale: string;
+  evidencePaperIds?: IdLike[];
   supportingPaperIds?: IdLike[];
   confidence: number;
   probe?: { topicA?: string; topicB?: string; yearFrom?: number; yearTo?: number };
@@ -63,6 +64,10 @@ export function toGapListItem(
   supportingPapersById: Map<string, GapSupportingPaper>,
 ): ResearchGapItem {
   const supportingPaperIds = (doc.supportingPaperIds ?? []).map(String);
+  const evidencePaperIds = (doc.evidencePaperIds?.length
+    ? doc.evidencePaperIds
+    : doc.supportingPaperIds ?? []
+  ).map(String);
   const createdAt = doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt);
 
   return {
@@ -74,6 +79,10 @@ export function toGapListItem(
     rationale: doc.rationale,
     supportingPaperIds,
     supportingPapers: supportingPaperIds
+      .map((id) => supportingPapersById.get(id))
+      .filter((paper): paper is GapSupportingPaper => Boolean(paper)),
+    evidencePaperIds,
+    evidencePapers: evidencePaperIds
       .map((id) => supportingPapersById.get(id))
       .filter((paper): paper is GapSupportingPaper => Boolean(paper)),
     confidence: doc.confidence,

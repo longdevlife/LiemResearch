@@ -38,6 +38,7 @@ describe("toGapListItem", () => {
         title: "Missing classroom validation",
         description: "desc",
         rationale: "why",
+        evidencePaperIds: ["paper-1", "paper-2"],
         supportingPaperIds: ["paper-1"],
         confidence: 0.8,
         evidenceConfidence: 0.8,
@@ -58,6 +59,15 @@ describe("toGapListItem", () => {
             journalName: "Computers & Education",
           },
         ],
+        [
+          "paper-2",
+          {
+            id: "paper-2",
+            title: "Longitudinal AI Learning",
+            publicationYear: 2024,
+            citationCount: 7,
+          },
+        ],
       ]),
     );
 
@@ -71,6 +81,8 @@ describe("toGapListItem", () => {
         journalName: "Computers & Education",
       },
     ]);
+    expect(item.evidencePaperIds).toEqual(["paper-1", "paper-2"]);
+    expect(item.evidencePapers.map((paper) => paper.id)).toEqual(["paper-1", "paper-2"]);
   });
 
   it("marks standalone gaps with high evidence confidence as confirmed", () => {
@@ -119,5 +131,30 @@ describe("toGapListItem", () => {
     );
 
     expect(item.evidenceStatus).toBe("weak");
+  });
+
+  it("uses supporting papers as evidence for legacy gaps", () => {
+    const item = toGapListItem(
+      {
+        _id: "gap-legacy",
+        topic: "AI education",
+        normalizedTopic: "ai education",
+        title: "Legacy gap",
+        description: "desc",
+        rationale: "why",
+        supportingPaperIds: ["paper-1"],
+        confidence: 0.6,
+        source: "report",
+        userId: "user-1",
+        status: "active",
+        createdAt: new Date("2026-07-01T00:00:00.000Z"),
+      },
+      new Map([
+        ["paper-1", { id: "paper-1", title: "Legacy evidence" }],
+      ]),
+    );
+
+    expect(item.evidencePaperIds).toEqual(["paper-1"]);
+    expect(item.evidencePapers).toHaveLength(1);
   });
 });

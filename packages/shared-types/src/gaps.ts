@@ -23,6 +23,10 @@ export interface ResearchGapItem {
   rationale: string;
   supportingPaperIds: string[];
   supportingPapers: GapSupportingPaper[];
+  /** Complete reviewed input set the AI read when producing this gap. */
+  evidencePaperIds: string[];
+  /** Resolved papers in the same order as evidencePaperIds. */
+  evidencePapers: GapSupportingPaper[];
   confidence: number;
   evidenceStatus: GapEvidenceStatus;
   source: GapSource;
@@ -45,6 +49,12 @@ export interface GapAnalysisResult {
   status: GapAnalysisStatus;
   gapIds: string[];
   errorMessage?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  selectedPaperIds: string[];
+  evidenceMode: GapEvidenceMode;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GapEvidencePaper {

@@ -37,6 +37,15 @@ export const gapsController = {
     res.json({ success: true, data });
   },
 
+  /** POST /api/v1/gaps/analyze/:id/retry — repeat a failed run with identical inputs. */
+  async retryAnalysis(req: Request, res: Response) {
+    const analysisId = await gapsService.retryAnalysis(
+      req.user!.sub,
+      req.params["id"] as string,
+    );
+    res.status(202).json({ success: true, data: { analysisId } });
+  },
+
   /** GET /api/v1/gaps — paginated, filterable list of gaps. */
   async list(req: Request, res: Response) {
     const parsed = ListGapsQuerySchema.safeParse(req.query);

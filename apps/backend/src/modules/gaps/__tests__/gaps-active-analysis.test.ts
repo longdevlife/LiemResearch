@@ -19,6 +19,12 @@ describe("gapsService.getActiveAnalysis", () => {
       topic: "LLM evaluation",
       status: "analyzing",
       gapIds: ["gap-1"],
+      selectedPaperIds: ["paper-1", "paper-2", "paper-3"],
+      evidenceMode: "selected",
+      yearFrom: 2020,
+      yearTo: 2025,
+      createdAt: new Date("2026-07-27T01:00:00.000Z"),
+      updatedAt: new Date("2026-07-27T01:01:00.000Z"),
       errorMessage: undefined,
     });
     const sort = vi.fn().mockReturnValue({ lean });
@@ -29,6 +35,12 @@ describe("gapsService.getActiveAnalysis", () => {
       topic: "LLM evaluation",
       status: "analyzing",
       gapIds: ["gap-1"],
+      selectedPaperIds: ["paper-1", "paper-2", "paper-3"],
+      evidenceMode: "selected",
+      yearFrom: 2020,
+      yearTo: 2025,
+      createdAt: "2026-07-27T01:00:00.000Z",
+      updatedAt: "2026-07-27T01:01:00.000Z",
       errorMessage: undefined,
     });
 
@@ -45,5 +57,50 @@ describe("gapsService.getActiveAnalysis", () => {
     vi.mocked(GapAnalysisModel.findOne).mockReturnValue({ sort } as never);
 
     await expect(gapsService.getActiveAnalysis("user-1")).resolves.toBeNull();
+  });
+});
+
+describe("gapsService.retryAnalysis", () => {
+  beforeEach(() => {
+    vi.mocked(GapAnalysisModel.findOne).mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it("re-enqueues a failed analysis with the exact prior evidence and scope", async () => {
+    vi.mocked(GapAnalysisModel.findOne).mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "analysis-1",
+        userId: "user-1",
+        topic: "LLM evaluation",
+        status: "failed",
+        projectId: null,
+        selectedPaperIds: ["paper-1", "paper-2", "paper-3"],
+        evidenceMode: "selected",
+        yearFrom: 2020,
+        yearTo: 2025,
+      }),
+    } as never);
+    const enqueue = vi.spyOn(gapsService, "enqueue").mockResolvedValue("analysis-2");
+
+    await expect(gapsService.retryAnalysis("user-1", "analysis-1")).resolves.toBe("analysis-2");
+    expect(enqueue).toHaveBeenCalledWith("user-1", {
+      topic: "LLM evaluation",
+      projectId: undefined,
+      selectedPaperIds: ["paper-1", "paper-2", "paper-3"],
+      evidenceMode: "selected",
+      yearFrom: 2020,
+      yearTo: 2025,
+    });
+  });
+
+  it("rejects retry when the owned analysis is not failed", async () => {
+    vi.mocked(GapAnalysisModel.findOne).mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    } as never);
+
+    await expect(gapsService.retryAnalysis("user-1", "analysis-1")).rejects.toMatchObject({
+      statusCode: 409,
+      code: "CONFLICT",
+    });
   });
 });
