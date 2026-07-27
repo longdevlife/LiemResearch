@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useI18n } from "@/i18n";
 
 // Types
 export type TooltipPayload<TPayload> = Array<{ payload: TPayload }>;
@@ -128,11 +129,13 @@ export function FacetGroup({
 
 // 3. KPICard Component
 export function KPICard({ title, value, trend, subtitle, icon }: { title: string, value: string, trend?: string, subtitle?: string, icon: React.ReactNode }) {
+  const { t } = useI18n();
+
   return (
     <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-2 uppercase">{title}</h4>
+          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-2 uppercase">{t(title)}</h4>
           <div className="text-2xl font-bold text-slate-900 dark:text-white leading-none">{value}</div>
         </div>
         <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg shrink-0">
@@ -144,7 +147,7 @@ export function KPICard({ title, value, trend, subtitle, icon }: { title: string
         {trend && (
           <div className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-2">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            {trend}
+            {t(trend)}
           </div>
         )}
         {subtitle && (
@@ -152,7 +155,7 @@ export function KPICard({ title, value, trend, subtitle, icon }: { title: string
             <div className="w-3 h-3 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
                <BookOpen className="w-2 h-2 text-slate-400" />
             </div>
-            {subtitle}
+            {t(subtitle)}
           </div>
         )}
       </div>
@@ -184,6 +187,7 @@ export function InsightCard({
   variant?: "primary" | "warning" | "neutral" | "success";
   badge?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const hasAction = !!actionLabel && !!onAction;
 
   const variantStyles = {
@@ -224,22 +228,22 @@ export function InsightCard({
     >
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform duration-500 ${variantStyles.gradient}`} />
       <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className={`text-[10px] font-extrabold uppercase tracking-widest ${variantStyles.label}`}>{label}</p>
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <p className={`min-w-0 truncate text-[10px] font-extrabold uppercase tracking-widest ${variantStyles.label}`}>{t(label)}</p>
           {badge}
         </div>
         <p className="mt-2 text-base font-extrabold text-slate-800 dark:text-white line-clamp-1 transition-colors" title={value}>{value}</p>
         {taxonomyPath && (
           <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold truncate capitalize mt-0.5" title={taxonomyPath}>{taxonomyPath}</p>
         )}
-        <p className="mt-1 text-xs font-semibold text-slate-550 dark:text-slate-400">{detail}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-550 dark:text-slate-400">{t(detail)}</p>
         {meaning && (
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 italic leading-normal border-t border-slate-100 dark:border-slate-800/60 pt-1.5">{meaning}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 italic leading-normal border-t border-slate-100 dark:border-slate-800/60 pt-1.5">{t(meaning)}</p>
         )}
       </div>
       <div className="mt-3 flex items-center justify-between">
         {sourceHint && (
-          <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{sourceHint}</span>
+          <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t(sourceHint)}</span>
         )}
         {hasAction ? (
           <button
@@ -248,9 +252,9 @@ export function InsightCard({
               e.stopPropagation();
               onAction?.();
             }}
-            className={`text-xs font-extrabold hover:underline flex items-center gap-1 transition-colors ml-auto ${variantStyles.btn}`}
+            className={`ml-auto flex items-center gap-1 whitespace-nowrap text-xs font-extrabold transition-colors hover:underline ${variantStyles.btn}`}
           >
-            <span>{actionLabel}</span>
+            <span>{t(actionLabel)}</span>
             <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
           </button>
         ) : null}

@@ -66,6 +66,36 @@ export function OverviewTab({
   setYearTo,
   scopeParams,
 }: OverviewTabProps) {
+  const [yearFromInput, setYearFromInput] = React.useState(() => String(scopeParams?.yearFrom ?? 1900));
+  const [yearToInput, setYearToInput] = React.useState(() => String(scopeParams?.yearTo ?? 2026));
+
+  React.useEffect(() => {
+    if (scopeParams) setYearFromInput(String(scopeParams.yearFrom));
+  }, [scopeParams?.yearFrom]);
+
+  React.useEffect(() => {
+    if (scopeParams) setYearToInput(String(scopeParams.yearTo));
+  }, [scopeParams?.yearTo]);
+
+  const commitYearInput = (
+    rawValue: string,
+    fallback: number,
+    setYear: (year: number) => void,
+    setInputValue: (value: string) => void,
+  ) => {
+    const parsed = parseInt(rawValue, 10);
+    const nextYear = Number.isFinite(parsed) ? Math.max(1900, parsed) : fallback;
+    setYear(nextYear);
+    setInputValue(String(nextYear));
+  };
+
+  const handleYearInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, commit: () => void) => {
+    if (event.key === "Enter") {
+      commit();
+      event.currentTarget.blur();
+    }
+  };
+
   const buildScopedUrl = (path: string, baseParams: Record<string, string>) => {
     const params = new URLSearchParams(baseParams);
 
@@ -361,16 +391,20 @@ export function OverviewTab({
               <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-full border border-slate-200/50 dark:border-slate-800/50">
                 <input
                   type="number"
-                  value={scopeParams.yearFrom}
-                  onChange={(e) => setYearFrom(parseInt(e.target.value, 10) || 1900)}
+                  value={yearFromInput}
+                  onChange={(e) => setYearFromInput(e.target.value)}
+                  onBlur={() => commitYearInput(yearFromInput, 1900, setYearFrom, setYearFromInput)}
+                  onKeyDown={(e) => handleYearInputKeyDown(e, () => commitYearInput(yearFromInput, 1900, setYearFrom, setYearFromInput))}
                   placeholder="From"
                   className="w-14 h-7 bg-white dark:bg-slate-800 rounded-full text-center text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 border-none shadow-sm"
                 />
                 <span className="text-slate-400 text-xs font-bold">-</span>
                 <input
                   type="number"
-                  value={scopeParams.yearTo}
-                  onChange={(e) => setYearTo(parseInt(e.target.value, 10) || 2026)}
+                  value={yearToInput}
+                  onChange={(e) => setYearToInput(e.target.value)}
+                  onBlur={() => commitYearInput(yearToInput, 2026, setYearTo, setYearToInput)}
+                  onKeyDown={(e) => handleYearInputKeyDown(e, () => commitYearInput(yearToInput, 2026, setYearTo, setYearToInput))}
                   placeholder="To"
                   className="w-14 h-7 bg-white dark:bg-slate-800 rounded-full text-center text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-600 border-none shadow-sm"
                 />
