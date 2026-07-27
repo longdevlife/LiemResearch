@@ -21,6 +21,7 @@ import { usePatchGapStatus } from "../hooks/use-gaps";
 import type { ResearchGapItem, GapStatus } from "@trend/shared-types";
 import { cn } from "@/utils/cn";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
 
 interface GapCardProps {
   gap: ResearchGapItem;
@@ -37,6 +38,7 @@ interface GapCardProps {
 }
 
 function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: boolean }) {
+  const { t } = useI18n();
   const pct = Math.round(value * 100);
   let colorClass = "bg-rose-500";
   if (value >= 0.7) colorClass = "bg-emerald-500";
@@ -48,7 +50,7 @@ function ConfidenceBar({ value, isEvidence }: { value: number; isEvidence?: bool
         <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
       <span className={cn("text-[10px] sm:text-[11px]", value >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "font-semibold")}>
-        {pct}% {isEvidence ? "Evidence" : "AI Conf"}
+        {pct}% {isEvidence ? t("Evidence") : t("AI confidence")}
       </span>
     </div>
   );
@@ -67,14 +69,15 @@ export function GapCard({
   isFirst = false,
   isLast = false
 }: GapCardProps) {
+  const { t } = useI18n();
   const { mutateAsync: patchStatus, isPending: isPatching } = usePatchGapStatus();
 
   const handleUpdateStatus = async (status: GapStatus) => {
     try {
       await patchStatus({ id: gap.id, status });
-      toast.success(`Gap marked as ${status}`);
+      toast.success(t("Opportunity marked as {{status}}", { status: t(status) }));
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || "Failed to update gap status.");
+      toast.error(err.response?.data?.error?.message || t("Failed to update opportunity status."));
     }
   };
 
@@ -95,13 +98,13 @@ export function GapCard({
 
   if (gap.evidenceStatus === "confirmed") {
     strengthColor = "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400";
-    strengthTooltip = "The gap has a corpus probe and deterministic evidence score.";
+    strengthTooltip = t("The gap has a corpus probe and deterministic evidence score.");
   } else if (gap.evidenceStatus === "weak") {
     strengthColor = "bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400";
-    strengthTooltip = "The system found a possible gap, but corpus evidence is sparse or inconclusive.";
+    strengthTooltip = t("The system found a possible gap, but corpus evidence is sparse or inconclusive.");
   } else {
     strengthColor = "bg-purple-500/10 text-purple-700 border-purple-500/20 dark:text-purple-400";
-    strengthTooltip = "This came from a report and has not yet been verified with a corpus probe.";
+    strengthTooltip = t("This came from a report and has not yet been verified with a corpus probe.");
   }
 
   return (
@@ -113,7 +116,7 @@ export function GapCard({
       <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-50/20 dark:bg-cyan-900/5 rounded-bl-full -mr-10 -mt-10 opacity-40 group-hover:bg-cyan-100/20 dark:group-hover:bg-cyan-900/10 transition-colors pointer-events-none" />
 
       {/* 1. Header: Topic tag on the left, badges & status actions on the right */}
-      <div className="mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-4 relative z-10">
+      <div className="relative z-10 mb-3.5 flex flex-col gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-center gap-2">
           {rank !== undefined && (
             <span className="flex h-7 min-w-7 items-center justify-center rounded-md bg-cyan-50 px-1.5 text-[10px] font-extrabold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
@@ -125,23 +128,23 @@ export function GapCard({
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {gap.sourceReportId && (
             <Link
               to={`/reports/${gap.sourceReportId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline inline-flex items-center gap-0.5 text-[10px] font-bold mr-1 transition-colors"
-              title="View source report"
+              title={t("View source report")}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Report</span>
+              <span>{t("Report")}</span>
               <ArrowUpRight className="w-2.5 h-2.5" />
             </Link>
           )}
 
           <Badge variant="outline" className={cn("rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border", strengthColor)} title={strengthTooltip}>
-            {gap.evidenceStatus === "confirmed" ? "Confirmed" : gap.evidenceStatus === "weak" ? "Weak" : "AI Only"}
+            {gap.evidenceStatus === "confirmed" ? t("Confirmed") : gap.evidenceStatus === "weak" ? t("Weak") : t("AI Only")}
           </Badge>
 
           <div className="h-3 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
@@ -156,7 +159,7 @@ export function GapCard({
                 onToggleShortlist(gap);
               }}
               className="h-6 w-6 rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20 text-slate-400 hover:text-amber-500 transition-colors"
-              title={isShortlisted ? "Remove from session shortlist" : "Shortlist in this session"}
+              title={isShortlisted ? t("Remove from saved shortlist") : t("Save to shortlist on this device")}
             >
               <Star className={cn("w-3.5 h-3.5", isShortlisted ? "fill-amber-400 text-amber-500" : "text-slate-400")} />
             </Button>
@@ -174,7 +177,7 @@ export function GapCard({
                   handleUpdateStatus("resolved");
                 }}
                 className="h-6 w-6 rounded-md hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20 text-slate-400 dark:text-slate-500 transition-colors"
-                title="Mark as Resolved"
+                title={t("Mark as Resolved")}
               >
                 {isPatching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               </Button>
@@ -187,7 +190,7 @@ export function GapCard({
                   handleUpdateStatus("dismissed");
                 }}
                 className="h-6 w-6 rounded-md hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 text-slate-400 dark:text-slate-500 transition-colors"
-                title="Dismiss Gap"
+                title={t("Dismiss opportunity")}
               >
                 {isPatching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
               </Button>
@@ -202,7 +205,7 @@ export function GapCard({
                 handleUpdateStatus("active");
               }}
               className="h-6 w-6 rounded-md hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/20 text-slate-400 dark:text-slate-500 transition-colors"
-              title="Restore to Active"
+              title={t("Restore to Active")}
             >
               {isPatching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
             </Button>
@@ -220,7 +223,7 @@ export function GapCard({
                   onMoveUp(gap.id);
                 }}
                 className="h-6 w-6 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors disabled:opacity-30"
-                title="Move Up"
+                title={t("Move Up")}
               >
                 <ChevronUp className="w-3.5 h-3.5" />
               </Button>
@@ -233,7 +236,7 @@ export function GapCard({
                   onMoveDown(gap.id);
                 }}
                 className="h-6 w-6 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors disabled:opacity-30"
-                title="Move Down"
+                title={t("Move Down")}
               >
                 <ChevronDown className="w-3.5 h-3.5" />
               </Button>
@@ -260,7 +263,7 @@ export function GapCard({
 
         {gap.rationale && (
           <div className="border-l-2 border-amber-500/40 pl-3 py-0.5 bg-slate-50/20 dark:bg-slate-900/10 rounded-r-xl border-y border-r border-slate-100/50 dark:border-slate-800/20">
-            <span className="font-bold text-slate-500 dark:text-slate-450 text-[10px] uppercase tracking-wider block mb-0.5">Why this may be a gap:</span>
+            <span className="font-bold text-slate-500 dark:text-slate-450 text-[10px] uppercase tracking-wider block mb-0.5">{t("Why this may be a gap:")}</span>
             <p className="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">
               {gap.rationale}
             </p>
@@ -298,7 +301,7 @@ export function GapCard({
               className="h-8 px-3.5 text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg shadow-sm transition-colors"
               onClick={() => onViewDetails(gap)}
             >
-              View details
+              {t("View details")}
             </Button>
           )}
 
@@ -307,7 +310,7 @@ export function GapCard({
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:text-cyan-600 dark:border-slate-800 dark:text-slate-350 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
           >
             <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Search papers</span>
+            <span className="hidden sm:inline">{t("Search papers")}</span>
           </Link>
         </div>
       </div>

@@ -56,9 +56,9 @@ export function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#09090b]">
       <header className="border-b bg-white dark:bg-[#0f0f11] sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-20 items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="relative flex h-20 w-[150px] items-center gap-2 font-black text-2xl tracking-tight shrink-0 select-none overflow-visible">
+        <div className="container mx-auto flex h-20 min-w-0 items-center justify-between gap-1 px-3 sm:gap-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-6">
+            <Link to="/" className="relative flex h-20 w-24 shrink-0 select-none items-center gap-2 overflow-visible text-2xl font-black tracking-tight sm:w-[150px]">
               <img
                 src={logoImage}
                 alt="PAPERLENS logo"
@@ -89,11 +89,11 @@ export function MainLayout() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-4">
             <ThemeToggle />
             <LanguageSwitcher />
             {isAuthed && (
-              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400" asChild>
+              <Button variant="ghost" size="icon" className="relative hidden rounded-full text-slate-500 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-blue-950/20 dark:hover:text-blue-400 sm:inline-flex" asChild>
                 <Link to="/bookmarks" aria-label={t("Bookmarks")}>
                   <Bookmark className="h-5 w-5" />
                   {validBookmarksCount > 0 && (
@@ -104,7 +104,7 @@ export function MainLayout() {
                 </Link>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 dark:text-slate-400 relative hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400" asChild>
+            <Button variant="ghost" size="icon" className="relative hidden rounded-full text-slate-500 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-blue-950/20 dark:hover:text-blue-400 sm:inline-flex" asChild>
               <Link to="/notifications" aria-label={t("Notifications")}>
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -148,6 +148,26 @@ export function MainLayout() {
                   {t(item.label)}
                 </NavLink>
               ))}
+              {isAuthed && (
+                <>
+                  <Link
+                    to="/bookmarks"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-between rounded-md px-4 py-3 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-zinc-800"
+                  >
+                    {t("Bookmarks")}
+                    {validBookmarksCount > 0 && <span>{validBookmarksCount}</span>}
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-between rounded-md px-4 py-3 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-zinc-800"
+                  >
+                    {t("Notifications")}
+                    {unreadCount > 0 && <span>{unreadCount}</span>}
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         )}

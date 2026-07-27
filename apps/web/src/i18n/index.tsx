@@ -324,7 +324,13 @@ function translateRenderedDom(
   while (walker.nextNode()) {
     const node = walker.currentNode as Text;
     const current = node.nodeValue ?? "";
-    if (!textOriginals.has(node)) textOriginals.set(node, current);
+    const previousSource = textOriginals.get(node);
+    const previousTranslation = previousSource
+      ? translateWithWhitespace(previousSource, dictionary)
+      : undefined;
+    if (!previousSource || current !== previousTranslation) {
+      textOriginals.set(node, current);
+    }
     const source = textOriginals.get(node) ?? current;
     node.nodeValue = translateWithWhitespace(source, dictionary);
   }
@@ -341,7 +347,13 @@ function translateRenderedDom(
     for (const attr of ATTRIBUTES) {
       const current = element.getAttribute(attr);
       if (!current || !shouldTranslate(current)) continue;
-      if (!originals.has(attr)) originals.set(attr, current);
+      const previousSource = originals.get(attr);
+      const previousTranslation = previousSource
+        ? translateWithWhitespace(previousSource, dictionary)
+        : undefined;
+      if (!previousSource || current !== previousTranslation) {
+        originals.set(attr, current);
+      }
       const source = originals.get(attr) ?? current;
       element.setAttribute(attr, translateWithWhitespace(source, dictionary));
     }

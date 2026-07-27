@@ -3,6 +3,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/services/api-client";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
 
 type TargetKind = "paper" | "report" | "gap";
 
@@ -37,6 +38,7 @@ interface Evaluation {
   className?: string;
   variant?: "default" | "flat";
 }) {
+  const { t } = useI18n();
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(!lazy);
   const [evaluating, setEvaluating] = useState(false);
@@ -64,10 +66,10 @@ interface Evaluation {
       });
       if (res.data.success) {
         setEvaluation(res.data.data);
-        toast.success("AI evaluation completed.");
+        toast.success(t("AI evaluation completed."));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || "Failed to evaluate quality.");
+      toast.error(err.response?.data?.error?.message || t("Failed to evaluate quality."));
     } finally {
       setEvaluating(false);
     }
@@ -77,9 +79,9 @@ interface Evaluation {
 
   const dims = evaluation
     ? [
-        { label: "Relevance", value: evaluation.relevance },
-        { label: "Groundedness", value: evaluation.groundedness },
-        { label: "Completeness", value: evaluation.completeness },
+        { label: t("Relevance"), value: evaluation.relevance },
+        { label: t("Groundedness"), value: evaluation.groundedness },
+        { label: t("Completeness"), value: evaluation.completeness },
       ]
     : [];
 
@@ -96,9 +98,9 @@ interface Evaluation {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
-          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">AI Quality Evaluation</h3>
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t("AI Quality Evaluation")}</h3>
           <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
-            AI Advisory
+            {t("AI Advisory")}
           </span>
         </div>
         <Button
@@ -113,13 +115,13 @@ interface Evaluation {
           }
         >
           {evaluating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          {evaluation ? "Re-evaluate" : "Evaluate Quality"}
+          {evaluation ? t("Re-evaluate") : t("Evaluate Quality")}
         </Button>
       </div>
 
       {!enabled ? (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {disabledHint ?? "Insufficient data for AI evaluation."}
+          {disabledHint ?? t("Insufficient data for AI evaluation.")}
         </p>
       ) : evaluation ? (
         <div className="space-y-3">
@@ -127,7 +129,7 @@ interface Evaluation {
             <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
               {evaluation.overall.toFixed(1)}
             </span>
-            <span className="text-[11px] text-slate-500">/ 5 — Overall AI Score</span>
+            <span className="text-[11px] text-slate-500">/ 5 — {t("Overall AI Score")}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {dims.map((d) => (
@@ -143,12 +145,12 @@ interface Evaluation {
             </p>
           )}
           <p className="text-[10px] text-slate-400">
-            Advisory score only; does not affect indexing decisions.
+            {t("Advisory score only; does not affect indexing decisions.")}
           </p>
         </div>
       ) : (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          No AI evaluation yet. Click "Evaluate Quality" to run Gemini judge.
+          {t('No AI evaluation yet. Click "Evaluate Quality" to run Gemini judge.')}
         </p>
       )}
     </div>

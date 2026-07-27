@@ -23,16 +23,30 @@ import {
   useAnalyzeGap,
   useGapAnalysisStatus,
   useActiveGapAnalysis,
+  useRetryGapAnalysis,
 } from "@/features/gaps";
 import type { AnalyzeGapRequest, GapSource, ResearchGapItem } from "@trend/shared-types";
 import { GapCard } from "@/features/gaps/components/gap-card";
 import { GapDetailDrawer } from "@/features/gaps/components/gap-detail-drawer";
 import { GapAnalysisWorkflow } from "@/features/gaps/components/gap-analysis-workflow";
 import { cn } from "@/utils/cn";
+import { useI18n } from "@/i18n";
+import { useAuthStore } from "@/stores/auth-store";
 
 type GapSortKey = "recommended" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
 
-function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: () => void }) {
+function AnalysisPoller({
+  analysisId,
+  onDone,
+  onRetry,
+  isRetrying,
+}: {
+  analysisId: string;
+  onDone: () => void;
+  onRetry: (analysisId: string) => void;
+  isRetrying: boolean;
+}) {
+  const { t } = useI18n();
   const { data } = useGapAnalysisStatus(analysisId);
 
   useEffect(() => {
@@ -43,24 +57,49 @@ function AnalysisPoller({ analysisId, onDone }: { analysisId: string; onDone: ()
 
   if (data?.status === "failed") {
     return (
-      <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200 text-sm flex items-center gap-2 max-w-2xl">
-         <XCircle className="w-4 h-4" />
-         {data.errorMessage ?? "Analysis failed."}
+      <div role="alert" className="max-w-3xl rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+        <div className="flex items-start gap-3">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">{t("Analysis failed for {{topic}}", { topic: data.topic })}</p>
+            <p className="mt-1 break-words text-xs">{data.errorMessage ?? t("Analysis failed.")}</p>
+            <p className="mt-1 text-xs opacity-80">
+              {t("Your credits were refunded. Retry uses the same reviewed papers and settings.")}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isRetrying}
+            onClick={() => onRetry(analysisId)}
+            className="shrink-0 border-red-300 bg-white text-red-700 hover:bg-red-100 dark:bg-red-950"
+          >
+            {isRetrying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {t("Retry analysis")}
+          </Button>
+        </div>
       </div>
     );
   }
   if (data?.status === "ready") return null;
   return (
-    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900 p-4 rounded-lg flex items-center gap-3 max-w-2xl shadow-sm">
+    <div aria-live="polite" className="max-w-3xl rounded-lg border border-blue-100 bg-blue-50/50 p-4 shadow-sm dark:border-blue-900 dark:bg-blue-900/10">
+      <div className="flex items-center gap-3">
       <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-      <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-        {data?.status === "analyzing" ? "Analyzing documents with Gemini AI…" : "Analysis job queued…"}
-      </p>
+        <div>
+          <p className="text-sm font-bold text-blue-800 dark:text-blue-200">{data?.topic}</p>
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+            {data?.status === "analyzing" ? t("Analyzing documents with Gemini AI…") : t("Analysis job queued…")}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 export function ResearchGapsPage() {
+  const { t } = useI18n();
+  const userId = useAuthStore((state) => state.user?.id ?? "anonymous");
   const [searchParams] = useSearchParams();
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<"active" | "resolved" | "dismissed">("active");
@@ -77,8 +116,27 @@ export function ResearchGapsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<GapSortKey>("recommended");
   const [shortlistedGaps, setShortlistedGaps] = useState<ResearchGapItem[]>([]);
+  const [isShortlistHydrated, setIsShortlistHydrated] = useState(false);
   const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
   const shortlistedIds = shortlistedGaps.map((gap) => gap.id);
+  const shortlistStorageKey = `research-gap-shortlist:${userId}`;
+
+  useEffect(() => {
+    setIsShortlistHydrated(false);
+    try {
+      const stored = window.localStorage.getItem(shortlistStorageKey);
+      setShortlistedGaps(stored ? JSON.parse(stored) as ResearchGapItem[] : []);
+    } catch {
+      setShortlistedGaps([]);
+    } finally {
+      setIsShortlistHydrated(true);
+    }
+  }, [shortlistStorageKey]);
+
+  useEffect(() => {
+    if (!isShortlistHydrated) return;
+    window.localStorage.setItem(shortlistStorageKey, JSON.stringify(shortlistedGaps));
+  }, [isShortlistHydrated, shortlistStorageKey, shortlistedGaps]);
 
   // Sync with URL params
   const urlSource = searchParams.get("source") as GapSource | null;
@@ -127,6 +185,7 @@ export function ResearchGapsPage() {
   });
 
   const { mutate: analyze, isPending } = useAnalyzeGap();
+  const { mutate: retryAnalysis, isPending: isRetrying } = useRetryGapAnalysis();
   const { data: activeAnalysis } = useActiveGapAnalysis();
 
   useEffect(() => {
@@ -138,8 +197,8 @@ export function ResearchGapsPage() {
   const handleDone = useCallback(() => {
     setActiveAnalysisId(null);
     void refetch();
-    toast.success("Gap analysis completed successfully! Gaps list refreshed.");
-  }, [refetch]);
+    toast.success(t("Gap analysis completed successfully! Gaps list refreshed."));
+  }, [refetch, t]);
 
   const handleAnalyze = (payload: AnalyzeGapRequest) => {
     analyze(
@@ -147,10 +206,10 @@ export function ResearchGapsPage() {
       {
         onSuccess: ({ analysisId }) => {
           setActiveAnalysisId(analysisId);
-          toast.success("Gap analysis queued with the reviewed evidence pack.");
+          toast.success(t("Gap analysis queued with the reviewed evidence pack."));
         },
         onError: (err: any) => {
-          toast.error(err.response?.data?.error?.message || "Failed to trigger gap analysis.");
+          toast.error(err.response?.data?.error?.message || t("Failed to trigger gap analysis."));
         }
       },
     );
@@ -208,18 +267,40 @@ export function ResearchGapsPage() {
     });
     processedGaps.splice(0, processedGaps.length, ...shortlistedMatches);
   }
+  const selectedSortLabel: Record<GapSortKey, string> = {
+    recommended: t("Recommended (evidence + confidence)"),
+    evidence: t("Most Evidence-backed"),
+    confidence: t("Highest Confidence"),
+    papers: t("Most Supporting Papers"),
+    newest: t("Newest Opportunities First"),
+    ai_only_last: t("AI-only Last"),
+  };
+
+  const handleRetry = (analysisId: string) => {
+    retryAnalysis(analysisId, {
+      onSuccess: ({ analysisId: nextAnalysisId }) => {
+        setActiveAnalysisId(nextAnalysisId);
+        toast.success(t("Gap analysis re-queued with the same evidence pack."));
+      },
+      onError: (err: any) => {
+        toast.error(err.response?.data?.error?.message || t("Failed to retry gap analysis."));
+      },
+    });
+  };
 
   return (
-    <main className="container py-8 space-y-6">
+    <main className="container min-w-0 space-y-6 overflow-x-clip py-8">
       <PageHeader
-        title="Research Gaps"
-        description="AI-suggested research opportunities grounded in retrieved papers."
+        title={t("Research Gaps")}
+        description={t("AI-suggested research opportunities grounded in retrieved papers.")}
       />
 
       {activeAnalysisId && (
         <AnalysisPoller
           analysisId={activeAnalysisId}
           onDone={handleDone}
+          onRetry={handleRetry}
+          isRetrying={isRetrying}
         />
       )}
 
@@ -232,12 +313,12 @@ export function ResearchGapsPage() {
         {/* Row 1: Search & Topic filters (Primary Inputs) */}
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center relative z-10">
           {/* Client-side Search Box */}
-          <div className="flex-grow md:flex-[2] min-w-[280px] relative">
+          <div className="relative w-full min-w-0 flex-grow md:min-w-[280px] md:flex-[2]">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-450" />
             <Input
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
-              placeholder="Search loaded gaps by title, description, papers, topic..."
+              placeholder={t("Search gaps by title, description, paper, or topic…")}
               className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
             />
             {clientSearch && (
@@ -245,18 +326,18 @@ export function ResearchGapsPage() {
                 onClick={() => setClientSearch("")}
                 className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
-                Clear
+                {t("Clear")}
               </button>
             )}
           </div>
 
           {/* Server-side Topic Box */}
-          <div className="flex-grow md:flex-[1.5] min-w-[280px] relative">
+          <div className="relative w-full min-w-0 flex-grow md:min-w-[280px] md:flex-[1.5]">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-455" />
             <Input
               value={searchTopic}
               onChange={(e) => setSearchTopic(e.target.value)}
-              placeholder="Filter by topic concept (API query)..."
+              placeholder={t("Filter by research topic…")}
               className="pl-9 h-9 border-slate-200 dark:border-slate-800 focus-visible:ring-cyan-500 rounded-lg text-sm bg-slate-50/50 dark:bg-slate-950"
             />
             {searchTopic && (
@@ -264,13 +345,13 @@ export function ResearchGapsPage() {
                 onClick={() => setSearchTopic("")}
                 className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
-                Clear
+                {t("Clear")}
               </button>
             )}
           </div>
 
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap self-center md:ml-auto">
-            Search applies to loaded results
+          <span className="self-start text-[11px] font-medium text-slate-500 dark:text-slate-400 md:ml-auto md:self-center md:whitespace-nowrap">
+            {t("Search applies to all matching opportunities")}
           </span>
         </div>
 
@@ -280,19 +361,19 @@ export function ResearchGapsPage() {
         {/* Row 2: Secondary Controls (Filters & Sort & Shortlist) */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           {/* Left Group: Filters */}
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
             {/* Status filter */}
-            <div className="flex items-center gap-2 h-9">
+            <div className="flex h-auto min-w-0 flex-wrap items-center gap-2 sm:h-9">
               <ListFilter className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Status:</span>
-              <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg h-9 items-center">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Status:")}</span>
+              <div className="flex min-w-0 flex-1 items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800/50 sm:h-9 sm:flex-none">
                 <Button
                   size="sm"
                   variant={filterStatus === "active" ? "default" : "ghost"}
                   className={`h-7 px-3 text-xs ${filterStatus === "active" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
                   onClick={() => setFilterStatus("active")}
                 >
-                  Active
+                  {t("Active")}
                 </Button>
                 <Button
                   size="sm"
@@ -300,7 +381,7 @@ export function ResearchGapsPage() {
                   className={`h-7 px-3 text-xs ${filterStatus === "resolved" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
                   onClick={() => setFilterStatus("resolved")}
                 >
-                  Resolved
+                  {t("Resolved")}
                 </Button>
                 <Button
                   size="sm"
@@ -308,31 +389,31 @@ export function ResearchGapsPage() {
                   className={`h-7 px-3 text-xs ${filterStatus === "dismissed" ? "shadow-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white" : ""}`}
                   onClick={() => setFilterStatus("dismissed")}
                 >
-                  Dismissed
+                  {t("Dismissed")}
                 </Button>
               </div>
             </div>
 
             {/* Source filter */}
-            <div className="flex items-center gap-2 h-9">
+            <div className="flex h-9 min-w-0 items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Source:</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Source:")}</span>
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value as GapSource | "all")}
-                className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+                className="h-9 min-w-0 flex-1 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex-none"
               >
-                <option value="all">All Sources</option>
-                <option value="report">Report-generated</option>
-                <option value="standalone">Standalone Analysis</option>
+                <option value="all">{t("All Sources")}</option>
+                <option value="report">{t("Report-generated")}</option>
+                <option value="standalone">{t("Standalone Analysis")}</option>
               </select>
             </div>
 
             {/* Min Confidence */}
-            <div className="flex items-center gap-2 h-9">
+            <div className="flex h-9 min-w-0 items-center gap-2">
                <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
-               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 min-w-[120px]">
-                 Confidence &ge; {Math.round(minConfidence * 100)}%
+               <span className="min-w-[112px] text-xs font-bold text-slate-700 dark:text-slate-300">
+                 {t("Confidence")} &ge; {Math.round(minConfidence * 100)}%
                </span>
                <input
                  type="range"
@@ -341,28 +422,28 @@ export function ResearchGapsPage() {
                  step="0.1"
                  value={minConfidence}
                  onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-                 className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-500 dark:bg-slate-700"
+                 className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-cyan-500 dark:bg-slate-700 sm:w-24 sm:flex-none"
                />
             </div>
           </div>
 
           {/* Right Group: Actions */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             {/* Sort Select */}
-            <div className="flex items-center gap-2 h-9">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Sort:</span>
+            <div className="flex h-9 min-w-0 items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("Sort:")}</span>
               <select
             value={sortBy}
             disabled={showShortlistedOnly}
             onChange={(e) => setSortBy(e.target.value as GapSortKey)}
-                className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                className="h-9 min-w-0 flex-1 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex-none"
               >
-                <option value="recommended">Recommended (evidence + confidence)</option>
-                <option value="evidence">Most Evidence-backed</option>
-                <option value="confidence">Highest Confidence</option>
-                <option value="papers">Most Supporting Papers</option>
-                <option value="newest">Newest Gaps First</option>
-                <option value="ai_only_last">AI-only Last</option>
+                <option value="recommended">{t("Recommended (evidence + confidence)")}</option>
+                <option value="evidence">{t("Most Evidence-backed")}</option>
+                <option value="confidence">{t("Highest Confidence")}</option>
+                <option value="papers">{t("Most Supporting Papers")}</option>
+                <option value="newest">{t("Newest Opportunities First")}</option>
+                <option value="ai_only_last">{t("AI-only Last")}</option>
               </select>
             </div>
 
@@ -382,11 +463,11 @@ export function ResearchGapsPage() {
                 onClick={() => setShowShortlistedOnly(prev => !prev)}
               >
                 <Star className={cn("w-3.5 h-3.5", showShortlistedOnly ? "fill-amber-400 text-amber-300" : "text-slate-500")} />
-            <span>Shortlist ({shortlistedGaps.length})</span>
+            <span>{t("Shortlist")} ({shortlistedGaps.length})</span>
               </Button>
               {showShortlistedOnly && (
                 <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider animate-pulse">
-                  Session-only order
+                  {t("Saved on this device")}
                 </span>
               )}
             </div>
@@ -395,15 +476,15 @@ export function ResearchGapsPage() {
       </div>
 
       {/* Gap cards */}
-      {isLoading && <div className="flex items-center gap-2 text-cyan-600 font-medium"><Loader2 className="w-5 h-5 animate-spin" /> Loading gaps...</div>}
+      {isLoading && <div className="flex items-center gap-2 text-cyan-600 font-medium"><Loader2 className="w-5 h-5 animate-spin" /> {t("Loading research opportunities…")}</div>}
 
       {isError && (
         <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 p-6 rounded-xl flex items-start gap-3">
           <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-red-800 dark:text-red-400 font-bold mb-1">Failed to fetch research gaps</h3>
+            <h3 className="text-red-800 dark:text-red-400 font-bold mb-1">{t("Failed to fetch research opportunities")}</h3>
             <p className="text-red-600 dark:text-red-500 text-sm">
-              Could not load research gaps. Please try again later.
+              {t("Could not load research opportunities. Please try again later.")}
             </p>
           </div>
         </div>
@@ -415,13 +496,13 @@ export function ResearchGapsPage() {
           <Sparkles className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2 opacity-50" />
           <h3 className="text-slate-900 dark:text-white font-bold text-base">
             {showShortlistedOnly
-              ? "Your shortlist is empty"
-              : "No gaps match your search"}
+              ? t("Your shortlist is empty")
+              : t("No research opportunities match your search")}
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             {showShortlistedOnly
-              ? "Star interesting research opportunities from the main list to add them to your session-only shortlist."
-              : "We couldn't find any results matching your search query. Try clearing the search text or widening your confidence slider."}
+              ? t("Star interesting research opportunities from the main list. This shortlist is saved on this device.")
+              : t("We couldn't find matching results. Try clearing the search or lowering the confidence threshold.")}
           </p>
           <div className="pt-2">
             {showShortlistedOnly ? (
@@ -431,7 +512,7 @@ export function ResearchGapsPage() {
                 className="h-8 border-slate-200 dark:border-slate-800 text-xs font-semibold"
                 onClick={() => setShowShortlistedOnly(false)}
               >
-                Show all gaps
+                {t("Show all opportunities")}
               </Button>
             ) : (
               <Button
@@ -440,7 +521,7 @@ export function ResearchGapsPage() {
                 className="h-8 border-slate-200 dark:border-slate-800 text-xs font-semibold"
                 onClick={() => setClientSearch("")}
               >
-                Clear search
+                {t("Clear search")}
               </Button>
             )}
           </div>
@@ -452,13 +533,13 @@ export function ResearchGapsPage() {
         <section className="space-y-3 mt-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-950 dark:text-white">Research opportunity queue</h2>
+              <h2 className="text-base font-bold text-slate-950 dark:text-white">{t("Research opportunity queue")}</h2>
               <p className="text-xs text-slate-500">
-                Ranked for review. Open a row for full evidence, then shortlist, resolve, or dismiss it.
+                {t("Ranked for review. Open a row for full evidence, then shortlist, resolve, or dismiss it.")}
               </p>
             </div>
             <span className="text-xs font-semibold text-slate-500">
-              {processedGaps.length} shown · {sortBy === "recommended" ? "recommended order" : `sorted by ${sortBy.replaceAll("_", " ")}`}
+              {t("{{count}} shown", { count: processedGaps.length })} · {sortBy === "recommended" ? t("recommended order") : t("sorted by {{sort}}", { sort: selectedSortLabel[sortBy] })}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-4">
@@ -498,7 +579,7 @@ export function ResearchGapsPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-slate-600 dark:text-slate-400 mx-4">
-            Page {page} of {gapsData.meta.totalPages}
+            {t("Page {{page}} of {{totalPages}}", { page, totalPages: gapsData.meta.totalPages })}
           </span>
           <Button
             variant="outline"
@@ -515,7 +596,7 @@ export function ResearchGapsPage() {
       {/* Meta Total */}
       {!showShortlistedOnly && gapsData?.meta && (
         <p className="text-xs text-muted-foreground mt-4">
-          {gapsData.meta.total} gap{gapsData.meta.total !== 1 ? "s" : ""} found
+          {t("{{count}} research opportunities found", { count: gapsData.meta.total })}
         </p>
       )}
 

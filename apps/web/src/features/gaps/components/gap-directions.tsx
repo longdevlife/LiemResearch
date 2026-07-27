@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { gapsApi } from "@/features/gaps/api/gaps.api";
 import type { GapDirections, GapSupportingPaper } from "@trend/shared-types";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
+import { formatNumber } from "@/utils/format";
 
 /**
  * On-demand AI research-direction suggestions for one gap. Advisory — never
@@ -29,6 +31,7 @@ export function GapDirectionsPanel({
   variant?: "default" | "flat";
   autoFetch?: boolean;
 }) {
+  const { t } = useI18n();
   const [data, setData] = useState<GapDirections | null>(null);
   const [generating, setGenerating] = useState(false);
   const queryClient = useQueryClient();
@@ -59,10 +62,10 @@ export function GapDirectionsPanel({
       // A later click (data set) sends force:true → real re-generate ("Gợi ý lại").
       const res = await gapsApi.generateDirections(gapId, !!data);
       setData(res);
-      toast.success("AI research directions suggested.");
+      toast.success(t("AI research directions suggested."));
       queryClient.invalidateQueries({ queryKey: ["credits"] });
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || "Failed to suggest directions.");
+      toast.error(err.response?.data?.error?.message || t("Failed to suggest directions."));
     } finally {
       setGenerating(false);
     }
@@ -81,9 +84,9 @@ export function GapDirectionsPanel({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
-          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Research Directions (AI)</h3>
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t("Research Directions (AI)")}</h3>
           <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">
-            AI Advisory
+            {t("AI Advisory")}
           </span>
         </div>
         <Button
@@ -97,7 +100,7 @@ export function GapDirectionsPanel({
           }
         >
           {generating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          {data ? "Suggest Again" : "Suggest Directions"}
+          {data ? t("Suggest Again") : t("Suggest Directions")}
         </Button>
       </div>
 
@@ -113,13 +116,13 @@ export function GapDirectionsPanel({
               )}
               {d.suggestedApproach && (
                 <p className="text-[11.5px] text-slate-500 dark:text-slate-400 leading-relaxed bg-white dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Approach: </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{t("Approach:")} </span>
                   {d.suggestedApproach}
                 </p>
               )}
               {d.relatedPaperIds.length > 0 && (
                 <div className="flex flex-col gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/40 mt-1.5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Related Evidence:</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t("Related Evidence:")}</span>
                   <div className="space-y-1.5">
                     {d.relatedPaperIds.map((id) => {
                       const paper = supportingPapers.find((p) => p.id === id);
@@ -127,7 +130,7 @@ export function GapDirectionsPanel({
                         const metadata = [
                           paper.publicationYear,
                           paper.journalName,
-                          paper.citationCount !== undefined ? `${paper.citationCount} citations` : null
+                          paper.citationCount !== undefined ? `${formatNumber(paper.citationCount)} ${t("citations")}` : null
                         ].filter(Boolean).join(" • ");
                         return (
                           <div key={id} className="text-xs">
@@ -150,7 +153,7 @@ export function GapDirectionsPanel({
                       }
                       return (
                         <div key={id} className="text-xs text-slate-400 italic">
-                          Unknown supporting paper (ID: {id.slice(-6)})
+                          {t("Unknown supporting paper (ID: {{id}})", { id: id.slice(-6) })}
                         </div>
                       );
                     })}
@@ -160,16 +163,16 @@ export function GapDirectionsPanel({
             </div>
           ))}
           <p className="text-[10px] text-slate-400">
-            Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.
+            {t("Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.")}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            No suggestions yet. Click to generate 2-4 research directions for this gap.
+            {t("No suggestions yet. Click to generate 2-4 research directions for this gap.")}
           </p>
           <p className="text-[10px] text-slate-400">
-            Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.
+            {t("Suggestions are grounded in gap evidence, supporting papers, and structured paper knowledge when available. Advisory only; does not affect approval.")}
           </p>
         </div>
       )}

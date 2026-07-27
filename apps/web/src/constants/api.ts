@@ -77,6 +77,7 @@ export const API_ROUTES = {
     evidencePreview: "/gaps/evidence-preview",
     analyze: "/gaps/analyze",
     analyzeStatus: (id: string) => `/gaps/analyze/${id}`,
+    retryAnalysis: (id: string) => `/gaps/analyze/${id}/retry`,
     activeAnalysis: "/gaps/analyze/active",
     list: "/gaps",
     patch: (id: string) => `/gaps/${id}`,

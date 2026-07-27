@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Search, FileText, ArrowUpRight } from "lucide-react";
 import type { GapSource } from "@trend/shared-types";
+import { useI18n } from "@/i18n";
 
 interface GapOriginProps {
   source: GapSource;
@@ -11,6 +12,7 @@ interface GapOriginProps {
 }
 
 export function GapOrigin({ source, sourceReportId, topic, analysisId }: GapOriginProps) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
       <div className="flex flex-wrap items-center gap-2">
@@ -33,7 +35,7 @@ export function GapOrigin({ source, sourceReportId, topic, analysisId }: GapOrig
             className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-800 dark:hover:text-blue-300"
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>View source report</span>
+            <span>{t("View source report")}</span>
             <ArrowUpRight className="w-3 h-3" />
           </Link>
         )}
@@ -45,7 +47,7 @@ export function GapOrigin({ source, sourceReportId, topic, analysisId }: GapOrig
               : "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/20 dark:text-cyan-400 dark:border-cyan-900 text-[10px] uppercase font-bold px-2 py-0.5"
           }
         >
-          {source === "report" ? "Report-derived" : "Standalone Analysis"}
+          {source === "report" ? t("Report-derived") : t("Standalone Analysis")}
         </Badge>
       </div>
     </div>

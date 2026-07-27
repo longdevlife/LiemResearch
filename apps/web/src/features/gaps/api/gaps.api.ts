@@ -30,6 +30,11 @@ export const gapsApi = {
     return res.data.data ?? null;
   },
 
+  async retryAnalysis(id: string): Promise<{ analysisId: string }> {
+    const res = await api.post(API_ROUTES.gaps.retryAnalysis(id));
+    return res.data.data;
+  },
+
   async list(params?: {
     topic?: string;
     search?: string;

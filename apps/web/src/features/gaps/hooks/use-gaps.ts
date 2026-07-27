@@ -40,6 +40,17 @@ export function useAnalyzeGap() {
   });
 }
 
+export function useRetryGapAnalysis() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (analysisId: string) => gapsApi.retryAnalysis(analysisId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activeGapAnalysis"] });
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
+    },
+  });
+}
+
 export function useGapEvidencePreview() {
   return useMutation({
     mutationFn: (payload: PreviewGapEvidenceRequest) => gapsApi.previewEvidence(payload),

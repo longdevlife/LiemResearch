@@ -1,7 +1,7 @@
 ﻿import { en } from "./en";
 
 export const vi: Record<keyof typeof en, string> = {
-  ...gapEvidenceWorkflowStrings,
+  ...gapEvidenceWorkflowViStrings,
   "-day period.": "-thời gian ngày.",
   "— whereas": "- trong khi đó",
   "; the next sync or PDF update will publish the full breakdown.": "; lần đồng bộ hóa hoặc bản cập nhật PDF tiếp theo sẽ xuất bản bảng phân tích đầy đủ.",
@@ -1225,7 +1225,7 @@ export const vi: Record<keyof typeof en, string> = {
   "Research area": "Khu vực nghiên cứu",
   "Research Directions (AI)": "Hướng nghiên cứu (AI)",
   "Research gap detail drawer showing source, corpus evidence, supporting papers, AI directions, and evaluation for this gap.": "Ngăn kéo chi tiết khoảng trống nghiên cứu hiển thị nguồn, bằng chứng tập hợp, tài liệu hỗ trợ, hướng dẫn AI và đánh giá cho khoảng trống này.",
-  "Research Gaps": "Khoảng trống nghiên cứu",
+  "Research Gaps": "Cơ hội nghiên cứu",
   "AI-suggested research opportunities grounded in retrieved papers.": "Cơ hội nghiên cứu do AI gợi ý, dựa trên các bài báo đã truy xuất.",
   "Research Interests": "Sở thích nghiên cứu",
   "Research Opportunity Detail": "Chi tiết cơ hội nghiên cứu",
@@ -1659,12 +1659,12 @@ export const vi: Record<keyof typeof en, string> = {
   "View details": "Xem chi tiết",
   "View Details": "Xem chi tiết",
   "View full pipeline health →": "Xem toàn bộ tình trạng quy trình →",
-  "View in Research Gaps": "Xem trong Khoảng trống nghiên cứu",
+  "View in Research Gaps": "Xem trong Cơ hội nghiên cứu",
   "View original": "Xem bản gốc",
   "View paper": "Xem giấy",
   "View PDF": "Xem PDF",
   "View reports →": "Xem báo cáo →",
-  "View Research Gaps": "Xem khoảng trống nghiên cứu",
+  "View Research Gaps": "Xem cơ hội nghiên cứu",
   "View source report": "Xem báo cáo nguồn",
   "View transaction history": "Xem lịch sử giao dịch",
   "Visible to all project members. Use this for decisions and shared research memory.": "Hiển thị cho tất cả các thành viên dự án. Sử dụng điều này để đưa ra quyết định và chia sẻ trí nhớ nghiên cứu.",
@@ -1727,4 +1727,4 @@ export const vi: Record<keyof typeof en, string> = {
   "YTD": "đầu năm",
 };
 
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { gapEvidenceWorkflowViStrings } from "./gap-evidence-workflow";
