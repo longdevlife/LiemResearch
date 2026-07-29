@@ -6,6 +6,8 @@ import { useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
 import { AddToProjectDropdown } from "@/features/projects/components/add-to-project-dropdown";
 import { toast } from "sonner";
 import { formatLanguageName } from "@/utils/language";
+import { formatNumber } from "@/utils";
+import { useAuthStore } from "@/stores/auth-store";
 
 export interface PaperCardProps {
   id: string;
@@ -60,6 +62,7 @@ export function PaperCard({
   searchMode = "semantic",
 }: PaperCardProps) {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((state) => state.user);
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
 
@@ -91,12 +94,17 @@ export function PaperCard({
   const hasTaxonomyBoost = taxonomyBoostScore !== undefined && taxonomyBoostScore > 0;
 
   return (
-    <div className="bg-gradient-to-br from-white via-white to-slate-50/40 dark:from-[#151518] dark:via-[#121212] dark:to-[#181820]/30 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_-6px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 hover:border-indigo-200/80 dark:hover:border-indigo-900/60 transition-all duration-300 relative flex flex-col justify-between min-h-[190px]">
+    <div
+      data-testid="paper-card"
+      data-paper-id={id}
+      className="bg-gradient-to-br from-white via-white to-slate-50/40 dark:from-[#151518] dark:via-[#121212] dark:to-[#181820]/30 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_-6px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 hover:border-indigo-200/80 dark:hover:border-indigo-900/60 transition-all duration-300 relative flex flex-col justify-between min-h-[190px]"
+    >
       <div>
         {/* Title & Actions */}
         <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2.5">
           <div className="flex-1 min-w-0">
             <Link
+              data-testid="paper-detail-link"
               to={`/papers/${id}`}
               className="text-[19px] font-extrabold text-slate-800 dark:text-slate-100 leading-snug hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer block mb-2 transition-colors duration-200"
             >
@@ -117,7 +125,7 @@ export function PaperCard({
               {citationCount !== undefined && (
                 <>
                   <span className="text-slate-300 dark:text-slate-700">·</span>
-                  <span>Citations: {citationCount}</span>
+                  <span>Citations: {formatNumber(citationCount)}</span>
                 </>
               )}
               {paperKind && (
@@ -157,12 +165,14 @@ export function PaperCard({
                 }`}
                 onClick={handleBookmarkToggle}
                 disabled={createBookmark.isPending || deleteBookmark.isPending}
+                aria-label={isBookmarked ? "Remove paper from library" : "Save paper to library"}
+                title={isBookmarked ? "Remove from library" : "Save to library"}
               >
                 <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
               </Button>
             )}
 
-            <AddToProjectDropdown paperId={id} />
+            {currentUser && <AddToProjectDropdown paperId={id} />}
           </div>
         </div>
 
@@ -205,9 +215,9 @@ export function PaperCard({
           {aiScore !== undefined && (
             <>
               <span className="text-slate-200 dark:text-slate-800">|</span>
-              <span className="flex items-center gap-1.5" title={`Intrinsic AI score: ${aiScore}`}>
+              <span className="flex items-center gap-1.5" title={`Deterministic academic impact score: ${aiScore}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                AI Value: <span className="text-blue-600 dark:text-blue-400 font-bold">{aiScore.toFixed(2)}</span>
+                Academic Impact: <span className="text-blue-600 dark:text-blue-400 font-bold">{aiScore.toFixed(2)}</span>
               </span>
             </>
           )}

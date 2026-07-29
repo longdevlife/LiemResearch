@@ -1,5 +1,6 @@
 import type {
   Paper,
+  PaperRef,
   PaperTranslation,
   PaperTranslationCapabilities,
   SearchSortKey,
@@ -17,19 +18,49 @@ export interface PapersListParams {
   openAccess?: boolean;
   provider?: string;
   languages?: string[];
+  paperKinds?: string[];
+  openAccessStatuses?: string[];
+  providers?: string[];
+  sources?: string[];
+  citationBands?: string[];
+  domains?: string[];
+  fields?: string[];
+  subfields?: string[];
+  topics?: string[];
+  domainIds?: string[];
+  fieldIds?: string[];
+  subfieldIds?: string[];
+  topicIds?: string[];
   sort?: SearchSortKey;
 }
 
 export const papersApi = {
   async list(params: PapersListParams) {
-    // Flatten paperKind[] → CSV for the query string.
+    // Encode array filters consistently for both keyword and semantic routes.
     const { paperKind, ...rest } = params;
     const query: Record<string, unknown> = { ...rest };
     if (paperKind && paperKind.length > 0) {
       query.paperKind = paperKind.join(",");
     }
-    if (params.languages && params.languages.length > 0) {
-      query.languages = params.languages.join(",");
+    const csvKeys: Array<keyof PapersListParams> = [
+      "languages",
+      "paperKinds",
+      "openAccessStatuses",
+      "providers",
+      "sources",
+      "citationBands",
+      "domains",
+      "fields",
+      "subfields",
+      "topics",
+      "domainIds",
+      "fieldIds",
+      "subfieldIds",
+      "topicIds",
+    ];
+    for (const key of csvKeys) {
+      const value = params[key];
+      if (Array.isArray(value) && value.length > 0) query[key] = value.join(",");
     }
     const res = await api.get(API_ROUTES.papers.list, { params: query });
     return {
@@ -54,8 +85,12 @@ export const papersApi = {
     const res = await api.get(API_ROUTES.papers.translationCapabilities);
     return res.data.data;
   },
-  async references(id: string): Promise<{ references: any[]; totalReferenced: number; inCorpus: number }> {
+  async references(id: string): Promise<{ references: PaperRef[]; totalReferenced: number; inCorpus: number }> {
     const res = await api.get(`/papers/${id}/references`);
     return res.data.data || { references: [], totalReferenced: 0, inCorpus: 0 };
+  },
+  async related(id: string): Promise<{ relatedWorks: PaperRef[]; totalRelated: number; inCorpus: number }> {
+    const res = await api.get(`/papers/${id}/related`);
+    return res.data.data || { relatedWorks: [], totalRelated: 0, inCorpus: 0 };
   },
 };

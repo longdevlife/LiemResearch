@@ -32,6 +32,7 @@ import { AddToProjectDropdown } from "@/features/projects/components/add-to-proj
 import {
   usePaper,
   usePaperReferences,
+  usePaperRelatedWorks,
   useTranslatePaper,
   usePaperTranslationCapabilities,
 } from "@/features/papers";
@@ -45,24 +46,74 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { CompareDialog } from "@/features/compare";
-import type { Paper, PaperAiAnalysis, PaperTopic } from "@trend/shared-types";
+import type {
+  Paper,
+  PaperAiAnalysis,
+  PaperAiScore,
+  PaperTopic,
+  QualityView,
+  User,
+  UserRatingDetail,
+} from "@trend/shared-types";
+import type { AxiosError } from "axios";
 import { getExternalPdfUrl, getPaperPdfPanelState, shouldShowReadPdfAction } from "./paper-pdf-panel";
 import { formatNumber } from "@/utils";
 import { formatLanguageName } from "@/utils/language";
 
+function formatImpactScoreBasis(basis: PaperAiScore["scoreBasis"]): string {
+  switch (basis) {
+    case "openalex-percentile-fwci":
+      return "OpenAlex citation percentile and FWCI";
+    case "openalex-fwci":
+      return "OpenAlex FWCI normalized by field";
+    case "citations-per-year-fallback":
+      return "Citations per year fallback";
+    default:
+      return "Citation impact normalization";
+  }
+}
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  const axiosError = error as AxiosError<{ error?: { message?: string } }>;
+  return axiosError.response?.data?.error?.message
+    || (error instanceof Error ? error.message : undefined)
+    || fallback;
+}
+
 export function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: paper, isLoading, refetch } = usePaper(id);
+  const {
+    data: paper,
+    isLoading,
+    isError: isPaperError,
+    error: paperError,
+    refetch,
+  } = usePaper(id);
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin";
-  const { data: bookmarkStatus } = useBookmarkStatus("paper", id);
+  const { data: bookmarkStatus } = useBookmarkStatus(
+    "paper",
+    id,
+    { enabled: Boolean(currentUser) },
+  );
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
   const { data: reportCount, isLoading: isReportCountLoading } = usePaperReportCount(id);
-  const { data: refResponse, isLoading: isRefsLoading } = usePaperReferences(id);
+  const {
+    data: refResponse,
+    isLoading: isRefsLoading,
+    isError: isRefsError,
+    refetch: refetchReferences,
+  } = usePaperReferences(id);
   const references = refResponse?.references;
   const totalReferenced = refResponse?.totalReferenced;
   const inCorpus = refResponse?.inCorpus;
+  const {
+    data: openAlexRelatedResponse,
+    isLoading: isOpenAlexRelatedLoading,
+    isError: isOpenAlexRelatedError,
+    refetch: refetchOpenAlexRelated,
+  } = usePaperRelatedWorks(id);
   const queryClient = useQueryClient();
   const translatePaper = useTranslatePaper(id);
   const { data: translationCapabilities } = usePaperTranslationCapabilities();
@@ -81,20 +132,35 @@ export function PaperDetailPage() {
 
   useEffect(() => {
     const handleClickOutside = () => setTranslatePopoverOpen(false);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTranslatePopoverOpen(false);
+    };
     if (translatePopoverOpen) {
       window.addEventListener("click", handleClickOutside);
+      window.addEventListener("keydown", handleEscape);
     }
-    return () => window.removeEventListener("click", handleClickOutside);
+    return () => {
+      window.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
   }, [translatePopoverOpen]);
 
-  const { data: relatedData, isLoading: isRelatedLoading } = useSearch({
-    q: paper?.title || "",
-    pageSize: 5,
-  });
+  const {
+    data: relatedData,
+    isLoading: isRelatedLoading,
+    isError: isRelatedError,
+    refetch: refetchRelated,
+  } = useSearch(
+    {
+      q: paper?.title || "",
+      pageSize: 5,
+    },
+    { enabled: Boolean(paper?.title) },
+  );
 
   const relatedPapers = useMemo(() => {
     if (!relatedData?.papers) return [];
-    return relatedData.papers.filter((p: any) => p.id !== id).slice(0, 4);
+    return relatedData.papers.filter((candidate) => candidate.id !== id).slice(0, 4);
   }, [relatedData, id]);
 
   const translation = translatePaper.data?.paperId === paper?.id
@@ -102,8 +168,8 @@ export function PaperDetailPage() {
     ? translatePaper.data
     : undefined;
 
-  const [ratingView, setRatingView] = useState<any>(null);
-  const [ratingLoading, setRatingLoading] = useState(true);
+  const [ratingView, setRatingView] = useState<QualityView | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(Boolean(currentUser));
 
   const fetchRatingView = async () => {
     try {
@@ -119,10 +185,9 @@ export function PaperDetailPage() {
   };
 
   useEffect(() => {
-    if (id) {
-      fetchRatingView();
-    }
-  }, [id]);
+    if (id && currentUser) void fetchRatingView();
+    else setRatingLoading(false);
+  }, [id, currentUser]);
 
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -150,9 +215,9 @@ export function PaperDetailPage() {
           queryClient.setQueryData(["paper", id], response.data.data);
           void queryClient.invalidateQueries({ queryKey: ["papers"] });
           toast.success("PDF uploaded and this paper was rescored.", { id: "pdf-upload" });
-        } catch (error: any) {
+        } catch (error) {
           console.error(error);
-          toast.error(error.response?.data?.error?.message || "Failed to upload PDF", { id: "pdf-upload" });
+          toast.error(getApiErrorMessage(error, "Failed to upload PDF"), { id: "pdf-upload" });
         } finally {
           setUploadingPdf(false);
         }
@@ -170,11 +235,17 @@ export function PaperDetailPage() {
       return;
     }
 
+    const pdfWindow = window.open("about:blank", "_blank");
+    if (!pdfWindow) {
+      toast.error("Allow pop-ups for PaperLens before opening this PDF.");
+      return;
+    }
+    pdfWindow.opener = null;
     setDownloading(true);
     try {
       const res = await api.get(`/papers/${id}/pdf-url`);
       const { downloadUrl, cost } = res.data.data;
-      window.open(downloadUrl, "_blank");
+      pdfWindow.location.replace(downloadUrl);
       if (cost > 0) {
         toast.success(`Downloaded PDF. Deducted ${cost} points.`);
         // Instant credit update on UI!
@@ -190,9 +261,10 @@ export function PaperDetailPage() {
       } else {
         toast.success("Downloading PDF...");
       }
-    } catch (error: any) {
+    } catch (error) {
+      pdfWindow.close();
       console.error(error);
-      toast.error(error.response?.data?.error?.message || "Failed to load PDF");
+      toast.error(getApiErrorMessage(error, "Failed to load PDF"));
     } finally {
       setDownloading(false);
     }
@@ -205,8 +277,8 @@ export function PaperDetailPage() {
       await api.patch(`/papers/${id}/accept-pdf`);
       toast.success("PDF approved successfully!");
       refetch();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || "Failed to approve PDF");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to approve PDF"));
     } finally {
       setAccepting(false);
     }
@@ -219,8 +291,8 @@ export function PaperDetailPage() {
       await api.patch(`/papers/${id}/reject-pdf`);
       toast.success("PDF rejected and deleted.");
       refetch();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || "Failed to reject PDF");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to reject PDF"));
     } finally {
       setRejecting(false);
     }
@@ -233,8 +305,8 @@ export function PaperDetailPage() {
       await api.delete(`/papers/${id}/pdf`);
       toast.success("PDF deleted successfully.");
       refetch();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || "Failed to delete PDF");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to delete PDF"));
     } finally {
       setDeletingPdf(false);
     }
@@ -242,6 +314,29 @@ export function PaperDetailPage() {
 
   if (isLoading) {
     return <div className="container py-8 text-center text-slate-500 mt-20">Loading paper details...</div>;
+  }
+
+  if (isPaperError) {
+    const message = (paperError as {
+      response?: { status?: number; data?: { error?: { message?: string } } };
+      message?: string;
+    })?.response;
+    const notFound = message?.status === 404;
+    return (
+      <div role="alert" className="container py-16 text-center mt-20">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+          {notFound ? "Paper not found" : "Paper details are unavailable"}
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          {message?.data?.error?.message || (paperError as Error)?.message || "Please try again."}
+        </p>
+        {!notFound && (
+          <Button className="mt-5" variant="outline" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        )}
+      </div>
+    );
   }
 
   if (!paper) {
@@ -274,13 +369,17 @@ export function PaperDetailPage() {
   const handleTranslate = () => {
     translatePaper.mutate(translationLanguage, {
       onSuccess: () => setShowTranslation(true),
-      onError: (error: any) => {
-        toast.error(error.response?.data?.error?.message || "Paper translation failed. Please try again.");
+      onError: (error) => {
+        toast.error(getApiErrorMessage(error, "Paper translation failed. Please try again."));
       },
     });
   };
 
   const handleBookmarkToggle = () => {
+    if (!currentUser) {
+      toast.error("Sign in to save papers.");
+      return;
+    }
     if (isBookmarked && bookmarkId) {
       deleteBookmark.mutate({ id: bookmarkId, targetKind: "paper", targetId: id! });
     } else {
@@ -295,11 +394,12 @@ export function PaperDetailPage() {
       : "Unknown Author";
     const titleString = paper.title.endsWith(".") ? paper.title : `${paper.title}.`;
     const journalString = paper.journalName ? `${paper.journalName}` : "";
-    const citation = `${authorString} (${paper.publicationYear}). ${titleString}${journalString ? ` ${journalString}.` : ""}`;
+    const doi = paper.externalIds?.doi?.replace(/^https?:\/\/doi\.org\//i, "");
+    const citation = `${authorString} (${paper.publicationYear || "n.d."}). ${titleString}${journalString ? ` ${journalString}.` : ""}${doi ? ` https://doi.org/${doi}` : ""}`;
 
     navigator.clipboard.writeText(citation).then(
       () => {
-        toast.success("APA citation copied to clipboard!");
+        toast.success("Citation copied to clipboard.");
       },
       () => {
         toast.error("Could not copy citation.");
@@ -308,7 +408,10 @@ export function PaperDetailPage() {
   };
 
   return (
-    <main className="container py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main
+      className="container py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+      data-testid="paper-detail-page"
+    >
       {/* Breadcrumb */}
       <div className="flex items-center text-xs font-medium text-slate-500 mb-6">
         <span className="hover:text-slate-900 cursor-pointer">Publication Trend</span>
@@ -322,7 +425,10 @@ export function PaperDetailPage() {
 
           {/* Hero Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-4">
+            <h1
+              className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-4"
+              data-testid="paper-detail-title"
+            >
               {displayTitle}
             </h1>
 
@@ -403,6 +509,7 @@ export function PaperDetailPage() {
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                 {showReadPdfAction ? (
                   <Button
+                    data-testid="paper-pdf-action"
                     className="bg-blue-800 hover:bg-blue-900 text-white font-bold h-10 px-5 gap-2 rounded-lg"
                     onClick={handleDownloadPdf}
                     disabled={downloading}
@@ -411,28 +518,32 @@ export function PaperDetailPage() {
                     Read PDF
                   </Button>
                 ) : null}
-                <Button
-                  variant={isBookmarked ? "default" : "outline"}
-                  className={`h-10 px-4 gap-2 font-bold rounded-lg ${isBookmarked
-                      ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600"
-                      : "text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
-                    }`}
-                  onClick={handleBookmarkToggle}
-                  disabled={createBookmark.isPending || deleteBookmark.isPending}
-                >
-                  <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
-                  {isBookmarked ? "Saved" : "Save"}
-                </Button>
-                
-                <AddToProjectDropdown paperId={id!}>
+                {currentUser && (
                   <Button
-                    variant="outline"
-                    className="h-10 px-4 gap-2 font-bold rounded-lg text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                    variant={isBookmarked ? "default" : "outline"}
+                    className={`h-10 px-4 gap-2 font-bold rounded-lg ${isBookmarked
+                        ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600"
+                        : "text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                      }`}
+                    onClick={handleBookmarkToggle}
+                    disabled={createBookmark.isPending || deleteBookmark.isPending}
                   >
-                    <FolderPlus className="w-4 h-4" />
-                    Add to Project
+                    <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+                    {isBookmarked ? "Saved" : "Save"}
                   </Button>
-                </AddToProjectDropdown>
+                )}
+
+                {currentUser && (
+                  <AddToProjectDropdown paperId={id!}>
+                    <Button
+                      variant="outline"
+                      className="h-10 px-4 gap-2 font-bold rounded-lg text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      Add to Project
+                    </Button>
+                  </AddToProjectDropdown>
+                )}
 
                 <Button
                   variant="outline"
@@ -452,6 +563,7 @@ export function PaperDetailPage() {
 
                 <div className="relative inline-block">
                   <Button
+                    data-testid="paper-translate-menu"
                     variant={showTranslation ? "default" : "outline"}
                     className={`h-10 px-4 gap-2 font-bold rounded-lg ${
                       showTranslation
@@ -464,6 +576,9 @@ export function PaperDetailPage() {
                     }}
                     title="Translate this paper"
                     aria-label="Translate this paper"
+                    aria-expanded={translatePopoverOpen}
+                    aria-haspopup="dialog"
+                    aria-controls="paper-translation-menu"
                   >
                     <Globe className="w-4 h-4 text-blue-500" />
                     <span>{showTranslation ? "View original" : "Translate"}</span>
@@ -472,6 +587,9 @@ export function PaperDetailPage() {
 
                   {translatePopoverOpen && (
                     <div
+                      id="paper-translation-menu"
+                      role="dialog"
+                      aria-label="Translate paper"
                       onClick={(e) => e.stopPropagation()}
                       className="absolute left-0 mt-2 w-64 p-3.5 bg-white dark:bg-[#181818] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
                     >
@@ -727,7 +845,9 @@ export function PaperDetailPage() {
           <div className="mb-8">
             <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Abstract</h3>
             <div className="prose prose-sm max-w-none text-justify leading-relaxed text-slate-600 dark:prose-invert dark:text-slate-400">
-              <p>{displayAbstract || "No abstract available for this paper."}</p>
+              <p data-testid={showTranslation ? "paper-abstract-translated" : "paper-abstract-original"}>
+                {displayAbstract || "No abstract available for this paper."}
+              </p>
             </div>
           </div>
 
@@ -741,10 +861,10 @@ export function PaperDetailPage() {
                   <div className="w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 flex items-center justify-center">
                     <SparklesIcon />
                   </div>
-                  AI Analysis Summary
+                  Academic Impact Summary
                 </h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-semibold">Academic Value:</span>
+                  <span className="text-xs text-slate-500 font-semibold">Deterministic score:</span>
                   <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 px-2 py-0.5 rounded">
                     Overall {paper.aiScore.finalScore.toFixed(2)}
                   </span>
@@ -757,7 +877,9 @@ export function PaperDetailPage() {
                   <div className="flex justify-between items-end">
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Citation Impact</span>
-                      <span className="text-[9px] text-slate-400 dark:text-slate-500">Citations per year (normalized)</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                        {formatImpactScoreBasis(paper.aiScore.scoreBasis)}
+                      </span>
                     </div>
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
                       {paper.aiScore.citationImpactScore.toFixed(2)}
@@ -800,6 +922,10 @@ export function PaperDetailPage() {
                   </div>
                 </div>
               </div>
+              <p className="mt-5 text-[11px] text-slate-500 dark:text-slate-400">
+                Formula version {paper.aiScore.modelVersion}. This is a deterministic impact and
+                metadata score, not an AI judgment of scientific correctness.
+              </p>
             </div>
           )}
 
@@ -849,8 +975,12 @@ export function PaperDetailPage() {
           <AiEvaluation
             targetKind="paper"
             targetId={id || ""}
-            enabled={!!paper.abstractText?.trim()}
-            disabledHint="This paper does not have an abstract for AI evaluation"
+            enabled={Boolean(currentUser && paper.abstractText?.trim())}
+            disabledHint={
+              currentUser
+                ? "This paper does not have an abstract for AI evaluation"
+                : "Sign in to request an abstract-only AI evaluation"
+            }
             className="mb-8"
           />
 
@@ -866,6 +996,13 @@ export function PaperDetailPage() {
             </div>
             {isRefsLoading ? (
               <p className="text-sm text-slate-500">Loading references...</p>
+            ) : isRefsError ? (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
+                References could not be loaded.
+                <Button type="button" size="sm" variant="outline" className="ml-3" onClick={() => void refetchReferences()}>
+                  Try again
+                </Button>
+              </div>
             ) : !references || references.length === 0 ? (
               <p className="text-sm text-slate-500 italic bg-slate-50 dark:bg-zinc-900/30 rounded-xl p-4 border border-dashed border-slate-200 dark:border-zinc-800">
                 No referenced works from this paper are available in our corpus yet.
@@ -885,14 +1022,14 @@ export function PaperDetailPage() {
                       <span>•</span>
                       <span>
                         {ref.authors && ref.authors.length > 0
-                          ? ref.authors.map((a: any) => a.displayName).join(", ")
+                          ? ref.authors.map((author) => author.displayName).join(", ")
                           : "Unknown Author"}
                       </span>
-                      {(ref as any).doi && (
+                      {ref.doi && (
                         <>
                           <span>•</span>
                           <a
-                            href={`https://doi.org/${(ref as any).doi}`}
+                            href={`https://doi.org/${ref.doi}`}
                             target="_blank"
                             rel="noreferrer"
                             className="text-blue-600 hover:underline inline-flex items-center gap-0.5"
@@ -908,11 +1045,62 @@ export function PaperDetailPage() {
             )}
           </div>
 
-          {/* P3: Related Papers */}
+          {/* OpenAlex related works available in this corpus */}
+          <div className="mb-8 border-t border-slate-100 pt-6 dark:border-slate-800/80">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">OpenAlex Related Works</h3>
+            <p className="mb-4 mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {openAlexRelatedResponse?.totalRelated
+                ? `${openAlexRelatedResponse.inCorpus} of ${openAlexRelatedResponse.totalRelated} related works are available in this corpus.`
+                : "OpenAlex has not supplied related-work links for this paper."}
+            </p>
+            {isOpenAlexRelatedLoading ? (
+              <p className="text-sm text-slate-500">Loading OpenAlex relationships...</p>
+            ) : isOpenAlexRelatedError ? (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
+                OpenAlex related works could not be loaded.
+                <Button type="button" size="sm" variant="outline" className="ml-3" onClick={() => void refetchOpenAlexRelated()}>
+                  Try again
+                </Button>
+              </div>
+            ) : !openAlexRelatedResponse?.relatedWorks.length ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm italic text-slate-500 dark:border-zinc-800 dark:bg-zinc-900/30">
+                No OpenAlex related works are currently available in this corpus.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {openAlexRelatedResponse.relatedWorks.map((related) => (
+                  <Link
+                    key={related.id}
+                    to={`/papers/${related.id}`}
+                    className="rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-blue-300 hover:bg-blue-50/40 dark:border-slate-800 dark:bg-[#121212] dark:hover:border-blue-800 dark:hover:bg-blue-950/10"
+                  >
+                    <span className="line-clamp-2 text-sm font-bold text-blue-900 dark:text-blue-200">
+                      {related.title}
+                    </span>
+                    <span className="mt-2 block text-xs text-slate-500">
+                      {related.publicationYear || "Year unknown"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Semantic related papers */}
           <div className="mb-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Related Papers</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Semantically Similar Papers</h3>
+            <p className="mb-4 text-xs text-slate-500">
+              Ranked by title and abstract similarity; this is separate from OpenAlex&apos;s “Related to” count.
+            </p>
             {isRelatedLoading ? (
               <p className="text-sm text-slate-500">Loading related papers...</p>
+            ) : isRelatedError ? (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
+                Similar papers could not be loaded.
+                <Button type="button" size="sm" variant="outline" className="ml-3" onClick={() => void refetchRelated()}>
+                  Try again
+                </Button>
+              </div>
             ) : relatedPapers.length === 0 ? (
               <p className="text-sm text-slate-500 italic">No similar papers found.</p>
             ) : (
@@ -968,7 +1156,7 @@ export function PaperDetailPage() {
                 </p>
               </div>
               <Link
-                to="/reports"
+                to={`/reports?citesPaper=${encodeURIComponent(id || "")}`}
                 className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 underline-offset-2 hover:underline"
               >
                 View reports →
@@ -986,7 +1174,7 @@ export function PaperDetailPage() {
               onSuccess={fetchRatingView}
             />
 
-            {!isAdmin && !isOwner && (
+            {currentUser && !isAdmin && !isOwner && (
               <PaperRatingWidget
                 paperId={id || ""}
                 loading={ratingLoading}
@@ -1351,9 +1539,9 @@ function PaperRatingWidget({
 
         onSuccess();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to save rating:", err);
-      toast.error(err.response?.data?.error?.message || "Failed to submit rating");
+      toast.error(getApiErrorMessage(err, "Failed to submit rating"));
     } finally {
       setSubmitting(false);
     }
@@ -1438,9 +1626,9 @@ function PaperReviewsList({
   currentUser,
   onSuccess,
 }: {
-  ratingView: any;
+  ratingView: QualityView | null;
   loading: boolean;
-  currentUser: any;
+  currentUser: User | null;
   onSuccess: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -1453,9 +1641,9 @@ function PaperReviewsList({
     );
   }
 
-  const allRatings = ratingView?.allRatings || [];
-  const averageRating = ratingView?.ratingSummary?.averageRating ?? ratingView?.ratingSummary?.avg ?? 0;
-  const totalRatings = ratingView?.ratingSummary?.totalRatings ?? ratingView?.ratingSummary?.count ?? 0;
+  const allRatings = ratingView?.allRatings ?? [];
+  const averageRating = ratingView?.ratingSummary.avg ?? 0;
+  const totalRatings = ratingView?.ratingSummary.count ?? 0;
 
   const handleDeleteReview = async (ratingId: string) => {
     if (!confirm("Are you sure you want to delete your review?")) return;
@@ -1477,9 +1665,9 @@ function PaperReviewsList({
 
         onSuccess();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to delete review:", err);
-      toast.error(err.response?.data?.error?.message || "Failed to delete review");
+      toast.error(getApiErrorMessage(err, "Failed to delete review"));
     }
   };
 
@@ -1507,7 +1695,7 @@ function PaperReviewsList({
 
       {allRatings.length > 0 && (
         <div className="divide-y divide-slate-100 dark:divide-zinc-800 max-h-[350px] overflow-y-auto pr-1 space-y-3">
-          {allRatings.map((rating: any, index: number) => {
+          {allRatings.map((rating: UserRatingDetail, index: number) => {
             const userInit = rating.user?.fullName?.charAt(0) || "?";
             const userName = rating.user?.fullName || "Anonymous";
             const isMyReview = rating.user?.id === currentUser?.id;
