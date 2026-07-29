@@ -81,6 +81,18 @@ pipeline {
           docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 || docker volume create "$REDIS_VOLUME"
           docker volume inspect "$LIBRETRANSLATE_SHARE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_SHARE_VOLUME"
           docker volume inspect "$LIBRETRANSLATE_CACHE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_CACHE_VOLUME"
+
+          # Named Docker volumes are created as root. LibreTranslate runs as the
+          # non-root libretranslate user (UID/GID 1032), so initialize their
+          # ownership before it tries to download or read Argos language models.
+          docker run --rm \
+            --user 0:0 \
+            -v "$LIBRETRANSLATE_SHARE_VOLUME:/home/libretranslate/.local/share" \
+            -v "$LIBRETRANSLATE_CACHE_VOLUME:/home/libretranslate/.local/cache" \
+            --entrypoint /bin/sh \
+            "$LIBRETRANSLATE_IMAGE" \
+            -c 'mkdir -p /home/libretranslate/.local/share /home/libretranslate/.local/cache && chown -R 1032:1032 /home/libretranslate/.local'
+
           docker rm -f "$REDIS_CONTAINER" >/dev/null 2>&1 || true
           docker run -d \
             --name "$REDIS_CONTAINER" \
