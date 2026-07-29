@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import multer from "multer";
 import { AppError } from "../exceptions/app-error.js";
 import { logger } from "../../infrastructure/logger.js";
 
@@ -12,6 +13,18 @@ export function notFoundHandler(req: Request, res: Response): void {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "PDF file is too large. Maximum size is 10MB."
+        : `Invalid file upload: ${err.message}`;
+    res.status(400).json({
+      success: false,
+      error: { code: "BAD_REQUEST", message },
+    });
+    return;
+  }
+
   if (err instanceof ZodError) {
     res.status(400).json({
       success: false,

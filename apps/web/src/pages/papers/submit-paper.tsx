@@ -13,6 +13,15 @@ function countWords(str: string) {
     .filter((w) => /[a-z0-9]/i.test(w)).length;
 }
 
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -103,6 +112,11 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
     }
     if (!paperLink.trim()) {
       newErrors.paperLink = "Please enter a valid paper link URL.";
+    } else if (!isValidHttpUrl(paperLink)) {
+      newErrors.paperLink = "Paper link must start with http:// or https://.";
+    }
+    if (openAccessUrl.trim() && !isValidHttpUrl(openAccessUrl)) {
+      newErrors.openAccessUrl = "Open Access URL must start with http:// or https://.";
     }
     if (abstractWordCount < 50) {
       newErrors.abstractText = "Abstract must contain at least 50 words.";
@@ -174,12 +188,8 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
       if (pdfFile) formData.append("pdf", pdfFile);
 
       const res = editId
-        ? await api.patch(`/papers/${editId}`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          })
-        : await api.post("/papers", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+        ? await api.patch(`/papers/${editId}`, formData)
+        : await api.post("/papers", formData);
 
       if (res.data.success) {
         if (isAdmin) {
@@ -194,7 +204,11 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
         navigate(isAdmin ? "/admin/papers" : "/settings/my-papers");
       }
     } catch (error: any) {
-      console.error(error);
+      console.error("Submit paper failed:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
       const errMsg =
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
@@ -284,10 +298,18 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
             <input
               id="openAccessUrl"
               value={openAccessUrl}
-              onChange={(e) => setOpenAccessUrl(e.target.value)}
+              onChange={(e) => {
+                setOpenAccessUrl(e.target.value);
+                if (errors.openAccessUrl) setErrors((prev) => ({ ...prev, openAccessUrl: "" }));
+              }}
               placeholder="e.g. https://arxiv.org/pdf/1706.03762.pdf"
-              className="flex h-10 w-full rounded-md border border-slate-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all"
+              className={`flex h-10 w-full rounded-md border bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all ${
+                errors.openAccessUrl
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-slate-300 dark:border-zinc-800"
+              }`}
             />
+            {errors.openAccessUrl && <p className="text-xs text-red-500 font-medium mt-1">{errors.openAccessUrl}</p>}
           </div>
 
           {/* Abstract */}
