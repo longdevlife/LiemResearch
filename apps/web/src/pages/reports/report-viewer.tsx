@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2, Bookmark as BookmarkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AiEvaluation } from "@/components/ai-evaluation";
 import { useAuthStore } from "@/stores/auth-store";
 import { useQueryClient } from "@tanstack/react-query";
+import type { PaperRef } from "@trend/shared-types";
 
 const growthData = [
   { year: "2020", volume: 10 },
@@ -23,6 +24,43 @@ const growthData = [
   { year: "2024", volume: 100 },
 ];
 
+const CITATION_PATTERN = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
+
+function linkReportCitations(markdown: string, groundingPapers: PaperRef[] = []): string {
+  if (groundingPapers.length === 0) return markdown;
+
+  return markdown.replace(CITATION_PATTERN, (match, rawNumbers: string, offset: number, source: string) => {
+    // Keep existing markdown links/reference definitions intact, e.g. [1](url).
+    const nextChar = source[offset + match.length];
+    if (nextChar === "(" || nextChar === ":") return match;
+
+    const linked = rawNumbers
+      .split(",")
+      .map((raw) => Number(raw.trim()))
+      .filter((n) => Number.isInteger(n))
+      .map((n) => {
+        const paper = groundingPapers[n - 1];
+        if (!paper) return `[${n}]`;
+        return `[\\[${n}\\]](/papers/${encodeURIComponent(paper.id)} "${citationTitle(n, paper)}")`;
+      });
+
+    return linked.length > 0 ? linked.join(", ") : match;
+  });
+}
+
+function citationTitle(n: number, paper: PaperRef): string {
+  const authors = paper.authors?.map((author) => author.displayName).filter(Boolean) ?? [];
+  const authorText = authors.length > 0 ? ` - ${authors.slice(0, 3).join(", ")}${authors.length > 3 ? " et al." : ""}` : "";
+  return escapeMarkdownTitle(`Citation [${n}] - ${paper.title} (${paper.publicationYear})${authorText}`);
+}
+
+function escapeMarkdownTitle(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/[\r\n]+/g, " ");
+}
+
+function isGroundingCitationLink(href?: string, title?: string): boolean {
+  return Boolean(href?.startsWith("/papers/") && title?.startsWith("Citation ["));
+}
 const RosePetals = () => {
   return (
     <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden print:hidden" aria-hidden="true">
@@ -138,6 +176,9 @@ export function ReportViewerPage() {
   }
 
   const title = report?.topic || report?.query || "AI Analytical Report";
+  const markdownWithCitations = report?.markdown
+    ? linkReportCitations(report.markdown, report.groundingPapers ?? [])
+    : "";
 
   return (
     <main className="container py-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0f1115] min-h-screen relative overflow-hidden">
@@ -226,8 +267,31 @@ export function ReportViewerPage() {
             
             {report?.markdown ? (
               <div className="text-slate-600 dark:text-slate-300 text-[15px] leading-[1.7] mb-10 prose-h2:text-[22px] prose-h2:font-semibold prose-h2:text-slate-900 dark:prose-h2:text-white prose-h2:mb-4 prose-h2:mt-8 prose-h3:text-[18px] prose-h3:font-semibold prose-h3:text-slate-900 dark:prose-h3:text-white prose-h3:mt-6 prose-p:mb-4 prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:mb-2 prose-strong:font-bold prose-strong:text-slate-900 dark:prose-strong:text-white">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {report.markdown}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({ href, title, children, ...props }) => {
+                      if (isGroundingCitationLink(href, title)) {
+                        return (
+                          <Link
+                            to={href!}
+                            title={title}
+                            className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-[11px] font-extrabold leading-none text-cyan-700 no-underline shadow-sm transition-colors hover:border-cyan-300 hover:bg-cyan-100 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50"
+                          >
+                            {children}
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <a href={href} title={title} {...props}>
+                          {children}
+                        </a>
+                      );
+                    },
+                  }}
+                >
+                  {markdownWithCitations}
                 </ReactMarkdown>
               </div>
             ) : (

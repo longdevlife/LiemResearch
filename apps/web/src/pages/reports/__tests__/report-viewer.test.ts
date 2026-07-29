@@ -10,5 +10,8 @@ describe("ReportViewerPage bookmark integration", () => {
     expect(source).toContain("useCreateBookmark()");
     expect(source).toContain("useDeleteBookmark()");
     expect(source).toContain("targetKind: \"report\"");
+    expect(source).toContain("linkReportCitations(report.markdown");
+    expect(source).toContain("report.groundingPapers ?? []");
+    expect(source).toContain("isGroundingCitationLink(href, title)");
   });
 });
