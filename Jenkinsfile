@@ -8,6 +8,14 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '10'))
   }
 
+  parameters {
+    booleanParam(
+      name: 'RUN_BROWSER_E2E',
+      defaultValue: false,
+      description: 'Run the authenticated browser smoke gate. Leave disabled until the production E2E fixture is configured.',
+    )
+  }
+
   environment {
     APP_NETWORK = 'user1-liemresearch'
     PROXY_NETWORK = 'nginx-network'
@@ -45,7 +53,9 @@ pipeline {
             --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
             -t "$WEB_IMAGE:$IMAGE_TAG" \
             -f Dockerfile.web .
-          docker build --pull -t "$E2E_IMAGE:$IMAGE_TAG" -f Dockerfile.e2e .
+          if [ "$RUN_BROWSER_E2E" = 'true' ]; then
+            docker build --pull -t "$E2E_IMAGE:$IMAGE_TAG" -f Dockerfile.e2e .
+          fi
           docker pull "$REDIS_IMAGE"
           docker pull "$LIBRETRANSLATE_IMAGE"
         '''
@@ -352,6 +362,9 @@ pipeline {
     }
 
     stage('Browser E2E smoke') {
+      when {
+        expression { params.RUN_BROWSER_E2E }
+      }
       steps {
         withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
           sh '''
