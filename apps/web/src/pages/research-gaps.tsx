@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Sparkles,
@@ -34,6 +34,46 @@ import { useI18n } from "@/i18n";
 import { useAuthStore } from "@/stores/auth-store";
 
 type GapSortKey = "recommended" | "evidence" | "confidence" | "papers" | "newest" | "ai_only_last";
+
+type GapGroup = {
+  id: string;
+  topic: string;
+  source: GapSource;
+  analysisId?: string;
+  sourceReportId?: string;
+  gaps: ResearchGapItem[];
+};
+
+function getGapGroupId(gap: ResearchGapItem) {
+  if (gap.analysisId) return `analysis:${gap.analysisId}`;
+  if (gap.sourceReportId) return `report:${gap.sourceReportId}`;
+  return `single:${gap.id}`;
+}
+
+function groupResearchGaps(gaps: ResearchGapItem[]): GapGroup[] {
+  const groups = new Map<string, GapGroup>();
+
+  for (const gap of gaps) {
+    const id = getGapGroupId(gap);
+    const existing = groups.get(id);
+
+    if (existing) {
+      existing.gaps.push(gap);
+      continue;
+    }
+
+    groups.set(id, {
+      id,
+      topic: gap.topic,
+      source: gap.source,
+      analysisId: gap.analysisId,
+      sourceReportId: gap.sourceReportId,
+      gaps: [gap],
+    });
+  }
+
+  return [...groups.values()];
+}
 
 function AnalysisPoller({
   analysisId,
@@ -114,10 +154,11 @@ export function ResearchGapsPage() {
   // Search & Sort & Shortlist states
   const [clientSearch, setClientSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<GapSortKey>("recommended");
+  const [sortBy, setSortBy] = useState<GapSortKey>("newest");
   const [shortlistedGaps, setShortlistedGaps] = useState<ResearchGapItem[]>([]);
   const [isShortlistHydrated, setIsShortlistHydrated] = useState(false);
   const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const shortlistedIds = shortlistedGaps.map((gap) => gap.id);
   const shortlistStorageKey = `research-gap-shortlist:${userId}`;
 
@@ -267,6 +308,17 @@ export function ResearchGapsPage() {
     });
     processedGaps.splice(0, processedGaps.length, ...shortlistedMatches);
   }
+
+  const groupedGaps = useMemo(() => groupResearchGaps(processedGaps), [processedGaps]);
+
+  const toggleGapGroup = useCallback((groupId: string) => {
+    setExpandedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId],
+    );
+  }, []);
+
   const selectedSortLabel: Record<GapSortKey, string> = {
     recommended: t("Recommended (evidence + confidence)"),
     evidence: t("Most Evidence-backed"),
@@ -547,26 +599,89 @@ export function ResearchGapsPage() {
               {t("{{count}} shown", { count: processedGaps.length })} · {sortBy === "recommended" ? t("recommended order") : t("sorted by {{sort}}", { sort: selectedSortLabel[sortBy] })}
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-4">
-          {processedGaps.map((gap, index) => (
-            <GapCard
-              key={gap.id}
-              gap={gap}
-              rank={index + 1}
-              filterStatus={filterStatus}
-              onViewDetails={(g) => {
-                setSelectedGap(g);
-                setIsDrawerOpen(true);
-              }}
-              isShortlisted={shortlistedIds.includes(gap.id)}
-              onToggleShortlist={handleToggleShortlist}
-              showReorderButtons={showShortlistedOnly}
-              onMoveUp={handleMoveUp}
-              onMoveDown={handleMoveDown}
-              isFirst={index === 0}
-              isLast={index === processedGaps.length - 1}
-            />
-          ))}
+          <div className="grid grid-cols-1 gap-5">
+          {groupedGaps.map((group, groupIndex) => {
+            const isExpanded = expandedGroupIds.includes(group.id);
+
+            return (
+              <section
+                key={group.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/30"
+              >
+                <div className={cn(
+                  "flex flex-col gap-2 rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#151922] sm:flex-row sm:items-center sm:justify-between",
+                  isExpanded && "mb-3",
+                )}>
+                  <button
+                    type="button"
+                    onClick={() => toggleGapGroup(group.id)}
+                    className="min-w-0 text-left"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-7 min-w-7 items-center justify-center rounded-md bg-cyan-50 px-1.5 text-[10px] font-extrabold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
+                        {String(groupIndex + 1).padStart(2, "0")}
+                      </span>
+                      <h3 className="truncate text-sm font-extrabold text-slate-950 dark:text-white">
+                        {group.topic}
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      {group.gaps.length > 1
+                        ? t("{{count}} research gaps from the same analysis", { count: group.gaps.length })
+                        : t("1 research gap")}
+                    </p>
+                  </button>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 dark:border-slate-800 dark:bg-slate-900">
+                      {group.source === "standalone" ? t("Standalone Analysis") : t("Report-generated")}
+                    </span>
+                    {group.analysisId && (
+                      <span className="rounded-md border border-cyan-100 bg-cyan-50 px-2 py-1 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300">
+                        ID: {group.analysisId.slice(-6)}
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-lg border-slate-200 bg-white text-slate-500 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+                      onClick={() => toggleGapGroup(group.id)}
+                      title={isExpanded ? t("Collapse") : t("Expand")}
+                    >
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="grid grid-cols-1 gap-3">
+                    {group.gaps.map((gap, gapIndex) => {
+                      const absoluteIndex = processedGaps.findIndex((item) => item.id === gap.id);
+                      return (
+                        <GapCard
+                          key={gap.id}
+                          gap={gap}
+                          rank={gapIndex + 1}
+                          filterStatus={filterStatus}
+                          onViewDetails={(g) => {
+                            setSelectedGap(g);
+                            setIsDrawerOpen(true);
+                          }}
+                          isShortlisted={shortlistedIds.includes(gap.id)}
+                          onToggleShortlist={handleToggleShortlist}
+                          showReorderButtons={showShortlistedOnly}
+                          onMoveUp={handleMoveUp}
+                          onMoveDown={handleMoveDown}
+                          isFirst={absoluteIndex <= 0}
+                          isLast={absoluteIndex === processedGaps.length - 1}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
           </div>
         </section>
       )}

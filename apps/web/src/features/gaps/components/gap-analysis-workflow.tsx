@@ -4,8 +4,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Database,
   ExternalLink,
+  Filter,
   Loader2,
   Plus,
   Search,
@@ -21,6 +23,13 @@ import type {
 } from "@trend/shared-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useGapEvidencePreview } from "../hooks/use-gaps";
 import { searchApi } from "@/features/search/api/search.api";
 import { papersApi } from "@/features/papers/api/papers.api";
@@ -40,28 +49,55 @@ type PaperSearchCandidate = Pick<
   score?: number;
 };
 
+type PaperLanguageFilter = "auto" | "en" | "vi";
+
+const MIN_PUBLICATION_YEAR = 1900;
+const SEARCH_RESULTS_PAGE_SIZE = 10;
+const SEARCH_RESULTS_LIMIT = 50;
+
 export function GapAnalysisWorkflow({
   isAnalyzing,
   onAnalyze,
 }: GapAnalysisWorkflowProps) {
+  const currentYear = new Date().getFullYear();
   const { t } = useI18n();
   const [topic, setTopic] = useState("");
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
   const [preview, setPreview] = useState<PreviewGapEvidenceResponse | null>(null);
   const [papers, setPapers] = useState<GapEvidencePaper[]>([]);
+  const [manuallyAddedPaperIds, setManuallyAddedPaperIds] = useState<string[]>([]);
   const [paperSearch, setPaperSearch] = useState("");
   const [searchResults, setSearchResults] = useState<PaperSearchCandidate[]>([]);
+  const [searchResultPage, setSearchResultPage] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [paperPickerOpen, setPaperPickerOpen] = useState(false);
+  const [paperFilterOpen, setPaperFilterOpen] = useState(false);
+  const [paperYearFrom, setPaperYearFrom] = useState("");
+  const [paperYearTo, setPaperYearTo] = useState("");
+  const [paperLanguage, setPaperLanguage] = useState<PaperLanguageFilter>("auto");
   const evidenceRef = useRef<HTMLDivElement>(null);
+  const paperResultsRef = useRef<HTMLDivElement>(null);
   const previewEvidence = useGapEvidencePreview();
 
   const years = useMemo(() => ({
     yearFrom: yearFrom ? Number(yearFrom) : undefined,
     yearTo: yearTo ? Number(yearTo) : undefined,
   }), [yearFrom, yearTo]);
+  const paperSearchFilters = useMemo(() => ({
+    yearFrom: paperYearFrom ? Number(paperYearFrom) : undefined,
+    yearTo: paperYearTo ? Number(paperYearTo) : undefined,
+    languages: paperLanguage === "auto" ? undefined : [paperLanguage],
+  }), [paperLanguage, paperYearFrom, paperYearTo]);
+  const activePaperFilterCount =
+    (paperYearFrom || paperYearTo ? 1 : 0) + (paperLanguage === "auto" ? 0 : 1);
+  const searchResultPageCount = Math.ceil(searchResults.length / SEARCH_RESULTS_PAGE_SIZE);
+  const paginatedSearchResults = searchResults.slice(
+    (searchResultPage - 1) * SEARCH_RESULTS_PAGE_SIZE,
+    searchResultPage * SEARCH_RESULTS_PAGE_SIZE,
+  );
   const selectedIds = papers.map((paper) => paper.id);
   const canPreview = topic.trim().length >= 3 && !previewEvidence.isPending;
   const canAnalyze = papers.length >= 3 && !isAnalyzing;
@@ -74,7 +110,10 @@ export function GapAnalysisWorkflow({
     return true;
   };
 
-  const loadPreview = async (pinnedIds: string[] = []) => {
+  const loadPreview = async (
+    pinnedIds: string[] = [],
+    manualIds: string[] = manuallyAddedPaperIds,
+  ) => {
     if (!canPreview || !validateYears()) return;
     try {
       const data = await previewEvidence.mutateAsync({
@@ -83,8 +122,16 @@ export function GapAnalysisWorkflow({
         selectedPaperIds: pinnedIds,
         evidenceMode: "hybrid",
       });
+      const returnedIds = new Set(data.papers.map((paper) => paper.id));
+      const retainedManualIds = manualIds.filter((id) => returnedIds.has(id));
+      const manualIdSet = new Set(retainedManualIds);
+
       setPreview(data);
-      setPapers(data.papers);
+      setManuallyAddedPaperIds(retainedManualIds);
+      setPapers(data.papers.map((paper) => ({
+        ...paper,
+        source: manualIdSet.has(paper.id) ? "selected" : "retrieved",
+      })));
       requestAnimationFrame(() => evidenceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message ?? t("Could not retrieve gap evidence."));
@@ -96,14 +143,15 @@ export function GapAnalysisWorkflow({
     setIsSearching(true);
     setHasSearched(false);
     setSearchError(null);
+    setSearchResultPage(1);
     try {
       const query = paperSearch.trim();
       const isDoi = /^https?:\/\/doi\.org\/|^doi:\s*|^10\.\d{4,9}\//i.test(query);
       const keywordPromise = papersApi.list({
         q: query,
         page: 1,
-        pageSize: 8,
-        ...years,
+        pageSize: SEARCH_RESULTS_LIMIT,
+        ...paperSearchFilters,
         sort: "relevance",
       });
       const semanticPromise = isDoi
@@ -111,8 +159,8 @@ export function GapAnalysisWorkflow({
         : searchApi.semantic({
             q: query,
             page: 1,
-            pageSize: 8,
-            ...years,
+            pageSize: SEARCH_RESULTS_LIMIT,
+            ...paperSearchFilters,
             sort: "relevance",
           });
       const [keywordResult, semanticResult] = await Promise.allSettled([
@@ -143,7 +191,7 @@ export function GapAnalysisWorkflow({
           uniqueResults.set(paper.id, paper);
         }
       }
-      setSearchResults([...uniqueResults.values()].slice(0, 8));
+      setSearchResults([...uniqueResults.values()].slice(0, SEARCH_RESULTS_LIMIT));
     } catch (error: any) {
       setSearchError(error.response?.data?.error?.message ?? t("Paper search failed."));
     } finally {
@@ -158,7 +206,10 @@ export function GapAnalysisWorkflow({
       toast.error(t("Evidence pack is limited to {{count}} papers. Remove one first.", { count: preview.maxEvidencePapers }));
       return;
     }
-    await loadPreview([paperId, ...selectedIds]);
+    await loadPreview(
+      [paperId, ...selectedIds],
+      Array.from(new Set([paperId, ...manuallyAddedPaperIds])),
+    );
   };
 
   const analyzeReviewedPack = () => {
@@ -174,13 +225,20 @@ export function GapAnalysisWorkflow({
   const reset = () => {
     setPreview(null);
     setPapers([]);
+    setManuallyAddedPaperIds([]);
     setSearchResults([]);
+    setSearchResultPage(1);
     setHasSearched(false);
     setPaperSearch("");
+    setPaperPickerOpen(false);
+    setPaperFilterOpen(false);
+    setPaperYearFrom("");
+    setPaperYearTo("");
+    setPaperLanguage("auto");
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#12161f]">
+    <section className="relative overflow-visible rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#12161f]">
       <div className="border-b border-slate-100/80 px-6 py-5 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/20">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3.5">
@@ -236,7 +294,7 @@ export function GapAnalysisWorkflow({
                 setYearFrom(event.target.value);
                 if (preview) reset();
               }}
-              placeholder="2020"
+              placeholder="1900"
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-sm font-medium text-slate-900 outline-none transition-all focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950/80 dark:text-white dark:focus:border-cyan-500 dark:focus:bg-slate-950"
             />
           </label>
@@ -339,7 +397,10 @@ export function GapAnalysisWorkflow({
                     variant="ghost"
                     size="icon"
                     title={t("Remove from evidence")}
-                    onClick={() => setPapers((current) => current.filter((item) => item.id !== paper.id))}
+                    onClick={() => {
+                      setPapers((current) => current.filter((item) => item.id !== paper.id));
+                      setManuallyAddedPaperIds((current) => current.filter((id) => id !== paper.id));
+                    }}
                     className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -348,8 +409,8 @@ export function GapAnalysisWorkflow({
               ))}
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <>
+              <div className="flex flex-col gap-3 rounded-xl border border-dashed border-cyan-300 bg-cyan-50/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-cyan-900 dark:bg-cyan-950/20">
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">
                     {t("Add supporting evidence")}
@@ -358,14 +419,44 @@ export function GapAnalysisWorkflow({
                     {t("Search the corpus for a missing study, then add it to the evidence set.")}
                   </p>
                 </div>
-                <Badge variant="outline" className="w-fit border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                  {t("Hybrid paper search")}
-                </Badge>
+                <Button
+                  type="button"
+                  onClick={() => setPaperPickerOpen(true)}
+                  className="h-10 shrink-0 rounded-lg bg-cyan-600 px-4 font-bold text-white hover:bg-cyan-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t("Add a paper from the corpus")}
+                </Button>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                {t("Searches exact title, DOI, keywords, and semantic meaning in one step.")}
-              </p>
-              <div className="mt-3 flex gap-2">
+
+              <Dialog
+                open={paperPickerOpen}
+                onOpenChange={(open) => {
+                  setPaperPickerOpen(open);
+                  if (!open) setPaperFilterOpen(false);
+                }}
+              >
+                <DialogContent className="flex max-h-[85vh] flex-col gap-4 overflow-visible sm:max-w-3xl">
+                  <DialogHeader className="pr-8">
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                      <Search className="h-5 w-5 text-cyan-600" />
+                      {t("Add supporting evidence")}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {t("Search the corpus for a missing study, then add it to the evidence set.")}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500">
+                      {t("Searches exact title, DOI, keywords, and semantic meaning in one step.")}
+                    </p>
+                    <Badge variant="outline" className="w-fit shrink-0 border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                      {t("Hybrid paper search")}
+                    </Badge>
+                  </div>
+
+                  <div className="relative flex flex-col gap-2 sm:flex-row">
                 <input
                   value={paperSearch}
                   onChange={(event) => setPaperSearch(event.target.value)}
@@ -375,6 +466,149 @@ export function GapAnalysisWorkflow({
                   placeholder={t("Enter a title, DOI, keyword, method, dataset, or research problem")}
                   className="h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-950"
                 />
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPaperFilterOpen((open) => !open)}
+                    aria-expanded={paperFilterOpen}
+                    className={cn(
+                      "h-10 w-full rounded-lg border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 shadow-sm sm:w-auto dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300",
+                      paperFilterOpen && "border-cyan-300 bg-cyan-50 text-cyan-800 dark:border-cyan-800 dark:bg-cyan-950/30 dark:text-cyan-200",
+                    )}
+                  >
+                    <Filter className="h-4 w-4" />
+                    {t("Filters")}
+                    {activePaperFilterCount > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-600 px-1 text-[10px] text-white">
+                        {activePaperFilterCount}
+                      </span>
+                    )}
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", paperFilterOpen && "rotate-180")} />
+                  </Button>
+
+                  {paperFilterOpen && (
+                    <div className="absolute right-0 top-12 z-50 w-[min(300px,calc(100vw-4rem))] rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-[#1e1e1e]">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {t("Refine Evidence")}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaperYearFrom("");
+                            setPaperYearTo("");
+                            setPaperLanguage("auto");
+                          }}
+                          className="text-[10px] font-bold uppercase text-cyan-700 hover:underline dark:text-cyan-400"
+                        >
+                          {t("Reset")}
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            {t("Publication Year")}
+                          </span>
+                          <div className="space-y-3 pt-1">
+                            <label className="block">
+                              <span className="mb-1 flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span>{t("From Year")}</span>
+                                <span className="font-extrabold text-cyan-700 dark:text-cyan-400">
+                                  {paperYearFrom || MIN_PUBLICATION_YEAR}
+                                </span>
+                              </span>
+                              <input
+                                type="range"
+                                min={MIN_PUBLICATION_YEAR}
+                                max={currentYear}
+                                value={paperYearFrom || MIN_PUBLICATION_YEAR}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setPaperYearFrom(value);
+                                  if (paperYearTo && Number(value) > Number(paperYearTo)) {
+                                    setPaperYearTo(value);
+                                  }
+                                }}
+                                className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-cyan-600 dark:bg-slate-700"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1 flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span>{t("To Year")}</span>
+                                <span className="font-extrabold text-cyan-700 dark:text-cyan-400">
+                                  {paperYearTo || currentYear}
+                                </span>
+                              </span>
+                              <input
+                                type="range"
+                                min={MIN_PUBLICATION_YEAR}
+                                max={currentYear}
+                                value={paperYearTo || currentYear}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setPaperYearTo(value);
+                                  if (paperYearFrom && Number(value) < Number(paperYearFrom)) {
+                                    setPaperYearFrom(value);
+                                  }
+                                }}
+                                className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-cyan-600 dark:bg-slate-700"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            {t("Paper Language")}
+                          </span>
+                          <div className="flex rounded-lg border border-slate-200/60 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
+                            {(["auto", "en", "vi"] as const).map((language) => (
+                              <button
+                                key={language}
+                                type="button"
+                                onClick={() => setPaperLanguage(language)}
+                                className={cn(
+                                  "h-7 flex-1 rounded text-[10px] font-bold uppercase transition-all",
+                                  paperLanguage === language
+                                    ? "bg-white text-cyan-700 shadow-sm dark:bg-slate-800 dark:text-cyan-400"
+                                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                                )}
+                              >
+                                {language === "auto" ? t("Auto") : language}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPaperFilterOpen(false)}
+                          className="h-8 text-xs font-bold"
+                        >
+                          {t("Cancel")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setPaperFilterOpen(false);
+                            void searchPapers();
+                          }}
+                          disabled={isSearching || paperSearch.trim().length < 2}
+                          className="h-8 bg-cyan-600 px-4 text-xs font-bold text-white hover:bg-cyan-700"
+                        >
+                          {t("Apply Filters")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <Button variant="outline" onClick={() => void searchPapers()} disabled={isSearching || paperSearch.trim().length < 2}>
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   {t("Search")}
@@ -387,11 +621,11 @@ export function GapAnalysisWorkflow({
                 </p>
               )}
               {searchResults.length > 0 && (
-                <div className="mt-3 max-h-64 divide-y divide-slate-200 overflow-y-auto rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
-                  {searchResults.map((paper) => {
+                <div ref={paperResultsRef} className="max-h-72 divide-y divide-slate-200 overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
+                  {paginatedSearchResults.map((paper) => {
                     const added = selectedIds.includes(paper.id);
                     return (
-                      <div key={paper.id} className="flex items-start justify-between gap-3 p-3">
+                        <div key={paper.id} className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-white">{paper.title}</p>
                           <p className="mt-1 text-xs text-slate-500">
@@ -403,15 +637,50 @@ export function GapAnalysisWorkflow({
                                 : ` · ${t("Relevance score")} ${paper.score.toFixed(2)}`}
                           </p>
                         </div>
-                        <Button size="sm" variant={added ? "outline" : "default"} disabled={added} onClick={() => void addPaper(paper.id)}>
-                          <Plus className="h-3.5 w-3.5" /> {added ? t("Added") : t("Add")}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          title={added ? t("Added") : t("Add")}
+                          aria-label={added ? t("Added") : t("Add")}
+                          disabled={added}
+                          onClick={() => void addPaper(paper.id)}
+                          className="h-9 w-9 shrink-0 rounded-lg border-cyan-200 bg-cyan-50 text-cyan-700 shadow-none hover:border-cyan-300 hover:bg-cyan-100 hover:text-cyan-800 dark:border-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50"
+                        >
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </div>
                     );
                   })}
+                  {searchResultPageCount > 1 && (
+                    <div className="flex items-center justify-center gap-1 p-2">
+                      {Array.from({ length: searchResultPageCount }, (_, index) => index + 1).map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          aria-label={`${t("Page")} ${page}`}
+                          aria-current={page === searchResultPage ? "page" : undefined}
+                          onClick={() => {
+                            setSearchResultPage(page);
+                            paperResultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className={cn(
+                            "flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-bold transition-colors",
+                            page === searchResultPage
+                              ? "bg-cyan-600 text-white shadow-sm"
+                              : "text-slate-500 hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-400 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-300",
+                          )}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+                </DialogContent>
+              </Dialog>
+            </>
 
             <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
               <Button variant="ghost" onClick={reset}>

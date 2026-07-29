@@ -2,6 +2,8 @@
 
 export const vi: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowViStrings,
+  "1 research gap": "1 khoảng trống nghiên cứu",
+  "{{count}} research gaps from the same analysis": "{{count}} khoảng trống nghiên cứu từ cùng một phân tích",
   "-day period.": "-thời gian ngày.",
   "— whereas": "- trong khi đó",
   "; the next sync or PDF update will publish the full breakdown.": "; lần đồng bộ hóa hoặc bản cập nhật PDF tiếp theo sẽ xuất bản bảng phân tích đầy đủ.",
@@ -1725,6 +1727,8 @@ export const vi: Record<keyof typeof en, string> = {
   "YoY Growth": "Tăng trưởng hàng năm",
   "YoY Trend Slope": "Độ dốc xu hướng hàng năm",
   "YTD": "đầu năm",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowViStrings } from "./gap-evidence-workflow";

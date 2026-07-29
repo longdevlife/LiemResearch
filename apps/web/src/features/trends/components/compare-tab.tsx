@@ -840,18 +840,18 @@ export function CompareTab({
           {/* 8. Comparison Table + Action links */}
           <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-[#121212] mt-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
+              <table className="w-full min-w-[1180px] text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 dark:bg-slate-900/20">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Topic Name</th>
-                    <th className="px-6 py-4 font-medium text-right">Papers</th>
-                    <th className="px-6 py-4 font-medium text-right">Momentum</th>
-                    <th className="px-6 py-4 font-medium text-right">YoY Growth</th>
-                    <th className="px-6 py-4 font-medium text-right">CAGR 3Y</th>
-                    <th className="px-6 py-4 font-medium text-right">Total Citations</th>
-                    <th className="px-6 py-4 font-medium text-right">Avg Citations</th>
-                    <th className="px-6 py-4 font-medium text-right">Interpretation</th>
-                    <th className="px-6 py-4 font-medium text-center">Actions</th>
+                    <th className="px-6 py-4 font-medium whitespace-nowrap min-w-[260px]">Topic Name</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[90px]">Papers</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[130px]">Momentum</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[130px]">YoY Growth</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[110px]">CAGR 3Y</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[150px]">Total Citations</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[140px]">Avg Citations</th>
+                    <th className="px-6 py-4 font-medium text-right whitespace-nowrap min-w-[140px]">Interpretation</th>
+                    <th className="px-6 py-4 font-medium text-center whitespace-nowrap min-w-[110px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">

@@ -14,10 +14,11 @@ interface GapOriginProps {
 export function GapOrigin({ source, sourceReportId, topic, analysisId }: GapOriginProps) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-          <Search className="w-3.5 h-3.5 text-slate-400" /> {topic}
+    <div className="flex flex-col items-start gap-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        <span className="flex max-w-full min-w-0 items-start gap-1.5 rounded bg-slate-100 px-2 py-1 font-bold uppercase leading-relaxed tracking-wider whitespace-normal break-words text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="min-w-0 break-words">{topic}</span>
         </span>
         {analysisId && (
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
@@ -26,7 +27,7 @@ export function GapOrigin({ source, sourceReportId, topic, analysisId }: GapOrig
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {sourceReportId && (
           <Link
             to={`/reports/${sourceReportId}`}

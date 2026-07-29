@@ -2,6 +2,8 @@
 
 export const zh: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  "1 research gap": "1 个研究空白",
+  "{{count}} research gaps from the same analysis": "同一分析中的 {{count}} 个研究空白",
   "-day period.": "天期间。",
   "— whereas": "— 而",
   "; the next sync or PDF update will publish the full breakdown.": ";下一次同步或 PDF 更新将发布完整的详细信息。",
@@ -1725,6 +1727,8 @@ export const zh: Record<keyof typeof en, string> = {
   "YoY Growth": "同比增长",
   "YoY Trend Slope": "同比趋势斜率",
   "YTD": "年初至今",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

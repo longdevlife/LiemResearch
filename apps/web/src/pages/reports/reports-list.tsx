@@ -130,6 +130,9 @@ export function ReportsListPage() {
   const [paperSearchResults, setPaperSearchResults] = useState<ScoredPaper[]>([]);
   const [paperSearchLoading, setPaperSearchLoading] = useState(false);
   const [paperSearchError, setPaperSearchError] = useState<string | null>(null);
+  const [paperSearchPage, setPaperSearchPage] = useState(1);
+  const [paperSearchHasMore, setPaperSearchHasMore] = useState(false);
+  const [paperSearchLoadingMore, setPaperSearchLoadingMore] = useState(false);
 
   // New State for Inline Evidence Filter
   const [evidenceFilterOpen, setEvidenceFilterOpen] = useState(false);
@@ -348,11 +351,42 @@ export function ReportsListPage() {
         rerank: false,
       });
       setPaperSearchResults(response.papers);
+      setPaperSearchPage(1);
+      setPaperSearchHasMore(response.papers.length === 8);
     } catch (error: any) {
       const errMsg = error?.response?.data?.error?.message ?? "Could not search papers.";
       setPaperSearchError(errMsg);
     } finally {
       setPaperSearchLoading(false);
+    }
+  };
+
+  const handleLoadMorePapers = async () => {
+    const searchText = paperSearchQuery.trim();
+    if (searchText.length < 2) return;
+
+    const fromYear = yearFrom ? parseInt(yearFrom, 10) : undefined;
+    const toYear = yearTo ? parseInt(yearTo, 10) : undefined;
+
+    setPaperSearchLoadingMore(true);
+    const nextPage = paperSearchPage + 1;
+    try {
+      const response = await searchApi.semantic({
+        q: searchText,
+        page: nextPage,
+        pageSize: 8,
+        yearFrom: fromYear,
+        yearTo: toYear,
+        ...activeReportScopeFilters,
+        rerank: false,
+      });
+      setPaperSearchResults(prev => [...prev, ...response.papers]);
+      setPaperSearchPage(nextPage);
+      setPaperSearchHasMore(response.papers.length === 8);
+    } catch (error: any) {
+      toast.error("Could not load more papers.");
+    } finally {
+      setPaperSearchLoadingMore(false);
     }
   };
 
@@ -924,7 +958,8 @@ export function ReportsListPage() {
             <div className="space-y-3">
               {previewData.papers.map((paper) => {
                 const isExpanded = collapsedAbstracts[paper.id] ?? false;
-                const relevancePercent = Math.round(paper.score * 100);
+                const relevancePercent = Math.max(0, Math.min(100, paper.score * 100));
+                const relevancePercentLabel = relevancePercent.toFixed(1);
                 const relevanceLabel = paper.score >= 0.8 ? "Strong match" : paper.score >= 0.65 ? "Good match" : "Review match";
                 const relevanceTone = paper.score >= 0.8
                   ? "text-emerald-700 dark:text-emerald-300"
@@ -940,7 +975,9 @@ export function ReportsListPage() {
                   ? (paper.abstractText.length > 150 && !isExpanded
                     ? `${paper.abstractText.slice(0, 150)}...`
                     : paper.abstractText)
-                  : null;                 return (
+                  : null;
+
+                return (
                   <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-200 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/50">
                     {/* Header: Badges & Actions */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
@@ -973,10 +1010,10 @@ export function ReportsListPage() {
                         {/* Compact Relevance indicator */}
                         <div className="flex items-center gap-2">
                           <span className={cn("text-[10px] font-bold uppercase tracking-wider", relevanceTone)}>
-                            {relevanceLabel} ({relevancePercent}%)
+                            {relevanceLabel} ({relevancePercentLabel}%)
                           </span>
                           <div className="w-16 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${Math.min(100, Math.max(0, relevancePercent))}%` }} />
+                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${relevancePercent}%` }} />
                           </div>
                         </div>
 
@@ -1368,7 +1405,7 @@ export function ReportsListPage() {
 
       {/* Paper Picker Modal */}
       <Dialog open={paperPickerOpen} onOpenChange={setPaperPickerOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Search className="w-5 h-5 text-blue-600" />
@@ -1405,7 +1442,7 @@ export function ReportsListPage() {
               </Button>
               
               {evidenceFilterOpen && (
-                <div className="absolute right-0 top-13 w-[300px] bg-white dark:bg-[#1e1e1e] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-[calc(100%+8px)] w-[300px] bg-white dark:bg-[#1e1e1e] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white">Refine Evidence</h4>
                     <button
@@ -1558,64 +1595,80 @@ export function ReportsListPage() {
                 <p className="text-xs text-slate-500 mt-1">Results will show title, year, citations, and semantic relevance.</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paperSearchResults.map((paper) => {
-                  const alreadyAdded = currentEvidencePaperIds.includes(paper.id);
-                  const packFull = previewData ? currentEvidencePaperIds.length >= previewData.maxEvidencePapers : false;
-                  const authors = paper.authors?.map((a) => a.displayName).filter(Boolean) ?? [];
-                  const abstract =
-                    paper.abstractText && paper.abstractText.length > 220
-                      ? `${paper.abstractText.slice(0, 220)}...`
-                      : paper.abstractText;
+              <>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paperSearchResults.map((paper) => {
+                    const alreadyAdded = currentEvidencePaperIds.includes(paper.id);
+                    const packFull = previewData ? currentEvidencePaperIds.length >= previewData.maxEvidencePapers : false;
+                    const authors = paper.authors?.map((a) => a.displayName).filter(Boolean) ?? [];
+                    const abstract =
+                      paper.abstractText && paper.abstractText.length > 220
+                        ? `${paper.abstractText.slice(0, 220)}...`
+                        : paper.abstractText;
 
-                  return (
-                    <div key={paper.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
-                            Score {paper.score.toFixed(3)}
-                          </Badge>
-                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800/50 text-[11px] font-extrabold text-amber-700 dark:text-amber-400 shadow-sm">
-                            {paper.publicationYear}
-                          </span>
-                          <span className="text-xs text-slate-500">{paper.citationCount ?? 0} citations</span>
+                    return (
+                      <div key={paper.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
+                              Score {paper.score.toFixed(3)}
+                            </Badge>
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800/50 text-[11px] font-extrabold text-amber-700 dark:text-amber-400 shadow-sm">
+                              {paper.publicationYear}
+                            </span>
+                            <span className="text-xs text-slate-500">{paper.citationCount ?? 0} citations</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <h3 className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{paper.title}</h3>
+                            <Link
+                              to={`/papers/${paper.id}`}
+                              target="_blank"
+                              className="mt-0.5 text-slate-400 hover:text-blue-600"
+                              title="Open paper detail"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
+                          {(authors.length > 0 || paper.journalName) && (
+                            <p className="text-xs text-slate-500">
+                              {authors.slice(0, 3).join(", ")}
+                              {authors.length > 3 ? " et al." : ""}
+                              {authors.length > 0 && paper.journalName ? " · " : ""}
+                              {paper.journalName}
+                            </p>
+                          )}
+                          {abstract && (
+                            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{abstract}</p>
+                          )}
                         </div>
-                        <div className="flex items-start gap-2">
-                          <h3 className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{paper.title}</h3>
-                          <Link
-                            to={`/papers/${paper.id}`}
-                            target="_blank"
-                            className="mt-0.5 text-slate-400 hover:text-blue-600"
-                            title="Open paper detail"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
-                        </div>
-                        {(authors.length > 0 || paper.journalName) && (
-                          <p className="text-xs text-slate-500">
-                            {authors.slice(0, 3).join(", ")}
-                            {authors.length > 3 ? " et al." : ""}
-                            {authors.length > 0 && paper.journalName ? " · " : ""}
-                            {paper.journalName}
-                          </p>
-                        )}
-                        {abstract && (
-                          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{abstract}</p>
-                        )}
+                        <Button
+                          size="sm"
+                          variant={alreadyAdded ? "outline" : "default"}
+                          disabled={alreadyAdded || packFull || previewEvidence.isPending}
+                          onClick={() => handleAddPaperFromSearch(paper.id)}
+                          className="rounded-lg font-bold"
+                        >
+                          {alreadyAdded ? "Added" : packFull ? "Pack Full" : "Add"}
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant={alreadyAdded ? "outline" : "default"}
-                        disabled={alreadyAdded || packFull || previewEvidence.isPending}
-                        onClick={() => handleAddPaperFromSearch(paper.id)}
-                        className="rounded-lg font-bold"
-                      >
-                        {alreadyAdded ? "Added" : packFull ? "Pack Full" : "Add"}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              
+              {paperSearchHasMore && (
+                <div className="py-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMorePapers}
+                    disabled={paperSearchLoadingMore}
+                    className="w-full sm:w-auto font-semibold border-slate-200 dark:border-slate-800"
+                  >
+                    {paperSearchLoadingMore ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    {paperSearchLoadingMore ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
+            </>
             )}
           </div>
         </DialogContent>

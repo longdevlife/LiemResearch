@@ -2,6 +2,8 @@
 
 export const pt: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  "1 research gap": "1 lacuna de pesquisa",
+  "{{count}} research gaps from the same analysis": "{{count}} lacunas de pesquisa da mesma análise",
   "-day period.": "-período de dias.",
   "— whereas": "- enquanto",
   "; the next sync or PDF update will publish the full breakdown.": "; a próxima sincronização ou atualização em PDF publicará o detalhamento completo.",
@@ -1725,6 +1727,8 @@ export const pt: Record<keyof typeof en, string> = {
   "YoY Growth": "Crescimento anual",
   "YoY Trend Slope": "Inclinação da tendência anual",
   "YTD": "Acumulado no ano",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

@@ -257,6 +257,8 @@ export const gapEvidenceWorkflowStrings = {
   "Try again": "Try again",
   "User submissions": "User submissions",
   "Year unknown": "Year unknown",
+  "1 research gap": "1 research gap",
+  "{{count}} research gaps from the same analysis": "{{count}} research gaps from the same analysis",
 } as const;
 
 export const gapEvidenceWorkflowViStrings: Record<
