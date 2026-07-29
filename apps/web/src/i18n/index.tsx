@@ -56,9 +56,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const setLanguage = useCallback((nextLanguage: UiLanguageCode) => {
+    if (nextLanguage === language) return;
+
     setLanguageState(nextLanguage);
     window.localStorage.setItem(STORAGE_KEY, nextLanguage);
-  }, []);
+    document.documentElement.lang = nextLanguage;
+    window.location.reload();
+  }, [language]);
 
   const t = useCallback<Translate>(
     (key, values) => {
