@@ -75,9 +75,10 @@ export function AITab({
   const navigate = useNavigate();
   const { t } = useI18n();
   const [topicSearch, setTopicSearch] = React.useState("");
+  const [selectedHistoryExplanation, setSelectedHistoryExplanation] = React.useState<TrendExplanationResponse | null>(null);
   const debouncedTopicSearch = useDebouncedValue(topicSearch.trim(), 300);
   const relationshipEdges = relationshipsQuery.data?.edges ?? [];
-  const currentExplanation = explainMutation.data;
+  const currentExplanation = selectedHistoryExplanation ?? explainMutation.data;
   const selectedTopicExistsInTopList = data.topics.some((topic) => topic.topic === activeFocusTopic);
   const topicCandidateParams = React.useMemo<TrendTopicCandidatesParams>(() => ({
     q: debouncedTopicSearch,
@@ -367,26 +368,29 @@ export function AITab({
             </div>
 
             <Button
-              onClick={() => explainMutation.mutate({
-                topic: activeFocusTopic,
-                yearFrom,
-                yearTo,
-                domains,
-                fields,
-                subfields,
-                topics: topicsFilter,
-                domainIds,
-                fieldIds,
-                subfieldIds,
-                topicIds,
-                paperKinds,
-                openAccessStatuses,
-                providers,
-                sources,
-                languages,
-                citationBands,
-                language: "en"
-              })}
+              onClick={() => {
+                setSelectedHistoryExplanation(null);
+                explainMutation.mutate({
+                  topic: activeFocusTopic,
+                  yearFrom,
+                  yearTo,
+                  domains,
+                  fields,
+                  subfields,
+                  topics: topicsFilter,
+                  domainIds,
+                  fieldIds,
+                  subfieldIds,
+                  topicIds,
+                  paperKinds,
+                  openAccessStatuses,
+                  providers,
+                  sources,
+                  languages,
+                  citationBands,
+                  language: "en"
+                });
+              }}
               disabled={explainMutation.isPending}
               className="w-full h-10 bg-blue-700 hover:bg-blue-800 text-white font-extrabold rounded-xl shadow-md gap-2 flex items-center justify-center active:scale-98 transition-transform"
             >
@@ -427,18 +431,18 @@ export function AITab({
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-xl text-xs font-semibold text-red-600 leading-relaxed select-text">
                 AI explanation failed. You can still inspect the charts and facets.
               </div>
-            ) : explainMutation.data ? (
+            ) : currentExplanation ? (
               <div className="space-y-4 text-xs leading-relaxed select-text">
                 <div className="bg-blue-50/50 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
                   <h4 className="font-extrabold text-blue-700 dark:text-blue-400 mb-1.5 uppercase text-[10px] tracking-wider">AI Trend Summary</h4>
-                  <p className="text-slate-705 dark:text-slate-300 font-medium text-xs leading-relaxed">{explainMutation.data.summary}</p>
+                  <p className="text-slate-705 dark:text-slate-300 font-medium text-xs leading-relaxed">{currentExplanation.summary}</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-slate-50/40 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4">
                     <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-[9px] tracking-wider">Why It Matters</h4>
                     <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                      {explainMutation.data.whyItMatters.map((item: string, idx: number) => (
+                      {currentExplanation.whyItMatters.map((item: string, idx: number) => (
                         <li key={idx} className="indent-[-12px] pl-3 leading-normal">{item}</li>
                       ))}
                     </ul>
@@ -447,7 +451,7 @@ export function AITab({
                   <div className="bg-slate-50/40 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800/40 rounded-xl p-4">
                     <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-[9px] tracking-wider">Evidence Signals</h4>
                     <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                      {explainMutation.data.evidenceSignals.map((item, idx: number) => (
+                      {currentExplanation.evidenceSignals.map((item, idx: number) => (
                         <li key={idx} className="indent-[-12px] pl-3 leading-normal">
                           <span>{item.text}</span>
                           <div className="mt-1 flex flex-wrap gap-1 pl-3">
@@ -466,7 +470,7 @@ export function AITab({
                 <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800/60 rounded-xl p-4">
                   <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-[9px] tracking-wider">Metric Trace</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {explainMutation.data.metricTrace.map((trace) => (
+                    {currentExplanation.metricTrace.map((trace) => (
                       <div key={trace.source} className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 p-2">
                         <div className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200">{trace.label}</div>
                         <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400">{trace.value}</div>
@@ -480,7 +484,7 @@ export function AITab({
                   <div className="bg-amber-50/30 dark:bg-amber-950/5 border border-amber-100/50 dark:border-amber-950/20 rounded-xl p-4">
                     <h4 className="font-bold text-amber-700 dark:text-amber-400 mb-2 uppercase text-[9px] tracking-wider">Cautions</h4>
                     <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                      {explainMutation.data.cautions.map((item: string, idx: number) => (
+                      {currentExplanation.cautions.map((item: string, idx: number) => (
                         <li key={idx} className="indent-[-12px] pl-3 leading-normal">{item}</li>
                       ))}
                     </ul>
@@ -489,7 +493,7 @@ export function AITab({
                   <div className="bg-emerald-50/20 dark:bg-emerald-950/5 border border-emerald-100/40 dark:border-emerald-950/20 rounded-xl p-4">
                     <h4 className="font-bold text-emerald-700 dark:text-emerald-500 mb-2 uppercase text-[9px] tracking-wider">Suggested Actions</h4>
                     <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                      {explainMutation.data.suggestedActions.map((item: string, idx: number) => (
+                      {currentExplanation.suggestedActions.map((item: string, idx: number) => (
                         <li key={idx} className="indent-[-12px] pl-3 leading-normal">{item}</li>
                       ))}
                     </ul>
@@ -497,7 +501,7 @@ export function AITab({
                 </div>
 
                 <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 font-semibold border-t border-slate-100 dark:border-slate-800/60 select-none">
-                  AI explanation is grounded in aggregate trend metrics, not individual paper-level citations. Generated at {new Date(explainMutation.data.generatedAt).toLocaleDateString()}.
+                  AI explanation is grounded in aggregate trend metrics, not individual paper-level citations. Generated at {new Date(currentExplanation.generatedAt).toLocaleDateString()}.
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-1 select-none">
@@ -558,14 +562,22 @@ export function AITab({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {explainHistoryQuery.data!.items.map((item) => (
-              <div key={item.id} className="rounded-xl border border-slate-100 dark:border-slate-800 p-3 bg-slate-50/40 dark:bg-slate-900/20">
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setFocusTopic(item.topic ?? "");
+                  setSelectedHistoryExplanation(item);
+                }}
+                className="rounded-xl border border-slate-100 bg-slate-50/40 p-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-800 dark:bg-slate-900/20 dark:hover:border-blue-900/50 dark:hover:bg-blue-950/20"
+              >
                 <div className="flex items-center justify-between gap-3 mb-1">
                   <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate">{item.topic ?? "Overall corpus"}</span>
                   <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
                 </div>
                 <p className="text-xs text-slate-500 line-clamp-2">{item.summary}</p>
                 <p className="mt-2 text-[10px] font-semibold text-blue-700 dark:text-blue-400">{item.scopeLabel}</p>
-              </div>
+              </button>
             ))}
           </div>
         )}
