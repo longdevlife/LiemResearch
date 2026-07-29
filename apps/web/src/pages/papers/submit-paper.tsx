@@ -28,7 +28,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
   const [doi, setDoi] = useState("");
   const [paperLink, setPaperLink] = useState("");
   const [abstractText, setAbstractText] = useState("");
-  const [publicationYear, setPublicationYear] = useState<number>(new Date().getFullYear());
+  const [publicationYear, setPublicationYear] = useState<string>(String(new Date().getFullYear()));
   const [paperKind, setPaperKind] = useState<"article" | "proceedings" | "preprint" | "review" | "book-chapter" | "other">("article");
   const [openAccessUrl, setOpenAccessUrl] = useState("");
   const [authorsStr, setAuthorsStr] = useState("");
@@ -48,7 +48,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
             setDoi(paper.externalIds?.doi || paper.doi || "");
             setPaperLink(paper.paperLink || "");
             setAbstractText(paper.abstractText || "");
-            setPublicationYear(paper.publicationYear || new Date().getFullYear());
+            setPublicationYear(paper.publicationYear ? String(paper.publicationYear) : String(new Date().getFullYear()));
             setPaperKind(paper.paperKind || "article");
             setOpenAccessUrl(paper.openAccessUrl || "");
             
@@ -111,9 +111,10 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
     }
 
     const currentYear = new Date().getFullYear();
-    if (!publicationYear || publicationYear < 1900) {
+    const yearNum = parseInt(publicationYear, 10);
+    if (!publicationYear || isNaN(yearNum) || yearNum < 1900) {
       newErrors.publicationYear = "Publication year must be 1900 or later.";
-    } else if (publicationYear > currentYear) {
+    } else if (yearNum > currentYear) {
       newErrors.publicationYear = "Publication year cannot be in the future.";
     }
 
@@ -128,45 +129,29 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.error("Please correct the highlighted validation errors.");
+      // Scroll to top error
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    setErrors({});
-
     setLoading(true);
+
     try {
       const authors = authorsStr
         .split(",")
-        .map((name) => name.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
-        .map((displayName, index) => ({
-          displayName,
-          position: index + 1,
-          isCorresponding: index === 0,
-        }));
-
-      if (authors.length === 0) {
-        toast.error("Please enter at least one author");
-        setLoading(false);
-        return;
-      }
+        .map((displayName) => ({ displayName }));
 
       const keywords = keywordsStr
         .split(",")
-        .map((k) => k.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
         .map((keywordName) => ({ keywordName }));
 
-      if (keywords.length === 0) {
-        toast.error("Please enter at least one keyword");
-        setLoading(false);
-        return;
-      }
-
       const topics = topicsStr
         .split(",")
-        .map((t) => t.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
         .map((topicName) => ({ topicName }));
 
@@ -175,7 +160,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
       formData.append("doi", doi.trim());
       formData.append("paperLink", paperLink.trim());
       formData.append("abstractText", abstractText.trim());
-      formData.append("publicationYear", String(publicationYear));
+      formData.append("publicationYear", String(parseInt(publicationYear, 10)));
       formData.append("paperKind", paperKind);
       formData.append("authors", JSON.stringify(authors));
       formData.append("keywords", JSON.stringify(keywords));
@@ -362,9 +347,11 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
                 required
                 min={1900}
                 max={new Date().getFullYear()}
+                placeholder={String(new Date().getFullYear())}
                 value={publicationYear}
                 onChange={(e) => {
-                  setPublicationYear(Number(e.target.value));
+                  const val = e.target.value.replace(/^0+(?=\d)/, "");
+                  setPublicationYear(val);
                   if (errors.publicationYear) setErrors((prev) => ({ ...prev, publicationYear: "" }));
                 }}
                 className={`flex h-10 w-full rounded-md border bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all ${
