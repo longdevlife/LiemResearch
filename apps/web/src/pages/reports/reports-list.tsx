@@ -957,7 +957,8 @@ export function ReportsListPage() {
             <div className="space-y-3">
               {previewData.papers.map((paper) => {
                 const isExpanded = collapsedAbstracts[paper.id] ?? false;
-                const relevancePercent = Math.round(paper.score * 100);
+                const relevancePercent = Math.max(0, Math.min(100, paper.score * 100));
+                const relevancePercentLabel = relevancePercent.toFixed(1);
                 const relevanceLabel = paper.score >= 0.8 ? "Strong match" : paper.score >= 0.65 ? "Good match" : "Review match";
                 const relevanceTone = paper.score >= 0.8
                   ? "text-emerald-700 dark:text-emerald-300"
@@ -973,7 +974,9 @@ export function ReportsListPage() {
                   ? (paper.abstractText.length > 150 && !isExpanded
                     ? `${paper.abstractText.slice(0, 150)}...`
                     : paper.abstractText)
-                  : null;                 return (
+                  : null;
+
+                return (
                   <article key={paper.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-200 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-blue-900/50">
                     {/* Header: Badges & Actions */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
@@ -1006,10 +1009,10 @@ export function ReportsListPage() {
                         {/* Compact Relevance indicator */}
                         <div className="flex items-center gap-2">
                           <span className={cn("text-[10px] font-bold uppercase tracking-wider", relevanceTone)}>
-                            {relevanceLabel} ({relevancePercent}%)
+                            {relevanceLabel} ({relevancePercentLabel}%)
                           </span>
                           <div className="w-16 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${Math.min(100, Math.max(0, relevancePercent))}%` }} />
+                            <div className={cn("h-full rounded-full", relevanceBar)} style={{ width: `${relevancePercent}%` }} />
                           </div>
                         </div>
 
