@@ -22,6 +22,8 @@ pipeline {
     REDIS_VOLUME = 'user1-liemresearch-redis-data'
     LIBRETRANSLATE_IMAGE = 'libretranslate/libretranslate:v1.9.6'
     LIBRETRANSLATE_CONTAINER = 'user1-liemresearch-libretranslate'
+    LIBRETRANSLATE_SHARE_VOLUME = 'user1-liemresearch-libretranslate-share'
+    LIBRETRANSLATE_CACHE_VOLUME = 'user1-liemresearch-libretranslate-cache'
   }
 
   stages {
@@ -77,6 +79,8 @@ pipeline {
           fi
 
           docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 || docker volume create "$REDIS_VOLUME"
+          docker volume inspect "$LIBRETRANSLATE_SHARE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_SHARE_VOLUME"
+          docker volume inspect "$LIBRETRANSLATE_CACHE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_CACHE_VOLUME"
           docker rm -f "$REDIS_CONTAINER" >/dev/null 2>&1 || true
           docker run -d \
             --name "$REDIS_CONTAINER" \
@@ -108,11 +112,15 @@ pipeline {
             --restart unless-stopped \
             --network "$APP_NETWORK" \
             --network-alias libretranslate \
+            -v "$LIBRETRANSLATE_SHARE_VOLUME:/home/libretranslate/.local/share" \
+            -v "$LIBRETRANSLATE_CACHE_VOLUME:/home/libretranslate/.local/cache" \
             -e LT_LOAD_ONLY=en,vi,es,fr,de,pt,zh,ja,ko,ru,id \
             "$LIBRETRANSLATE_IMAGE"
 
           translation_ready=0
-          for attempt in $(seq 1 120); do
+          # A first start downloads language models. Persistent volumes make later
+          # deployments fast, while this bound keeps a cold server deterministic.
+          for attempt in $(seq 1 300); do
             if docker exec "$LIBRETRANSLATE_CONTAINER" \
               python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages', timeout=3)"; then
               translation_ready=1
