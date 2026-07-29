@@ -1725,6 +1725,8 @@ export const id: Record<keyof typeof en, string> = {
   "YoY Growth": "Pertumbuhan YoY",
   "YoY Trend Slope": "Kemiringan Tren YoY",
   "YTD": "YTD",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

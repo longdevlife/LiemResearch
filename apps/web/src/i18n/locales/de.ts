@@ -1725,6 +1725,8 @@ export const de: Record<keyof typeof en, string> = {
   "YoY Growth": "Wachstum im Jahresvergleich",
   "YoY Trend Slope": "Trendsteigung im Jahresvergleich",
   "YTD": "YTD",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
