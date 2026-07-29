@@ -20,12 +20,15 @@ export class CachingEmbeddingProvider implements EmbeddingProvider {
   get modelName(): string {
     return this.inner.modelName;
   }
+  get modelVersion(): string {
+    return this.inner.modelVersion;
+  }
   get dimensions(): number {
     return this.inner.dimensions;
   }
 
   async embed(text: string): Promise<number[]> {
-    const key = `emb:${this.inner.modelName}:${hashKey(text)}`;
+    const key = `emb:${this.inner.modelName}:${this.inner.modelVersion}:${this.inner.dimensions}:${hashKey(text)}`;
     const cached = await cache.get<number[]>(key);
     // Guard against a stale/corrupt entry of the wrong dimension.
     if (cached && cached.length === this.inner.dimensions) return cached;

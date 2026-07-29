@@ -41,7 +41,11 @@ export const paperTranslationController = {
     req: Request<{ id: string }, unknown, TranslatePaperInput>,
     res: Response,
   ) {
-    const data = await paperTranslationService.translate(req.params.id, req.body.targetLanguage);
+    const data = await paperTranslationService.translate(
+      req.params.id,
+      req.body.targetLanguage,
+      { userId: req.user?.sub, role: req.user?.role },
+    );
     res.json({ success: true, data });
   },
 };

@@ -85,17 +85,53 @@ paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: Nex
       return;
     }
 
-    const { q, page, pageSize, yearFrom, yearTo, paperKind, openAccess, provider, languages, sort } = parsed.data;
+    const {
+      q,
+      page,
+      pageSize,
+      yearFrom,
+      yearTo,
+      paperKind,
+      paperKinds,
+      openAccess,
+      openAccessStatuses,
+      provider,
+      providers,
+      sources,
+      languages,
+      citationBands,
+      domains,
+      fields,
+      subfields,
+      topics,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
+      sort,
+    } = parsed.data;
     const { papers, total } = await paperService.list({
       q,
       page,
       pageSize,
       yearFrom,
       yearTo,
-      paperKinds: paperKind,
+      paperKinds: paperKinds ?? paperKind,
       openAccess,
+      openAccessStatuses,
       provider,
+      providers,
+      sources,
       languages,
+      citationBands,
+      domains,
+      fields,
+      subfields,
+      topics,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
       sort,
     });
     res.json({
@@ -147,16 +183,31 @@ paperRouter.post(
   paperTranslationController.translate,
 );
 
-/** GET /papers/:id/references — references resolved to in-corpus papers. */
-paperRouter.get("/:id/references", async (req, res) => {
-  const data = await paperService.getReferences(req.params.id);
+/** GET /papers/:id/references — references resolved to public in-corpus papers. */
+paperRouter.get("/:id/references", optionalAuth, async (req, res) => {
+  const data = await paperService.getReferences(String(req.params.id), {
+    userId: req.user?.sub,
+    role: req.user?.role,
+  });
   res.json({ success: true, data });
 });
 
-/** GET /papers/:id — single paper detail. */
-paperRouter.get("/:id", async (req, res, next) => {
+/** GET /papers/:id/related — OpenAlex related works resolved to this corpus. */
+paperRouter.get("/:id/related", optionalAuth, async (req, res) => {
+  const data = await paperService.getRelatedWorks(String(req.params.id), {
+    userId: req.user?.sub,
+    role: req.user?.role,
+  });
+  res.json({ success: true, data });
+});
+
+/** GET /papers/:id — public active detail, or private owner/admin detail. */
+paperRouter.get("/:id", optionalAuth, async (req, res, next) => {
   try {
-    const paper = await paperService.getById(req.params.id);
+    const paper = await paperService.getById(String(req.params.id), {
+      userId: req.user?.sub,
+      role: req.user?.role,
+    });
     if (!paper) throw AppError.notFound("Paper not found");
     res.json({ success: true, data: paper });
   } catch (error) {
@@ -244,18 +295,18 @@ paperRouter.get("/:id/download", async (req, res, next) => {
       throw AppError.forbidden("Token is not valid for this paper");
     }
 
-    const paper = await paperService.getById(id);
-    if (!paper || !paper.pdfPath) {
+    const pdfPath = await paperService.getPdfStoragePath(id);
+    if (!pdfPath) {
       throw AppError.notFound("PDF is not available for this paper");
     }
 
-    const signedUrl = await pdfStorageService.getSignedDownloadUrl(paper.pdfPath);
+    const signedUrl = await pdfStorageService.getSignedDownloadUrl(pdfPath);
     if (signedUrl) {
       res.redirect(signedUrl);
       return;
     }
 
-    const filePath = pdfStorageService.resolveLocalPath(paper.pdfPath);
+    const filePath = pdfStorageService.resolveLocalPath(pdfPath);
     if (!filePath) {
       throw AppError.notFound("PDF storage object is not available");
     }

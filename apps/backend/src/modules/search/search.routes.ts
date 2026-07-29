@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { searchController } from "./search.controller.js";
@@ -8,7 +8,7 @@ import { optionalAuth, requireAuth } from "../../common/middleware/auth.js";
 export const searchRouter: Router = Router();
 
 /** Conditionally require auth if reranking is requested, otherwise optional auth. */
-const conditionalSearchAuth = (req: any, res: any, next: any) => {
+const conditionalSearchAuth = (req: Request, res: Response, next: NextFunction) => {
   if (isRerankRequested(req.query.rerank)) {
     return requireAuth(req, res, next);
   }

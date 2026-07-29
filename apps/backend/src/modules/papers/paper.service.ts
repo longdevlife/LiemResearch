@@ -6,6 +6,10 @@ import { PaperDownloadModel } from "./models/paper-download.model.js";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { env } from "../../config/env.js";
 import type { SearchSortKey } from "./dto/paper-filters.schema.js";
+import {
+  buildPaperMetadataMatch,
+  type PaperFilterInput,
+} from "./paper-filter.match.js";
 import type { CreatePaperInput } from "./dto/create-paper.schema.js";
 import { calculatePaperQuality, getQualityTier, QUALITY_TIERS } from "./paper-quality.js";
 import { computePaperScore } from "../scoring/paper-score.js";
@@ -24,19 +28,14 @@ import { UserModel } from "../auth/models/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
 import { buildUserPaperRequestFilter, isImportedPaperRecord } from "./paper-workflow.js";
+import { presentPaperDetail, type PaperDetailDto } from "./paper.presenter.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface ListPapersParams {
+export interface ListPapersParams extends PaperFilterInput {
   q?: string;
   page: number;
   pageSize: number;
-  yearFrom?: number;
-  yearTo?: number;
-  paperKinds?: string[];
-  openAccess?: boolean;
-  provider?: string;
-  languages?: string[];
   sort?: SearchSortKey;
 }
 
@@ -70,6 +69,35 @@ interface AdminListPapersResult extends ListPapersResult {
 function buildTitleDuplicateRegex(title: string): RegExp {
   const escaped = title.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
   return new RegExp(`^${escaped}$`, "i");
+}
+
+export interface PaperDetailViewer {
+  userId?: string;
+  role?: string;
+}
+
+export function buildPaperVisibilityFilter(
+  id: string,
+  viewer: PaperDetailViewer = {},
+): Record<string, unknown> | null {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
+  const paperId = new mongoose.Types.ObjectId(id);
+  if (viewer.role === "admin") return { _id: paperId };
+
+  const viewerId = viewer.userId && mongoose.Types.ObjectId.isValid(viewer.userId)
+    ? new mongoose.Types.ObjectId(viewer.userId)
+    : undefined;
+
+  return {
+    _id: paperId,
+    $or: viewerId
+      ? [
+          { dataStatus: "active" },
+          { requestedBy: viewerId },
+          { uploadedBy: viewerId },
+        ]
+      : [{ dataStatus: "active" }],
+  };
 }
 
 export function normalizeDoiSearchQuery(query: string): string | undefined {
@@ -140,13 +168,44 @@ export const paperService = {
     yearTo,
     paperKinds,
     openAccess,
+    openAccessStatuses,
     provider,
+    providers,
+    sources,
     languages,
+    citationBands,
+    domains,
+    fields,
+    subfields,
+    topics,
+    domainIds,
+    fieldIds,
+    subfieldIds,
+    topicIds,
     sort = "relevance",
   }: ListPapersParams): Promise<ListPapersResult> {
     // Public listing shows only ACTIVE papers — unreviewed user submissions
     // (draft/pending) and rejected papers must NOT leak into the public corpus.
-    const filter: Record<string, unknown> = { dataStatus: "active" };
+    const filter = buildPaperMetadataMatch({
+      yearFrom,
+      yearTo,
+      paperKinds,
+      openAccess,
+      openAccessStatuses,
+      provider,
+      providers,
+      sources,
+      languages,
+      citationBands,
+      domains,
+      fields,
+      subfields,
+      topics,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
+    });
     if (q) {
       const normalizedQuery = q.trim();
       const normalizedDoi = normalizeDoiSearchQuery(normalizedQuery);
@@ -157,19 +216,6 @@ export const paperService = {
         filter.$text = { $search: normalizedQuery };
       }
     }
-    if (paperKinds && paperKinds.length) filter.paperKind = { $in: paperKinds };
-    if (openAccess) filter.openAccessUrl = { $type: "string", $ne: "" };
-    if (provider) filter.primaryProvider = provider;
-    if (languages && languages.length > 0) {
-      filter.language = { $in: languages.map((value) => value.toLowerCase()) };
-    }
-    if (yearFrom !== undefined || yearTo !== undefined) {
-      filter.publicationYear = {
-        ...(yearFrom !== undefined ? { $gte: yearFrom } : {}),
-        ...(yearTo !== undefined ? { $lte: yearTo } : {}),
-      };
-    }
-
     const useTextScore = sort === "relevance" && "$text" in filter;
     const sortSpec: Record<string, 1 | -1 | { $meta: "textScore" }> =
       sort === "year"
@@ -194,28 +240,77 @@ export const paperService = {
     return { papers: docs.map(toPaperDto), total };
   },
 
-  async getById(id: string): Promise<Paper | null> {
-    if (!mongoose.Types.ObjectId.isValid(id)) return null;
-    const doc = await PaperModel.findById(id)
-      .populate("requestedBy", "fullName email institution role avatarUrl")
-      .populate("uploadedBy", "fullName email institution role avatarUrl")
+  async getById(id: string, viewer: PaperDetailViewer = {}): Promise<PaperDetailDto | null> {
+    const visibilityFilter = buildPaperVisibilityFilter(id, viewer);
+    if (!visibilityFilter) return null;
+    const isAdmin = viewer.role === "admin";
+
+    const doc = await PaperModel.findOne(visibilityFilter)
+      .populate("requestedBy", "fullName institution role avatarUrl")
+      .populate("uploadedBy", "fullName institution role avatarUrl")
       .lean();
-    return doc ? toPaperDto(doc as any) : null;
+    if (!doc) return null;
+
+    const includeWorkflow = isAdmin ||
+      isSameId((doc as any).requestedBy?._id ?? (doc as any).requestedBy, viewer.userId) ||
+      isSameId((doc as any).uploadedBy?._id ?? (doc as any).uploadedBy, viewer.userId);
+
+    return presentPaperDetail(doc as any, { includeWorkflow });
+  },
+
+  /** Internal storage lookup used only after a signed download token is verified. */
+  async getPdfStoragePath(id: string): Promise<string | null> {
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    const paper = await PaperModel.findById(id).select("pdfPath").lean();
+    return paper?.pdfPath ? String(paper.pdfPath) : null;
   },
 
   /** Resolve a paper's referenced OpenAlex IDs to the papers we hold in corpus. */
   async getReferences(
     id: string,
+    viewer: PaperDetailViewer = {},
   ): Promise<{ references: PaperRef[]; totalReferenced: number; inCorpus: number }> {
-    const paper = await PaperModel.findById(id).select("+referencedWorks").lean();
+    const visibilityFilter = buildPaperVisibilityFilter(id, viewer);
+    if (!visibilityFilter) throw AppError.notFound("Paper not found");
+    const paper = await PaperModel.findOne(visibilityFilter).select("+referencedWorks").lean();
     if (!paper) throw AppError.notFound("Paper not found");
     const refs = (paper as { referencedWorks?: string[] }).referencedWorks ?? [];
     if (refs.length === 0) return { references: [], totalReferenced: 0, inCorpus: 0 };
-    const docs = await PaperModel.find({ "externalIds.openalexId": { $in: refs } })
+    const docs = await PaperModel.find({
+      dataStatus: "active",
+      "externalIds.openalexId": { $in: refs },
+    })
       .select("title publicationYear authors externalIds")
       .lean();
     const references = docs.map(toPaperRef);
     return { references, totalReferenced: refs.length, inCorpus: references.length };
+  },
+
+  /** Resolve OpenAlex related-work IDs to public papers available in this corpus. */
+  async getRelatedWorks(
+    id: string,
+    viewer: PaperDetailViewer = {},
+  ): Promise<{ relatedWorks: PaperRef[]; totalRelated: number; inCorpus: number }> {
+    const visibilityFilter = buildPaperVisibilityFilter(id, viewer);
+    if (!visibilityFilter) throw AppError.notFound("Paper not found");
+    const paper = await PaperModel.findOne(visibilityFilter).select("+relatedWorks relatedWorksCount").lean();
+    if (!paper) throw AppError.notFound("Paper not found");
+
+    const relatedIds = (paper as { relatedWorks?: string[] }).relatedWorks ?? [];
+    const totalRelated = Math.max(
+      relatedIds.length,
+      Number((paper as { relatedWorksCount?: number }).relatedWorksCount ?? 0),
+    );
+    if (relatedIds.length === 0) return { relatedWorks: [], totalRelated, inCorpus: 0 };
+
+    const docs = await PaperModel.find({
+      dataStatus: "active",
+      "externalIds.openalexId": { $in: relatedIds },
+    })
+      .select("title publicationYear authors externalIds")
+      .lean();
+    const relatedWorks = docs.map(toPaperRef);
+    return { relatedWorks, totalRelated, inCorpus: relatedWorks.length };
   },
 
   /** Resolve paper ids to PaperRefs in the SAME order as `ids` (RETRIEVAL ORDER). */
@@ -835,7 +930,21 @@ export const paperService = {
       }
     }
 
+    // Prepare a usable URL before any credit mutation. Provider failures,
+    // invalid storage configuration, or token-signing errors must not charge.
     const directStorageUrl = await pdfStorageService.getSignedDownloadUrl(String(paper.pdfPath));
+    const downloadUrl = directStorageUrl ?? (() => {
+      const localPath = pdfStorageService.resolveLocalPath(String(paper.pdfPath));
+      if (!localPath) {
+        throw AppError.notFound("PDF storage object is not available");
+      }
+      const downloadToken = jwt.sign(
+        { paperId, userId },
+        env.JWT_ACCESS_SECRET,
+        { expiresIn: "5m" },
+      );
+      return `${baseUrl}/api/v1/papers/${paperId}/download?token=${downloadToken}`;
+    })();
 
     // Admins and the requester/uploader don't pay for downloads
     let cost = 0;
@@ -855,14 +964,6 @@ export const paperService = {
       await PaperModel.findByIdAndUpdate(paperId, { $inc: { downloadCount: 1 } });
     }
 
-    const downloadUrl = directStorageUrl ?? (() => {
-      const downloadToken = jwt.sign(
-        { paperId, userId },
-        env.JWT_ACCESS_SECRET,
-        { expiresIn: "5m" },
-      );
-      return `${baseUrl}/api/v1/papers/${paperId}/download?token=${downloadToken}`;
-    })();
     return { downloadUrl, cost, isRepeatDownload };
   },
 

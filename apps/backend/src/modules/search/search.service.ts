@@ -240,15 +240,13 @@ function paginatePool(
 }
 
 /**
- * Clamp `page` into the valid range for a fixed-size pool and slice it. An
- * out-of-range page returns the last page (never an Atlas error, never a lying
- * total). `total` is the pool survivor count — stable for a given query+filters.
+ * Slice the requested page without silently substituting another page. An
+ * out-of-range page is truthfully empty while metadata continues to describe
+ * the page the client requested.
  */
-function slicePage<T>(items: T[], page: number, pageSize: number): { items: T[]; total: number } {
+export function slicePage<T>(items: T[], page: number, pageSize: number): { items: T[]; total: number } {
   const total = items.length;
-  const maxPage = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(Math.max(1, page), maxPage);
-  const start = (safePage - 1) * pageSize;
+  const start = (page - 1) * pageSize;
   return { items: items.slice(start, start + pageSize), total };
 }
 
