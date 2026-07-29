@@ -1725,6 +1725,8 @@ export const ja: Record<keyof typeof en, string> = {
   "YoY Growth": "前年比成長率",
   "YoY Trend Slope": "前年比トレンドの傾き",
   "YTD": "年初から",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

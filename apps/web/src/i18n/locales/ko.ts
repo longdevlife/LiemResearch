@@ -1725,6 +1725,8 @@ export const ko: Record<keyof typeof en, string> = {
   "YoY Growth": "전년 대비 성장",
   "YoY Trend Slope": "전년 대비 추세 기울기",
   "YTD": "YTD",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

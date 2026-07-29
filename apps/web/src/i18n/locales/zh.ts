@@ -1725,6 +1725,8 @@ export const zh: Record<keyof typeof en, string> = {
   "YoY Growth": "同比增长",
   "YoY Trend Slope": "同比趋势斜率",
   "YTD": "年初至今",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

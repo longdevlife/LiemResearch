@@ -1,4 +1,4 @@
-﻿export const en = {
+export const en = {
   ...gapEvidenceWorkflowStrings,
   "-day period.": "-day period.",
   "— whereas": "— whereas",
@@ -1723,6 +1723,8 @@
   "YoY Growth": "YoY Growth",
   "YoY Trend Slope": "YoY Trend Slope",
   "YTD": "YTD",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 } as const;
 
 import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

@@ -1725,6 +1725,8 @@ export const vi: Record<keyof typeof en, string> = {
   "YoY Growth": "Tăng trưởng hàng năm",
   "YoY Trend Slope": "Độ dốc xu hướng hàng năm",
   "YTD": "đầu năm",
+  "Load More": "Load More",
+  "Loading...": "Loading...",
 };
 
 import { gapEvidenceWorkflowViStrings } from "./gap-evidence-workflow";
