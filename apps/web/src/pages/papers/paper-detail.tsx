@@ -347,9 +347,8 @@ export function PaperDetailPage() {
   const canUploadPdf = pdfPanel.canUploadPdf;
   const shouldShowPdfPanel = pdfPanel.shouldShowPanel;
   const showReadPdfAction = shouldShowReadPdfAction(paper, canDownloadPdf);
-  const displayPaperStatus = pdfPanel.isExternalPdf
-    ? "downloaded"
-    : paper.paperStatus ?? (paper.pdfPath ? "downloaded" : "not-downloaded");
+  const displayPaperStatus =
+    paper.paperStatus ?? (paper.pdfPath || pdfPanel.isExternalPdf ? "downloaded" : "not-downloaded");
   const visibleAuthors = showAllAuthors ? paper.authors : paper.authors.slice(0, 8);
 
   const displayTitle = showTranslation && translation ? translation.translatedTitle : paper.title;
