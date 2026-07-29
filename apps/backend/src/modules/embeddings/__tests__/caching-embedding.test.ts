@@ -17,7 +17,13 @@ import type { EmbeddingProvider } from "../embedding.provider.js";
 
 function fakeInner(vec: number[]): EmbeddingProvider & { embed: ReturnType<typeof vi.fn> } {
   const embed = vi.fn(async () => vec);
-  return { modelName: "test-model", dimensions: vec.length, embed, embedBatch: vi.fn(async () => []) };
+  return {
+    modelName: "test-model",
+    modelVersion: "1",
+    dimensions: vec.length,
+    embed,
+    embedBatch: vi.fn(async () => []),
+  };
 }
 
 describe("CachingEmbeddingProvider", () => {
@@ -48,7 +54,7 @@ describe("CachingEmbeddingProvider", () => {
   it("ignores a cached vector whose dimension no longer matches the model", async () => {
     const inner = fakeInner([1, 2, 3, 4]); // model now 4-dim
     const provider = new CachingEmbeddingProvider(inner);
-    store.set('emb:test-model:"q"', [9, 9]); // stale 2-dim entry
+    store.set('emb:test-model:1:4:"q"', [9, 9]); // stale 2-dim entry
 
     const vec = await provider.embed("q");
 

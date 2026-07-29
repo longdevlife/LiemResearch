@@ -44,7 +44,10 @@ interface Evaluation {
   const [evaluating, setEvaluating] = useState(false);
 
   useEffect(() => {
-    if (lazy || !targetId) return;
+    if (lazy || !targetId || !enabled) {
+      setLoading(false);
+      return;
+    }
     api
       .get(`/quality/${targetKind}/${targetId}`)
       .then((res) => {
@@ -52,7 +55,7 @@ interface Evaluation {
       })
       .catch(() => {}) // no cached eval / not accessible — show the empty state
       .finally(() => setLoading(false));
-  }, [targetKind, targetId, lazy]);
+  }, [targetKind, targetId, lazy, enabled]);
 
   const handleEvaluate = async () => {
     setEvaluating(true);
@@ -129,7 +132,7 @@ interface Evaluation {
             <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
               {evaluation.overall.toFixed(1)}
             </span>
-            <span className="text-[11px] text-slate-500">/ 5 — {t("Overall AI Score")}</span>
+            <span className="text-[11px] text-slate-500">/ 5 — {t("Abstract-only advisory score")}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {dims.map((d) => (
@@ -145,7 +148,7 @@ interface Evaluation {
             </p>
           )}
           <p className="text-[10px] text-slate-400">
-            {t("Advisory score only; does not affect indexing decisions.")}
+            {t("Based on title and abstract only. Advisory score; it does not affect indexing decisions.")}
           </p>
         </div>
       ) : (

@@ -10,11 +10,15 @@ export function useBookmarks(options?: { enabled?: boolean }) {
   });
 }
 
-export function useBookmarkStatus(targetKind: "paper" | "report", targetId: string | undefined) {
+export function useBookmarkStatus(
+  targetKind: "paper" | "report",
+  targetId: string | undefined,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: ["bookmark-status", targetKind, targetId],
     queryFn: () => bookmarksApi.checkStatus(targetKind, targetId!),
-    enabled: !!targetId,
+    enabled: !!targetId && (options?.enabled ?? true),
   });
 }
 

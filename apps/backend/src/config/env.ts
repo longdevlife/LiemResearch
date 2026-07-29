@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
 
   MONGODB_URI: z.string().url().or(z.string().startsWith("mongodb")),
+  MONGODB_VECTOR_INDEX_NAME: z.string().min(1).default("paper_vector_index"),
   // Read only by explicit migration scripts. The running API and workers always
   // use MONGODB_URI, so an old database cannot accidentally remain on the
   // normal runtime path after cutover.
@@ -54,6 +55,7 @@ const EnvSchema = z.object({
   GEMINI_MODEL_FAST: z.string().default("gemini-2.5-flash"),
   GEMINI_MODEL_DEEP: z.string().default("gemini-2.5-flash"),
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
+  GEMINI_EMBEDDING_VERSION: z.string().min(1).default("1"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
   // Project Chat — only the project chatbot uses this pluggable provider for now.
@@ -128,6 +130,7 @@ const EnvSchema = z.object({
   // v2 — paper comparison (one cached LLM call; capped to bound tokens).
   COMPARE_MAX_PAPERS: z.coerce.number().int().min(2).max(4).default(4),
   COMPARE_PROMPT_VERSION: z.string().default("compare-v2"),
+  COMPARE_MAX_PER_HOUR: z.coerce.number().int().positive().default(20),
   // Phase D — Function Calling
   DEEP_ANALYSIS_MAX_TURNS: z.coerce.number().int().min(1).max(10).default(5),
   DEEP_ANALYSIS_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
@@ -145,6 +148,7 @@ const EnvSchema = z.object({
   // Per-IP cap on rerank=true (the LLM path) — /search is public, so this
   // throttle stops an unauthenticated loop from draining the Gemini quota.
   RERANK_MAX_PER_HOUR: z.coerce.number().int().positive().default(30),
+  SEMANTIC_SEARCH_MAX_PER_MINUTE: z.coerce.number().int().positive().default(60),
 
   // Quality & Feedback — per-user/hour cap on the on-demand LLM-judge (a generate call).
   QUALITY_EVAL_MAX_PER_HOUR: z.coerce.number().int().positive().default(20),

@@ -163,6 +163,12 @@ const paperSchema = new Schema(
     /** Vector embedding for Atlas Vector Search. 768 dim from gemini-embedding-2.
      *  Populated in Phase B; select:false so list queries don't carry vectors. */
     embedding: { type: [Number], default: undefined, select: false },
+    /** Provenance lets the worker identify vectors produced by an obsolete
+     * model/configuration and backfill them without deleting legacy data. */
+    embeddingModel: { type: String, default: undefined, select: false },
+    embeddingVersion: { type: String, default: undefined, select: false },
+    embeddingDimensions: { type: Number, default: undefined, select: false },
+    embeddingUpdatedAt: { type: Date, default: undefined, select: false },
     /** OpenAlex IDs this paper cites (referenced_works). select:false — heavy. */
     referencedWorks: { type: [String], default: [], select: false },
     /** OpenAlex IDs algorithmically related to this paper. select:false — heavy. */

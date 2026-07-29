@@ -3,6 +3,7 @@ import { projectService } from "../project.service.js";
 import { ProjectModel } from "../models/project.model.js";
 import { AppError } from "../../../common/exceptions/app-error.js";
 import mongoose from "mongoose";
+import { PaperModel } from "../../papers/models/paper.model.js";
 
 // Mock the Mongoose model
 vi.mock("../models/project.model.js", () => {
@@ -16,6 +17,12 @@ vi.mock("../models/project.model.js", () => {
     }
   };
 });
+
+vi.mock("../../papers/models/paper.model.js", () => ({
+  PaperModel: {
+    exists: vi.fn(),
+  },
+}));
 
 describe("ProjectService", () => {
   const userId = new mongoose.Types.ObjectId().toString();
@@ -174,6 +181,42 @@ describe("ProjectService", () => {
       vi.mocked(ProjectModel.findById).mockResolvedValue(mockProject as any);
 
       await expect(projectService.deleteProject(projectId, userId)).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("addPaperToProject", () => {
+    it("adds only an active, visible paper", async () => {
+      const paperId = new mongoose.Types.ObjectId().toString();
+      vi.mocked(ProjectModel.findById).mockResolvedValue({
+        _id: projectId,
+        ownerId: userId,
+        members: [],
+      } as any);
+      vi.mocked(PaperModel.exists).mockResolvedValue({ _id: paperId } as any);
+      vi.mocked(ProjectModel.findOneAndUpdate).mockResolvedValue({
+        _id: projectId,
+        papers: [{ targetId: paperId, targetKind: "Paper" }],
+      } as any);
+
+      const result = await projectService.addPaperToProject(projectId, paperId, userId);
+
+      expect(result).toBeDefined();
+      expect(PaperModel.exists).toHaveBeenCalledWith({ _id: paperId, dataStatus: "active" });
+    });
+
+    it("rejects a missing or non-active paper", async () => {
+      const paperId = new mongoose.Types.ObjectId().toString();
+      vi.mocked(ProjectModel.findById).mockResolvedValue({
+        _id: projectId,
+        ownerId: userId,
+        members: [],
+      } as any);
+      vi.mocked(PaperModel.exists).mockResolvedValue(null);
+
+      await expect(
+        projectService.addPaperToProject(projectId, paperId, userId),
+      ).rejects.toThrow("Paper not found");
+      expect(ProjectModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
   });
 

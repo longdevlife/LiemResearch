@@ -15,6 +15,8 @@ import { formatLanguageName } from "@/utils/language";
 import { useI18n } from "@/i18n";
 
 const PAGE_SIZE = 10;
+const MIN_PUBLICATION_YEAR = 1900;
+const CURRENT_YEAR = new Date().getFullYear();
 
 const SCOPE_FILTER_KEYS = [
   "paperKinds",
@@ -65,6 +67,19 @@ function parseCsvParam(params: URLSearchParams, key: string): string[] {
   return raw.split(",").map((value) => value.trim()).filter(Boolean);
 }
 
+function getRequestErrorMessage(error: unknown): string {
+  if (typeof error !== "object" || error === null) {
+    return "Search is temporarily unavailable. Please try again.";
+  }
+  const candidate = error as {
+    response?: { data?: { error?: { message?: string } } };
+    message?: string;
+  };
+  return candidate.response?.data?.error?.message
+    || candidate.message
+    || "Search is temporarily unavailable. Please try again.";
+}
+
 export function SearchPage() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,10 +92,10 @@ export function SearchPage() {
     () => (searchParams.get("mode") as "semantic" | "keyword") || "semantic"
   );
   const [yearFrom, setYearFrom] = useState<string>(
-    () => searchParams.get("yearFrom") || "1900"
+    () => searchParams.get("yearFrom") || String(MIN_PUBLICATION_YEAR)
   );
   const [yearTo, setYearTo] = useState<string>(
-    () => searchParams.get("yearTo") || "2026"
+    () => searchParams.get("yearTo") || String(CURRENT_YEAR)
   );
   const [openAccessOnly, setOpenAccessOnly] = useState<boolean>(
     () => searchParams.get("openAccess") === "true"
@@ -125,7 +140,7 @@ export function SearchPage() {
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (yearFrom !== "1900" || yearTo !== "2026") count += 1;
+    if (yearFrom !== String(MIN_PUBLICATION_YEAR) || yearTo !== String(CURRENT_YEAR)) count += 1;
     if (openAccessOnly) count += 1;
     if (searchMode === "semantic" && aiScoreThreshold > 0) count += 1;
     count += activeScopeFilterCount;
@@ -228,34 +243,46 @@ export function SearchPage() {
   };
 
   // Server-side pagination + filters. No more POOL_SIZE or client slicing.
-  const browse = usePapers({
-    page,
-    pageSize: PAGE_SIZE,
-    q: searchMode === "keyword" ? q : undefined,
-    ...filterParams,
-  });
+  const browse = usePapers(
+    {
+      page,
+      pageSize: PAGE_SIZE,
+      q: searchMode === "keyword" ? q : undefined,
+      ...filterParams,
+    },
+    { enabled: !isSemanticSearchActive },
+  );
 
-  const search = useSearch({
-    q,
-    page,
-    pageSize: PAGE_SIZE,
-    ...filterParams,
-    minScore: aiScoreThreshold > 0 ? aiScoreThreshold : undefined,
-    rerank: isSemanticSearchActive ? rerank : undefined, // S3: Wire rerank param
-  });
+  const search = useSearch(
+    {
+      q,
+      page,
+      pageSize: PAGE_SIZE,
+      ...filterParams,
+      minScore: aiScoreThreshold > 0 ? aiScoreThreshold : undefined,
+      rerank: isSemanticSearchActive ? rerank : undefined,
+    },
+    { enabled: isSemanticSearchActive },
+  );
 
-  const data = isSemanticSearchActive ? search.data : browse.data;
-  const isLoading = isSemanticSearchActive ? search.isLoading : browse.isLoading;
+  const activeQuery = isSemanticSearchActive ? search : browse;
+  const data = activeQuery.data;
+  const isLoading = activeQuery.isLoading;
+  const isError = activeQuery.isError;
+  const requestError = activeQuery.error;
   const papers = (data?.papers ?? []) as (Paper & {
     score?: number;
     rerankScore?: number;
     taxonomyBoostScore?: number;
   })[];
   const meta = data?.meta;
+  const resultMode = isSemanticSearchActive && meta && "mode" in meta
+    ? meta.mode
+    : undefined;
   const totalPages = meta?.totalPages ?? 1;
   const safePage = Math.min(Math.max(1, page), totalPages);
 
-  const { data: bookmarks } = useBookmarks();
+  const { data: bookmarks } = useBookmarks({ enabled: Boolean(currentUser) });
 
   const bookmarkedPaperIds = useMemo(() => {
     if (!bookmarks) return new Set<string>();
@@ -317,8 +344,8 @@ export function SearchPage() {
 
   const yearlyDistribution = useMemo(() => {
     const map = new Map<number, number>();
-    const from = parseInt(yearFrom, 10) || 1900;
-    const to = parseInt(yearTo, 10) || 2026;
+    const from = parseInt(yearFrom, 10) || MIN_PUBLICATION_YEAR;
+    const to = parseInt(yearTo, 10) || CURRENT_YEAR;
     for (let y = from; y <= to; y++) {
       map.set(y, 0);
     }
@@ -349,8 +376,8 @@ export function SearchPage() {
   }, [setSearchParams]);
 
   const handleClearAll = useCallback(() => {
-    setYearFrom("1900");
-    setYearTo("2026");
+    setYearFrom(String(MIN_PUBLICATION_YEAR));
+    setYearTo(String(CURRENT_YEAR));
     setOpenAccessOnly(false);
     setJournalTypes([]);
     setPrimaryProvider("all");
@@ -374,6 +401,7 @@ export function SearchPage() {
           <div className="flex-1 min-w-0 flex items-center px-3 py-1 gap-2.5">
             <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0" />
             <input
+              data-testid="paper-search-input"
               type="text"
               placeholder={
                 searchMode === "semantic"
@@ -440,8 +468,8 @@ export function SearchPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setYearFrom("1900");
-                          setYearTo("2026");
+                          setYearFrom(String(MIN_PUBLICATION_YEAR));
+                          setYearTo(String(CURRENT_YEAR));
                           setOpenAccessOnly(false);
                           setAiScoreThreshold(0);
                           resetPage();
@@ -466,8 +494,8 @@ export function SearchPage() {
                           </div>
                           <input
                             type="range"
-                            min="1900"
-                            max="2026"
+                            min={MIN_PUBLICATION_YEAR}
+                            max={CURRENT_YEAR}
                             value={yearFrom}
                             onChange={(e) => {
                               const val = e.target.value;
@@ -487,8 +515,8 @@ export function SearchPage() {
                           </div>
                           <input
                             type="range"
-                            min="1900"
-                            max="2026"
+                            min={MIN_PUBLICATION_YEAR}
+                            max={CURRENT_YEAR}
                             value={yearTo}
                             onChange={(e) => {
                               const val = e.target.value;
@@ -541,11 +569,11 @@ export function SearchPage() {
                       </select>
                     </div>
 
-                    {/* 1.3 AI Score Threshold (Only show in Semantic mode) */}
+                    {/* Semantic similarity threshold (only applies to vector search). */}
                     {searchMode === "semantic" && (
                       <div className="mb-2 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
                         <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
-                          <span>AI Score Threshold</span>
+                          <span>Semantic Match Threshold</span>
                           <span className="font-extrabold text-blue-700 dark:text-blue-450">{aiScoreThreshold.toFixed(2)}+</span>
                         </div>
                         <input
@@ -679,9 +707,10 @@ export function SearchPage() {
 
             {/* Right side: Real actions */}
             <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto border-t border-slate-100 sm:border-0 pt-2 sm:pt-0 dark:border-slate-800/60 mt-1 sm:mt-0">
-              {/* Dropdown: Mode selection (Boolean/Semantic) */}
+              {/* Dropdown: keyword or semantic retrieval mode. */}
               <div className="relative">
                 <button
+                  data-testid="search-mode-menu"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -694,13 +723,14 @@ export function SearchPage() {
                   ) : (
                     <Search className="w-3.5 h-3.5 text-slate-455 shrink-0" />
                   )}
-                  <span>{searchMode === "semantic" ? "Semantic" : "Boolean"}</span>
+                  <span>{searchMode === "semantic" ? "Semantic" : "Keyword"}</span>
                   <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${isOpenModeDropdown ? "rotate-180" : ""}`} />
                 </button>
 
                 {isOpenModeDropdown && (
                   <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl ring-1 ring-slate-900/10 dark:ring-white/10 z-50 p-1 animate-fadeIn duration-150">
                     <button
+                      data-testid="search-mode-keyword"
                       type="button"
                       onClick={() => {
                         setSearchMode("keyword");
@@ -710,12 +740,13 @@ export function SearchPage() {
                       className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-lg flex flex-col gap-0.5 transition-colors"
                     >
                       <div className="flex items-center justify-between font-bold">
-                        <span>Boolean</span>
+                        <span>Keyword</span>
                         {searchMode === "keyword" && <Check className="w-3.5 h-3.5 text-blue-600" />}
                       </div>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Keyword search with operators</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Title, abstract, phrase, and DOI matching</span>
                     </button>
                     <button
+                      data-testid="search-mode-semantic"
                       type="button"
                       onClick={() => {
                         setSearchMode("semantic");
@@ -739,6 +770,7 @@ export function SearchPage() {
 
               {/* Expansion toggle (AI Rerank toggle) */}
               <button
+                data-testid="ai-rerank-toggle"
                 type="button"
                 onClick={() => {
                   if (searchMode === "semantic") {
@@ -869,8 +901,8 @@ export function SearchPage() {
               </div>
               <input
                 type="range"
-                min="1900"
-                max="2026"
+                min={MIN_PUBLICATION_YEAR}
+                max={CURRENT_YEAR}
                 value={yearFrom}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -890,8 +922,8 @@ export function SearchPage() {
               </div>
               <input
                 type="range"
-                min="1900"
-                max="2026"
+                min={MIN_PUBLICATION_YEAR}
+                max={CURRENT_YEAR}
                 value={yearTo}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -963,7 +995,10 @@ export function SearchPage() {
             >
               <option value="all">All Sources</option>
               <option value="openalex">OpenAlex</option>
+              <option value="semanticscholar">Semantic Scholar</option>
               <option value="crossref">Crossref</option>
+              <option value="arxiv">arXiv</option>
+              <option value="user">User submissions</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
@@ -999,11 +1034,11 @@ export function SearchPage() {
           </p>
         </div>
 
-        {/* AI Score Threshold */}
+        {/* Semantic similarity threshold */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              AI SCORE THRESHOLD
+              SEMANTIC MATCH THRESHOLD
             </label>
             <span className="text-xs font-bold text-blue-700 dark:text-blue-500">
               {aiScoreThreshold.toFixed(2)}+
@@ -1104,7 +1139,7 @@ export function SearchPage() {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 {isLoading ? "Searching..." : hasQuery ? `Results for "${q}"` : "Browse papers"}
               </h1>
-              {(meta as any)?.mode === "semantic+rerank" && !isLoading && (
+              {resultMode === "semantic+rerank" && !isLoading && (
                 <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800 uppercase tracking-wide select-none">
                   AI Reranked
                 </span>
@@ -1146,9 +1181,28 @@ export function SearchPage() {
         </div>
 
         {/* Results List */}
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="paper-search-results">
           {isLoading ? (
             <div className="py-8 text-center text-slate-500">Loading papers...</div>
+          ) : isError ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-5 py-8 text-center dark:border-red-900/60 dark:bg-red-950/20"
+            >
+              <p className="font-semibold text-red-800 dark:text-red-300">Search could not be completed.</p>
+              <p className="mt-1 text-sm text-red-700/80 dark:text-red-300/80">
+                {getRequestErrorMessage(requestError)}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => void activeQuery.refetch()}
+              >
+                Try again
+              </Button>
+            </div>
           ) : papers.length === 0 ? (
             <div className="py-8 text-center text-slate-500">
               {hasQuery ? "No papers found matching the filters." : "Browse state is empty. Enter a search query to explore."}
@@ -1171,7 +1225,7 @@ export function SearchPage() {
                 keywords={paper.keywords?.map(k => k.keywordName) || []}
                 isBookmarked={bookmarkedPaperIds.has(paper.id)}
                 bookmarkId={bookmarkIdMap.get(paper.id)}
-                showBookmark={true}
+                showBookmark={Boolean(currentUser)}
                 publicationYear={paper.publicationYear}
                 citationCount={paper.citationCount}
                 primaryProvider={paper.primaryProvider}

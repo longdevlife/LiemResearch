@@ -3,7 +3,7 @@ import { searchApi, type SearchParams } from "../api/search.api";
 
 /** Semantic search hook. Only fires when there is a query (the backend
  *  requires a non-empty `q`). */
-export function useSearch(params: SearchParams) {
+export function useSearch(params: SearchParams, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
 
   return useQuery({
@@ -17,6 +17,6 @@ export function useSearch(params: SearchParams) {
       }
       return res;
     },
-    enabled: params.q.trim().length > 0,
+    enabled: params.q.trim().length > 0 && (options?.enabled ?? true),
   });
 }

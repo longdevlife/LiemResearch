@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectsApi } from "../api/projects.api";
 import type { CreateProjectRequest, UpdateProjectRequest, AddProjectMemberRequest, AddProjectPaperRequest } from "@trend/shared-types";
 
-export function useProjects() {
+export function useProjects(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["projects"],
     queryFn: projectsApi.list,
+    enabled: options?.enabled ?? true,
   });
 }
 

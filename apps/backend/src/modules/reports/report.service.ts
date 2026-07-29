@@ -158,7 +158,7 @@ export const reportService = {
   },
 
   /** The user's own reports (or project reports), newest first — WITHOUT heavy fields. */
-  async list(userId: string, { page, pageSize, projectId }: ListReportsQuery) {
+  async list(userId: string, { page, pageSize, projectId, paperId }: ListReportsQuery) {
     let filter: Record<string, any> = { userId };
     
     if (projectId) {
@@ -169,6 +169,7 @@ export const reportService = {
       if (!hasAccess) throw AppError.notFound("Project not found");
       filter = { projectId }; // Show all reports for this project
     }
+    if (paperId) filter.groundingPaperIds = paperId;
 
     const [docs, total] = await Promise.all([
       ReportModel.find(filter)

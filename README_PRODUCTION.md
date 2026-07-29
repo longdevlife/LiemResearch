@@ -161,6 +161,22 @@ Replace **every value enclosed in angle brackets**, including:
 Required runtime secrets include MongoDB, the self-hosted Redis password, two different JWT secrets,
 Gemini, Google OAuth, and R2 when `STORAGE_PROVIDER=r2`.
 
+The Jenkins browser gate also requires a dedicated low-privilege E2E account
+with enough test credits to run one AI rerank, and one stable paper fixture.
+The fixture must be active, embedded, discoverable by `E2E_SEARCH_QUERY`,
+contain an abstract, and expose a readable PDF:
+
+```dotenv
+E2E_USER_EMAIL=<dedicated-test-account>
+E2E_USER_PASSWORD=<dedicated-test-password>
+E2E_PAPER_ID=<stable-paper-object-id>
+E2E_SEARCH_QUERY=<query-that-returns-that-paper>
+E2E_TRANSLATION_LANGUAGE=vi
+```
+
+Do not use an administrator account. These values stay in the protected Jenkins
+credential and are never baked into the web image.
+
 Redis runs inside the private Docker network with AOF persistence. Production
 must use:
 
@@ -252,7 +268,22 @@ VITE_API_BASE=https://api.paperlens.uk/api/v1
 
 The backend candidate must pass `/ready` before the live API container is
 replaced. Worker containers must remain running and all six required Redis
-heartbeats must be fresh before the image is tagged `latest`.
+heartbeats must be fresh before the image is tagged `latest`. Jenkins also
+creates and validates `paper_vector_index_v2` before cutover. This index
+pre-filters year, status, paper type, access status, provider, source, language,
+citation range, and OpenAlex taxonomy fields so narrow semantic searches do not
+lose relevant papers inside a fixed candidate window.
+
+After the public smoke check, the Playwright browser gate exercises the real
+production workflow:
+
+```text
+Login -> Keyword Search -> Semantic Search -> AI Rerank
+      -> Paper Detail -> Read PDF -> Translate Abstract
+```
+
+The gate runs in an immutable Playwright Docker image and retains traces,
+screenshots, and video when it fails.
 
 ## 8. Deploy
 
@@ -263,7 +294,9 @@ heartbeats must be fresh before the image is tagged `latest`.
 5. Confirm the candidate backend passes `/ready`.
 6. Confirm all six worker containers are running and Jenkins reports
    `Verified 6 fresh worker heartbeats.`
-7. Confirm the build ends with `Finished: SUCCESS`.
+7. Confirm **Ensure filtered vector index** and **Browser E2E smoke** pass.
+8. Confirm **Promote verified images** runs only after browser E2E passes.
+9. Confirm the build ends with `Finished: SUCCESS`.
 
 Do not treat a green web page alone as a successful deployment. Reports and
 gaps require their workers, while most AI features require Redis queues.

@@ -1,10 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { papersApi, type PapersListParams } from "../api/papers.api";
 
-export function usePapers(params: PapersListParams) {
+export function usePapers(params: PapersListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["papers", params],
     queryFn: () => papersApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -20,6 +21,14 @@ export function usePaperReferences(id: string | undefined) {
   return useQuery({
     queryKey: ["paperReferences", id],
     queryFn: () => papersApi.references(id!),
+    enabled: !!id,
+  });
+}
+
+export function usePaperRelatedWorks(id: string | undefined) {
+  return useQuery({
+    queryKey: ["paperRelatedWorks", id],
+    queryFn: () => papersApi.related(id!),
     enabled: !!id,
   });
 }

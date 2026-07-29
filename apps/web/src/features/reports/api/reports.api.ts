@@ -9,7 +9,7 @@ import type {
 } from "@trend/shared-types";
 
 export const reportsApi = {
-  async list(params?: { projectId?: string }): Promise<ReportListItem[]> {
+  async list(params?: { projectId?: string; paperId?: string }): Promise<ReportListItem[]> {
     const res = await api.get(API_ROUTES.reports.list, { params });
     return res.data.data;
   },

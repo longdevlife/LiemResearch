@@ -84,7 +84,9 @@ async function buildPromptForTarget(
     return buildReportJudgePrompt(report.query, report.markdown, evidence);
   }
   if (kind === "paper") {
-    const paper = await PaperModel.findById(id).select("title abstractText").lean();
+    const paper = await PaperModel.findOne({ _id: id, dataStatus: "active" })
+      .select("title abstractText")
+      .lean();
     if (!paper) throw AppError.notFound("Paper not found");
     if (!paper.abstractText || !paper.abstractText.trim()) {
       throw AppError.badRequest("Bài không đủ dữ liệu để AI chấm (thiếu abstract).");
@@ -108,7 +110,7 @@ async function assertCanAccess(userId: string, kind: QualityTargetKind, id: stri
     const exists = await ResearchGapModel.exists({ _id: id });
     if (!exists) throw AppError.notFound("Research gap not found");
   } else {
-    const exists = await PaperModel.exists({ _id: id });
+    const exists = await PaperModel.exists({ _id: id, dataStatus: "active" });
     if (!exists) throw AppError.notFound("Paper not found");
   }
 }
@@ -206,7 +208,7 @@ export const qualityService = {
       throw AppError.forbidden("Administrators are not allowed to rate papers/reports/gaps");
     }
     if (targetKind === "paper") {
-      const paper = await PaperModel.findById(targetId).lean();
+      const paper = await PaperModel.findOne({ _id: targetId, dataStatus: "active" }).lean();
       if (!paper) {
         throw AppError.notFound("Paper not found");
       }

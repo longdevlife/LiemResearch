@@ -14,6 +14,7 @@ import { useProjects } from "@/features/projects/hooks/use-projects";
 import { projectsApi } from "@/features/projects/api/projects.api";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 
 export interface AddToProjectDropdownProps {
   paperId: string;
@@ -21,7 +22,8 @@ export interface AddToProjectDropdownProps {
 }
 
 export function AddToProjectDropdown({ paperId, children }: AddToProjectDropdownProps) {
-  const { data: projects, isLoading } = useProjects();
+  const currentUser = useAuthStore((state) => state.user);
+  const { data: projects, isLoading } = useProjects({ enabled: Boolean(currentUser) });
   const queryClient = useQueryClient();
   
   const addMutation = useMutation({
@@ -42,6 +44,8 @@ export function AddToProjectDropdown({ paperId, children }: AddToProjectDropdown
       return String(id) === String(paperId);
     })
   );
+
+  if (!currentUser) return null;
 
   // If the user has projects but the paper is already in ALL of them, hide the button completely.
   if (!isLoading && projects && projects.length > 0 && availableProjects?.length === 0) {

@@ -46,13 +46,6 @@ export function effectiveRelevanceScore(
   return round2(Math.min(1, Number(paper.score ?? 0) + Number(paper.taxonomyBoostScore ?? 0)));
 }
 
-export function effectiveRerankScore(
-  paper: Pick<ScoredPaper, "score" | "rerankScore" | "taxonomyBoostScore">,
-): number {
-  const base = Number(paper.rerankScore ?? paper.score ?? 0);
-  return round2(Math.min(1, base + Number(paper.taxonomyBoostScore ?? 0)));
-}
-
 function matchingWeight(query: string, value: string | undefined, weight: number): number {
   const term = normalize(value);
   if (!term || term.length < 3) return 0;

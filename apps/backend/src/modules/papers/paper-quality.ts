@@ -35,7 +35,10 @@ function hasValue(value: string | undefined | null): boolean {
 
 function countWords(value: string | undefined | null): number {
   if (!value) return 0;
-  return value.trim().split(/\s+/).filter((word) => /[a-z0-9]/i.test(word)).length;
+  return value
+    .trim()
+    .split(/\s+/u)
+    .filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
 }
 
 function scoreMetadata(paper: any): number {

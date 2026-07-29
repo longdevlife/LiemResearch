@@ -13,6 +13,8 @@ pipeline {
     PROXY_NETWORK = 'nginx-network'
     BACKEND_IMAGE = 'user1-liemresearch-backend'
     WEB_IMAGE = 'user1-liemresearch-web'
+    E2E_IMAGE = 'user1-liemresearch-e2e'
+    PAPER_VECTOR_INDEX_NAME = 'paper_vector_index_v2'
     BACKEND_CONTAINER = 'user1-liemresearch-backend'
     WEB_CONTAINER = 'user1-liemresearch-web'
     REDIS_IMAGE = 'redis:7-alpine'
@@ -20,6 +22,8 @@ pipeline {
     REDIS_VOLUME = 'user1-liemresearch-redis-data'
     LIBRETRANSLATE_IMAGE = 'libretranslate/libretranslate:v1.9.6'
     LIBRETRANSLATE_CONTAINER = 'user1-liemresearch-libretranslate'
+    LIBRETRANSLATE_SHARE_VOLUME = 'user1-liemresearch-libretranslate-share'
+    LIBRETRANSLATE_CACHE_VOLUME = 'user1-liemresearch-libretranslate-cache'
   }
 
   stages {
@@ -41,6 +45,7 @@ pipeline {
             --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
             -t "$WEB_IMAGE:$IMAGE_TAG" \
             -f Dockerfile.web .
+          docker build --pull -t "$E2E_IMAGE:$IMAGE_TAG" -f Dockerfile.e2e .
           docker pull "$REDIS_IMAGE"
           docker pull "$LIBRETRANSLATE_IMAGE"
         '''
@@ -74,6 +79,8 @@ pipeline {
           fi
 
           docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 || docker volume create "$REDIS_VOLUME"
+          docker volume inspect "$LIBRETRANSLATE_SHARE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_SHARE_VOLUME"
+          docker volume inspect "$LIBRETRANSLATE_CACHE_VOLUME" >/dev/null 2>&1 || docker volume create "$LIBRETRANSLATE_CACHE_VOLUME"
           docker rm -f "$REDIS_CONTAINER" >/dev/null 2>&1 || true
           docker run -d \
             --name "$REDIS_CONTAINER" \
@@ -105,11 +112,15 @@ pipeline {
             --restart unless-stopped \
             --network "$APP_NETWORK" \
             --network-alias libretranslate \
+            -v "$LIBRETRANSLATE_SHARE_VOLUME:/home/libretranslate/.local/share" \
+            -v "$LIBRETRANSLATE_CACHE_VOLUME:/home/libretranslate/.local/cache" \
             -e LT_LOAD_ONLY=en,vi,es,fr,de,pt,zh,ja,ko,ru,id \
             "$LIBRETRANSLATE_IMAGE"
 
           translation_ready=0
-          for attempt in $(seq 1 120); do
+          # A first start downloads language models. Persistent volumes make later
+          # deployments fast, while this bound keeps a cold server deterministic.
+          for attempt in $(seq 1 300); do
             if docker exec "$LIBRETRANSLATE_CONTAINER" \
               python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages', timeout=3)"; then
               translation_ready=1
@@ -123,6 +134,34 @@ pipeline {
             exit 1
           fi
         '''
+      }
+    }
+
+    stage('Ensure filtered vector index') {
+      steps {
+        withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
+          sh '''
+            set -eu
+            umask 077
+            printf '%s' "$BACKEND_ENV_B64" | base64 -d > .env.runtime
+
+            docker run --rm \
+              --network "$APP_NETWORK" \
+              --env-file .env.runtime \
+              -e NODE_ENV=production \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
+              "$BACKEND_IMAGE:$IMAGE_TAG" \
+              pnpm --filter backend mongo:ensure-paper-vector-index-v2
+
+            docker run --rm \
+              --network "$APP_NETWORK" \
+              --env-file .env.runtime \
+              -e NODE_ENV=production \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
+              "$BACKEND_IMAGE:$IMAGE_TAG" \
+              pnpm --filter backend mongo:vector-smoke
+          '''
+        }
       }
     }
 
@@ -143,6 +182,7 @@ pipeline {
               -e NODE_ENV=production \
               -e PORT=4000 \
               -e CORS_ORIGIN=https://paperlens.uk \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
               -e GOOGLE_CALLBACK_URL=https://api.paperlens.uk/api/v1/auth/google/callback \
               -e TRANSLATION_PROVIDER=libretranslate \
               -e LIBRETRANSLATE_URL=http://libretranslate:5000 \
@@ -175,6 +215,7 @@ pipeline {
               -e NODE_ENV=production \
               -e PORT=4000 \
               -e CORS_ORIGIN=https://paperlens.uk \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
               -e GOOGLE_CALLBACK_URL=https://api.paperlens.uk/api/v1/auth/google/callback \
               -e TRANSLATION_PROVIDER=libretranslate \
               -e LIBRETRANSLATE_URL=http://libretranslate:5000 \
@@ -232,6 +273,7 @@ pipeline {
                 --network "$APP_NETWORK" \
                 --env-file .env.runtime \
                 -e NODE_ENV=production \
+                -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
                 "$BACKEND_IMAGE:$IMAGE_TAG" \
                 pnpm --filter backend "$command"
             done
@@ -254,8 +296,6 @@ pipeline {
               "$BACKEND_IMAGE:$IMAGE_TAG" \
               pnpm --filter backend workers:verify:heartbeats
 
-            docker tag "$BACKEND_IMAGE:$IMAGE_TAG" "$BACKEND_IMAGE:latest"
-            docker tag "$WEB_IMAGE:$IMAGE_TAG" "$WEB_IMAGE:latest"
           '''
         }
       }
@@ -298,10 +338,66 @@ pipeline {
         '''
       }
     }
+
+    stage('Browser E2E smoke') {
+      steps {
+        withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
+          sh '''
+            set -eu
+            umask 077
+            printf '%s' "$BACKEND_ENV_B64" | base64 -d > .env.runtime
+
+            for key in E2E_USER_EMAIL E2E_USER_PASSWORD E2E_PAPER_ID E2E_SEARCH_QUERY; do
+              value="$(grep -m1 "^${key}=" .env.runtime | cut -d= -f2- || true)"
+              if [ -z "$value" ]; then
+                echo "Missing required browser E2E variable: $key"
+                exit 1
+              fi
+              case "$value" in
+                '<'*'>')
+                  echo "Browser E2E variable still contains a placeholder: $key"
+                  exit 1
+                  ;;
+              esac
+            done
+
+            mkdir -p test-results/e2e playwright-report
+            e2e_status=0
+            docker run --rm \
+              --env-file .env.runtime \
+              -e CI=true \
+              -e E2E_BASE_URL=https://paperlens.uk \
+              -v "$WORKSPACE/test-results/e2e:/app/test-results/e2e" \
+              -v "$WORKSPACE/playwright-report:/app/playwright-report" \
+              "$E2E_IMAGE:$IMAGE_TAG" || e2e_status=$?
+
+            docker run --rm \
+              -v "$WORKSPACE/test-results:/artifacts" \
+              "$REDIS_IMAGE" chmod -R a+rX /artifacts
+            docker run --rm \
+              -v "$WORKSPACE/playwright-report:/artifacts" \
+              "$REDIS_IMAGE" chmod -R a+rX /artifacts
+
+            exit "$e2e_status"
+          '''
+        }
+      }
+    }
+
+    stage('Promote verified images') {
+      steps {
+        sh '''
+          set -eu
+          docker tag "$BACKEND_IMAGE:$IMAGE_TAG" "$BACKEND_IMAGE:latest"
+          docker tag "$WEB_IMAGE:$IMAGE_TAG" "$WEB_IMAGE:latest"
+        '''
+      }
+    }
   }
 
   post {
     always {
+      archiveArtifacts artifacts: 'test-results/e2e/**,playwright-report/**', allowEmptyArchive: true
       sh 'rm -f .env.runtime'
     }
     success {

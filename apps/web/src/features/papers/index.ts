@@ -3,6 +3,7 @@ export {
   usePapers,
   usePaper,
   usePaperReferences,
+  usePaperRelatedWorks,
   useTranslatePaper,
   usePaperTranslationCapabilities,
 } from "./hooks/use-papers";

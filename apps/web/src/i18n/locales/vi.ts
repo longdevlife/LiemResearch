@@ -1,7 +1,10 @@
-﻿import { en } from "./en";
+import { en } from "./en";
+import { gapEvidenceWorkflowViStrings } from "./gap-evidence-workflow";
+import { paperDetailIaViStrings } from "./paper-detail-ia";
 
 export const vi: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowViStrings,
+  ...paperDetailIaViStrings,
   "1 research gap": "1 khoảng trống nghiên cứu",
   "{{count}} research gaps from the same analysis": "{{count}} khoảng trống nghiên cứu từ cùng một phân tích",
   "-day period.": "-thời gian ngày.",
@@ -1730,5 +1733,3 @@ export const vi: Record<keyof typeof en, string> = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 };
-
-import { gapEvidenceWorkflowViStrings } from "./gap-evidence-workflow";
