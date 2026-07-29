@@ -22,3 +22,29 @@ export function useTriggerSync() {
     },
   });
 }
+
+export function useEmbeddingStatus(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "embedding-status"],
+    queryFn: adminApi.embeddingStatus,
+    enabled,
+    refetchInterval: 5000,
+  });
+}
+
+export function useTriggerEmbedding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.triggerEmbedding,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "embedding-status"] }),
+  });
+}
+
+export function usePipelineStatus(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "pipeline-status"],
+    queryFn: adminApi.pipelineStatus,
+    enabled,
+    refetchInterval: 10000,
+  });
+}

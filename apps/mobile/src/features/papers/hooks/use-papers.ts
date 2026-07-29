@@ -109,3 +109,14 @@ export function useCancelPaperRequest() {
     },
   });
 }
+
+export function usePaperPdfUrl() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => papersApi.pdfUrl(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+    },
+  });
+}

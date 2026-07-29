@@ -121,4 +121,8 @@ export const papersApi = {
   async cancel(id: string): Promise<void> {
     await api.delete(API_ROUTES.papers.cancel(id));
   },
+  async pdfUrl(id: string): Promise<{ downloadUrl: string; cost: number; isRepeatDownload: boolean }> {
+    const res = await api.get(API_ROUTES.papers.pdfUrl(id));
+    return res.data.data;
+  },
 };

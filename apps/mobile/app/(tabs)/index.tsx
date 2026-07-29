@@ -190,8 +190,12 @@ export default function HomeScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
+            returnKeyType="search"
+            onSubmitEditing={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}` as any)}
           />
-          <Feather name="sliders" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
+          <TouchableOpacity onPress={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}` as any)}>
+            <Feather name="sliders" color={isDark ? "#94A3B8" : "#64748B"} size={18} />
+          </TouchableOpacity>
         </View>
 
         <View className="mb-7">

@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import type { GapSource, GapStatus, ResearchGapItem } from "@trend/shared-types";
+import { AI_CREDIT_COSTS_CLIENT, type GapSource, type GapStatus, type ResearchGapItem } from "@trend/shared-types";
 
 import { useGaps, useAnalyzeGap, useGapAnalysisStatus, usePatchGapStatus } from "@/features/gaps";
+import { useCreditBalance } from "@/features/credits";
 
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
@@ -21,9 +22,9 @@ function ConfidenceBar({ value }: { value: number }) {
   );
 }
 
-function GapCard({ gap, onStatusChange }: { gap: ResearchGapItem; onStatusChange: (id: string, status: "resolved" | "dismissed") => void }) {
+function GapCard({ gap, onStatusChange, onOpen }: { gap: ResearchGapItem; onStatusChange: (id: string, status: "resolved" | "dismissed") => void; onOpen: () => void }) {
   return (
-    <View className="mb-3 rounded-2xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-4">
+    <TouchableOpacity onPress={onOpen} activeOpacity={0.88} className="mb-3 rounded-2xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-4">
       <View className="flex-row items-start justify-between gap-2 mb-2">
         <Text className="flex-1 text-sm font-bold text-foreground dark:text-[#F8FAFC] leading-5" numberOfLines={2}>
           {gap.title}
@@ -62,7 +63,7 @@ function GapCard({ gap, onStatusChange }: { gap: ResearchGapItem; onStatusChange
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -119,15 +120,18 @@ function PollingModal({ analysisId, onClose, onDone }: { analysisId: string; onC
 
 export default function GapsScreen() {
   const router = useRouter();
+  const routeTopic = useLocalSearchParams<{ topic?: string }>().topic ?? "";
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const [topicInput, setTopicInput] = useState("");
+  const [topicInput, setTopicInput] = useState(routeTopic);
   const [searchTopic, setSearchTopic] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<GapStatus>("active");
   const [minConfidenceFilter, setMinConfidenceFilter] = useState<number>(0);
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
+  const [selectedGap, setSelectedGap] = useState<ResearchGapItem>();
+  const creditQuery = useCreditBalance();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTopic.trim()), 400);
@@ -232,6 +236,9 @@ export default function GapsScreen() {
               )}
             </TouchableOpacity>
           </View>
+          <Text className="mt-2 text-[10px] text-amber-500">
+            Costs {AI_CREDIT_COSTS_CLIENT.generate_gaps} credits · available {creditQuery.data?.credits ?? "—"}
+          </Text>
         </View>
 
         {/* Tab filters for active/resolved/dismissed */}
@@ -301,7 +308,7 @@ export default function GapsScreen() {
         ) : gapsData?.data && gapsData.data.length > 0 ? (
           <View>
             {gapsData.data.map((gap) => (
-              <GapCard key={gap.id} gap={gap} onStatusChange={handleStatusChange} />
+              <GapCard key={gap.id} gap={gap} onStatusChange={handleStatusChange} onOpen={() => setSelectedGap(gap)} />
             ))}
             <Text className="text-xs text-muted-foreground dark:text-[#94A3B8] text-right mt-2">
               {gapsData.meta.total} research gap(s) found
@@ -329,6 +336,39 @@ export default function GapsScreen() {
           onDone={handleDonePolling}
         />
       ) : null}
+
+      <Modal visible={!!selectedGap} transparent animationType="slide" onRequestClose={() => setSelectedGap(undefined)}>
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="max-h-[88%] rounded-t-3xl bg-background dark:bg-[#0F1B2D] p-5">
+            <View className="mb-4 flex-row items-start">
+              <Text className="flex-1 pr-3 text-lg font-black text-foreground dark:text-white">{selectedGap?.title}</Text>
+              <TouchableOpacity onPress={() => setSelectedGap(undefined)} className="p-2"><Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} /></TouchableOpacity>
+            </View>
+            <ScrollView>
+              <Text className="text-sm leading-6 text-foreground dark:text-[#CBD5E1]">{selectedGap?.description}</Text>
+              {selectedGap?.rationale ? <Text className="mt-4 border-l-2 border-violet-500 pl-3 text-sm italic leading-6 text-muted-foreground dark:text-[#94A3B8]">{selectedGap.rationale}</Text> : null}
+              <Text className="mb-3 mt-6 text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Validation metrics</Text>
+              <View className="flex-row gap-2">
+                <View className="flex-1 rounded-xl bg-muted dark:bg-[#1A2332] p-3"><Text className="text-[10px] text-muted-foreground">Evidence</Text><Text className="mt-1 font-black text-foreground dark:text-white">{Math.round((selectedGap?.evidenceConfidence ?? selectedGap?.confidence ?? 0) * 100)}%</Text></View>
+                <View className="flex-1 rounded-xl bg-muted dark:bg-[#1A2332] p-3"><Text className="text-[10px] text-muted-foreground">Intersection</Text><Text className="mt-1 font-black text-foreground dark:text-white">{selectedGap?.intersectionCount ?? "N/A"}</Text></View>
+                <View className="flex-1 rounded-xl bg-muted dark:bg-[#1A2332] p-3"><Text className="text-[10px] text-muted-foreground">Growth</Text><Text className="mt-1 font-black text-foreground dark:text-white">{selectedGap?.parentTrend ? `${selectedGap.parentTrend.growthRatePct.toFixed(1)}%` : "N/A"}</Text></View>
+              </View>
+              {selectedGap?.probe ? <Text className="mt-3 text-xs text-[#06B6D4]">{selectedGap.probe.topicA} × {selectedGap.probe.topicB}</Text> : null}
+              <Text className="mb-3 mt-6 text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Grounding papers</Text>
+              {(selectedGap?.supportingPapers ?? []).map((paper) => (
+                <TouchableOpacity key={paper.id} onPress={() => { setSelectedGap(undefined); router.push(`/paper/${paper.id}` as any); }} className="mb-2 rounded-xl border border-border dark:border-[#26334A] p-3">
+                  <Text className="text-xs font-bold text-foreground dark:text-white" numberOfLines={2}>{paper.title}</Text>
+                  <Text className="mt-1 text-[10px] text-muted-foreground dark:text-[#94A3B8]">{paper.publicationYear ?? "Unknown year"} · {paper.citationCount ?? 0} citations</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity onPress={() => router.push(`/reports?topic=${encodeURIComponent(selectedGap?.title ?? "")}` as any)} className="mb-3 mt-4 rounded-xl bg-violet-600 py-3 items-center">
+                <Text className="font-bold text-white">Draft proposal with AI</Text>
+              </TouchableOpacity>
+              <Text className="mb-5 text-center text-[10px] text-muted-foreground dark:text-[#94A3B8]">Balance: {creditQuery.data?.credits ?? "—"} credits</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

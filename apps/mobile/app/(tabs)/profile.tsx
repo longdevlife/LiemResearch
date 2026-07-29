@@ -9,6 +9,7 @@ import { useBookmarks } from "@/features/bookmarks";
 import { useReports } from "@/features/reports";
 import { useAuthStore } from "@/stores/auth-store";
 import { LEVEL_IMAGES, getLevel } from "@/features/rankings";
+import { useCreditBalance } from "@/features/credits";
 
 function SettingsRow({
   icon,
@@ -62,6 +63,7 @@ export default function ProfileScreen() {
   const bookmarksQuery = useBookmarks();
   const reportsQuery = useReports({ page: 1, pageSize: 1 });
   const logoutMutation = useLogout();
+  const creditQuery = useCreditBalance();
   const user = userQuery.data?.user ?? fallbackUser;
   const userLevel = getLevel(user?.points ?? 0);
   const bookmarks = bookmarksQuery.data ?? [];
@@ -118,6 +120,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <TouchableOpacity
+          onPress={() => router.push("/credits" as any)}
+          className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-50 dark:bg-amber-950/30 p-4 flex-row items-center"
+        >
+          <View className="h-11 w-11 rounded-xl bg-amber-500 items-center justify-center">
+            <Feather name="zap" size={20} color="#FFFFFF" />
+          </View>
+          <View className="ml-3 flex-1">
+            <Text className="text-xs font-bold uppercase text-amber-600 dark:text-amber-400">Available credits</Text>
+            <Text className="mt-1 text-2xl font-black text-foreground dark:text-white">{creditQuery.data?.credits ?? user?.credits ?? 0}</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#F59E0B" />
+        </TouchableOpacity>
+
         <View className="mb-6">
           <Text className="text-xs font-bold text-muted-foreground dark:text-[#94A3B8] uppercase mb-2 ml-1">Activity</Text>
           <View className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-2xl overflow-hidden">
@@ -126,6 +142,10 @@ export default function ProfileScreen() {
             <SettingsRow icon="folder" label="Projects" onPress={() => router.push("/projects" as any)} />
             <SettingsRow icon="award" label="Rankings" onPress={() => router.push("/rankings" as any)} />
             <SettingsRow icon="bell" label="Notifications" onPress={() => router.push("/notifications" as any)} />
+            <SettingsRow icon="user" label="Edit profile" onPress={() => router.push("/edit-profile" as any)} />
+            <SettingsRow icon="lock" label="Security" onPress={() => router.push("/security" as any)} />
+            <SettingsRow icon="credit-card" label="Credits & history" value={String(creditQuery.data?.credits ?? user?.credits ?? 0)} onPress={() => router.push("/credits" as any)} />
+            {user?.role === "admin" ? <SettingsRow icon="settings" label="Admin system workbench" onPress={() => router.push("/admin/sync" as any)} /> : null}
           </View>
         </View>
 

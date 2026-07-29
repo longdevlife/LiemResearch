@@ -5,6 +5,8 @@ import type {
   IProject,
   ProjectChatHistoryResponse,
   ProjectChatMessage,
+  ProjectTeamChatHistoryResponse,
+  ProjectTeamChatMessage,
   SendProjectChatMessageResponse,
   UpdateProjectRequest,
 } from "@trend/shared-types";
@@ -92,5 +94,26 @@ export const projectsApi = {
       data: SendProjectChatMessageResponse;
     }>(API_ROUTES.projects.chat.send(projectId), { message });
     return res.data.data;
+  },
+
+  async listTeamChat(projectId: string, limit = 50): Promise<ProjectTeamChatMessage[]> {
+    const res = await api.get<{ success: boolean; data: ProjectTeamChatHistoryResponse }>(
+      API_ROUTES.projects.teamChat.history(projectId),
+      { params: { limit } },
+    );
+    return res.data.data.messages;
+  },
+
+  async sendTeamChat(projectId: string, content: string): Promise<ProjectTeamChatMessage> {
+    const res = await api.post(API_ROUTES.projects.teamChat.send(projectId), { content });
+    return res.data.data.message;
+  },
+
+  async markTeamChatRead(projectId: string, messageId: string): Promise<void> {
+    await api.post(API_ROUTES.projects.teamChat.read(projectId, messageId));
+  },
+
+  async deleteTeamChat(projectId: string, messageId: string): Promise<void> {
+    await api.delete(API_ROUTES.projects.teamChat.delete(projectId, messageId));
   },
 };

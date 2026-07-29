@@ -1,4 +1,10 @@
-import type { AnalyticalReport, CreateReportRequest, ReportListItem } from "@trend/shared-types";
+import type {
+  AnalyticalReport,
+  CreateReportRequest,
+  PreviewReportEvidenceRequest,
+  PreviewReportEvidenceResponse,
+  ReportListItem,
+} from "@trend/shared-types";
 import { API_ROUTES } from "@/constants";
 import { api } from "@/services/api-client";
 
@@ -15,6 +21,11 @@ export const reportsApi = {
 
   async create(payload: CreateReportRequest): Promise<{ id: string; status: string }> {
     const res = await api.post(API_ROUTES.reports.create, payload);
+    return res.data.data;
+  },
+
+  async previewEvidence(payload: PreviewReportEvidenceRequest): Promise<PreviewReportEvidenceResponse> {
+    const res = await api.post(API_ROUTES.reports.evidencePreview, payload);
     return res.data.data;
   },
 

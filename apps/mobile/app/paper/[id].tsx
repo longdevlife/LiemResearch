@@ -6,10 +6,11 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
-import { usePaper, usePaperReferences } from "@/features/papers";
+import { usePaper, usePaperPdfUrl, usePaperReferences } from "@/features/papers";
 import { useAddPaperToProject, useProjects } from "@/features/projects";
 import { useDeleteQualityRating, useEvaluateQuality, useQualityView, useRateQuality } from "@/features/quality";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCreditBalance } from "@/features/credits";
 
 export default function PaperDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +23,8 @@ export default function PaperDetailScreen() {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
   const paperQuery = usePaper(id);
+  const pdfUrl = usePaperPdfUrl();
+  const creditQuery = useCreditBalance();
   const referencesQuery = usePaperReferences(id, activeTab === "references");
   const statusQuery = useBookmarkStatus("paper", id);
   const projectsQuery = useProjects();
@@ -60,7 +63,26 @@ export default function PaperDetailScreen() {
   };
 
   const openFullText = () => {
-    if (paper?.openAccessUrl) Linking.openURL(paper.openAccessUrl);
+    if (!paper || !id) return;
+    if (paper.pdfPath) {
+      const cost = paper.downloadCost ?? 0;
+      Alert.alert(
+        "Download PDF",
+        cost > 0 ? `This download costs ${cost} credits. Available: ${creditQuery.data?.credits ?? currentUser?.credits ?? 0}.` : "Open the uploaded PDF?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: cost > 0 ? `Spend ${cost} credits` : "Open",
+            onPress: () => pdfUrl.mutate(id, {
+              onSuccess: ({ downloadUrl }) => Linking.openURL(downloadUrl),
+              onError: (error: any) => Alert.alert("PDF unavailable", error?.response?.data?.error?.message ?? "Could not open this PDF."),
+            }),
+          },
+        ],
+      );
+      return;
+    }
+    if (paper.openAccessUrl) Linking.openURL(paper.openAccessUrl);
   };
 
   const addToProject = (projectId: string) => {
@@ -138,7 +160,7 @@ export default function PaperDetailScreen() {
           <Text className="text-center text-foreground dark:text-[#F8FAFC]">Paper not found</Text>
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: paper.openAccessUrl ? 92 : 24 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: paper.openAccessUrl || paper.pdfPath ? 92 : 24 }}>
           <Text className="text-xl font-bold text-foreground dark:text-[#F8FAFC] leading-6">{paper.title}</Text>
 
           <View className="flex-row flex-wrap mt-4 gap-2">
@@ -185,10 +207,81 @@ export default function PaperDetailScreen() {
               <Feather name="plus-square" size={19} color={isDark ? "#94A3B8" : "#64748B"} />
               <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold mt-1.5">Add</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="items-center" onPress={openFullText} disabled={!paper.openAccessUrl}>
-              <Feather name="file-text" size={19} color={paper.openAccessUrl ? "#94A3B8" : "#475569"} />
-              <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold mt-1.5">PDF</Text>
+            <TouchableOpacity className="items-center" onPress={openFullText} disabled={!paper.openAccessUrl && !paper.pdfPath}>
+              {pdfUrl.isPending ? <ActivityIndicator size="small" color="#06B6D4" /> : <Feather name="file-text" size={19} color={paper.openAccessUrl || paper.pdfPath ? "#94A3B8" : "#475569"} />}
+              <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs font-semibold mt-1.5">{paper.pdfPath && (paper.downloadCost ?? 0) > 0 ? `${paper.downloadCost} cr` : "PDF"}</Text>
             </TouchableOpacity>
+          </View>
+
+          <View className="flex-row border-b border-border dark:border-[#26334A] mb-4">
+            {(["abstract", "topics", "references"] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                className={`pb-2 px-2 mr-4 ${activeTab === tab ? "border-b-2 border-[#06B6D4]" : ""}`}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text className={`text-sm capitalize ${activeTab === tab ? "text-[#06B6D4] font-bold" : "text-muted-foreground dark:text-[#94A3B8]"}`}>{tab}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View className="mb-5">
+            {activeTab === "abstract" ? (
+              <Text className="text-foreground/80 dark:text-[#CBD5E1] text-sm leading-6">{paper.abstractText || "No abstract available for this paper."}</Text>
+            ) : activeTab === "topics" ? (
+              <View className="flex-row flex-wrap gap-2">
+                {paper.topics?.length ? (
+                  paper.topics.map((topic, index) => (
+                    <View key={`${topic.topicName}-${index}`} className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] px-3 py-1.5 rounded-full">
+                      <Text className="text-foreground dark:text-[#F8FAFC] text-xs">{topic.topicName}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm italic">No topics available.</Text>
+                )}
+              </View>
+            ) : referencesQuery.isLoading ? (
+              <View className="py-6 items-center">
+                <ActivityIndicator color="#06B6D4" />
+              </View>
+            ) : referencesQuery.data?.references.length ? (
+              <View className="gap-3">
+                <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs">
+                  Showing {referencesQuery.data.inCorpus} of {referencesQuery.data.totalReferenced} cited works found in this library.
+                </Text>
+                {referencesQuery.data.references.map((reference) => {
+                  const authors = reference.authors?.map((author) => author.displayName).filter(Boolean).slice(0, 3).join(", ");
+                  return (
+                    <TouchableOpacity
+                      key={reference.id}
+                      className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl p-3"
+                      onPress={() => router.push(`/paper/${reference.id}` as any)}
+                    >
+                      <Text className="text-foreground dark:text-[#F8FAFC] font-bold text-sm leading-5" numberOfLines={2}>
+                        {reference.title}
+                      </Text>
+                      {!!authors && (
+                        <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs mt-1" numberOfLines={1}>
+                          {authors}
+                        </Text>
+                      )}
+                      <View className="flex-row items-center mt-2">
+                        <Text className="text-[#06B6D4] text-xs font-bold">{reference.publicationYear || "Unknown year"}</Text>
+                        {!!reference.doi && (
+                          <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs ml-2" numberOfLines={1}>
+                            DOI: {reference.doi}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm">
+                No in-library references found yet. {referencesQuery.data?.totalReferenced ? `${referencesQuery.data.totalReferenced} cited works exist, but none are in this library.` : "Citation graph data is not available for this paper."}
+              </Text>
+            )}
           </View>
 
           <View className="bg-[#082F49] border border-[#06B6D4] rounded-2xl p-4 mb-5 flex-row">
@@ -300,82 +393,14 @@ export default function PaperDetailScreen() {
             </View>
           </View>
 
-          <View className="flex-row border-b border-border dark:border-[#26334A] mb-4">
-            {(["abstract", "topics", "references"] as const).map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                className={`pb-2 px-2 mr-4 ${activeTab === tab ? "border-b-2 border-[#06B6D4]" : ""}`}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text className={`text-sm capitalize ${activeTab === tab ? "text-[#06B6D4] font-bold" : "text-muted-foreground dark:text-[#94A3B8]"}`}>{tab}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {activeTab === "abstract" ? (
-            <Text className="text-foreground/80 dark:text-[#CBD5E1] text-sm leading-6">{paper.abstractText || "No abstract available for this paper."}</Text>
-          ) : activeTab === "topics" ? (
-            <View className="flex-row flex-wrap gap-2">
-              {paper.topics?.length ? (
-                paper.topics.map((topic, index) => (
-                  <View key={`${topic.topicName}-${index}`} className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] px-3 py-1.5 rounded-full">
-                    <Text className="text-foreground dark:text-[#F8FAFC] text-xs">{topic.topicName}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm italic">No topics available.</Text>
-              )}
-            </View>
-          ) : referencesQuery.isLoading ? (
-            <View className="py-6 items-center">
-              <ActivityIndicator color="#06B6D4" />
-            </View>
-          ) : referencesQuery.data?.references.length ? (
-            <View className="gap-3">
-              <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs">
-                Showing {referencesQuery.data.inCorpus} of {referencesQuery.data.totalReferenced} cited works found in this library.
-              </Text>
-              {referencesQuery.data.references.map((reference) => {
-                const authors = reference.authors?.map((author) => author.displayName).filter(Boolean).slice(0, 3).join(", ");
-                return (
-                  <TouchableOpacity
-                    key={reference.id}
-                    className="bg-card dark:bg-[#1A2332] border border-border dark:border-[#26334A] rounded-xl p-3"
-                    onPress={() => router.push(`/paper/${reference.id}` as any)}
-                  >
-                    <Text className="text-foreground dark:text-[#F8FAFC] font-bold text-sm leading-5" numberOfLines={2}>
-                      {reference.title}
-                    </Text>
-                    {!!authors && (
-                      <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs mt-1" numberOfLines={1}>
-                        {authors}
-                      </Text>
-                    )}
-                    <View className="flex-row items-center mt-2">
-                      <Text className="text-[#06B6D4] text-xs font-bold">{reference.publicationYear || "Unknown year"}</Text>
-                      {!!reference.doi && (
-                        <Text className="text-muted-foreground dark:text-[#94A3B8] text-xs ml-2" numberOfLines={1}>
-                          DOI: {reference.doi}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <Text className="text-muted-foreground dark:text-[#94A3B8] text-sm">
-              No in-library references found yet. {referencesQuery.data?.totalReferenced ? `${referencesQuery.data.totalReferenced} cited works exist, but none are in this library.` : "Citation graph data is not available for this paper."}
-            </Text>
-          )}
         </ScrollView>
       )}
 
-      {paper?.openAccessUrl && (
+      {(paper?.openAccessUrl || paper?.pdfPath) && (
         <View className="absolute bottom-0 left-0 right-0 p-4 border-t border-border dark:border-[#26334A] bg-background dark:bg-[#0F1B2D]">
           <TouchableOpacity className="bg-[#06B6D4] rounded-xl py-3 flex-row justify-center items-center" onPress={openFullText}>
-            <Feather name="external-link" size={16} color="#0F1B2D" />
-            <Text className="text-[#0F1B2D] font-bold ml-2">Open full text</Text>
+            {pdfUrl.isPending ? <ActivityIndicator color="#0F1B2D" /> : <Feather name="external-link" size={16} color="#0F1B2D" />}
+            <Text className="text-[#0F1B2D] font-bold ml-2">{paper.pdfPath && (paper.downloadCost ?? 0) > 0 ? `Download PDF · ${paper.downloadCost} credits` : "Open full text"}</Text>
           </TouchableOpacity>
         </View>
       )}

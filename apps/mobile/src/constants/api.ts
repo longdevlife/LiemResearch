@@ -24,6 +24,7 @@ export const API_ROUTES = {
     rejectPdf: (id: string) => `/papers/${id}/reject-pdf`,
     cancel: (id: string) => `/papers/${id}/cancel`,
     update: (id: string) => `/papers/${id}`,
+    pdfUrl: (id: string) => `/papers/${id}/pdf-url`,
   },
   search: {
     semantic: "/search", 
@@ -31,6 +32,11 @@ export const API_ROUTES = {
   trends: {
     overview: "/trends",
     topic: (topic: string) => `/trends/${encodeURIComponent(topic)}`,
+    compare: "/trends/compare",
+    topicCandidates: "/trends/topic-candidates",
+    relationships: "/trends/relationships",
+    explain: "/trends/explain",
+    explainHistory: "/trends/explain/history",
   },
   quality: {
     view: (targetKind: "report" | "gap" | "paper", targetId: string) => `/quality/${targetKind}/${targetId}`,
@@ -42,7 +48,12 @@ export const API_ROUTES = {
     list: "/reports",
     detail: (id: string) => `/reports/${id}`,
     create: "/reports",
+    evidencePreview: "/reports/evidence-preview",
     delete: (id: string) => `/reports/${id}`,
+  },
+  credits: {
+    balance: "/credits/balance",
+    transactions: "/credits/transactions",
   },
   bookmarks: {
     list: "/bookmarks",
@@ -80,9 +91,18 @@ export const API_ROUTES = {
       send: (id: string) => `/projects/${id}/chat`,
       history: (id: string) => `/projects/${id}/chat`,
     },
+    teamChat: {
+      send: (id: string) => `/projects/${id}/team-chat`,
+      history: (id: string) => `/projects/${id}/team-chat`,
+      read: (id: string, messageId: string) => `/projects/${id}/team-chat/${messageId}/read`,
+      delete: (id: string, messageId: string) => `/projects/${id}/team-chat/${messageId}`,
+    },
   },
   admin: {
     sync: "/admin/sync",
     syncRuns: "/admin/sync/runs",
+    embed: "/admin/embed",
+    embedStatus: "/admin/embed/status",
+    pipelineStatus: "/admin/pipeline/status",
   },
 } as const;

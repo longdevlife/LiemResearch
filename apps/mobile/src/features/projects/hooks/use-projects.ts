@@ -70,6 +70,46 @@ export function useSendProjectChat() {
     mutationFn: ({ projectId, message }: { projectId: string; message: string }) => projectsApi.sendChat(projectId, message),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["projects", variables.projectId, "chat"] });
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
     },
+  });
+}
+
+export function useProjectTeamChat(projectId?: string) {
+  return useQuery({
+    queryKey: ["projects", projectId, "team-chat"],
+    queryFn: () => projectsApi.listTeamChat(projectId!),
+    enabled: !!projectId,
+    refetchInterval: 5000,
+  });
+}
+
+export function useSendProjectTeamChat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, content }: { projectId: string; content: string }) =>
+      projectsApi.sendTeamChat(projectId, content),
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["projects", variables.projectId, "team-chat"] }),
+  });
+}
+
+export function useMarkProjectTeamChatRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, messageId }: { projectId: string; messageId: string }) =>
+      projectsApi.markTeamChatRead(projectId, messageId),
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["projects", variables.projectId, "team-chat"] }),
+  });
+}
+
+export function useDeleteProjectTeamChat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, messageId }: { projectId: string; messageId: string }) =>
+      projectsApi.deleteTeamChat(projectId, messageId),
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["projects", variables.projectId, "team-chat"] }),
   });
 }

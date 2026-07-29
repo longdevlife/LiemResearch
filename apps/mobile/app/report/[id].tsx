@@ -7,6 +7,7 @@ import { useColorScheme } from "nativewind";
 
 import { useReport } from "@/features/reports";
 import { useBookmarkStatus, useCreateBookmark, useDeleteBookmark } from "@/features/bookmarks";
+import { useEvaluateQuality, useQualityView, useRateQuality } from "@/features/quality";
 
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
@@ -31,6 +32,10 @@ export default function ReportDetailScreen() {
   const statusQuery = useBookmarkStatus("report", id);
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
+  const quality = useQualityView("report", id);
+  const evaluateQuality = useEvaluateQuality();
+  const rateQuality = useRateQuality();
+  const [stars, setStars] = useState(0);
 
   const report = reportQuery.data;
   const isBookmarked = statusQuery.data?.bookmarked;
@@ -261,6 +266,55 @@ export default function ReportDetailScreen() {
                 </Text>
               </View>
             )}
+          </View>
+
+          {/* Metadata Panel */}
+          <View className="mb-6 rounded-2xl border border-violet-500/40 bg-violet-500/10 p-4">
+            <View className="flex-row items-center">
+              <Ionicons name="sparkles" size={18} color="#8B5CF6" />
+              <Text className="ml-2 flex-1 text-base font-bold text-foreground dark:text-white">AI quality evaluation</Text>
+              {quality.data?.evaluation ? <Text className="text-lg font-black text-violet-500">{quality.data.evaluation.overall.toFixed(1)}/5</Text> : null}
+            </View>
+            {quality.data?.evaluation ? (
+              <View className="mt-3 flex-row gap-2">
+                {[
+                  ["Relevant", quality.data.evaluation.relevance],
+                  ["Grounded", quality.data.evaluation.groundedness],
+                  ["Complete", quality.data.evaluation.completeness],
+                ].map(([label, value]) => (
+                  <View key={String(label)} className="flex-1 rounded-xl bg-card dark:bg-[#1A2332] p-2 items-center">
+                    <Text className="text-[9px] text-muted-foreground dark:text-[#94A3B8]">{label}</Text>
+                    <Text className="mt-1 font-black text-foreground dark:text-white">{Number(value).toFixed(1)}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="mt-2 text-xs text-muted-foreground dark:text-[#94A3B8]">Score relevance, groundedness and completeness against the report evidence.</Text>
+            )}
+            <TouchableOpacity
+              onPress={() => id && evaluateQuality.mutate({ targetKind: "report", targetId: id })}
+              disabled={evaluateQuality.isPending}
+              className="mt-3 rounded-xl bg-violet-600 py-3 items-center"
+            >
+              {evaluateQuality.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-bold text-white">{quality.data?.evaluation ? "Re-run AI evaluation" : "Run AI evaluation"}</Text>}
+            </TouchableOpacity>
+            <Text className="mb-2 mt-4 text-xs font-bold text-muted-foreground dark:text-[#94A3B8]">Your rating</Text>
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <TouchableOpacity key={value} onPress={() => setStars(value)} className="mr-1">
+                    <Ionicons name={value <= stars ? "star" : "star-outline"} size={24} color="#F59E0B" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                disabled={stars === 0 || rateQuality.isPending}
+                onPress={() => id && rateQuality.mutate({ targetKind: "report", targetId: id, stars })}
+                className="rounded-lg bg-[#1D4ED8] px-4 py-2 disabled:opacity-40"
+              >
+                <Text className="text-xs font-bold text-white">Submit</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Metadata Panel */}

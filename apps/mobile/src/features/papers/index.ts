@@ -6,6 +6,7 @@ export {
   useInfinitePapers,
   useMyPapers,
   usePaper,
+  usePaperPdfUrl,
   usePaperReferences,
   usePapers,
   useRejectPaperPdf,

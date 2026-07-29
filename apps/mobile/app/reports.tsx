@@ -2,13 +2,14 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import type { ReportListItem, ReportStatus } from "@trend/shared-types";
+import { AI_CREDIT_COSTS_CLIENT, type PreviewReportEvidenceResponse, type ReportListItem, type ReportStatus } from "@trend/shared-types";
 import { Swipeable } from "react-native-gesture-handler";
 
 import { useCreateBookmark } from "@/features/bookmarks";
-import { useCreateReport, useDeleteReport, useReport, useReports } from "@/features/reports";
+import { useCreateReport, useDeleteReport, useReport, useReportEvidencePreview, useReports } from "@/features/reports";
+import { useCreditBalance } from "@/features/credits";
 
 function statusColor(status: ReportStatus) {
   if (status === "ready") return "text-emerald-500";
@@ -88,26 +89,54 @@ function ReportRow({
 
 export default function ReportsScreen() {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ topic?: string; query?: string; projectId?: string }>();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const reportsQuery = useReports({ page: 1, pageSize: 20 });
   const createReport = useCreateReport();
+  const previewEvidence = useReportEvidencePreview();
+  const creditQuery = useCreditBalance();
   const createBookmark = useCreateBookmark();
   const reports = reportsQuery.data?.reports ?? [];
-  const [query, setQuery] = useState("Analyze research trends in large language models for education");
-  const [topic, setTopic] = useState("LLM in education");
+  const [query, setQuery] = useState(routeParams.query ?? (routeParams.topic ? `Analyze research trends, gaps, and future directions in ${routeParams.topic}` : "Analyze research trends in large language models for education"));
+  const [topic, setTopic] = useState(routeParams.topic ?? "LLM in education");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
+  const [fast, setFast] = useState(true);
+  const [evidence, setEvidence] = useState<PreviewReportEvidenceResponse>();
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const detailQuery = useReport(selectedId);
 
-  const submit = () => {
+  const preview = () => {
     if (query.trim().length < 3) {
       Alert.alert("Missing query", "Enter at least 3 characters.");
       return;
     }
+    previewEvidence.mutate(
+      { query: query.trim(), topic: topic.trim() || undefined, projectId: routeParams.projectId, yearFrom: 2020, yearTo: 2026 },
+      {
+        onSuccess: setEvidence,
+        onError: (error: any) => Alert.alert("Preview failed", error?.response?.data?.error?.message ?? "Could not retrieve evidence."),
+      },
+    );
+  };
+
+  const submit = () => {
+    if (!evidence?.papers.length) {
+      Alert.alert("Review evidence first", "Preview the evidence pack before creating the report.");
+      return;
+    }
 
     createReport.mutate(
-      { query: query.trim(), topic: topic.trim() || undefined, yearFrom: 2020, yearTo: 2026, deepAnalysis },
+      {
+        query: query.trim(),
+        topic: topic.trim() || undefined,
+        projectId: routeParams.projectId,
+        yearFrom: 2020,
+        yearTo: 2026,
+        deepAnalysis,
+        fast: deepAnalysis ? false : fast,
+        selectedPaperIds: evidence.papers.map((paper) => paper.id),
+      },
       {
         onSuccess: (data) => {
           setSelectedId(data.id);
@@ -154,7 +183,7 @@ export default function ReportsScreen() {
             placeholder="Topic label"
             placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
             value={topic}
-            onChangeText={setTopic}
+            onChangeText={(value) => { setTopic(value); setEvidence(undefined); }}
           />
           
           <Text className="mb-2 text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Question</Text>
@@ -163,10 +192,18 @@ export default function ReportsScreen() {
             placeholder="What should AI analyze?"
             placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(value) => { setQuery(value); setEvidence(undefined); }}
             multiline
             textAlignVertical="top"
           />
+
+          <View className="mb-3 flex-row items-center justify-between bg-muted/40 dark:bg-[#1E293B]/40 p-3 rounded-xl border border-border/50 dark:border-[#26334A]/50">
+            <View className="flex-1 pr-4">
+              <Text className="text-sm font-bold text-foreground dark:text-[#F8FAFC]">Fast report</Text>
+              <Text className="text-[11px] text-muted-foreground dark:text-[#94A3B8]">{AI_CREDIT_COSTS_CLIENT.fast_report} credits · Gemini Flash</Text>
+            </View>
+            <Switch value={fast && !deepAnalysis} onValueChange={(value) => { setFast(value); if (value) setDeepAnalysis(false); }} />
+          </View>
 
           {/* Deep Analysis Switch */}
           <View className="flex-row items-center justify-between mb-4 bg-muted/40 dark:bg-[#1E293B]/40 p-3 rounded-xl border border-border/50 dark:border-[#26334A]/50">
@@ -178,15 +215,39 @@ export default function ReportsScreen() {
             </View>
             <Switch
               value={deepAnalysis}
-              onValueChange={setDeepAnalysis}
+              onValueChange={(value) => { setDeepAnalysis(value); if (value) setFast(false); }}
               trackColor={{ false: "#94A3B8", true: "#06B6D4" }}
               thumbColor={deepAnalysis ? "#ffffff" : "#f4f3f4"}
             />
           </View>
 
-          <TouchableOpacity className="rounded-xl bg-[#1D4ED8] py-3 items-center" onPress={submit} disabled={createReport.isPending}>
-            {createReport.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-bold text-white">Create report</Text>}
+          <Text className="mb-3 text-xs text-muted-foreground dark:text-[#94A3B8]">
+            Balance: {creditQuery.data?.credits ?? "—"} credits · Cost: {deepAnalysis ? AI_CREDIT_COSTS_CLIENT.deep_mcp_report : fast ? AI_CREDIT_COSTS_CLIENT.fast_report : AI_CREDIT_COSTS_CLIENT.standard_report}
+          </Text>
+
+          <TouchableOpacity className="rounded-xl border border-[#1D4ED8] py-3 items-center" onPress={preview} disabled={previewEvidence.isPending}>
+            {previewEvidence.isPending ? <ActivityIndicator color="#1D4ED8" /> : <Text className="font-bold text-[#1D4ED8]">Preview evidence pack</Text>}
           </TouchableOpacity>
+
+          {evidence ? (
+            <View className="mt-4">
+              <Text className="mb-2 text-xs font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Evidence pack ({evidence.papers.length})</Text>
+              {evidence.papers.map((paper) => (
+                <TouchableOpacity
+                  key={paper.id}
+                  onPress={() => router.push(`/paper/${paper.id}` as any)}
+                  className="mb-2 rounded-xl bg-muted/50 dark:bg-[#26334A] p-3"
+                >
+                  <Text className="text-xs font-bold text-foreground dark:text-white" numberOfLines={2}>{paper.title}</Text>
+                  <Text className="mt-1 text-[10px] text-[#06B6D4]">{(paper.score * 100).toFixed(1)}% relevance · {paper.source}</Text>
+                </TouchableOpacity>
+              ))}
+              {evidence.warnings.map((warning) => <Text key={warning} className="mb-1 text-xs text-amber-500">• {warning}</Text>)}
+              <TouchableOpacity className="mt-2 rounded-xl bg-[#1D4ED8] py-3 items-center" onPress={submit} disabled={createReport.isPending}>
+                {createReport.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-bold text-white">Approve evidence & create report</Text>}
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
 
         {detailQuery.data ? (

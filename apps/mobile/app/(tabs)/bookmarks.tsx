@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -7,7 +7,7 @@ import { useColorScheme } from "nativewind";
 import type { Bookmark, BookmarkTargetKind, ReportListItem, ReportStatus } from "@trend/shared-types";
 import { Swipeable } from "react-native-gesture-handler";
 
-import { useBookmarks, useDeleteBookmark } from "@/features/bookmarks";
+import { useBookmarks, useDeleteBookmark, useUpdateBookmarkNote } from "@/features/bookmarks";
 import { useDeleteReport, useReports } from "@/features/reports";
 
 type Filter = "all" | BookmarkTargetKind;
@@ -19,7 +19,7 @@ function statusColor(status: ReportStatus) {
   return "text-[#06B6D4]";
 }
 
-function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
+function BookmarkRow({ bookmark, onEditNote }: { bookmark: Bookmark; onEditNote: () => void }) {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -79,7 +79,10 @@ function BookmarkRow({ bookmark }: { bookmark: Bookmark }) {
             </View>
             <Text className="text-sm font-bold leading-5 text-foreground dark:text-[#F8FAFC]" numberOfLines={2}>{title}</Text>
             <Text className="mt-1 text-xs text-muted-foreground dark:text-[#94A3B8]" numberOfLines={1}>{subtitle}</Text>
-            {bookmark.note ? <Text className="mt-2 text-xs text-[#0891B2] dark:text-[#67E8F9]" numberOfLines={1}>{bookmark.note}</Text> : null}
+            {bookmark.note ? <Text className="mt-2 text-xs text-[#0891B2] dark:text-[#67E8F9]" numberOfLines={2}>{bookmark.note}</Text> : null}
+            <TouchableOpacity onPress={onEditNote} className="mt-3 self-start rounded-lg bg-cyan-500/10 px-3 py-2">
+              <Text className="text-[10px] font-bold text-[#06B6D4]">{bookmark.note ? "Edit note" : "Add note"}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -164,6 +167,9 @@ export default function BookmarksScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const bookmarksQuery = useBookmarks();
+  const updateNote = useUpdateBookmarkNote();
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark>();
+  const [note, setNote] = useState("");
   const reportsQuery = useReports({ page: 1, pageSize: 50 });
   const bookmarks = bookmarksQuery.data ?? [];
   const reports = reportsQuery.data?.reports ?? [];
@@ -221,7 +227,16 @@ export default function BookmarksScreen() {
           <View className="py-24"><ActivityIndicator color="#06B6D4" /></View>
         ) : filteredPaperBookmarks.length > 0 || (showReports && reports.length > 0) ? (
           <>
-            {filteredPaperBookmarks.map((bookmark) => <BookmarkRow key={bookmark.id} bookmark={bookmark} />)}
+            {filteredPaperBookmarks.map((bookmark) => (
+              <BookmarkRow
+                key={bookmark.id}
+                bookmark={bookmark}
+                onEditNote={() => {
+                  setEditingBookmark(bookmark);
+                  setNote(bookmark.note ?? "");
+                }}
+              />
+            ))}
             {showReports ? reports.map((report) => <ReportRow key={report.id} report={report} />) : null}
           </>
         ) : (
@@ -238,6 +253,33 @@ export default function BookmarksScreen() {
           </View>
         )}
       </ScrollView>
+      <Modal visible={!!editingBookmark} transparent animationType="fade" onRequestClose={() => setEditingBookmark(undefined)}>
+        <View className="flex-1 justify-center bg-black/60 px-5">
+          <View className="rounded-2xl bg-card dark:bg-[#1A2332] p-5">
+            <Text className="text-lg font-bold text-foreground dark:text-white">Bookmark note</Text>
+            <TextInput
+              value={note}
+              onChangeText={(value) => setNote(value.slice(0, 500))}
+              multiline
+              textAlignVertical="top"
+              className="mt-4 min-h-28 rounded-xl border border-border dark:border-[#26334A] p-3 text-foreground dark:text-white"
+              placeholder="Add a personal research note..."
+              placeholderTextColor="#64748B"
+            />
+            <Text className="mt-1 text-right text-[10px] text-muted-foreground dark:text-[#94A3B8]">{note.length}/500</Text>
+            <View className="mt-4 flex-row gap-2">
+              <TouchableOpacity onPress={() => setEditingBookmark(undefined)} className="flex-1 rounded-xl border border-border py-3 items-center"><Text className="font-bold text-foreground dark:text-white">Cancel</Text></TouchableOpacity>
+              <TouchableOpacity
+                disabled={updateNote.isPending}
+                onPress={() => editingBookmark && updateNote.mutate({ id: editingBookmark.id, note: note.trim() || undefined }, { onSuccess: () => setEditingBookmark(undefined) })}
+                className="flex-1 rounded-xl bg-[#1D4ED8] py-3 items-center"
+              >
+                {updateNote.isPending ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-bold text-white">Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

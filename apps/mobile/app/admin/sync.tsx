@@ -17,7 +17,14 @@ import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 
 import { useAuthStore } from "@/stores/auth-store";
-import { useSyncRuns, useTriggerSync, type ApiSyncRun } from "@/features/admin";
+import {
+  useEmbeddingStatus,
+  usePipelineStatus,
+  useSyncRuns,
+  useTriggerEmbedding,
+  useTriggerSync,
+  type ApiSyncRun,
+} from "@/features/admin";
 import type { AxiosError } from "axios";
 
 export default function AdminSyncScreen() {
@@ -30,6 +37,9 @@ export default function AdminSyncScreen() {
 
   const { data: runs, isLoading, isError, refetch } = useSyncRuns(isAdmin);
   const triggerSyncMutation = useTriggerSync();
+  const embeddingStatus = useEmbeddingStatus(isAdmin);
+  const triggerEmbedding = useTriggerEmbedding();
+  const pipelineStatus = usePipelineStatus(isAdmin);
 
   // Dialog / BottomSheet state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -193,6 +203,26 @@ export default function AdminSyncScreen() {
             Trigger New Sync
           </Text>
         </TouchableOpacity>
+
+        <View className="mb-6 flex-row gap-3">
+          <View className="flex-1 rounded-xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-3">
+            <Text className="text-[10px] font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Embeddings</Text>
+            <Text className="mt-1 text-lg font-black text-foreground dark:text-white">{embeddingStatus.data?.embedded ?? "—"}/{embeddingStatus.data?.analyzable ?? "—"}</Text>
+            <Text className="mt-1 text-[10px] text-amber-500">{embeddingStatus.data?.pending ?? "—"} pending</Text>
+            <TouchableOpacity
+              onPress={() => triggerEmbedding.mutate(undefined, { onError: (error: any) => Alert.alert("Embedding failed", error?.response?.data?.error?.message ?? "Please try again.") })}
+              disabled={triggerEmbedding.isPending}
+              className="mt-3 rounded-lg bg-violet-600 py-2 items-center"
+            >
+              {triggerEmbedding.isPending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text className="text-[10px] font-bold text-white">Run embedding</Text>}
+            </TouchableOpacity>
+          </View>
+          <View className="flex-1 rounded-xl border border-border dark:border-[#26334A] bg-card dark:bg-[#1A2332] p-3">
+            <Text className="text-[10px] font-bold uppercase text-muted-foreground dark:text-[#94A3B8]">Pipeline health</Text>
+            <Text className="mt-2 text-sm font-black text-emerald-500">{pipelineStatus.isError ? "Unavailable" : pipelineStatus.isLoading ? "Checking..." : "Connected"}</Text>
+            <Text className="mt-2 text-[10px] leading-4 text-muted-foreground dark:text-[#94A3B8]" numberOfLines={3}>{pipelineStatus.data ? JSON.stringify(pipelineStatus.data).slice(0, 90) : "MongoDB, Redis and queue status"}</Text>
+          </View>
+        </View>
 
         {/* Run History List */}
         <Text className="text-base font-bold text-foreground dark:text-white mb-3">

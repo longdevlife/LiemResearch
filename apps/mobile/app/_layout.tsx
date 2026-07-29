@@ -56,6 +56,17 @@ function AppStack() {
           }}
         />
         <Stack.Screen
+          name="search"
+          options={{
+            title: "Search",
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen name="credits" options={{ title: "Credits", presentation: "modal", headerShown: false }} />
+        <Stack.Screen name="edit-profile" options={{ title: "Edit profile", presentation: "modal", headerShown: false }} />
+        <Stack.Screen name="security" options={{ title: "Security", presentation: "modal", headerShown: false }} />
+        <Stack.Screen
           name="reports"
           options={{
             title: "Reports",
