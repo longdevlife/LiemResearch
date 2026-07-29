@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { useTopicTrend } from "@/features/trends/hooks/use-trends";
 import type { TrendFacetBucket } from "@trend/shared-types";
 import { formatNumber } from "@/utils";
+import { useI18n } from "@/i18n";
 
 export function TopicDetailPage() {
+  const { t } = useI18n();
   const { topic } = useParams<{ topic: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -135,29 +137,29 @@ export function TopicDetailPage() {
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPIMetricCard
-          title="Total Papers"
+          title={t("Total Papers")}
           value={formatNumber(data.totalPapers)}
-          subtitle="Publications in window"
+          subtitle={t("Publications in window")}
           icon={<FileText className="w-5 h-5 text-blue-600" />}
         />
         <KPIMetricCard
-          title="YoY Growth"
+          title={t("YoY Growth")}
           value={data.growthRatePct > 0 ? `+${data.growthRatePct.toFixed(1)}%` : `${data.growthRatePct.toFixed(1)}%`}
-          subtitle={`Last complete year (${data.lastCompleteYear})`}
+          subtitle={t("Last complete year ({{year}})", { year: data.lastCompleteYear })}
           icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           valueColor={data.growthRatePct > 0 ? "text-emerald-600" : "text-red-500"}
         />
         <KPIMetricCard
-          title="CAGR (3Y)"
+          title={t("CAGR (3Y)")}
           value={data.cagr3yPct !== null ? `+${data.cagr3yPct.toFixed(1)}%` : "N/A"}
-          subtitle="Compounded growth rate"
+          subtitle={t("Compounded growth rate")}
           icon={<Award className="w-5 h-5 text-blue-600" />}
           valueColor="text-blue-600"
         />
         <KPIMetricCard
-          title="Momentum"
+          title={t("Momentum")}
           value={data.momentum > 0 ? `+${data.momentum.toFixed(2)}` : data.momentum.toFixed(2)}
-          subtitle="Least-squares slope"
+          subtitle={t("Least-squares slope")}
           icon={<Sparkles className="w-5 h-5 text-purple-600" />}
           valueColor="text-purple-600"
         />

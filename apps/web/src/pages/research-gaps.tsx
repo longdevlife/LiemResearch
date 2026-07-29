@@ -154,7 +154,7 @@ export function ResearchGapsPage() {
   // Search & Sort & Shortlist states
   const [clientSearch, setClientSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<GapSortKey>("recommended");
+  const [sortBy, setSortBy] = useState<GapSortKey>("newest");
   const [shortlistedGaps, setShortlistedGaps] = useState<ResearchGapItem[]>([]);
   const [isShortlistHydrated, setIsShortlistHydrated] = useState(false);
   const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);

@@ -397,16 +397,16 @@ export function TopicsTab({
             </div>
 
             <div className="flex-1 overflow-x-auto select-text">
-              <table className="w-full text-sm text-left">
+              <table className="w-full min-w-[880px] text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 dark:bg-slate-900/20 border-b border-slate-100 dark:border-slate-800 select-none">
                   <tr>
-                    <th className="pl-5 pr-2 py-3 font-semibold w-10 text-center">Rank</th>
-                    <th className="px-4 py-3 font-semibold">Topic</th>
+                    <th className="pl-5 pr-2 py-3 font-semibold w-16 text-center whitespace-nowrap">Rank</th>
+                    <th className="px-4 py-3 font-semibold min-w-[260px] whitespace-nowrap">Topic</th>
                     <th
-                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right`}
+                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right whitespace-nowrap min-w-[110px]`}
                       onClick={() => setLocalSortBy("momentum")}
                     >
-                      <span className="inline-flex items-center gap-1 justify-end w-full">
+                      <span className="inline-flex items-center gap-1 justify-end w-full whitespace-nowrap">
                         MOMENTUM
                         {localSortBy === "momentum" ? (
                           <ArrowDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-450" />
@@ -416,10 +416,10 @@ export function TopicsTab({
                       </span>
                     </th>
                     <th
-                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right`}
+                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right whitespace-nowrap min-w-[90px]`}
                       onClick={() => setLocalSortBy("papers")}
                     >
-                      <span className="inline-flex items-center gap-1 justify-end w-full">
+                      <span className="inline-flex items-center gap-1 justify-end w-full whitespace-nowrap">
                         PAPERS
                         {localSortBy === "papers" ? (
                           <ArrowDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-455" />
@@ -429,10 +429,10 @@ export function TopicsTab({
                       </span>
                     </th>
                     <th
-                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right`}
+                      className={`px-3 py-3 font-semibold cursor-pointer transition-colors hover:text-blue-700 dark:hover:text-blue-400 text-right whitespace-nowrap min-w-[100px]`}
                       onClick={() => setLocalSortBy("growth")}
                     >
-                      <span className="inline-flex items-center gap-1 justify-end w-full">
+                      <span className="inline-flex items-center gap-1 justify-end w-full whitespace-nowrap">
                         GROWTH
                         {localSortBy === "growth" ? (
                           <ArrowDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-455" />
@@ -441,8 +441,8 @@ export function TopicsTab({
                         )}
                       </span>
                     </th>
-                    <th className="px-3 py-3 font-semibold text-center h-11">
-                      <span className="inline-flex items-center gap-1 justify-center w-full">
+                    <th className="px-3 py-3 font-semibold text-center h-11 whitespace-nowrap min-w-[130px]">
+                      <span className="inline-flex items-center gap-1 justify-center w-full whitespace-nowrap">
                         DATA CONF.
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -454,7 +454,7 @@ export function TopicsTab({
                         </Tooltip>
                       </span>
                     </th>
-                    <th className="pr-5 pl-2 py-3 font-semibold text-center">Actions</th>
+                    <th className="pr-5 pl-2 py-3 font-semibold text-center whitespace-nowrap min-w-[110px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
