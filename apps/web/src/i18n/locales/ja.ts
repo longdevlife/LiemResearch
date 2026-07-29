@@ -2,6 +2,8 @@
 
 export const ja: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  "1 research gap": "研究ギャップ 1 件",
+  "{{count}} research gaps from the same analysis": "同じ分析からの研究ギャップ {{count}} 件",
   "-day period.": "-日の期間。",
   "— whereas": "—一方",
   "; the next sync or PDF update will publish the full breakdown.": ";次回の同期または PDF 更新で完全な内訳が公開されます。",
