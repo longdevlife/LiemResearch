@@ -207,6 +207,21 @@ paperRouter.get("/:id/references", optionalAuth, async (req, res) => {
   res.json({ success: true, data });
 });
 
+/** GET /papers/:id/edit — authenticated draft/rejected paper data for edit forms. */
+paperRouter.get("/:id/edit", requireAuth, async (req, res, next) => {
+  try {
+    const paper = await paperService.getEditableById(
+      String(req.params.id),
+      String(req.user!.sub),
+      String(req.user!.role),
+    );
+    res.json({ success: true, data: paper });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** GET /papers/:id — single paper detail. */
 /** GET /papers/:id/related — OpenAlex related works resolved to this corpus. */
 paperRouter.get("/:id/related", optionalAuth, async (req, res) => {
   const data = await paperService.getRelatedWorks(String(req.params.id), {

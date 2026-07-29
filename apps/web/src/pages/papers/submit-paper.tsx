@@ -49,7 +49,7 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
   useEffect(() => {
     if (editId) {
       setLoading(true);
-      api.get(`/papers/${editId}`)
+      api.get(`/papers/${editId}/edit`)
         .then((res) => {
           const paper = res.data.data;
           if (paper) {
