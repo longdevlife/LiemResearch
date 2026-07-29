@@ -35,6 +35,12 @@ export interface RewardParams {
   metadata?: Record<string, unknown>;
 }
 
+export interface OwnedChargeResult {
+  transaction: CreditTransactionDoc | null;
+  /** True only when this invocation deducted the balance and created the ledger row. */
+  created: boolean;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Credit Service                                                     */
 /* ------------------------------------------------------------------ */
@@ -93,11 +99,11 @@ export const creditService = {
    *
    * @returns The created (or existing) CreditTransaction document, or null if amount is 0.
    */
-  async chargeCreditsChecked(params: ChargeParams): Promise<CreditTransactionDoc | null> {
+  async chargeCreditsCheckedOwned(params: ChargeParams): Promise<OwnedChargeResult> {
     const { userId, action, amount, targetKind, targetId, idempotencyKey, metadata } = params;
 
     // Free actions — no ledger entry needed
-    if (amount <= 0) return null;
+    if (amount <= 0) return { transaction: null, created: false };
 
     // Idempotency check — return existing if already applied
     const existing = await CreditTransactionModel.findOne({
@@ -106,7 +112,7 @@ export const creditService = {
     }).lean();
     if (existing) {
       logger.debug({ idempotencyKey, action }, "Credit charge idempotency hit");
-      return existing as CreditTransactionDoc;
+      return { transaction: existing as CreditTransactionDoc, created: false };
     }
 
     // Atomic deduct — only succeeds if user has enough credits
@@ -146,13 +152,28 @@ export const creditService = {
         "Credits charged",
       );
 
-      return tx.toObject() as CreditTransactionDoc;
+      return { transaction: tx.toObject() as CreditTransactionDoc, created: true };
     } catch (err) {
       // Ledger creation failed — rollback the credit deduction
       logger.error({ err, userId, action, amount }, "Credit ledger creation failed — rolling back");
       await UserModel.findByIdAndUpdate(userId, { $inc: { credits: amount } });
+      if ((err as { code?: number }).code === 11000) {
+        const concurrent = await CreditTransactionModel.findOne({ idempotencyKey }).lean();
+        if (concurrent) {
+          return { transaction: concurrent as CreditTransactionDoc, created: false };
+        }
+      }
       throw AppError.internal("Failed to record credit transaction");
     }
+  },
+
+  /**
+   * Backwards-compatible charge API. Callers that may refund must use
+   * chargeCreditsCheckedOwned() and refund only a transaction they created.
+   */
+  async chargeCreditsChecked(params: ChargeParams): Promise<CreditTransactionDoc | null> {
+    const result = await this.chargeCreditsCheckedOwned(params);
+    return result.transaction;
   },
 
   /**

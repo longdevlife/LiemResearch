@@ -92,6 +92,17 @@ export function PaperCard({
   const isSemantic = searchMode === "semantic" && score !== "N/A" && score !== undefined;
   const hasRerank = rerankScore !== undefined;
   const hasTaxonomyBoost = taxonomyBoostScore !== undefined && taxonomyBoostScore > 0;
+  const rerankLabel = rerankScore === undefined
+    ? undefined
+    : rerankScore >= 0.9
+      ? "Direct"
+      : rerankScore >= 0.7
+        ? "Strong"
+        : rerankScore >= 0.45
+          ? "Partial"
+          : rerankScore >= 0.2
+            ? "Weak"
+            : "Low";
 
   return (
     <div
@@ -226,9 +237,13 @@ export function PaperCard({
             <>
               <span className="text-slate-200 dark:text-slate-800">|</span>
               {hasRerank ? (
-                <span className="flex items-center gap-1.5" title="AI Rerank Score">
+                <span
+                  className="flex items-center gap-1.5"
+                  title={`AI ordinal relevance score: ${rerankScore!.toFixed(2)}. This is a ranking signal, not a probability or confidence.`}
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                  Rerank: <span className="text-purple-600 dark:text-purple-400 font-bold">{rerankScore!.toFixed(2)}</span>
+                  <span>AI Reranked</span>:{" "}
+                  <span className="text-purple-600 dark:text-purple-400 font-bold">{rerankLabel}</span>
                   <span className="text-[9px] text-slate-400 font-medium">(Vector: {parseFloat(score).toFixed(2)})</span>
                 </span>
               ) : (

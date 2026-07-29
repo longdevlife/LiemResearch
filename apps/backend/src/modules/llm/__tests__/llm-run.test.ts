@@ -56,6 +56,32 @@ describe("llm.run", () => {
     expect(generate).toHaveBeenCalledTimes(1);
   });
 
+  it("awaits cache-miss work before generation and skips it on a cache hit", async () => {
+    const order: string[] = [];
+    const onCacheMiss = vi.fn(async () => {
+      await Promise.resolve();
+      order.push("charged");
+    });
+    const generate = vi.fn(async () => {
+      order.push("generated");
+      return { ok: true };
+    });
+    const args = {
+      task: "rerank" as const,
+      promptVersion: "v2",
+      keyParts: { id: "cache-miss-hook" },
+      onCacheMiss,
+      generate,
+    };
+
+    await expect(cachedGenerate(args)).resolves.toEqual({ ok: true });
+    await expect(cachedGenerate(args)).resolves.toEqual({ ok: true });
+
+    expect(order).toEqual(["charged", "generated"]);
+    expect(onCacheMiss).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
   it("does not cache generated output that fails validation", async () => {
     const generate = vi.fn(async () => ({ gaps: [] }));
     const args = {

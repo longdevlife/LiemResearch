@@ -1,7 +1,6 @@
 import type { ScoredPaper } from "@trend/shared-types";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/exceptions/app-error.js";
-import { cache, hashKey } from "../../infrastructure/cache.js";
 import { logger } from "../../infrastructure/logger.js";
 import { creditService } from "../credits/credit.service.js";
 import { generateJSON } from "../llm/gemini.client.js";
@@ -11,16 +10,17 @@ import type { SearchSortKey } from "../papers/dto/paper-filters.schema.js";
 import type { TrendCitationBand } from "../trends/trend.filters.js";
 import {
   buildRerankPrompt,
+  buildRerankChargeKey,
   RERANK_PROMPT_VERSION,
   RERANK_SYSTEM_PROMPT,
-  toScoreMap,
+  rerankGrade,
+  toCompleteScoreMap,
   type RerankCandidate,
   type RerankLlmOutput,
 } from "./search.rerank.js";
 import {
   annotateTaxonomyBoost,
   effectiveRelevanceScore,
-  effectiveRerankScore,
 } from "./search.taxonomy.js";
 
 export type { ScoredPaper } from "@trend/shared-types";
@@ -61,8 +61,6 @@ export interface SemanticSearchResult {
   reranked: boolean;
 }
 
-/** Negative-cache TTL for a deterministically-failing rerank (truncation/parse). */
-const RERANK_FAIL_TTL_SECONDS = 600;
 /**
  * Hard ceiling on the in-memory result horizon. The pool size is FIXED (never
  * grows with the requested page) so `total` is deterministic for a given
@@ -125,41 +123,24 @@ async function rerankedSearch(args: {
   const pool = annotateTaxonomyBoost(q, await fetchScoredPool(q, params, poolSize));
   if (pool.length === 0) return { papers: [], total: 0, reranked: false };
 
-  const candidates: RerankCandidate[] = pool.map((p) => ({
+  const rerankHead = pool.slice(0, env.RERANK_CANDIDATES);
+  const candidates: RerankCandidate[] = rerankHead.map((p) => ({
     id: p.id,
     title: p.title,
     abstractText: (p as { abstractText?: string }).abstractText,
   }));
 
   const model = env.GEMINI_MODEL_FAST;
-  const failKey = `rerank-fail:${hashKey({
-    query: q.trim().toLowerCase(),
-    filters: getSearchFilterKeyParts(params),
-    candidateIds: candidates.map((c) => c.id).sort(),
-  })}`;
-  if (await cache.get<Record<string, never>>(failKey)) {
-    return paginatePool(pool, page, pageSize, false);
-  }
-
   if (!params.userId) {
     throw AppError.unauthorized("Authentication is required for AI re-ranking");
   }
 
-  // Charge 5 credits for re-ranking
-  const tx = await creditService.chargeCreditsChecked({
-    userId: params.userId,
-    action: "search_rerank",
-    amount: 5,
-    targetKind: "search",
-      idempotencyKey: `rerank:${hashKey({
-        query: q.trim().toLowerCase(),
-        filters: getSearchFilterKeyParts(params),
-        candidateIds: candidates.map((c) => c.id).sort(),
-      })}`,
-  });
-
-  const txId = tx?._id;
-  let cacheHit = false;
+  const rerankKeyParts = {
+    query: q.trim().toLowerCase(),
+    filters: getSearchFilterKeyParts(params),
+    candidateIds: candidates.map((c) => c.id).sort(),
+  };
+  let ownedTxId: { toString(): string } | undefined;
 
   const prompt = buildRerankPrompt(q, candidates);
   let scoreMap: Record<string, number>;
@@ -167,15 +148,28 @@ async function rerankedSearch(args: {
     scoreMap = await cachedGenerate<Record<string, number>>({
       task: "rerank",
       promptVersion: RERANK_PROMPT_VERSION,
-      keyParts: {
-        query: q.trim().toLowerCase(),
-        filters: getSearchFilterKeyParts(params),
-        candidateIds: candidates.map((c) => c.id).sort(),
-      },
+      keyParts: rerankKeyParts,
       model,
       inputHash: prompt,
-      onCacheHit: () => {
-        cacheHit = true;
+      // Cached AI work is free. Charge only when this request is the one that
+      // must call the provider, not before checking Redis.
+      onCacheMiss: async () => {
+        const charge = await creditService.chargeCreditsCheckedOwned({
+          userId: params.userId!,
+          action: "search_rerank",
+          amount: 5,
+          targetKind: "search",
+          idempotencyKey: buildRerankChargeKey({
+            userId: params.userId!,
+            fingerprint: rerankKeyParts,
+          }),
+          metadata: {
+            promptVersion: RERANK_PROMPT_VERSION,
+            model,
+            candidateCount: candidates.length,
+          },
+        });
+        if (charge.created) ownedTxId = charge.transaction?._id;
       },
       validate: (candidate) => {
         if (Object.keys(candidate).length === 0) {
@@ -192,36 +186,32 @@ async function rerankedSearch(args: {
           // truncates at 20 candidates (caught live by the MAX_TOKENS guard).
           maxOutputTokens: 4096,
         });
-        return toScoreMap(output, candidates);
+        return toCompleteScoreMap(output, candidates);
       },
     });
   } catch (err) {
-    if (txId) {
+    if (ownedTxId) {
       await creditService.refundCreditsOnce({
-        transactionId: txId.toString(),
+        transactionId: ownedTxId.toString(),
         reason: "Rerank LLM generation failed",
       });
     }
     // Re-rank is an enhancement, not a hard dependency — degrade gracefully.
-    // Negative-cache the failure briefly so an identical (deterministically
-    // failing) query doesn't re-burn Gemini quota on every request.
     logger.warn({ err }, "rerank LLM call failed; falling back to vector order");
-    await cache.set(failKey, {}, RERANK_FAIL_TTL_SECONDS);
     return paginatePool(pool, page, pageSize, false);
   }
 
-  if (cacheHit && txId) {
-    await creditService.refundCreditsOnce({
-      transactionId: txId.toString(),
-      reason: "Rerank cache hit",
-    });
-  }
-
-  // Attach LLM scores. A paper the LLM OMITTED is NOT "scored 0" (= irrelevant)
-  // — fall back to its vector score so a strong semantic hit the model forgot
-  // to emit keeps its rank instead of being dumped below explicit-0 papers.
-  for (const p of pool) p.rerankScore = scoreMap[p.id] ?? p.score;
-  pool.sort((a, b) => (effectiveRerankScore(b) - effectiveRerankScore(a)) || b.score - a.score);
+  // Coverage validation above guarantees every candidate has an LLM score.
+  // Rank by coarse grade first: tiny raw-score differences are not calibrated
+  // enough to justify a different order. Semantic and taxonomy relevance break
+  // ties deterministically.
+  for (const p of rerankHead) p.rerankScore = scoreMap[p.id]!;
+  const rerankedHead = [...rerankHead].sort((a, b) =>
+    (rerankGrade(b.rerankScore) - rerankGrade(a.rerankScore))
+    || (effectiveRelevanceScore(b) - effectiveRelevanceScore(a))
+    || b.score - a.score
+  );
+  pool.splice(0, rerankHead.length, ...rerankedHead);
 
   // An all-empty score map (negative-cache hit or total LLM omission) means no
   // real re-ranking happened — report it honestly as plain semantic order.

@@ -35,4 +35,17 @@ const rerankLimiter = rateLimit({
     }),
 });
 
-searchRouter.get("/", conditionalSearchAuth, rerankLimiter, searchController.semantic);
+const semanticSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: env.SEMANTIC_SEARCH_MAX_PER_MINUTE,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? req.ip ?? "anonymous",
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: { code: "TOO_MANY_REQUESTS", message: "Semantic search limit exceeded. Try again shortly." },
+    }),
+});
+
+searchRouter.get("/", conditionalSearchAuth, semanticSearchLimiter, rerankLimiter, searchController.semantic);

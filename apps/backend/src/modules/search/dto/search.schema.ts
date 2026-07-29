@@ -19,7 +19,7 @@ export function isRerankRequested(v: unknown): boolean {
  * a semantic-only cosine-similarity floor.
  */
 export const SearchQuerySchema = z.object({
-  q: z.string().trim().min(1, "q (search query) is required"),
+  q: z.string().trim().min(1, "q (search query) is required").max(500, "q must be at most 500 characters"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
   ...paperFilterShape,
