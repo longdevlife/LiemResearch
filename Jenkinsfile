@@ -13,6 +13,8 @@ pipeline {
     PROXY_NETWORK = 'nginx-network'
     BACKEND_IMAGE = 'user1-liemresearch-backend'
     WEB_IMAGE = 'user1-liemresearch-web'
+    E2E_IMAGE = 'user1-liemresearch-e2e'
+    PAPER_VECTOR_INDEX_NAME = 'paper_vector_index_v2'
     BACKEND_CONTAINER = 'user1-liemresearch-backend'
     WEB_CONTAINER = 'user1-liemresearch-web'
     REDIS_IMAGE = 'redis:7-alpine'
@@ -41,6 +43,7 @@ pipeline {
             --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
             -t "$WEB_IMAGE:$IMAGE_TAG" \
             -f Dockerfile.web .
+          docker build --pull -t "$E2E_IMAGE:$IMAGE_TAG" -f Dockerfile.e2e .
           docker pull "$REDIS_IMAGE"
           docker pull "$LIBRETRANSLATE_IMAGE"
         '''
@@ -126,6 +129,34 @@ pipeline {
       }
     }
 
+    stage('Ensure filtered vector index') {
+      steps {
+        withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
+          sh '''
+            set -eu
+            umask 077
+            printf '%s' "$BACKEND_ENV_B64" | base64 -d > .env.runtime
+
+            docker run --rm \
+              --network "$APP_NETWORK" \
+              --env-file .env.runtime \
+              -e NODE_ENV=production \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
+              "$BACKEND_IMAGE:$IMAGE_TAG" \
+              pnpm --filter backend mongo:ensure-paper-vector-index-v2
+
+            docker run --rm \
+              --network "$APP_NETWORK" \
+              --env-file .env.runtime \
+              -e NODE_ENV=production \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
+              "$BACKEND_IMAGE:$IMAGE_TAG" \
+              pnpm --filter backend mongo:vector-smoke
+          '''
+        }
+      }
+    }
+
     stage('Deploy backend, web and workers') {
       steps {
         withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
@@ -143,6 +174,7 @@ pipeline {
               -e NODE_ENV=production \
               -e PORT=4000 \
               -e CORS_ORIGIN=https://paperlens.uk \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
               -e GOOGLE_CALLBACK_URL=https://api.paperlens.uk/api/v1/auth/google/callback \
               -e TRANSLATION_PROVIDER=libretranslate \
               -e LIBRETRANSLATE_URL=http://libretranslate:5000 \
@@ -175,6 +207,7 @@ pipeline {
               -e NODE_ENV=production \
               -e PORT=4000 \
               -e CORS_ORIGIN=https://paperlens.uk \
+              -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
               -e GOOGLE_CALLBACK_URL=https://api.paperlens.uk/api/v1/auth/google/callback \
               -e TRANSLATION_PROVIDER=libretranslate \
               -e LIBRETRANSLATE_URL=http://libretranslate:5000 \
@@ -232,6 +265,7 @@ pipeline {
                 --network "$APP_NETWORK" \
                 --env-file .env.runtime \
                 -e NODE_ENV=production \
+                -e MONGODB_VECTOR_INDEX_NAME="$PAPER_VECTOR_INDEX_NAME" \
                 "$BACKEND_IMAGE:$IMAGE_TAG" \
                 pnpm --filter backend "$command"
             done
@@ -254,8 +288,6 @@ pipeline {
               "$BACKEND_IMAGE:$IMAGE_TAG" \
               pnpm --filter backend workers:verify:heartbeats
 
-            docker tag "$BACKEND_IMAGE:$IMAGE_TAG" "$BACKEND_IMAGE:latest"
-            docker tag "$WEB_IMAGE:$IMAGE_TAG" "$WEB_IMAGE:latest"
           '''
         }
       }
@@ -298,10 +330,66 @@ pipeline {
         '''
       }
     }
+
+    stage('Browser E2E smoke') {
+      steps {
+        withCredentials([string(credentialsId: 'liemresearch-backend-env-b64', variable: 'BACKEND_ENV_B64')]) {
+          sh '''
+            set -eu
+            umask 077
+            printf '%s' "$BACKEND_ENV_B64" | base64 -d > .env.runtime
+
+            for key in E2E_USER_EMAIL E2E_USER_PASSWORD E2E_PAPER_ID E2E_SEARCH_QUERY; do
+              value="$(grep -m1 "^${key}=" .env.runtime | cut -d= -f2- || true)"
+              if [ -z "$value" ]; then
+                echo "Missing required browser E2E variable: $key"
+                exit 1
+              fi
+              case "$value" in
+                '<'*'>')
+                  echo "Browser E2E variable still contains a placeholder: $key"
+                  exit 1
+                  ;;
+              esac
+            done
+
+            mkdir -p test-results/e2e playwright-report
+            e2e_status=0
+            docker run --rm \
+              --env-file .env.runtime \
+              -e CI=true \
+              -e E2E_BASE_URL=https://paperlens.uk \
+              -v "$WORKSPACE/test-results/e2e:/app/test-results/e2e" \
+              -v "$WORKSPACE/playwright-report:/app/playwright-report" \
+              "$E2E_IMAGE:$IMAGE_TAG" || e2e_status=$?
+
+            docker run --rm \
+              -v "$WORKSPACE/test-results:/artifacts" \
+              "$REDIS_IMAGE" chmod -R a+rX /artifacts
+            docker run --rm \
+              -v "$WORKSPACE/playwright-report:/artifacts" \
+              "$REDIS_IMAGE" chmod -R a+rX /artifacts
+
+            exit "$e2e_status"
+          '''
+        }
+      }
+    }
+
+    stage('Promote verified images') {
+      steps {
+        sh '''
+          set -eu
+          docker tag "$BACKEND_IMAGE:$IMAGE_TAG" "$BACKEND_IMAGE:latest"
+          docker tag "$WEB_IMAGE:$IMAGE_TAG" "$WEB_IMAGE:latest"
+        '''
+      }
+    }
   }
 
   post {
     always {
+      archiveArtifacts artifacts: 'test-results/e2e/**,playwright-report/**', allowEmptyArchive: true
       sh 'rm -f .env.runtime'
     }
     success {
