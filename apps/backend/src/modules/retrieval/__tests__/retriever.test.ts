@@ -8,7 +8,7 @@ import {
 } from "../retriever.js";
 
 describe("buildVectorFilter", () => {
-  it("keeps only vector-index-safe filters inside $vectorSearch", () => {
+  it("pushes narrow metadata filters into the filtered vector index", () => {
     const paperId = "507f1f77bcf86cd799439011";
     expect(
       buildVectorFilter({
@@ -16,12 +16,20 @@ describe("buildVectorFilter", () => {
           yearFrom: 2021,
           yearTo: 2024,
           topics: ["LLM", "RAG"],
+          languages: ["EN"],
+          sources: ["Nature"],
+          citationBands: ["100-499"],
           paperIds: [paperId],
         },
       }),
     ).toEqual({
       dataStatus: "active",
       publicationYear: { $gte: 2021, $lte: 2024 },
+      _id: { $in: [new mongoose.Types.ObjectId(paperId)] },
+      journalName: { $in: ["Nature"] },
+      language: { $in: ["en"] },
+      citationCount: { $gte: 100, $lte: 499 },
+      "topics.topicName": { $in: ["LLM", "RAG"] },
     });
   });
 
@@ -59,6 +67,13 @@ describe("buildRetrievePipeline", () => {
         limit: 120,
         filter: {
           dataStatus: "active",
+          _id: { $in: [new mongoose.Types.ObjectId("507f1f77bcf86cd799439011")] },
+          paperKind: { $in: ["journal-article"] },
+          openAccessStatus: { $in: ["gold"] },
+          primaryProvider: "openalex",
+          language: { $in: ["en", "vi"] },
+          "topics.topicName": { $in: ["LLM"] },
+          "topics.domainId": { $in: ["https://openalex.org/domains/1", "1"] },
         },
       },
     });

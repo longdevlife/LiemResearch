@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
 
   MONGODB_URI: z.string().url().or(z.string().startsWith("mongodb")),
+  MONGODB_VECTOR_INDEX_NAME: z.string().min(1).default("paper_vector_index"),
   // Read only by explicit migration scripts. The running API and workers always
   // use MONGODB_URI, so an old database cannot accidentally remain on the
   // normal runtime path after cutover.
@@ -54,6 +55,7 @@ const EnvSchema = z.object({
   GEMINI_MODEL_FAST: z.string().default("gemini-2.5-flash"),
   GEMINI_MODEL_DEEP: z.string().default("gemini-2.5-flash"),
   GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
+  GEMINI_EMBEDDING_VERSION: z.string().min(1).default("1"),
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
   // Project Chat — only the project chatbot uses this pluggable provider for now.
