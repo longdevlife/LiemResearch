@@ -1,7 +1,10 @@
-﻿import { en } from "./en";
+import { en } from "./en";
+import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { paperDetailIaStrings } from "./paper-detail-ia";
 
 export const es: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  ...paperDetailIaStrings,
   "1 research gap": "1 brecha de investigación",
   "{{count}} research gaps from the same analysis": "{{count}} brechas de investigación del mismo análisis",
   "-day period.": "-período de días.",
@@ -1730,5 +1733,3 @@ export const es: Record<keyof typeof en, string> = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 };
-
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

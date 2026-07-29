@@ -1,5 +1,9 @@
+import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { paperDetailIaStrings } from "./paper-detail-ia";
+
 export const en = {
   ...gapEvidenceWorkflowStrings,
+  ...paperDetailIaStrings,
   "-day period.": "-day period.",
   "— whereas": "— whereas",
   "; the next sync or PDF update will publish the full breakdown.": "; the next sync or PDF update will publish the full breakdown.",
@@ -1726,5 +1730,3 @@ export const en = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 } as const;
-
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

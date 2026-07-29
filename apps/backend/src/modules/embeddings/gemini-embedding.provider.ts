@@ -48,6 +48,7 @@ function withEmbedTimeout<T>(op: Promise<T>): Promise<T> {
 
 export class GeminiEmbeddingProvider implements EmbeddingProvider {
   readonly modelName = env.GEMINI_EMBEDDING_MODEL;
+  readonly modelVersion = env.GEMINI_EMBEDDING_VERSION;
   readonly dimensions = env.GEMINI_EMBEDDING_DIMENSIONS;
 
   async embed(text: string): Promise<number[]> {

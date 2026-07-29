@@ -61,6 +61,22 @@ describe("getQualityTier", () => {
     expect(taxonomyRich.relevanceScore).toBe(15);
   });
 
+  it("counts non-Latin abstracts as valid scholarly text", () => {
+    const russianAbstract = [
+      "Исследование представляет новый метод автоматической классификации научных статей.",
+      "Авторы описывают набор данных, экспериментальную методологию и полученные результаты.",
+      "Предложенный подход повышает точность и сокращает ручную обработку документов.",
+    ].join(" ");
+
+    const quality = calculatePaperQuality({
+      abstractText: russianAbstract,
+      keywords: [{ keywordName: "классификация" }],
+      topics: [{ topicName: "Искусственный интеллект" }],
+    });
+
+    expect(quality.relevanceScore).toBe(11);
+  });
+
   it("scores a metadata-only OpenAlex paper without requiring a PDF", () => {
     const quality = calculatePaperQuality({
       title: "Retrieval-augmented generation in education",

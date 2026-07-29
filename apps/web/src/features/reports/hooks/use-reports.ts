@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateReportRequest, PreviewReportEvidenceRequest } from "@trend/shared-types";
 import { reportsApi } from "../api/reports.api";
 
-export function useReports(projectId?: string) {
+export function useReports(projectId?: string, paperId?: string) {
   return useQuery({
-    queryKey: ["reports", { projectId }],
-    queryFn: () => reportsApi.list({ projectId }),
+    queryKey: ["reports", { projectId, paperId }],
+    queryFn: () => reportsApi.list({ projectId, paperId }),
     refetchInterval: (query) => {
       const hasPending = query.state?.data?.some(
         (r) => r.status === "queued" || r.status === "generating"

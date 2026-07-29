@@ -83,13 +83,14 @@ function hasReportScopeFilters(filters: ReportScopeFilters): boolean {
 
 export function ReportsListPage() {
   const { t } = useI18n();
-  const { data: reports, isLoading } = useReports();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const citedPaperId = searchParams.get("citesPaper") || undefined;
+  const { data: reports, isLoading } = useReports(undefined, citedPaperId);
   const createReport = useCreateReport();
   const deleteReport = useDeleteReport();
   const deleteBatchReports = useDeleteBatchReports();
   const previewEvidence = useReportEvidencePreview();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | 'ALL' | null>(null);
@@ -1120,9 +1121,29 @@ export function ReportsListPage() {
       </div>
 
       {/* Reports Grid */}
+      {citedPaperId && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/20 dark:text-violet-300">
+          <span>Showing only reports whose evidence pack contains this paper.</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setSearchParams((previous) => {
+                previous.delete("citesPaper");
+                return previous;
+              });
+            }}
+          >
+            Show all reports
+          </Button>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Your Reports</h2>
-        {reports && reports.length > 0 && (
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          {citedPaperId ? "Reports citing this paper" : "Your Reports"}
+        </h2>
+        {reports && reports.length > 0 && !citedPaperId && (
           <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-semibold gap-2" onClick={handleDeleteAll} disabled={deleteBatchReports.isPending}>
             {deleteBatchReports.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             Clear All
@@ -1140,7 +1161,9 @@ export function ReportsListPage() {
           <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6 text-blue-500">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No reports generated yet</h3>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            {citedPaperId ? "No reports cite this paper yet" : "No reports generated yet"}
+          </h3>
           <p className="text-slate-500 max-w-sm mb-6">
             Use the form above to ask a research question and generate your first AI-powered literature review.
           </p>

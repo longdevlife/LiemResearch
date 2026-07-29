@@ -34,13 +34,28 @@ const translationLimiter = rateLimit({
     }),
 });
 
+const compareLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: env.COMPARE_MAX_PER_HOUR,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? req.ip ?? "anonymous",
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: { code: "TOO_MANY_REQUESTS", message: "Paper comparison limit exceeded. Try again later." },
+    }),
+});
+
 const triggerEmbedding = () => {
-  // 1. Add to BullMQ queue for robustness / production worker
   embeddingQueue.add("manual-embedding", {}).catch(() => {});
-  // 2. Run in-process in the background to guarantee indexing in development
-  runEmbedding({ maxPapers: 5, batchSize: 5 }).catch((err) => {
-    logger.error({ err }, "In-process runEmbedding failed");
-  });
+  // Keep local development convenient without making production API instances
+  // perform worker CPU/network work or race the dedicated embedding worker.
+  if (env.NODE_ENV !== "production") {
+    runEmbedding({ maxPapers: 5, batchSize: 5 }).catch((err) => {
+      logger.error({ err }, "In-process runEmbedding failed");
+    });
+  }
 };
 
 async function saveUploadedPdf(req: Request): Promise<string | undefined> {
@@ -85,17 +100,53 @@ paperRouter.get("/", optionalAuth, async (req: Request, res: Response, next: Nex
       return;
     }
 
-    const { q, page, pageSize, yearFrom, yearTo, paperKind, openAccess, provider, languages, sort } = parsed.data;
+    const {
+      q,
+      page,
+      pageSize,
+      yearFrom,
+      yearTo,
+      paperKind,
+      paperKinds,
+      openAccess,
+      openAccessStatuses,
+      provider,
+      providers,
+      sources,
+      languages,
+      citationBands,
+      domains,
+      fields,
+      subfields,
+      topics,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
+      sort,
+    } = parsed.data;
     const { papers, total } = await paperService.list({
       q,
       page,
       pageSize,
       yearFrom,
       yearTo,
-      paperKinds: paperKind,
+      paperKinds: paperKinds ?? paperKind,
       openAccess,
+      openAccessStatuses,
       provider,
+      providers,
+      sources,
       languages,
+      citationBands,
+      domains,
+      fields,
+      subfields,
+      topics,
+      domainIds,
+      fieldIds,
+      subfieldIds,
+      topicIds,
       sort,
     });
     res.json({
@@ -125,7 +176,7 @@ paperRouter.get("/my-requests", requireAuth, async (req, res, next) => {
  * POST /papers/compare — side-by-side comparison of 2-4 papers.
  * Declared BEFORE the `/:id` routes so "compare" is never captured as an :id.
  */
-paperRouter.post("/compare", async (req: Request, res: Response, next: NextFunction) => {
+paperRouter.post("/compare", requireAuth, compareLimiter, async (req: Request, res: Response, next: NextFunction) => {
   const parsed = CompareBodySchema.safeParse(req.body);
   if (!parsed.success) {
     next(parsed.error);
@@ -147,16 +198,31 @@ paperRouter.post(
   paperTranslationController.translate,
 );
 
-/** GET /papers/:id/references — references resolved to in-corpus papers. */
-paperRouter.get("/:id/references", async (req, res) => {
-  const data = await paperService.getReferences(req.params.id);
+/** GET /papers/:id/references — references resolved to public in-corpus papers. */
+paperRouter.get("/:id/references", optionalAuth, async (req, res) => {
+  const data = await paperService.getReferences(String(req.params.id), {
+    userId: req.user?.sub,
+    role: req.user?.role,
+  });
   res.json({ success: true, data });
 });
 
-/** GET /papers/:id — single paper detail. */
-paperRouter.get("/:id", async (req, res, next) => {
+/** GET /papers/:id/related — OpenAlex related works resolved to this corpus. */
+paperRouter.get("/:id/related", optionalAuth, async (req, res) => {
+  const data = await paperService.getRelatedWorks(String(req.params.id), {
+    userId: req.user?.sub,
+    role: req.user?.role,
+  });
+  res.json({ success: true, data });
+});
+
+/** GET /papers/:id — public active detail, or private owner/admin detail. */
+paperRouter.get("/:id", optionalAuth, async (req, res, next) => {
   try {
-    const paper = await paperService.getById(req.params.id);
+    const paper = await paperService.getById(String(req.params.id), {
+      userId: req.user?.sub,
+      role: req.user?.role,
+    });
     if (!paper) throw AppError.notFound("Paper not found");
     res.json({ success: true, data: paper });
   } catch (error) {
@@ -244,18 +310,18 @@ paperRouter.get("/:id/download", async (req, res, next) => {
       throw AppError.forbidden("Token is not valid for this paper");
     }
 
-    const paper = await paperService.getById(id);
-    if (!paper || !paper.pdfPath) {
+    const pdfPath = await paperService.getPdfStoragePath(id);
+    if (!pdfPath) {
       throw AppError.notFound("PDF is not available for this paper");
     }
 
-    const signedUrl = await pdfStorageService.getSignedDownloadUrl(paper.pdfPath);
+    const signedUrl = await pdfStorageService.getSignedDownloadUrl(pdfPath);
     if (signedUrl) {
       res.redirect(signedUrl);
       return;
     }
 
-    const filePath = pdfStorageService.resolveLocalPath(paper.pdfPath);
+    const filePath = pdfStorageService.resolveLocalPath(pdfPath);
     if (!filePath) {
       throw AppError.notFound("PDF storage object is not available");
     }
@@ -268,19 +334,30 @@ paperRouter.get("/:id/download", async (req, res, next) => {
 
 /** POST /papers/:id/upload-pdf — upload a PDF for an existing paper request. */
 paperRouter.post("/:id/upload-pdf", requireAuth, uploadSinglePdf, async (req, res, next) => {
+  let pdfPath: string | undefined;
   try {
-    const pdfPath = await saveUploadedPdf(req);
+    const paperId = String(req.params.id);
+    const uploaderId = String(req.user!.sub);
+    const uploaderRole = String(req.user!.role);
+
+    await paperService.assertCanUploadPdf(paperId, uploaderId, uploaderRole);
+    pdfPath = await saveUploadedPdf(req);
     if (!pdfPath) throw AppError.badRequest("PDF file is required");
 
     const paper = await paperService.uploadPdf(
-      String(req.params.id),
-      String(req.user!.sub),
-      String(req.user!.role),
+      paperId,
+      uploaderId,
+      uploaderRole,
       pdfPath,
     );
 
     res.json({ success: true, data: paper });
   } catch (error) {
+    if (pdfPath) {
+      await pdfStorageService.deletePdf(pdfPath).catch((cleanupError) => {
+        logger.error({ cleanupError, pdfPath }, "Failed to clean up PDF after upload failure");
+      });
+    }
     next(error);
   }
 });

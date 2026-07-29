@@ -156,6 +156,49 @@ describe("CreditService", () => {
       expect(CreditTransactionModel.create).toHaveBeenCalled();
     });
 
+    it("reports ownership only to the invocation that created the charge", async () => {
+      const existingTx = { _id: txId, idempotencyKey: "owned-key", status: "applied" };
+      vi.mocked(CreditTransactionModel.findOne).mockReturnValue({
+        lean: vi.fn().mockResolvedValue(existingTx),
+      } as any);
+
+      const result = await creditService.chargeCreditsCheckedOwned({
+        userId,
+        action: "search_rerank",
+        amount: 5,
+        idempotencyKey: "owned-key",
+      });
+
+      expect(result).toEqual({ transaction: existingTx, created: false });
+      expect(UserModel.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rolls back a concurrent duplicate charge and returns it as not owned", async () => {
+      vi.mocked(CreditTransactionModel.findOne)
+        .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) } as any)
+        .mockReturnValueOnce({
+          lean: vi.fn().mockResolvedValue({ _id: txId, idempotencyKey: "race-key", status: "applied" }),
+        } as any);
+      vi.mocked(UserModel.findOneAndUpdate).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ _id: userId, credits: 95 }),
+      } as any);
+      vi.mocked(CreditTransactionModel.create).mockRejectedValue(
+        Object.assign(new Error("duplicate key"), { code: 11000 }) as any,
+      );
+      vi.mocked(UserModel.findByIdAndUpdate).mockResolvedValue({} as any);
+
+      const result = await creditService.chargeCreditsCheckedOwned({
+        userId,
+        action: "search_rerank",
+        amount: 5,
+        idempotencyKey: "race-key",
+      });
+
+      expect(result.created).toBe(false);
+      expect(result.transaction?._id).toBe(txId);
+      expect(UserModel.findByIdAndUpdate).toHaveBeenCalledWith(userId, { $inc: { credits: 5 } });
+    });
+
     it("should throw AppError badRequest if user has insufficient credits", async () => {
       vi.mocked(CreditTransactionModel.findOne).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null),

@@ -28,7 +28,7 @@ export async function comparePapers(ids: string[]): Promise<PaperComparison> {
     throw AppError.badRequest(`Compare between 2 and ${env.COMPARE_MAX_PAPERS} distinct papers`);
   }
 
-  const docs = await PaperModel.find({ _id: { $in: unique } })
+  const docs = await PaperModel.find({ _id: { $in: unique }, dataStatus: "active" })
     .select(
       "title publicationYear authors externalIds citationCount journalName openAccessUrl paperKind aiScore abstractText aiAnalysis",
     )

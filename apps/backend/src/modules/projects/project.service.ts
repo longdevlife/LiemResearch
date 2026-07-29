@@ -2,6 +2,7 @@ import { ProjectModel, type ProjectDoc } from "./models/project.model.js";
 import type { CreateProjectRequest, UpdateProjectRequest, AddProjectMemberRequest } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import mongoose from "mongoose";
+import { PaperModel } from "../papers/models/paper.model.js";
 import {
   assertProjectHasPapers,
   canAccessProject,
@@ -128,6 +129,10 @@ export class ProjectService {
    * Add a paper to the project.
    */
   async addPaperToProject(projectId: string, paperId: string, userId: string): Promise<ProjectDoc> {
+    if (!mongoose.Types.ObjectId.isValid(paperId)) {
+      throw AppError.badRequest("Invalid paper id");
+    }
+
     const project = await ProjectModel.findById(projectId);
     if (!project) throw AppError.notFound("Project not found");
 
@@ -136,6 +141,11 @@ export class ProjectService {
     );
 
     if (!hasAccess) throw AppError.forbidden("Only project members can modify papers");
+
+    const paperExists = await PaperModel.exists({ _id: paperId, dataStatus: "active" });
+    if (!paperExists) {
+      throw AppError.notFound("Paper not found");
+    }
 
     const updated = await ProjectModel.findOneAndUpdate(
       { _id: projectId, "papers.targetId": { $ne: new mongoose.Types.ObjectId(paperId) } },

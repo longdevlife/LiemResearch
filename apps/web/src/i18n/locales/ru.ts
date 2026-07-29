@@ -1,7 +1,10 @@
-﻿import { en } from "./en";
+import { en } from "./en";
+import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { paperDetailIaStrings } from "./paper-detail-ia";
 
 export const ru: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  ...paperDetailIaStrings,
   "1 research gap": "1 исследовательский пробел",
   "{{count}} research gaps from the same analysis": "{{count}} исследовательских пробелов из одного анализа",
   "-day period.": "-дневной период.",
@@ -1730,5 +1733,3 @@ export const ru: Record<keyof typeof en, string> = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 };
-
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

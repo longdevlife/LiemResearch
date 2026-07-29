@@ -91,6 +91,7 @@ export interface Paper {
   downloadCost?: number | null;
   uploadCreditReward?: number;
   pdfPath?: string;
+  pdfAvailable?: boolean;
   paperLink?: string;
   rejectionReason?: string;
   paperStatus?: "pending" | "not-downloaded" | "downloaded" | "rejected" | "pending-requester-acceptance";

@@ -1,4 +1,5 @@
 import type { OpenAlexTopic, OpenAlexTopicLevel, OpenAlexWork } from "./openalex.types.js";
+import { normalizeAcademicTitle } from "../../../common/text/academic-text.js";
 
 type DetectedBy = "openalex" | "ai" | "user";
 type PaperKind = "article" | "proceedings" | "preprint" | "review" | "book-chapter" | "other";
@@ -226,5 +227,5 @@ function mapOpenAccessStatus(status?: string): OpenAccessStatus {
 }
 
 function normalizeTitle(title?: string | null, displayName?: string | null): string {
-  return title?.trim() || displayName?.trim() || "Untitled";
+  return normalizeAcademicTitle(title?.trim() || displayName?.trim());
 }

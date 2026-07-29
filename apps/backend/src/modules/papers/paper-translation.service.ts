@@ -7,6 +7,10 @@ import { PaperModel } from "./models/paper.model.js";
 import { PaperTranslationModel } from "./models/paper-translation.model.js";
 import { getSupportedLanguages, LIBRETRANSLATE_PROVIDER_VERSION, translateText } from "./libretranslate.client.js";
 import { generateJSON } from "../llm/gemini.client.js";
+import {
+  buildPaperVisibilityFilter,
+  type PaperDetailViewer,
+} from "./paper.service.js";
 
 export interface PaperTranslationResult {
   paperId: string;
@@ -24,10 +28,14 @@ function hashSource(title: string, abstractText: string): string {
 }
 
 export const paperTranslationService = {
-  async translate(paperId: string, targetLanguage: string): Promise<PaperTranslationResult> {
-    if (!mongoose.Types.ObjectId.isValid(paperId)) throw AppError.notFound("Paper not found");
-
-    const paper = await PaperModel.findById(paperId).select("title abstractText language").lean();
+  async translate(
+    paperId: string,
+    targetLanguage: string,
+    viewer: PaperDetailViewer = {},
+  ): Promise<PaperTranslationResult> {
+    const visibilityFilter = buildPaperVisibilityFilter(paperId, viewer);
+    if (!visibilityFilter) throw AppError.notFound("Paper not found");
+    const paper = await PaperModel.findOne(visibilityFilter).select("title abstractText language").lean();
     if (!paper) throw AppError.notFound("Paper not found");
 
     const rawSourceLanguage = (paper.language || "und").toLowerCase();

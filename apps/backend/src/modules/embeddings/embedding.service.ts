@@ -3,6 +3,7 @@ import { logger } from "../../infrastructure/logger.js";
 import { auditService } from "../audit/audit.service.js";
 import { PaperModel } from "../papers/models/paper.model.js";
 import { getEmbeddingProvider } from "./embedding.factory.js";
+import type { EmbeddingProvider } from "./embedding.provider.js";
 
 export interface RunEmbeddingJob {
   /** Override env.EMBED_BATCH_SIZE for this run. */
@@ -17,14 +18,45 @@ export interface EmbeddingRunResult {
   batches: number;
 }
 
+export interface EmbeddingProvenance {
+  embeddingModel: string;
+  embeddingVersion: string;
+  embeddingDimensions: number;
+  embeddingUpdatedAt: Date;
+}
+
+export function buildEmbeddingCandidateFilter(provider: EmbeddingProvider): Record<string, unknown> {
+  return {
+    isAiAnalyzable: true,
+    dataStatus: "active",
+    $or: [
+      { embedding: { $exists: false } },
+      { embeddingModel: { $ne: provider.modelName } },
+      { embeddingVersion: { $ne: provider.modelVersion } },
+      { embeddingDimensions: { $ne: provider.dimensions } },
+    ],
+  };
+}
+
+export function buildEmbeddingProvenance(
+  provider: EmbeddingProvider,
+  updatedAt = new Date(),
+): EmbeddingProvenance {
+  return {
+    embeddingModel: provider.modelName,
+    embeddingVersion: provider.modelVersion,
+    embeddingDimensions: provider.dimensions,
+    embeddingUpdatedAt: updatedAt,
+  };
+}
+
 /**
- * Generate vector embeddings for every paper that is AI-analyzable but has no
- * vector yet, then store the vector in `paper.embedding`.
+ * Generate vector embeddings for every active, AI-analyzable paper whose
+ * vector is absent or stale for the configured model/version/dimensions.
  *
- * IDEMPOTENT: a paper drops out of the candidate filter once its embedding is
- * stored (`embedding: { $exists: false }` no longer matches), so re-running only
- * processes newly-synced papers. The Phase A quality gate (`isAiAnalyzable`)
- * keeps low-quality papers out of the (paid) embedding API.
+ * Existing vectors without provenance remain readable, but are selected once
+ * for a compatibility backfill. A paper drops out after vector + provenance are
+ * written atomically.
  */
 export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<EmbeddingRunResult> {
   const provider = getEmbeddingProvider();
@@ -34,7 +66,7 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
   // Only ACTIVE papers good enough for AI, that don't have a vector yet. The
   // `dataStatus: "active"` gate keeps unreviewed user submissions (draft/pending)
   // out of the embedding quota + semantic index until an admin approves them.
-  const filter = { isAiAnalyzable: true, dataStatus: "active", embedding: { $exists: false } };
+  const filter = buildEmbeddingCandidateFilter(provider);
 
   let totalEmbedded = 0;
   let totalFailed = 0;
@@ -42,7 +74,13 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
 
   await auditService.log("embedding.run.started", { details: { batchSize, maxPapers } });
   logger.info(
-    { batchSize, maxPapers, model: provider.modelName, dims: provider.dimensions },
+    {
+      batchSize,
+      maxPapers,
+      model: provider.modelName,
+      version: provider.modelVersion,
+      dims: provider.dimensions,
+    },
     "embedding run started",
   );
 
@@ -78,11 +116,23 @@ export async function runEmbedding(job: RunEmbeddingJob = {}): Promise<Embedding
       throw err;
     }
 
+    if (
+      vectors.length !== candidates.length
+      || vectors.some((vector) => vector.length !== provider.dimensions)
+    ) {
+      throw new Error(
+        `Embedding batch shape mismatch: expected ${candidates.length} vectors of ${provider.dimensions} dimensions`,
+      );
+    }
+
+    const provenance = buildEmbeddingProvenance(provider);
     await Promise.all(
       candidates.map((p, i) => {
         const vec = vectors[i];
-        if (!vec) return Promise.resolve();
-        return PaperModel.updateOne({ _id: p._id }, { $set: { embedding: vec } });
+        return PaperModel.updateOne(
+          { _id: p._id, ...filter },
+          { $set: { embedding: vec, ...provenance } },
+        );
       }),
     );
     totalEmbedded += candidates.length;

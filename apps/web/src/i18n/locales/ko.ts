@@ -1,7 +1,10 @@
-﻿import { en } from "./en";
+import { en } from "./en";
+import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { paperDetailIaStrings } from "./paper-detail-ia";
 
 export const ko: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  ...paperDetailIaStrings,
   "1 research gap": "연구 공백 1개",
   "{{count}} research gaps from the same analysis": "같은 분석의 연구 공백 {{count}}개",
   "-day period.": "-일 기간.",
@@ -1730,5 +1733,3 @@ export const ko: Record<keyof typeof en, string> = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 };
-
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

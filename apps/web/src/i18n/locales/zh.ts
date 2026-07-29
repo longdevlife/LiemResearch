@@ -1,7 +1,10 @@
-﻿import { en } from "./en";
+import { en } from "./en";
+import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";
+import { paperDetailIaStrings } from "./paper-detail-ia";
 
 export const zh: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  ...paperDetailIaStrings,
   "1 research gap": "1 个研究空白",
   "{{count}} research gaps from the same analysis": "同一分析中的 {{count}} 个研究空白",
   "-day period.": "天期间。",
@@ -1730,5 +1733,3 @@ export const zh: Record<keyof typeof en, string> = {
   "Load More": "Load More",
   "Loading...": "Loading...",
 };
-
-import { gapEvidenceWorkflowStrings } from "./gap-evidence-workflow";

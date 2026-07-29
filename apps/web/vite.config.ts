@@ -6,6 +6,7 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   build: {
+    manifest: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
@@ -18,9 +19,6 @@ export default defineConfig({
             normalizedId.includes("/node_modules/react-router-dom/")
           ) {
             return "vendor-react";
-          }
-          if (normalizedId.includes("/node_modules/recharts/") || normalizedId.includes("/node_modules/d3-")) {
-            return "vendor-charts";
           }
           if (normalizedId.includes("/node_modules/@radix-ui/")) {
             return "vendor-radix";

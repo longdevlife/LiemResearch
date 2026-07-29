@@ -75,6 +75,9 @@ services:
     restart: unless-stopped
     environment:
       LT_LOAD_ONLY: ${LIBRETRANSLATE_LOAD_ONLY:-en,vi,es,fr,de,pt,zh,ja,ko,ru,id}
+    volumes:
+      - libretranslate-share:/home/libretranslate/.local/share
+      - libretranslate-cache:/home/libretranslate/.local/cache
     ports:
       - "127.0.0.1:5000:5000"
     healthcheck:
@@ -167,4 +170,6 @@ services:
 volumes:
   mongo-data:
   redis-data:
+  libretranslate-share:
+  libretranslate-cache:
   backend-uploads:

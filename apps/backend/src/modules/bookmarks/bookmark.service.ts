@@ -2,6 +2,7 @@ import type { Bookmark } from "@trend/shared-types";
 import { AppError } from "../../common/exceptions/app-error.js";
 import { BookmarkModel, type BookmarkDoc } from "./models/bookmark.model.js";
 import { PaperModel } from "../papers/models/paper.model.js";
+import { presentPaperDetail } from "../papers/paper.presenter.js";
 import { ReportModel } from "../reports/models/report.model.js";
 import type { CreateBookmarkInput, UpdateBookmarkInput } from "./dto/bookmark.schema.js";
 
@@ -9,7 +10,7 @@ export const bookmarkService = {
   async create(userId: string, input: CreateBookmarkInput): Promise<Bookmark> {
     // 1. Verify target exists
     if (input.targetKind === "paper") {
-      const paper = await PaperModel.findById(input.targetId);
+      const paper = await PaperModel.findOne({ _id: input.targetId, dataStatus: "active" });
       if (!paper) throw AppError.notFound("Paper not found");
     } else if (input.targetKind === "report") {
       const report = await ReportModel.findById(input.targetId);
@@ -87,7 +88,7 @@ export const bookmarkService = {
     const reportIds = docs.filter(d => d.targetKind === "report").map(d => d.targetId);
 
     const [papers, reports] = await Promise.all([
-      PaperModel.find({ _id: { $in: paperIds } }).lean(),
+      PaperModel.find({ _id: { $in: paperIds }, dataStatus: "active" }).lean(),
       ReportModel.find({ _id: { $in: reportIds } }).lean(),
     ]);
 
@@ -112,7 +113,7 @@ export const bookmarkService = {
       if (doc.targetKind === "paper") {
         const p = paperMap.get(targetId);
         if (p) {
-          b.paperDetail = { id: p._id.toString(), ...p } as any;
+          b.paperDetail = presentPaperDetail(p, { includeWorkflow: false });
         }
       } else if (doc.targetKind === "report") {
         const r = reportMap.get(targetId);

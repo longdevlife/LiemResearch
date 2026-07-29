@@ -165,6 +165,39 @@ describe("paperService.create", () => {
     expect(points.chargePaperDownloadCredit).toHaveBeenCalled();
   });
 
+  it("does not charge download credits when signed URL generation fails", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    paperModel.findById.mockResolvedValue({
+      _id: paperId,
+      requestedBy: new mongoose.Types.ObjectId(),
+      uploadedBy: new mongoose.Types.ObjectId(),
+      paperStatus: "downloaded",
+      qualityTier: 2,
+      downloadCost: 30,
+      pdfPath: "r2://papers-bucket/papers/unavailable.pdf",
+    });
+    userModel.findById.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ credits: 100 }),
+      }),
+    });
+    downloads.findOne.mockResolvedValue(null);
+    storage.getSignedDownloadUrl.mockRejectedValue(new Error("R2 unavailable"));
+
+    await expect(
+      paperService.getPdfDownloadUrl(
+        String(paperId),
+        String(userId),
+        "student",
+        "https://api.example.com",
+      ),
+    ).rejects.toThrow("R2 unavailable");
+
+    expect(points.chargePaperDownloadCredit).not.toHaveBeenCalled();
+    expect(paperModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("rejects only the contributed PDF while keeping an imported paper public", async () => {
     const paperId = new mongoose.Types.ObjectId();
     const uploaderId = new mongoose.Types.ObjectId();
@@ -224,5 +257,231 @@ describe("paperService.create", () => {
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: uploaderId, type: "submission_rejected" }),
     );
+  });
+
+  it("keeps active imported metadata searchable when an admin removes its PDF", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    const uploaderId = new mongoose.Types.ObjectId();
+    const pdfPath = "r2://papers-bucket/papers/removable.pdf";
+    const paperData = {
+      _id: paperId,
+      title: "Active imported metadata",
+      primaryProvider: "openalex",
+      uploadedBy: uploaderId,
+      paperStatus: "downloaded",
+      dataStatus: "active",
+      pdfPath,
+      publicationYear: 2025,
+      citationCount: 5,
+      authors: [{ displayName: "Researcher", position: 1 }],
+      keywords: [],
+      topics: [],
+      externalIds: { openalexId: "W456" },
+      dataQualityScore: 0.8,
+      toObject() {
+        return { ...this };
+      },
+    };
+    paperModel.findById.mockResolvedValue(paperData);
+    paperModel.findByIdAndUpdate.mockResolvedValue({
+      ...paperData,
+      pdfPath: undefined,
+      uploadedBy: undefined,
+      paperStatus: "not-downloaded",
+      dataStatus: "active",
+    });
+    storage.deletePdf.mockResolvedValue(undefined);
+
+    const result = await paperService.deletePaperPdf(String(paperId));
+
+    expect(result.dataStatus).toBe("active");
+    expect(paperModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      String(paperId),
+      expect.objectContaining({
+        paperStatus: "not-downloaded",
+        dataStatus: "active",
+      }),
+      { new: true },
+    );
+    expect(storage.deletePdf).toHaveBeenCalledWith(pdfPath);
+  });
+
+  it("rejects unauthorized PDF uploads before storage persistence", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    paperModel.findById.mockResolvedValue({
+      _id: paperId,
+      requestedBy: new mongoose.Types.ObjectId(),
+      primaryProvider: "user",
+      paperStatus: "pending",
+      dataStatus: "draft",
+      pdfPath: undefined,
+    });
+
+    await expect(
+      paperService.assertCanUploadPdf(
+        String(paperId),
+        String(new mongoose.Types.ObjectId()),
+        "student",
+      ),
+    ).rejects.toThrow("You can only upload a PDF after the request is approved");
+  });
+});
+
+describe("paperService.getById visibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mockDetailQuery(result: Record<string, unknown> | null) {
+    const query = {
+      populate: vi.fn(),
+      lean: vi.fn().mockResolvedValue(result),
+    };
+    query.populate.mockReturnValue(query);
+    paperModel.findOne.mockReturnValue(query);
+    return query;
+  }
+
+  function paperFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      externalIds: { doi: "10.1000/safe-detail" },
+      title: "Safe paper detail",
+      authors: [],
+      publicationYear: 2025,
+      citationCount: 10,
+      keywords: [],
+      topics: [],
+      primaryProvider: "user",
+      dataStatus: "active",
+      dataQualityScore: 0.8,
+      isAiAnalyzable: true,
+      paperStatus: "downloaded",
+      pdfPath: "r2://private-bucket/papers/private-key.pdf",
+      uploadRewardedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    };
+  }
+
+  it("returns active paper details publicly with storage and PII redacted", async () => {
+    const requestedBy = {
+      _id: new mongoose.Types.ObjectId(),
+      fullName: "Requester",
+      email: "requester@example.com",
+      institution: "FPT University",
+    };
+    const raw = paperFixture({ requestedBy, rejectionReason: "internal note" });
+    mockDetailQuery(raw);
+
+    const result = await paperService.getById(String(raw._id));
+
+    expect(paperModel.findOne).toHaveBeenCalledWith({
+      _id: raw._id,
+      $or: [{ dataStatus: "active" }],
+    });
+    expect(result).toMatchObject({
+      id: String(raw._id),
+      title: "Safe paper detail",
+      dataStatus: "active",
+      pdfAvailable: true,
+      pdfPath: `/api/v1/papers/${raw._id}/pdf-url`,
+      paperStatus: "downloaded",
+    });
+    expect(result?.pdfPath).not.toContain("private-bucket");
+    expect(result?.pdfPath).not.toContain("private-key.pdf");
+    expect(result).not.toHaveProperty("requestedBy");
+    expect(result).not.toHaveProperty("uploadedBy");
+    expect(result).not.toHaveProperty("rejectionReason");
+    expect(result).not.toHaveProperty("uploadRewardedAt");
+  });
+
+  it.each([
+    { label: "draft", dataStatus: "draft", paperStatus: "pending" },
+    { label: "rejected", dataStatus: "archived", paperStatus: "rejected" },
+  ])(
+    "does not expose a non-active $label paper to an anonymous caller",
+    async ({ dataStatus, paperStatus }) => {
+      const paperId = new mongoose.Types.ObjectId();
+      mockDetailQuery(null);
+
+      const result = await paperService.getById(String(paperId));
+
+      expect(result).toBeNull();
+      expect(paperModel.findOne).toHaveBeenCalledWith({
+        _id: paperId,
+        $or: [{ dataStatus: "active" }],
+      });
+      expect(dataStatus).not.toBe("active");
+      expect(["pending", "rejected"]).toContain(paperStatus);
+    },
+  );
+
+  it("allows the requester to view a draft workflow without PII or storage keys", async () => {
+    const requesterId = new mongoose.Types.ObjectId();
+    const raw = paperFixture({
+      dataStatus: "draft",
+      paperStatus: "pending",
+      requestedBy: {
+        _id: requesterId,
+        fullName: "Paper Requester",
+        email: "private@example.com",
+        institution: "FPT University",
+        role: "student",
+      },
+      rejectionReason: undefined,
+    });
+    mockDetailQuery(raw);
+
+    const result = await paperService.getById(String(raw._id), {
+      userId: String(requesterId),
+      role: "student",
+    });
+
+    expect(result).toMatchObject({
+      dataStatus: "draft",
+      paperStatus: "pending",
+      requestedBy: {
+        _id: String(requesterId),
+        fullName: "Paper Requester",
+        university: "FPT University",
+      },
+      pdfAvailable: true,
+      pdfPath: `/api/v1/papers/${raw._id}/pdf-url`,
+    });
+    expect(result?.pdfPath).not.toContain("private-bucket");
+    expect(result?.requestedBy).not.toHaveProperty("email");
+    expect(result).not.toHaveProperty("uploadRewardedAt");
+  });
+
+  it("allows an admin to inspect a rejected workflow with sensitive fields redacted", async () => {
+    const raw = paperFixture({
+      dataStatus: "archived",
+      paperStatus: "rejected",
+      rejectionReason: "Invalid metadata",
+      uploadedBy: {
+        _id: new mongoose.Types.ObjectId(),
+        fullName: "Uploader",
+        email: "uploader@example.com",
+      },
+    });
+    mockDetailQuery(raw);
+
+    const result = await paperService.getById(String(raw._id), {
+      userId: String(new mongoose.Types.ObjectId()),
+      role: "admin",
+    });
+
+    expect(paperModel.findOne).toHaveBeenCalledWith({ _id: raw._id });
+    expect(result).toMatchObject({
+      dataStatus: "archived",
+      paperStatus: "rejected",
+      rejectionReason: "Invalid metadata",
+      uploadedBy: { fullName: "Uploader" },
+      pdfPath: `/api/v1/papers/${raw._id}/pdf-url`,
+    });
+    expect(result?.pdfPath).not.toContain("private-bucket");
+    expect(result?.uploadedBy).not.toHaveProperty("email");
   });
 });
