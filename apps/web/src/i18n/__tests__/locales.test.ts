@@ -3,7 +3,11 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { dictionaries, type TranslationKey } from "../locales";
+import {
+  englishDictionary,
+  loadDictionary,
+  type TranslationKey,
+} from "../locales";
 import { UI_LANGUAGES } from "../index";
 
 const TRANSLATABLE_ATTRIBUTES = new Set(["placeholder", "aria-label", "title", "alt"]);
@@ -39,16 +43,16 @@ describe("UI i18n dictionaries", () => {
     ]);
   });
 
-  it("keeps every locale aligned with the English source keys", () => {
-    const sourceKeys = Object.keys(dictionaries.en).sort() as TranslationKey[];
+  it("keeps every lazily loaded locale aligned with the English source keys", async () => {
+    const sourceKeys = Object.keys(englishDictionary).sort() as TranslationKey[];
 
     for (const language of UI_LANGUAGES) {
-      expect(Object.keys(dictionaries[language.code]).sort()).toEqual(sourceKeys);
+      expect(Object.keys(await loadDictionary(language.code)).sort()).toEqual(sourceKeys);
     }
   });
 
   it("covers known body text that is easy to miss", () => {
-    expect(dictionaries.en).toMatchObject({
+    expect(englishDictionary).toMatchObject({
       "Add Note": "Add Note",
       "Create Paper": "Create Paper",
       "Logging in...": "Logging in...",
@@ -62,7 +66,7 @@ describe("UI i18n dictionaries", () => {
   it("covers static UI text rendered by pages and feature components", () => {
     const repoSrc = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
     const uiStrings = collectUiStrings(repoSrc);
-    const missing = [...uiStrings].filter((text) => !(text in dictionaries.en)).sort((a, b) => a.localeCompare(b));
+    const missing = [...uiStrings].filter((text) => !(text in englishDictionary)).sort((a, b) => a.localeCompare(b));
 
     expect(missing).toEqual([]);
   });

@@ -13,7 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/utils/cn";
-import { dictionaries } from "./locales";
+import {
+  englishDictionary,
+  loadDictionary,
+  type Dictionary,
+} from "./locales";
 
 export const UI_LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English" },
@@ -47,12 +51,21 @@ const SKIP_SELECTOR = "script,style,noscript,canvas,code,pre,textarea,[contented
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<UiLanguageCode>(() => readStoredLanguage());
+  const [activeDictionary, setActiveDictionary] = useState<Dictionary>(englishDictionary);
   const textOriginals = useRef(new WeakMap<Text, string>());
   const attrOriginals = useRef(new WeakMap<Element, Map<string, string>>());
   const scanTimer = useRef<number | undefined>();
 
   useEffect(() => {
     document.documentElement.lang = language;
+    let cancelled = false;
+    setActiveDictionary(englishDictionary);
+    void loadDictionary(language).then((dictionary) => {
+      if (!cancelled) setActiveDictionary(dictionary);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [language]);
 
   const setLanguage = useCallback((nextLanguage: UiLanguageCode) => {
@@ -62,19 +75,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback<Translate>(
     (key, values) => {
-      const activeDictionary = dictionaries[language] as Record<string, string>;
-      const fallbackDictionary = dictionaries.en as Record<string, string>;
-      return interpolate(activeDictionary[key] ?? fallbackDictionary[key] ?? key, values);
+      return interpolate(activeDictionary[key] ?? englishDictionary[key] ?? key, values);
     },
-    [language],
+    [activeDictionary],
   );
 
   const value = useMemo(() => ({ language, setLanguage, languages: UI_LANGUAGES, t }), [language, setLanguage, t]);
 
   const translateDom = useCallback(() => {
     if (!document.body) return;
-    translateRenderedDom(document.body, dictionaries[language], textOriginals.current, attrOriginals.current);
-  }, [language]);
+    translateRenderedDom(document.body, activeDictionary, textOriginals.current, attrOriginals.current);
+  }, [activeDictionary]);
 
   useEffect(() => {
     translateDom();

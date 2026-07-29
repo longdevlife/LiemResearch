@@ -1,11 +1,11 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
-import { AuthLayout } from "@/layouts/AuthLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { ProtectedRoute } from "@/components/protected-route";
 
 const HomePage = lazy(() => import("@/pages/home").then((m) => ({ default: m.HomePage })));
+const AuthLayout = lazy(() => import("@/layouts/AuthLayout").then((m) => ({ default: m.AuthLayout })));
 const LoginPage = lazy(() => import("@/pages/login").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("@/pages/register").then((m) => ({ default: m.RegisterPage })));
 const OAuthCallbackPage = lazy(() => import("@/pages/oauth-callback").then((m) => ({ default: m.OAuthCallbackPage })));

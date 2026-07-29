@@ -218,6 +218,45 @@ export const gapEvidenceWorkflowStrings = {
   "Overall AI Score": "Overall AI Score",
   "Re-evaluate": "Re-evaluate",
   "Relevance": "Relevance",
+  ". This is a deterministic impact and metadata score, not an AI judgment of scientific correctness.":
+    ". This is a deterministic impact and metadata score, not an AI judgment of scientific correctness.",
+  "Abstract-only advisory score": "Abstract-only advisory score",
+  "Academic Impact Summary": "Academic Impact Summary",
+  "Academic Impact:": "Academic Impact:",
+  "arXiv": "arXiv",
+  "Based on title and abstract only. Advisory score; it does not affect indexing decisions.":
+    "Based on title and abstract only. Advisory score; it does not affect indexing decisions.",
+  "Deterministic score:": "Deterministic score:",
+  "Formula version": "Formula version",
+  "Loading OpenAlex relationships...": "Loading OpenAlex relationships...",
+  "No OpenAlex related works are currently available in this corpus.":
+    "No OpenAlex related works are currently available in this corpus.",
+  "No reports cite this paper yet": "No reports cite this paper yet",
+  "OpenAlex has not supplied related-work links for this paper.":
+    "OpenAlex has not supplied related-work links for this paper.",
+  "OpenAlex Related Works": "OpenAlex Related Works",
+  "OpenAlex related works could not be loaded.": "OpenAlex related works could not be loaded.",
+  "Paper details are unavailable": "Paper details are unavailable",
+  "Paper not found": "Paper not found",
+  "Please try again.": "Please try again.",
+  "Ranked by title and abstract similarity; this is separate from OpenAlex's “Related to” count.":
+    "Ranked by title and abstract similarity; this is separate from OpenAlex's “Related to” count.",
+  "References could not be loaded.": "References could not be loaded.",
+  "related works are available in this corpus.": "related works are available in this corpus.",
+  "Reports citing this paper": "Reports citing this paper",
+  "Search could not be completed.": "Search could not be completed.",
+  "Semantic Match Threshold": "Semantic Match Threshold",
+  "SEMANTIC MATCH THRESHOLD": "SEMANTIC MATCH THRESHOLD",
+  "Semantic Scholar": "Semantic Scholar",
+  "Semantically Similar Papers": "Semantically Similar Papers",
+  "Show all reports": "Show all reports",
+  "Showing only reports whose evidence pack contains this paper.":
+    "Showing only reports whose evidence pack contains this paper.",
+  "Similar papers could not be loaded.": "Similar papers could not be loaded.",
+  "Title, abstract, phrase, and DOI matching": "Title, abstract, phrase, and DOI matching",
+  "Try again": "Try again",
+  "User submissions": "User submissions",
+  "Year unknown": "Year unknown",
 } as const;
 
 export const gapEvidenceWorkflowViStrings: Record<
