@@ -64,6 +64,16 @@ export function NotificationsPage() {
       return;
     }
 
+    if (isAdmin && type === "submission_pending") {
+      navigate("/admin/papers");
+      return;
+    }
+
+    if (!isAdmin && type === "submission_rejected" && targetKind === "paper" && targetId) {
+      navigate(`/settings/submit-paper?edit=${targetId}`);
+      return;
+    }
+
     if (targetKind && targetId) {
       if (targetKind === "paper") navigate(`/papers/${targetId}`);
       else if (targetKind === "report") navigate(`/reports/${targetId}`);

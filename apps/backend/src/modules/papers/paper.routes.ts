@@ -153,6 +153,20 @@ paperRouter.get("/:id/references", async (req, res) => {
   res.json({ success: true, data });
 });
 
+/** GET /papers/:id/edit — authenticated draft/rejected paper data for edit forms. */
+paperRouter.get("/:id/edit", requireAuth, async (req, res, next) => {
+  try {
+    const paper = await paperService.getEditableById(
+      String(req.params.id),
+      String(req.user!.sub),
+      String(req.user!.role),
+    );
+    res.json({ success: true, data: paper });
+  } catch (error) {
+    next(error);
+  }
+});
+
 /** GET /papers/:id — single paper detail. */
 paperRouter.get("/:id", async (req, res, next) => {
   try {

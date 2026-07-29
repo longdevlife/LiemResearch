@@ -203,6 +203,26 @@ export const paperService = {
     return doc ? toPaperDto(doc as any) : null;
   },
 
+  async getEditableById(id: string, userId: string, userRole: string): Promise<Paper> {
+    if (!mongoose.Types.ObjectId.isValid(id)) throw AppError.badRequest("Invalid paper id");
+    const doc = await PaperModel.findById(id)
+      .populate("requestedBy", "fullName email institution role avatarUrl")
+      .populate("uploadedBy", "fullName email institution role avatarUrl")
+      .lean();
+    if (!doc) throw AppError.notFound("Paper not found");
+
+    const requestedBy = (doc as any).requestedBy?._id ?? (doc as any).requestedBy;
+    const uploadedBy = (doc as any).uploadedBy?._id ?? (doc as any).uploadedBy;
+    const isOwner =
+      String(requestedBy ?? "") === userId ||
+      String(uploadedBy ?? "") === userId;
+    if (userRole !== "admin" && !isOwner) {
+      throw AppError.forbidden("You are not allowed to edit this paper");
+    }
+
+    return toPaperDto(doc as any);
+  },
+
   /** Resolve a paper's referenced OpenAlex IDs to the papers we hold in corpus. */
   async getReferences(
     id: string,
