@@ -153,7 +153,7 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+                  <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/60">
                     <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                       <span className="text-[9px] text-slate-405 font-bold uppercase block">{t("Intersection")}</span>
                       <span className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -168,13 +168,6 @@ export function GapDetailDrawer({ gap, isOpen, onClose }: GapDetailDrawerProps) 
                         {gap.parentTrend ? `${Math.round(gap.parentTrend.growthRatePct)}%` : "0%"}
                       </span>
                       <span className="text-[9px] text-slate-400 block mt-0.5">{t("/year")}</span>
-                    </div>
-                    <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                      <span className="text-[9px] text-slate-405 font-bold uppercase block">{t("Evidence Score")}</span>
-                      <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400">
-                        {confidencePct}%
-                      </span>
-                      <span className="text-[9px] text-slate-400 block mt-0.5">{t("confidence")}</span>
                     </div>
                   </div>
 

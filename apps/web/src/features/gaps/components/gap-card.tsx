@@ -287,12 +287,7 @@ export function GapCard({
       </div>
 
       {/* 4. Actions Footer */}
-      <div className="flex flex-row items-center justify-between gap-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 mt-auto relative z-10">
-        <ConfidenceBar
-          value={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null ? gap.evidenceConfidence : gap.confidence}
-          isEvidence={gap.evidenceConfidence !== undefined && gap.evidenceConfidence !== null}
-        />
-        
+      <div className="flex flex-row items-center justify-end gap-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 mt-auto relative z-10">
         <div className="flex items-center gap-2">
           {onViewDetails && (
             <Button
