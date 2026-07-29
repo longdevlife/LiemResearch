@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { Share, Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2, Bookmark as BookmarkIcon } from "lucide-react";
+import { Download, CheckCircle2, Info, Check, Clock, Sparkles, ChevronRight, Loader2, XCircle, Flower, Star, MessageSquare, Trash2, Bookmark as BookmarkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
 import { useReport } from "@/features/reports/hooks/use-reports";
@@ -231,9 +231,7 @@ export function ReportViewerPage() {
             <Button onClick={() => setShowRoses(!showRoses)} variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
               <Flower className="w-4 h-4" /> {showRoses ? "Hide Roses" : "Show Roses"}
             </Button>
-            <Button variant="outline" className="h-9 px-4 gap-2 text-slate-700 dark:text-slate-300 font-semibold border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50">
-              <Share className="w-4 h-4" /> Share
-            </Button>
+
             <Button
               onClick={handleToggleBookmark}
               disabled={!id || bookmarkBusy}
