@@ -141,7 +141,11 @@ export function SubmitPaperPage({ isEmbedded = false }: { isEmbedded?: boolean }
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-        .map((displayName) => ({ displayName }));
+        .map((displayName, index) => ({
+          displayName,
+          position: index + 1,
+          isCorresponding: index === 0,
+        }));
 
       const keywords = keywordsStr
         .split(",")
