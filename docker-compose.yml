@@ -69,8 +69,21 @@ services:
 
   # Free, self-hosted title/abstract translation for Paper Detail only.
   # Enable with: docker compose --profile translation up --build
+  libretranslate-init:
+    image: libretranslate/libretranslate:v1.9.6
+    profiles: ["translation"]
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mkdir -p /home/libretranslate/.local/share /home/libretranslate/.local/cache
+        && chown -R 1032:1032 /home/libretranslate/.local
+    volumes:
+      - libretranslate-share:/home/libretranslate/.local/share
+      - libretranslate-cache:/home/libretranslate/.local/cache
+
   libretranslate:
-    image: libretranslate/libretranslate:latest
+    image: libretranslate/libretranslate:v1.9.6
     profiles: ["translation"]
     restart: unless-stopped
     environment:
@@ -78,6 +91,9 @@ services:
     volumes:
       - libretranslate-share:/home/libretranslate/.local/share
       - libretranslate-cache:/home/libretranslate/.local/cache
+    depends_on:
+      libretranslate-init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:5000:5000"
     healthcheck:
