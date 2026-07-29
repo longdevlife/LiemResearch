@@ -53,7 +53,7 @@ pipeline {
             --build-arg VITE_API_BASE=https://api.paperlens.uk/api/v1 \
             -t "$WEB_IMAGE:$IMAGE_TAG" \
             -f Dockerfile.web .
-          if [ "$RUN_BROWSER_E2E" = 'true' ]; then
+          if [ "${RUN_BROWSER_E2E:-false}" = 'true' ]; then
             docker build --pull -t "$E2E_IMAGE:$IMAGE_TAG" -f Dockerfile.e2e .
           fi
           docker pull "$REDIS_IMAGE"
