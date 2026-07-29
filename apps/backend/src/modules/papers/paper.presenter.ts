@@ -1,4 +1,5 @@
 import type { Paper } from "@trend/shared-types";
+import { normalizeAcademicTitle } from "../../common/text/academic-text.js";
 
 type RawPaper = Record<string, any>;
 
@@ -49,7 +50,7 @@ export function presentPaperDetail(
   const result: Record<string, unknown> = {
     id,
     externalIds: raw.externalIds ?? {},
-    title: raw.title,
+    title: normalizeAcademicTitle(raw.title),
     abstractText: raw.abstractText,
     authors: raw.authors ?? [],
     journalId: toId(raw.journalId),

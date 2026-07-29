@@ -34,13 +34,28 @@ const translationLimiter = rateLimit({
     }),
 });
 
+const compareLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: env.COMPARE_MAX_PER_HOUR,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.sub ?? req.ip ?? "anonymous",
+  handler: (_req, res) =>
+    res.status(429).json({
+      success: false,
+      error: { code: "TOO_MANY_REQUESTS", message: "Paper comparison limit exceeded. Try again later." },
+    }),
+});
+
 const triggerEmbedding = () => {
-  // 1. Add to BullMQ queue for robustness / production worker
   embeddingQueue.add("manual-embedding", {}).catch(() => {});
-  // 2. Run in-process in the background to guarantee indexing in development
-  runEmbedding({ maxPapers: 5, batchSize: 5 }).catch((err) => {
-    logger.error({ err }, "In-process runEmbedding failed");
-  });
+  // Keep local development convenient without making production API instances
+  // perform worker CPU/network work or race the dedicated embedding worker.
+  if (env.NODE_ENV !== "production") {
+    runEmbedding({ maxPapers: 5, batchSize: 5 }).catch((err) => {
+      logger.error({ err }, "In-process runEmbedding failed");
+    });
+  }
 };
 
 async function saveUploadedPdf(req: Request): Promise<string | undefined> {
@@ -161,7 +176,7 @@ paperRouter.get("/my-requests", requireAuth, async (req, res, next) => {
  * POST /papers/compare — side-by-side comparison of 2-4 papers.
  * Declared BEFORE the `/:id` routes so "compare" is never captured as an :id.
  */
-paperRouter.post("/compare", async (req: Request, res: Response, next: NextFunction) => {
+paperRouter.post("/compare", requireAuth, compareLimiter, async (req: Request, res: Response, next: NextFunction) => {
   const parsed = CompareBodySchema.safeParse(req.body);
   if (!parsed.success) {
     next(parsed.error);
@@ -319,19 +334,30 @@ paperRouter.get("/:id/download", async (req, res, next) => {
 
 /** POST /papers/:id/upload-pdf — upload a PDF for an existing paper request. */
 paperRouter.post("/:id/upload-pdf", requireAuth, uploadSinglePdf, async (req, res, next) => {
+  let pdfPath: string | undefined;
   try {
-    const pdfPath = await saveUploadedPdf(req);
+    const paperId = String(req.params.id);
+    const uploaderId = String(req.user!.sub);
+    const uploaderRole = String(req.user!.role);
+
+    await paperService.assertCanUploadPdf(paperId, uploaderId, uploaderRole);
+    pdfPath = await saveUploadedPdf(req);
     if (!pdfPath) throw AppError.badRequest("PDF file is required");
 
     const paper = await paperService.uploadPdf(
-      String(req.params.id),
-      String(req.user!.sub),
-      String(req.user!.role),
+      paperId,
+      uploaderId,
+      uploaderRole,
       pdfPath,
     );
 
     res.json({ success: true, data: paper });
   } catch (error) {
+    if (pdfPath) {
+      await pdfStorageService.deletePdf(pdfPath).catch((cleanupError) => {
+        logger.error({ cleanupError, pdfPath }, "Failed to clean up PDF after upload failure");
+      });
+    }
     next(error);
   }
 });

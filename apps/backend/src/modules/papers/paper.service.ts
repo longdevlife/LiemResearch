@@ -29,6 +29,7 @@ import { notificationService } from "../notifications/notification.service.js";
 import { pdfStorageService } from "../../infrastructure/pdf-storage.service.js";
 import { buildUserPaperRequestFilter, isImportedPaperRecord } from "./paper-workflow.js";
 import { presentPaperDetail, type PaperDetailDto } from "./paper.presenter.js";
+import { normalizeAcademicTitle } from "../../common/text/academic-text.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -522,17 +523,15 @@ export const paperService = {
   },
 
   /**
-    * Upload a PDF to an existing paper request.
-    * - Admin: publishes the PDF immediately.
-    * - User uploading to an imported paper: sends the PDF to admin review.
-    * - Other contributors on requested papers: waits for requester confirmation, then admin review.
+    * Validate PDF upload permission before writing the file to storage.
+    * uploadPdf repeats these checks after storage succeeds to protect against
+    * concurrent state changes between authorization and persistence.
     */
-  async uploadPdf(
+  async assertCanUploadPdf(
     paperId: string,
     uploaderId: string,
     uploaderRole: string,
-    pdfPath: string,
-  ): Promise<Paper> {
+  ): Promise<void> {
     if (!mongoose.Types.ObjectId.isValid(paperId)) throw AppError.badRequest("Invalid paper id");
 
     const paper = await PaperModel.findById(paperId);
@@ -546,10 +545,43 @@ export const paperService = {
     const isRequesterUpload = isSameId(paper.requestedBy, uploaderId);
     const isImportedPaper = isImportedPaperRecord(paper);
     const effectiveStatus = paper.paperStatus ?? (isImportedPaper ? "not-downloaded" : "pending");
-    const isApproved = isApprovedStatus(effectiveStatus);
-    const canUploadPdf = isAdminUpload || isRequesterUpload || isImportedPaper || isApproved;
+    const canUploadPdf =
+      isAdminUpload ||
+      isRequesterUpload ||
+      isImportedPaper ||
+      isApprovedStatus(effectiveStatus);
 
     if (!canUploadPdf) {
+      throw AppError.forbidden("You can only upload a PDF after the request is approved");
+    }
+  },
+
+  /**
+    * Upload a PDF to an existing paper request.
+    * - Admin: publishes the PDF immediately.
+    * - User uploading to an imported paper: sends the PDF to admin review.
+    * - Other contributors on requested papers: waits for requester confirmation, then admin review.
+    */
+  async uploadPdf(
+    paperId: string,
+    uploaderId: string,
+    uploaderRole: string,
+    pdfPath: string,
+  ): Promise<Paper> {
+    await this.assertCanUploadPdf(paperId, uploaderId, uploaderRole);
+    const paper = await PaperModel.findById(paperId);
+    if (!paper) throw AppError.notFound("Paper not found");
+    if (paper.pdfPath) throw AppError.conflict("This paper already has a PDF uploaded");
+    if (paper.paperStatus === "rejected") {
+      throw AppError.badRequest("Cannot upload a PDF for a rejected paper");
+    }
+
+    const isAdminUpload = uploaderRole === "admin";
+    const isRequesterUpload = isSameId(paper.requestedBy, uploaderId);
+    const isImportedPaper = isImportedPaperRecord(paper);
+    const effectiveStatus = paper.paperStatus ?? (isImportedPaper ? "not-downloaded" : "pending");
+    const isApproved = isApprovedStatus(effectiveStatus);
+    if (!(isAdminUpload || isRequesterUpload || isImportedPaper || isApproved)) {
       throw AppError.forbidden("You can only upload a PDF after the request is approved");
     }
 
@@ -629,7 +661,7 @@ export const paperService = {
       paperId,
       {
         paperStatus: "pending",
-        dataStatus: "draft",
+        dataStatus: paper.dataStatus === "active" ? "active" : "draft",
         ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
@@ -1164,7 +1196,9 @@ export const paperService = {
       {
         $unset: { pdfPath: "", uploadedBy: "", uploadedAt: "" },
         paperStatus: nextStatus,
-        dataStatus: "draft",
+        // Removing a full-text attachment must not hide otherwise valid
+        // imported metadata from Search, Trends, or RAG.
+        dataStatus: paper.dataStatus === "active" ? "active" : "draft",
         ...qualityScoreUpdate,
         qualityTierName: tierDef.name,
       },
@@ -1250,7 +1284,7 @@ export function toPaperRef(doc: Record<string, unknown>): PaperRef {
   const ext = doc.externalIds as { doi?: string } | undefined;
   return {
     id: String(doc._id),
-    title: String(doc.title ?? ""),
+    title: normalizeAcademicTitle(String(doc.title ?? "")),
     publicationYear: Number(doc.publicationYear ?? 0),
     authors: (doc.authors as PaperRef["authors"]) ?? [],
     ...(ext?.doi ? { doi: ext.doi } : {}),
@@ -1268,5 +1302,9 @@ function toPaperDto(doc: any): Paper {
   const { _id, __v, embedding, ...rest } = raw;
   void __v;
   void embedding;
-  return { id: String(_id), ...rest } as unknown as Paper;
+  return {
+    id: String(_id),
+    ...rest,
+    title: normalizeAcademicTitle(rest.title),
+  } as unknown as Paper;
 }

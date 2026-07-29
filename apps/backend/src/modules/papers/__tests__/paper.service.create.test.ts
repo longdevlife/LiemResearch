@@ -258,6 +258,73 @@ describe("paperService.create", () => {
       expect.objectContaining({ userId: uploaderId, type: "submission_rejected" }),
     );
   });
+
+  it("keeps active imported metadata searchable when an admin removes its PDF", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    const uploaderId = new mongoose.Types.ObjectId();
+    const pdfPath = "r2://papers-bucket/papers/removable.pdf";
+    const paperData = {
+      _id: paperId,
+      title: "Active imported metadata",
+      primaryProvider: "openalex",
+      uploadedBy: uploaderId,
+      paperStatus: "downloaded",
+      dataStatus: "active",
+      pdfPath,
+      publicationYear: 2025,
+      citationCount: 5,
+      authors: [{ displayName: "Researcher", position: 1 }],
+      keywords: [],
+      topics: [],
+      externalIds: { openalexId: "W456" },
+      dataQualityScore: 0.8,
+      toObject() {
+        return { ...this };
+      },
+    };
+    paperModel.findById.mockResolvedValue(paperData);
+    paperModel.findByIdAndUpdate.mockResolvedValue({
+      ...paperData,
+      pdfPath: undefined,
+      uploadedBy: undefined,
+      paperStatus: "not-downloaded",
+      dataStatus: "active",
+    });
+    storage.deletePdf.mockResolvedValue(undefined);
+
+    const result = await paperService.deletePaperPdf(String(paperId));
+
+    expect(result.dataStatus).toBe("active");
+    expect(paperModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      String(paperId),
+      expect.objectContaining({
+        paperStatus: "not-downloaded",
+        dataStatus: "active",
+      }),
+      { new: true },
+    );
+    expect(storage.deletePdf).toHaveBeenCalledWith(pdfPath);
+  });
+
+  it("rejects unauthorized PDF uploads before storage persistence", async () => {
+    const paperId = new mongoose.Types.ObjectId();
+    paperModel.findById.mockResolvedValue({
+      _id: paperId,
+      requestedBy: new mongoose.Types.ObjectId(),
+      primaryProvider: "user",
+      paperStatus: "pending",
+      dataStatus: "draft",
+      pdfPath: undefined,
+    });
+
+    await expect(
+      paperService.assertCanUploadPdf(
+        String(paperId),
+        String(new mongoose.Types.ObjectId()),
+        "student",
+      ),
+    ).rejects.toThrow("You can only upload a PDF after the request is approved");
+  });
 });
 
 describe("paperService.getById visibility", () => {

@@ -170,8 +170,11 @@ export function PaperDetailPage() {
 
   const [ratingView, setRatingView] = useState<QualityView | null>(null);
   const [ratingLoading, setRatingLoading] = useState(Boolean(currentUser));
+  const [ratingError, setRatingError] = useState<string | null>(null);
 
   const fetchRatingView = async () => {
+    setRatingLoading(true);
+    setRatingError(null);
     try {
       const res = await api.get(`/quality/paper/${id}`);
       if (res.data.success) {
@@ -179,6 +182,7 @@ export function PaperDetailPage() {
       }
     } catch (err) {
       console.error("Failed to fetch paper rating view:", err);
+      setRatingError(getApiErrorMessage(err, "Ratings are temporarily unavailable."));
     } finally {
       setRatingLoading(false);
     }
@@ -275,7 +279,7 @@ export function PaperDetailPage() {
     setAccepting(true);
     try {
       await api.patch(`/papers/${id}/accept-pdf`);
-      toast.success("PDF approved successfully!");
+      toast.success("PDF accepted and sent to administrators for final review.");
       refetch();
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to approve PDF"));
@@ -553,13 +557,15 @@ export function PaperDetailPage() {
                   <Quote className="w-4 h-4" /> Cite
                 </Button>
 
-                <Button
-                  variant="outline"
-                  className="h-10 px-4 gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold rounded-lg"
-                  onClick={() => setCompareOpen(true)}
-                >
-                  <Scale className="w-4 h-4" /> Compare
-                </Button>
+                {currentUser && (
+                  <Button
+                    variant="outline"
+                    className="h-10 px-4 gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold rounded-lg"
+                    onClick={() => setCompareOpen(true)}
+                  >
+                    <Scale className="w-4 h-4" /> Compare
+                  </Button>
+                )}
 
                 <div className="relative inline-block">
                   <Button
@@ -1170,6 +1176,7 @@ export function PaperDetailPage() {
             <PaperReviewsList
               ratingView={ratingView}
               loading={ratingLoading}
+              error={ratingError}
               currentUser={currentUser}
               onSuccess={fetchRatingView}
             />
@@ -1185,7 +1192,9 @@ export function PaperDetailPage() {
           </div>
         </div>
       </div>
-      <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} currentPaper={paper} />
+      {currentUser && (
+        <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} currentPaper={paper} />
+      )}
     </main>
   );
 }
@@ -1623,11 +1632,13 @@ function PaperRatingWidget({
 function PaperReviewsList({
   ratingView,
   loading,
+  error,
   currentUser,
   onSuccess,
 }: {
   ratingView: QualityView | null;
   loading: boolean;
+  error: string | null;
   currentUser: User | null;
   onSuccess: () => void;
 }) {
@@ -1637,6 +1648,20 @@ function PaperReviewsList({
     return (
       <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-xl p-5 text-center shadow-sm">
         <Loader2 className="w-5 h-5 animate-spin text-slate-400 mx-auto" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-[#121212] border border-red-200 dark:border-red-900 rounded-xl p-5 shadow-sm">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
+          Ratings & Reviews
+        </h3>
+        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onSuccess}>
+          Try again
+        </Button>
       </div>
     );
   }

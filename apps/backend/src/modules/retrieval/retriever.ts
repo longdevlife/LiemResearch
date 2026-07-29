@@ -1,5 +1,6 @@
 import type { PipelineStage } from "mongoose";
 import type { ScoredPaper } from "@trend/shared-types";
+import { normalizeAcademicTitle } from "../../common/text/academic-text.js";
 import { env } from "../../config/env.js";
 import { getEmbeddingProvider } from "../embeddings/embedding.factory.js";
 import { PaperModel } from "../papers/models/paper.model.js";
@@ -182,7 +183,7 @@ function buildProjection(projection: RetrievalProjection): PipelineStage.Project
 export function toRetrievedPaper(d: Record<string, unknown>): RetrievedPaper {
   const paper: RetrievedPaper = {
     id: String(d._id),
-    title: String(d.title ?? ""),
+    title: normalizeAcademicTitle(String(d.title ?? "")),
     abstractText: d.abstractText ? String(d.abstractText) : undefined,
     publicationYear: d.publicationYear as number | undefined,
     journalName: d.journalName ? String(d.journalName) : undefined,
@@ -198,7 +199,12 @@ export function toRetrievedPaper(d: Record<string, unknown>): RetrievedPaper {
   return paper;
 }
 
-function toScoredPaper(d: Record<string, unknown>): ScoredPaper {
+export function toScoredPaper(d: Record<string, unknown>): ScoredPaper {
   const { _id, score, ...rest } = d;
-  return { id: String(_id), score: Number(score), ...rest } as unknown as ScoredPaper;
+  return {
+    id: String(_id),
+    score: Number(score),
+    ...rest,
+    title: normalizeAcademicTitle(rest.title as string | undefined),
+  } as unknown as ScoredPaper;
 }

@@ -121,6 +121,15 @@ describe("normalizeOpenAlexWork", () => {
     expect(normalizeOpenAlexWork({ ...base, title: "  ", display_name: "" }).title).toBe("Untitled");
   });
 
+  it("normalizes encoded HTML in OpenAlex titles", () => {
+    const normalized = normalizeOpenAlexWork({
+      ...base,
+      title: "&lt;p&gt;AI &amp; Precision Medicine&lt;/p&gt;",
+    });
+
+    expect(normalized.title).toBe("AI & Precision Medicine");
+  });
+
   it("maps referenced_works, stripping the OpenAlex URL prefix", () => {
     const n = normalizeOpenAlexWork({
       ...base,

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   buildRetrievePipeline,
   buildVectorFilter,
+  toScoredPaper,
   toRetrievedPaper,
   type RetrieveOptions,
 } from "../retriever.js";
@@ -151,5 +152,28 @@ describe("toRetrievedPaper", () => {
       authorNames: ["Alice", "Bob"],
       score: 0.88,
     });
+  });
+
+  it("normalizes encoded title markup in retrieved evidence", () => {
+    expect(
+      toRetrievedPaper({
+        _id: "paper-encoded",
+        title: "&lt;i&gt;Grounded &amp; Reliable&lt;/i&gt;",
+        score: 0.8,
+      }).title,
+    ).toBe("Grounded & Reliable");
+  });
+});
+
+describe("toScoredPaper", () => {
+  it("normalizes encoded title markup in search results", () => {
+    const paper = toScoredPaper({
+      _id: "paper-encoded",
+      title: "&lt;b&gt;Semantic &amp; Keyword Search&lt;/b&gt;",
+      score: 0.91,
+    });
+
+    expect(paper.title).toBe("Semantic & Keyword Search");
+    expect(paper.score).toBe(0.91);
   });
 });

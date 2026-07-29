@@ -24,4 +24,14 @@ describe("toPaperRef", () => {
     expect(ref.authors).toEqual([]);
     expect(ref.doi).toBeUndefined();
   });
+
+  it("decodes HTML entities and removes markup from legacy paper titles", () => {
+    const ref = toPaperRef({
+      _id: "legacy",
+      title: "&lt;p&gt;AI &amp; Precision Medicine&lt;/p&gt;",
+      publicationYear: 2024,
+    });
+
+    expect(ref.title).toBe("AI & Precision Medicine");
+  });
 });
