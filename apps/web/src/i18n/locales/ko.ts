@@ -2,6 +2,8 @@
 
 export const ko: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  "1 research gap": "연구 공백 1개",
+  "{{count}} research gaps from the same analysis": "같은 분석의 연구 공백 {{count}}개",
   "-day period.": "-일 기간.",
   "— whereas": "— 반면에",
   "; the next sync or PDF update will publish the full breakdown.": "; 다음 동기화 또는 PDF 업데이트는 전체 분석을 게시합니다.",

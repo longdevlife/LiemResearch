@@ -2,6 +2,8 @@
 
 export const ru: Record<keyof typeof en, string> = {
   ...gapEvidenceWorkflowStrings,
+  "1 research gap": "1 исследовательский пробел",
+  "{{count}} research gaps from the same analysis": "{{count}} исследовательских пробелов из одного анализа",
   "-day period.": "-дневной период.",
   "— whereas": "- тогда как",
   "; the next sync or PDF update will publish the full breakdown.": "; при следующей синхронизации или обновлении PDF будет опубликована полная информация.",

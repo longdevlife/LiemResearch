@@ -218,6 +218,8 @@ export const gapEvidenceWorkflowStrings = {
   "Overall AI Score": "Overall AI Score",
   "Re-evaluate": "Re-evaluate",
   "Relevance": "Relevance",
+  "1 research gap": "1 research gap",
+  "{{count}} research gaps from the same analysis": "{{count}} research gaps from the same analysis",
 } as const;
 
 export const gapEvidenceWorkflowViStrings: Record<
